@@ -1,0 +1,16 @@
+# Department keys used across the company folder, goals.yaml and the database.
+# Rooms 9 and 10 are configured now and switched on later (SPEC 4).
+# The Boardroom is a room, not a department, so it is not listed here.
+
+departments:
+  - { key: chief-of-staff,  name: Chief of Staff,        room: 0,  active: true }
+  - { key: lead-gen,        name: Lead Gen,              room: 1,  active: true }
+  - { key: outreach,        name: Outreach,              room: 2,  active: true }
+  - { key: marketing,       name: Marketing and Content, room: 3,  active: false }
+  - { key: product,         name: Product (Vespera),     room: 4,  active: false }
+  - { key: engineering,     name: Engineering,           room: 5,  active: false }
+  - { key: micro-saas-lab,  name: Micro-SaaS Lab,        room: 6,  active: false }
+  - { key: founder-network, name: Founder Network,       room: 7,  active: false }
+  - { key: calls-desk,      name: Calls Desk,            room: 8,  active: false }
+  - { key: demand-radar,    name: Demand Radar,          room: 9,  active: false }
+  - { key: research,        name: Research,              room: 10, active: true }

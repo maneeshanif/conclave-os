@@ -1,0 +1,35 @@
+# The goal ladder. Example dates and targets: set your own.
+# The Goals screen works backwards from the current rung to daily activity (SPEC 3).
+
+north_star: monthly revenue from clients who would recommend us
+
+ladder:
+  - id: rung-1
+    target_usd: 1000
+    by: 2026-12-12
+    source: services
+  - id: rung-2
+    target_usd: 4000          # the middle of $3,000 to $5,000
+    by: 2027-02-12
+    source: services+pilot
+  - id: rung-3
+    target_usd: 25000
+    by: null                  # set once a pilot has met its target
+    source: product
+
+current_rung: rung-1
+
+# Planning guesses until two weeks of real pipeline data exist.
+# The OS then replaces these with your own rates.
+planning_rates:
+  average_first_build_usd: null     # TODO
+  concept_to_build: null            # TODO, between 0 and 1
+  reply_to_concept: null            # TODO
+  reply_rate: null                  # TODO
+
+# Keys must match company/departments.yaml.
+department_goals:
+  lead-gen:  { metric: qualified_leads_per_week,     serves: rung-1 }
+  outreach:  { metric: positive_replies_per_week,    serves: rung-1 }
+  engineering: { metric: concepts_delivered_per_week, serves: rung-1 }
+  product:   { metric: slice_sessions_per_month,     serves: rung-2 }
