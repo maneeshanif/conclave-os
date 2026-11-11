@@ -2,7 +2,7 @@
 
 Nov 12, 2026 · @Mohummad Anees
 
-jsm-hq and Paperclip are two different layers, and neither covers what you described. Build Conclave AI OS in TypeScript end to end, with the Claude Code harness as its engine, borrowing Paperclip's management rules and jsm-hq's office pattern.
+jsm-hq and Paperclip are two different layers, and neither covers what you described. Build Conclave AI OS in TypeScript end to end, model-agnostic, with ready-made harnesses as swappable engines, borrowing Paperclip's management rules and jsm-hq's office pattern.
 
 ## 1. Verdict
 
@@ -22,14 +22,14 @@ No, jsm-hq is not the same as Paperclip. jsm-hq runs a coding team on one repo. 
 
 **Why I would not run Paperclip as the core.** It would work, and it is the fastest way to a running company. But it brings its own UI and data model, and you want your own office, your own client and campaign records, and a harness you control.
 
-**Decisions in this version (v3)**
+**Decisions in this version (v4)**
 
 | Question | Decision | Why |
 | --- | --- | --- |
 | Language | TypeScript for the whole core: API, harness host, executors and UI | One language and shared types from database to canvas. Remotion video, the Pixi office and both MIT reference codebases (jsm-hq, Paperclip) are TypeScript. It installs with one command |
 | FastAPI | Not in the core. Python agents join as workers over the HTTP adapter | Same shape as the book: Paperclip is a Node server that hires Python workers through its `http` adapter |
 | Agents | Ready-made harnesses plus templates. No custom agent code | Your call, and it is also how Paperclip works: an agent is a role, a manager, a budget and an adapter to a coding agent you already have |
-| Harness | Claude Code itself, run headless on your signed-in account. The Claude Agent SDK is the same harness as a library, added with API keys later | No API key to start, and nothing above the runtime changes when you switch |
+| Harness | No single harness. One runtime contract with several engines behind it: Claude Code and OpenCode as signed-in CLIs, the OpenAI Agents SDK in-process for any model, and the Claude Agent SDK with API keys later | Anthropic does not support Claude Code on non-Claude models, so a Claude-only engine would tie the OS to one vendor. Nothing above the runtime changes when you switch |
 | Models, in three stages | Now: signed-in Claude Code and OpenCode. Next: a local model running all day for scouting and triage. Later: API keys | Fits your budget today and keeps the upgrade path open |
 | Workflows | Inngest | The book's nervous system. Its retries, waits and concurrency limits also keep runs inside your machine's memory |
 | Tenancy | Every row belongs to a workspace from day one | You can hand the OS to a teacher or a client without a rewrite |
@@ -37,6 +37,8 @@ No, jsm-hq is not the same as Paperclip. jsm-hq runs a coding team on one repo. 
 **What changed from v1.** v1 put a Python FastAPI service and the OpenAI Agents SDK at the centre, because that was the ask. You then made three requirements firm: a harness equal to Claude Code and Cowork, built-in plugins and connectors, and a product other people can install. Those three move the core to TypeScript and the engine to the Claude Agent SDK. A Python agent built with the OpenAI Agents SDK can still join as a worker through the http runtime.
 
 **What changed in v3.** Agents are no longer built with an SDK at all: every agent is a ready-made harness plus a template (section 5). The start is subscription-first, with a local model next and API keys later (section 7). The learning loop now mirrors Hermes part by part (section 9). Section 10 gains the two sales funnels, section 4 gains two rooms that scout for demand and for better ways of working, and section 11 maps the book's kinds of record onto the OS.
+
+**What changed in v4.** You asked for the OS to be model-agnostic, and for the OpenAI Agents SDK if Claude Code is not. It is not: Anthropic's docs say it does not support routing Claude Code to non-Claude models. So no harness is the engine any more. The runtime contract is, and each harness is one engine behind it. OpenCode moves into slice 0 as the model-agnostic CLI harness, and the OpenAI Agents SDK joins in slice 4 as the in-process engine for local and API-key models. The parts of Claude Code worth borrowing (a rules file, skills, permission rules, tools through MCP) are supplied by the OS to every engine, so they survive a change of engine (section 5, the portability rule). Agents are still templates: the SDK powers one generic runner, and nobody writes agent code.
 
 **Is TypeScript more reliable?** Not by itself. Reliability comes from the harness and the workflow engine, and both exist in either language. TypeScript wins here on fit. Memory use is not a language question either, and section 17 shows where it really goes.
 
@@ -160,7 +162,7 @@ A discussion is a stored thread, and each turn is an ordinary run with the threa
 
 ## 5. The harness
 
-The harness is the part you said cannot be compromised, so the OS does not write its own. It runs Claude Code itself, headless, on the account you are signed in to, and adds the company layer around it. The Claude Agent SDK, which Anthropic describes as Claude Code as a library, is the same harness for when you add API keys.
+The harness is the part you said cannot be compromised, so the OS does not write its own loop. It runs ready-made ones behind one contract (section 7) and adds the company layer around them: Claude Code and OpenCode headless on the accounts you are signed in to, and the OpenAI Agents SDK in-process for any model reached through an API key or a local endpoint. The parity table below describes the Claude Code engine. The portability rule at the end of this section says what must hold on every engine.
 
 **Why the harness matters more than the model.** The Agent Factory book puts it as Agent = Model + Harness, and gives the arithmetic. If each step succeeds 95% of the time, a 20-step run finishes cleanly only about 36% of the time. A better model lifts the 95 a little. The harness attacks the chain: verification catches a bad step early, recovery resumes instead of restarting, and constraint limits what a bad step can cost. The book names four necessary parts: an agent loop, a tool interface, context management and control mechanisms.
 
@@ -219,7 +221,7 @@ id: outreach-copywriter
 name: Copywriter
 department: outreach
 reports_to: outreach-lead
-runtime: claude-cli             # or opencode, codex, http
+runtime: claude-cli             # or opencode, openai-agents, codex, http
 model: writer                   # an alias from config/models.ts
 fallback_model: strong-writer   # used when a check fails twice
 heartbeat: "0 9 * * 1-5"
@@ -247,13 +249,13 @@ You write Conclave AI's first-touch emails to clinic owners.
 - Anything medical, legal or about pricing.
 ```
 
-**The role file is the source of truth.** The loader copies its front matter into the `agents` table: `model` becomes `model_alias`, `heartbeat` becomes `heartbeat_cron`, and `fallback_model`, `max_turns` and `output_check` have their own columns. Changing an agent from the UI rewrites the file and reloads it. Only status and spend live in the database alone. `runtime` is one of `claude-cli`, `opencode`, `codex`, `http` or `claude-agent`.
+**The role file is the source of truth.** The loader copies its front matter into the `agents` table: `model` becomes `model_alias`, `heartbeat` becomes `heartbeat_cron`, and `fallback_model`, `max_turns` and `output_check` have their own columns. Changing an agent from the UI rewrites the file and reloads it. Only status and spend live in the database alone. `runtime` is one of `claude-cli`, `opencode`, `openai-agents`, `codex`, `http` or `claude-agent`.
 
 **Agents are templates, not code.** You said no custom agents, and that is the right call. An agent is a ready-made harness plus a filled-in template. Nobody writes agent code.
 
 | Piece | What it is |
 | --- | --- |
-| Harness | A coding agent you already have signed in: Claude Code, OpenCode, Codex. Later the Agent SDK, or a Python worker |
+| Harness | A coding agent you already have signed in: Claude Code, OpenCode, Codex. For local and API-key models, the OpenAI Agents SDK runner. Later the Claude Agent SDK, or a Python worker |
 | Template | A reusable frame for one kind of job, kept in the repo |
 | Instance | The template filled in for one department: a role file and a working folder |
 
@@ -261,16 +263,16 @@ You write Conclave AI's first-touch emails to clinic owners.
 templates/agents/writer/
   template.yaml          # parameters and defaults: runtime, model alias, autonomy 0, budget, heartbeat
   AGENT.md.hbs           # the role file with slots: department, audience, voice, limits
-  CLAUDE.md.hbs          # standing rules the harness loads on every run
-  .claude/settings.json  # permission rules and hooks
-  .mcp.json              # connectors this kind of agent needs
+  RULES.md.hbs           # standing rules. Rendered as CLAUDE.md, as AGENTS.md, or into the instructions
+  permissions.yaml       # neutral permission rules, rendered into each harness's own format
+  connectors.yaml        # connectors this kind of agent needs
   skills/                # skills that ship with the template
   checks/output.ts       # the output check
   trial/                 # one trial task and the probation plan
   evals/                 # cases any change to this template must pass
 ```
 
-**Default permissions.** A template's `.claude/settings.json` gives no shell and no network-writing tool to any agent except the coder and the code reviewer, and those two run in a git worktree with no secrets in their environment. This is what makes the approval gate the only way out. A prompt alone would not.
+**Default permissions.** A template's `permissions.yaml` gives no shell and no network-writing tool to any agent except the coder and the code reviewer, and those two run in a git worktree with no secrets in their environment. The renderer writes these rules in each harness's own format. This is what makes the approval gate the only way out. A prompt alone would not.
 
 Starter templates: lead, scout, researcher, analyst, writer, reviewer, outreach rep, coder, code reviewer, designer, video maker, chief of staff, delegate, deal desk and client success. Fifteen frames are the starting set. A role with no close frame gets a new template through step 5 below.
 
@@ -337,9 +339,35 @@ export const cliRuntime = (name: string): Runtime => ({
 - **Working folders outside the repo.** Claude Code reads `CLAUDE.md` files from parent folders. An agent folder inside this repo would load the build rules meant for you. So agent folders live under the data directory, outside the repo (section 13).
 - **Only its own tools.** The strict flag and the allowed-tools list keep your personal settings and connectors out of a company agent's run.
 
-**How grants reach a CLI.** A CLI does not load a plugin because a role file names it. The renderer materialises each grant into the agent's working folder: a granted plugin's skills go into `.claude/skills`, its hooks into `.claude/settings.json`, and its MCP servers into `.mcp.json`. Standing rules live in the rendered `CLAUDE.md` and change only when the agent is rendered again. Per-run context, meaning the task, its goal and matched lessons, goes in the appended system prompt.
+**How grants reach a CLI.** A CLI does not load a plugin because a role file names it. The renderer materialises each grant into the agent's working folder: a granted plugin's skills go into `.claude/skills`, its hooks into `.claude/settings.json`, and its MCP servers into `.mcp.json`. Standing rules live in the rendered `CLAUDE.md` and change only when the agent is rendered again. Per-run context, meaning the task, its goal and matched lessons, goes in the appended system prompt. That is the Claude Code target. The portability rule below gives the other two.
 
 When you add API keys, the `claude-agent` runtime is added beside this file. The folders stay the same.
+
+**The portability rule.** No engine is load-bearing. Anything that must hold on every run is done by the OS, and each harness's own features are a second layer.
+
+| What an agent needs | Claude Code (`claude-cli`) | OpenCode (`opencode`) | OpenAI Agents SDK (`openai-agents`) |
+| --- | --- | --- | --- |
+| Standing rules | Rendered `CLAUDE.md` | Rendered `AGENTS.md`. OpenCode V2 reads only that file | Part of the `instructions` string |
+| Role and per-run context | Appended system prompt | An agent file in `.opencode/agents/`, plus the prompt | The `instructions` string |
+| Skills | `.claude/skills` | The same `.claude/skills` folder, which OpenCode also reads | The OS skill loader: descriptions in the instructions and a `load_skill` tool |
+| `os` tools and connectors | `.mcp.json` | `opencode.json`, under `mcp.servers` | MCP servers handed to the agent over HTTP |
+| Permissions | `.claude/settings.json` and the allowed-tools list | `permissions` rules in the agent file | The agent has only the tools the runner gives it |
+| File tools and a shell | Built in | Built in | Not in the plain runner. The SDK's sandbox agents add them, and the OS leaves that for later |
+| Resume | Built in | Built in | Sessions kept by the OS. Tasks stay short and turns are capped |
+
+Three rules follow from the table.
+
+1. **Enforce on the server.** The approval gate, budgets, the suppression list and the blocked-claims check live in the `os` server's handlers and in the executors. They work the same whichever engine made the call. A harness hook or permission file is a second layer, never the only one.
+2. **Keep one neutral source.** A template holds its rules, permissions, connectors and skills once, in neutral files. The renderer has one target per runtime and writes each harness's own format. Skills stay in the open Agent Skills format, which Claude Code and OpenCode both load.
+3. **Test every engine the same way.** A runtime may be used only after it passes the conformance tests: it emits the run events in order, calls an `os` tool with its run token, is refused a tool it was not granted, receives no secret except its own model settings, stops on cancel, maps a plan limit or a sign-in failure to the right error kind, and either resumes a session or says it cannot.
+
+**What is borrowed from Claude Code.** You asked for a hybrid: take what the Claude side has and give it to the OpenAI Agents SDK. The table is that hybrid. The rules file, skills, permission rules, tools through MCP and the approval gate are supplied by the OS, so the SDK runner gets them without a rewrite. What it does not get is built-in file tools, a shell and long-run context handling. For that reason it runs the short jobs and the CLI harnesses run the long ones.
+
+**One trap per engine**
+
+- **Claude Code** reads `CLAUDE.md` from parent folders, so working folders live outside the repo.
+- **OpenCode** combines every `AGENTS.md` from the working folder up to your home folder with its global one. Keep personal rules out of those files, or give agent runs their own config folder.
+- **The OpenAI Agents SDK** runs inside the server process. It shares the server's memory, and the runner must hand it one model key and nothing else.
 
 ## 6. Approvals, autonomy and the delegate
 
@@ -469,18 +497,19 @@ The control plane talks to one runtime contract. Which harness and which model s
 
 | Runtime | Engine | When | Use it for | Models |
 | --- | --- | --- | --- | --- |
-| `claude-cli` | Your signed-in Claude Code, run headless | Now | The default for every department on your machine | Your Claude plan, or a local model through an Anthropic-compatible endpoint |
-| `opencode` | OpenCode, an open-source harness, run headless | Now | A second harness, and providers the first cannot reach | Many providers including local ones. From memory, so check its docs |
+| `claude-cli` | Your signed-in Claude Code, run headless | Now | Writing, planning and code. The default on your machine | Claude models on your Claude plan. Anthropic does not support other models behind Claude Code |
+| `opencode` | OpenCode, an open-source harness, run headless | Now | The model-agnostic CLI harness: the same jobs on any other model. Wired in slice 0 | A ChatGPT or GitHub Copilot plan you sign in to, Ollama and other local servers, or API keys. Not a Claude plan |
+| `openai-agents` | OpenAI Agents SDK for TypeScript, run in-process by one generic runner | Slice 4 | Scouts, triage, classifying and the reflect pass: short jobs with few tools | Any OpenAI-compatible endpoint such as Ollama, any provider through the AI SDK adapter, or OpenAI. It needs a local model or an API key, not a plan sign-in |
 | `codex` | Codex CLI, run headless | Now, if you have it | A second opinion and code review | OpenAI |
 | `http` | POST the task to a URL, the worker calls back | When needed | Python workers: FastAPI services, your Vespera agents, Hermes, OpenClaw | Anything |
-| `claude-agent` | Claude Agent SDK, hosted by the OS | Later, with API keys | Higher volume, team mode, and people you give the OS to | Claude through the API, or a local model |
+| `claude-agent` | Claude Agent SDK, hosted by the OS | Later, with API keys | Higher volume, team mode, and people you give the OS to | Claude through the API |
 | `antigravity` | Unknown | Not planned | I could not confirm a headless mode | n/a |
 
 **Three stages, as you decided**
 
-1. **Now: signed-in CLIs, no API key.** The OS runs the coding agents already logged in on your machine. Slice 0 wires up claude-cli. The opencode and codex runtimes use the same runner and are switched on in slice 7, so install and sign in to them whenever you like. Claude Code needs a paid Claude plan, so sign the CLI in with the account that has one.
-2. **Next: a local model running all day.** Scouts and triage move to it and work around the clock at no token cost. Writing still goes to Claude, and everything that reaches a person still goes to you.
-3. **Later: API keys.** Add the `claude-agent` runtime for volume, for team mode, and for anyone else who installs the OS.
+1. **Now: signed-in CLIs, no API key.** The OS runs the coding agents already logged in on your machine. Slice 0 wires up `claude-cli` and `opencode` behind the same runner and the same conformance tests, so the contract is proven on two engines from the first day. `codex` is switched on in slice 7. Claude Code needs a paid Claude plan, so sign the CLI in with the account that has one. OpenCode signs in with a ChatGPT or GitHub Copilot plan, or uses a local model with no account at all.
+2. **Next: a local model running all day.** Scouts and triage move to it through the `openai-agents` runtime and work around the clock at no token cost. Writing still goes to Claude, and everything that reaches a person still goes to you.
+3. **Later: API keys.** Add the `claude-agent` runtime for Claude, and point the `openai-agents` runtime at any other provider, for volume, for team mode, and for anyone else who installs the OS.
 
 **Plan limits are part of the design.** A subscription has usage limits sized for one person working interactively, and a company of agents on heartbeats will reach them. The runtime treats a limit message as its own error kind. It pauses every agent on that runtime until the reset time, moves waiting scout and triage tasks to the local model, leaves writing tasks queued, and tells you once. Use the official CLI in its documented headless mode, not a subscription login placed inside another tool, and read Anthropic's current terms on automated use before you run it all day.
 
@@ -518,22 +547,70 @@ export interface Runtime {
 }
 ```
 
-**Model aliases.** Role files name an alias. One file maps each alias to a model and, when needed, a different endpoint. The Ollama settings below are from Ollama's Anthropic-compatibility docs.
+**Model aliases.** Role files name an alias. One file maps each alias to a model, the runtimes it works on and, when needed, a different endpoint. The loader rejects a role file whose alias does not list its runtime. The local alias points at Ollama's OpenAI-compatible endpoint.
 
 ```ts
 // config/models.ts
 export const models = {
-  writer:          { name: '<your main Claude model>', env: {} },
-  'strong-writer': { name: '<your strongest model>',   env: {} },
-  researcher:      { name: '<a cheaper model>',        env: {} },
+  writer:          { name: '<your main Claude model>', on: ['claude-cli', 'claude-agent'] },
+  'strong-writer': { name: '<your strongest model>',   on: ['claude-cli', 'claude-agent'] },
+  researcher:      { name: '<provider/model>',         on: ['opencode'] },
   'local-worker':  {
-    name: 'qwen3-coder',                         // any tool-calling model you have pulled
-    env: { ANTHROPIC_BASE_URL: 'http://localhost:11434', ANTHROPIC_AUTH_TOKEN: 'ollama' },
+    name: 'qwen3:8b',                            // any tool-calling model you have pulled
+    on: ['openai-agents', 'opencode'],
+    baseUrl: 'http://127.0.0.1:11434/v1',        // Ollama's OpenAI-compatible endpoint
   },
 } as const;
 ```
 
-**Local model limits to design around.** Ollama's endpoint supports messages, streaming, tool calling and thinking. It does not support prompt caching, token counting or `tool_choice`. So keep local agents on short tasks with few tools, and let the fallback alias take over when a check fails.
+**The in-process runner.** A sketch, not yet run. Check the `@openai/agents` docs for the current names. It builds the agent from the same rendered template at run time, so there is still no per-agent code.
+
+```ts
+// runtimes/openai-agents.ts: one generic runner for any OpenAI-compatible model
+import OpenAI from 'openai';
+import { Agent, run, MCPServerStreamableHttp, OpenAIChatCompletionsModel } from '@openai/agents';
+import { resolveModel } from '../config/models';
+import { getSecret } from '../tenancy/secrets';
+import type { RunRequest, RunEvent, Runtime } from './types';
+
+export const openaiAgentsRuntime: Runtime = {
+  name: 'openai-agents',
+  async *start(req: RunRequest): AsyncIterable<RunEvent> {
+    const model = resolveModel(req.modelAlias);
+    const apiKey = model.apiKeyRef ? await getSecret(req.workspaceId, model.apiKeyRef) : 'local';
+    const client = new OpenAI({ baseURL: model.baseUrl, apiKey });
+
+    // The same `os` endpoint the CLIs use, with this run's token. The agent gets no other tool.
+    const { url, token } = req.mcpServers.os;
+    const os = new MCPServerStreamableHttp({
+      url, requestInit: { headers: { Authorization: `Bearer ${token}` } },
+    });
+    await os.connect();
+    try {
+      const agent = new Agent({
+        name: req.agentId,
+        instructions: req.instructions,      // rules + role + skill descriptions + run context
+        model: new OpenAIChatCompletionsModel(client, model.name),
+        mcpServers: [os],
+      });
+      const result = await run(agent, req.taskInput, { maxTurns: req.maxTurns, stream: true });
+      for await (const event of result) {
+        const mapped = toRunEvent('openai-agents', event);
+        if (mapped) yield mapped;
+      }
+      await result.completed;
+      yield { type: 'done', output: String(result.finalOutput ?? '') };
+    } finally {
+      await os.close();
+    }
+  },
+  async send() { /* add the message to the stored session and run again */ },
+  async cancel(runId) { /* abort the signal for runId */ },
+  async health() { /* list the models on the endpoint */ return { ok: true }; },
+};
+```
+
+**Local model limits to design around.** On an OpenAI-compatible endpoint the SDK talks Chat Completions, and its docs list what is lost there: stored conversations, tool search, deferred tool loading and some reasoning controls. None of that matters for a short job. So keep local agents on short tasks with few tools, and let the fallback alias take over when a check fails. Claude Code can also be pointed at a local model through an Anthropic-compatible endpoint, but Anthropic does not support that, so the OS does not depend on it.
 
 **Python workers keep your FastAPI skills in play.** Anything you have already built in Python is hired through the `http` runtime instead of being rewritten:
 
@@ -559,7 +636,7 @@ async def work(req: dict):
 
 The `run_token` is a short-lived token for that one run, so a worker can report on its own task and nothing else.
 
-**One rule for products.** The Agent SDK docs say a product may not offer claude.ai login to its users unless Anthropic has approved it. So the `claude-cli` runtime is for your own machine, and anyone you give the OS to brings an API key or a local model.
+**One rule for sign-ins.** Anthropic's Claude Code terms say a product may not offer Claude login inside itself, may not collect or store Claude credentials, and may not pay for Claude usage on behalf of its users. Each person signs in to the unmodified Claude Code with their own account, or brings their own key. The terms also say plan limits assume ordinary individual use. So the OS never sees a Claude credential: it only starts the `claude` binary that a person signed in to themselves. Anyone you give the OS to does the same on their own machine, or runs on OpenCode, a local model or an API key. I am not a lawyer, so read the current terms before running any signed-in CLI all day.
 
 ## 8. Plugins, skills, connectors, browser, video and code
 
@@ -796,7 +873,7 @@ The rule from the book that matters most: the context layer can see across the r
 | Database | Postgres with pgvector, Drizzle for schema and migrations. Slice 0 does not create the vector extension. Confirm the embedded build can load pgvector before slice 8 | System of record, memory search and audit in one place |
 | Database, local mode | Embedded Postgres started by the OS, the approach Paperclip takes | Nothing for a new user to install |
 | Workflows | Inngest, TypeScript SDK. Local mode needs workflow state kept on disk across restarts, so confirm whether the dev server does that or the self-hosted server is needed | Heartbeats on cron, step retries, the approval wait, and concurrency and throttle limits |
-| Harness | Signed-in Claude Code CLI, run headless. The Claude Agent SDK arrives in slice 9 | Section 5 |
+| Harness | Signed-in Claude Code and OpenCode CLIs, run headless. The OpenAI Agents SDK runner arrives in slice 4 and the Claude Agent SDK in slice 9 | Section 5 |
 | Browser and video | Playwright and Remotion | Both are native to Node |
 | Live updates | Postgres `LISTEN/NOTIFY` to a WebSocket endpoint | No extra service |
 | Files | A local folder in local mode, S3-compatible storage in team mode | Media, screenshots, recordings |
@@ -1008,7 +1085,7 @@ create table agents (
   key text not null, name text not null,
   department_id uuid not null references departments(id), reports_to uuid references agents(id),
   template_id uuid references agent_templates(id), template_version int,
-  runtime text not null check (runtime in ('claude-cli','opencode','codex','http','claude-agent')),
+  runtime text not null check (runtime in ('claude-cli','opencode','openai-agents','codex','http','claude-agent')),
   model_alias text not null, fallback_alias text, heartbeat_cron text,
   autonomy smallint not null default 0, max_turns int not null default 25, output_check text,
   monthly_budget_usd numeric(10,2) not null default 5,
@@ -1399,13 +1476,14 @@ conclave-os/
         harness/
           context.ts          # builds the per-run prompt
           loop.ts             # checkout, run, verify, report, reflect
-          render.ts           # template renderer: role files and working folders
+          render.ts           # template renderer: role files and working folders, one target per runtime
           policy.ts           # deny rules, budget, autonomy
           os-tools.ts         # handlers for the `os` MCP server (HTTP for CLI runtimes, in-process for claude-agent)
           verify.ts           # output checks, repair, model escalation
           reflect.ts
         runtimes/
-          types.ts cli.ts http.ts
+          types.ts cli.ts http.ts conformance.ts
+          openai-agents.ts    # slice 4
           claude-agent.ts     # slice 9
         approvals/
           gate.ts delegate.ts
@@ -1445,7 +1523,7 @@ conclave-os/
 ~/.conclave-os/               # DATA_DIR, outside the repo on purpose
   postgres/  files/  browser-profiles/
   workspaces/<slug>/
-    agents/<agent-id>/        # working folder: rendered CLAUDE.md, .claude/, .mcp.json
+    agents/<agent-id>/        # working folder, rendered for the agent's runtime
     office.tmj                # the Tiled office map
 ```
 
@@ -1538,7 +1616,7 @@ The OS is built so a teacher, a client or another founder can install it and run
 | A different business | Departments, agents, rooms, pipeline stages, approval rules and mandates are data. A teacher can rename Outreach to Admissions and retire Calls Desk from the settings screen |
 | A fast start | Company templates. A template is an exported company folder plus its plugin list, with secrets removed. Ship three: agency starter (yours), SaaS founder, course creator |
 | First run | A setup wizard: name the company, pick a template, connect a model, connect channels, approve the first hire |
-| Their own model | An API key or a local model. The Agent SDK docs do not allow a product to offer claude.ai login without Anthropic's approval |
+| Their own model | A CLI they signed in to themselves, a local model or an API key. The OS never asks for, stores or passes on a Claude login (section 7) |
 | Their own tools | The plugin and connector registries, and a marketplace that is just a git repo you publish |
 | Safe upgrades | Versioned migrations, a `doctor` command, and export before upgrade |
 | Moving or backing up | `export` writes the whole workspace to a folder. `import` restores it on another machine |
@@ -1584,14 +1662,14 @@ Ten slices, each usable on its own. The first three bring in clients, the fourth
 
 | # | Slice | You build | Done when | Agent Factory chapter to read first |
 | --- | --- | --- | --- | --- |
-| 0 | Skeleton | Monorepo, workspace tables with row-level security, embedded Postgres, the `claude-cli` runtime on your signed-in Claude Code, the template renderer with three templates (lead, researcher, writer), `os-core` plugin, run log, a plain task page, `doctor` | One agent made from a template takes a task and runs, you can read every step, and `doctor` prints memory use | [Harness Engineering](https://agentfactory1.panaversity.org/docs/harness-engineering-crash-course), [Workforce with Paperclip](https://agentfactory1.panaversity.org/docs/workforce-with-paperclip-crash-course) |
+| 0 | Skeleton | Monorepo, workspace tables with row-level security, embedded Postgres, the `claude-cli` and `opencode` runtimes behind one runner, the runtime conformance tests, the template renderer with one render target per runtime and three templates (lead, researcher, writer), `os-core` plugin, run log, a plain task page, `doctor` | One agent made from a template takes a task and runs, the same template runs on the second engine after a one-line change, you can read every step, and `doctor` prints memory use | [Harness Engineering](https://agentfactory1.panaversity.org/docs/harness-engineering-crash-course), [Workforce with Paperclip](https://agentfactory1.panaversity.org/docs/workforce-with-paperclip-crash-course) |
 | 1 | Approvals and Outreach | Proposal tools, gate workflow, approvals inbox, `outreach-kit`, email executor with the claim-once rule, suppression list, kill switch, login and phone access over a private network | A lead goes from audit to approved email to sent, the kill switch stops everything, an agent told to send an email by any other route fails, and an approval decided after a restart still sends exactly once | [AI Agent Nervous System](https://agentfactory1.panaversity.org/docs/ai-agent-nervous-system-crash-course) |
 | 2 | Clients, funnels and Lead Gen | Accounts, contacts, deals, both funnels as stage rows, campaigns, threads, the inbox, `leadgen-kit`, heartbeats, throttled sequences, the Goals screen, the morning brief, the deal desk and client success templates | New scored leads arrive every morning, a reply pauses its sequence, and the pipeline shows conversion by stage | [Selling as a Vertical FDE](https://agentfactory1.panaversity.org/docs/how-to-sell-agentic-ai-era) |
 | 3 | Reliability | Output checks, repair and escalation, the reaper, circuit breakers, plan-limit handling, the Health screen, an eval set of 20 real leads, a daily backup, lite mode | You can kill a run halfway and it resumes, a plan limit pauses agents cleanly, and a skill change that hurts the 20 leads is blocked | [Eval-Driven Development](https://agentfactory1.panaversity.org/docs/eval-driven-development-crash-course) |
-| 4 | A local model, all day | The `local-worker` alias, the scout template, the signals table, Demand Radar and the Micro-SaaS problem scout switched on, escalation to Claude when a check fails | Scouts run around the clock on your machine and you get a short list of qualified signals each morning | [Deploy the Agent Harness](https://agentfactory1.panaversity.org/docs/deploying-agents-crash-course) |
+| 4 | A local model, all day | The `local-worker` alias on the `openai-agents` runtime with its skill loader, the scout template, the signals table, Demand Radar and the Micro-SaaS problem scout switched on, escalation to Claude when a check fails | Scouts run around the clock on your machine and you get a short list of qualified signals each morning | [Deploy the Agent Harness](https://agentfactory1.panaversity.org/docs/deploying-agents-crash-course) |
 | 5 | Marketing, browser and video | `content-kit`, `video-kit`, browser profiles, post executors for X, LinkedIn and Instagram, approved-DM executors for X and Instagram that send one at a time, the Video Ideas inbox, the Hook Scout, a generation connector, the home-screen app and push | You approve a post or a video on your phone and it is live, with a screenshot in the record | [Designing Agent Experiences](https://agentfactory1.panaversity.org/docs/designing-agent-experiences-crash-course) |
 | 6 | The office | Pixi canvas, Tiled map loader, sprites, agent drawer, live events, dashboard, the Boardroom with discussions and the decision log | You can watch a run happen and open any agent from the floor | [Human-Agent Teams](https://agentfactory1.panaversity.org/docs/human-agent-teams-crash-course) |
-| 7 | Engineering and Product | `dev-kit`, worktrees, GitHub and Vercel connectors, the `opencode` and `codex` runtimes, Frontend Studio, Product room, repo-create and deploy executors, the Deployments screen | A spec becomes a PR with a preview link waiting for your merge | [Plugins for AI Agents](https://agentfactory1.panaversity.org/docs/plugins-crash-course) |
+| 7 | Engineering and Product | `dev-kit`, worktrees, GitHub and Vercel connectors, the `opencode` and `codex` runtimes for coding work (`opencode` itself was wired in slice 0), Frontend Studio, Product room, repo-create and deploy executors, the Deployments screen | A spec becomes a PR with a preview link waiting for your merge | [Plugins for AI Agents](https://agentfactory1.panaversity.org/docs/plugins-crash-course) |
 | 8 | Learning, hiring, the delegate and Research | Memory, reflect pass, approve-and-teach, skill patches, the monthly audit, gap check and `propose_hire`, the delegate with its mandate and ledger, the Research room and improvement proposals, Founder Network | An edit you make changes the next draft, the Chief of Staff proposes a hire from a template, the delegate clears one routine approval and refuses one outside its limit, and Research proposes a change that passes its eval | [Self-Expanding Workforce](https://agentfactory1.panaversity.org/docs/dynamic-workforce-crash-course), [Identic AI](https://agentfactory1.panaversity.org/docs/identic-ai-crash-course), [Hermes with General Agents](https://agentfactory1.panaversity.org/docs/hermes-with-general-agents) |
 | 9 | API keys and a product for others | The `claude-agent` and `http` runtimes, team mode and roles, setup wizard, company templates, export and import, plugin marketplace, Calls Desk | Someone else installs it with their own key or local model and runs a different company from a template | [Build AI Agents (Claude)](https://agentfactory1.panaversity.org/docs/claude-agent-sdk-crash-course), [AI Identity](https://agentfactory1.panaversity.org/docs/ai-identity-crash-course) |
 
@@ -1612,7 +1690,7 @@ You have now decided how models are paid for: signed-in CLIs first, a local mode
 
 | # | Decision | My default | Why it matters |
 | --- | --- | --- | --- |
-| 1 | Which signed-in CLIs, on which account | Claude Code on the account with a paid plan, plus OpenCode | Slice 0 runs on whatever is logged in on the machine |
+| 1 | Which signed-in CLIs, on which account | Claude Code on the account with a paid plan. OpenCode signed in with a ChatGPT or Copilot plan if you have one, otherwise on a local model | Slice 0 runs on whatever is logged in on the machine |
 | 2 | Which local model | The largest tool-calling model your machine runs comfortably, tested in slice 4 | Sets how much the all-day scouts can be trusted with |
 | 3 | Where it runs | Your own machine. It must stay on for the scouts and the heartbeats | Browser profiles and the local model live there |
 | 4 | Database in team mode | Supabase | You already use it |
@@ -1654,6 +1732,10 @@ Pages I opened:
 - [jsm-hq README](https://github.com/jsmastery-pro/jsm-hq), [How JSM HQ works](https://github.com/jsmastery-pro/jsm-hq/blob/main/docs/how-it-works.md) and [package.json](https://github.com/jsmastery-pro/jsm-hq/blob/main/package.json)
 - [Agent SDK overview](https://code.claude.com/docs/en/agent-sdk.md), Claude Code docs
 - [Anthropic compatibility](https://docs.ollama.com/api/anthropic-compatibility), Ollama docs
+- [Other LLM gateways](https://code.claude.com/docs/en/llm-gateway) and [Legal and compliance](https://code.claude.com/docs/en/legal-and-compliance.md), Claude Code docs
+- [Models](https://openai.github.io/openai-agents-js/guides/models), OpenAI Agents SDK for TypeScript docs
+- [Skills](https://opencode.ai/docs/skills.md), [Agents](https://opencode.ai/docs/agents/), [Instructions](https://opencode.ai/docs/instructions/), [MCP servers](https://opencode.ai/docs/mcp-servers/) and [Providers](https://opencode.ai/docs/providers/), OpenCode docs
+- [Anthropic on third-party harnesses and Claude subscriptions](https://www.theregister.com/2026/02/20/anthropic_clarifies_ban_third_party_claude_access), The Register
 - [Mode 2: Manufacturing](https://agentfactory1.panaversity.org/docs/mode-2-manufacturing), The AI Agent Factory
 
 Read through the Agent Factory System of Record:
@@ -1676,4 +1758,4 @@ Seen only as search results, not opened:
 - Paperclip's README, through copies of the [paperclipai/paperclip](https://github.com/paperclipai/paperclip) repository
 - [Hermes Agent documentation](https://hermes-agent.nousresearch.com/docs), Nous Research
 
-Written from memory and marked in the text: OpenCode and WorkAdventure details, Agent SDK option names, Inngest's TypeScript API, the Claude Code plugin folder layout, CLI flags, and the platform, email and calling rules in section 15.
+Written from memory and marked in the text: OpenCode's command-line flags, the OpenAI Agents SDK class names in the runner sketch, WorkAdventure details, Agent SDK option names, Inngest's TypeScript API, the Claude Code plugin folder layout, CLI flags, and the platform, email and calling rules in section 15.
