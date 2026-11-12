@@ -18,6 +18,8 @@ export interface CliRuntimeOptions {
   command?: CliCommand;
   /** The environment the child is built from. Defaults to process.env. Only allow-listed names are copied. */
   baseEnv?: NodeJS.ProcessEnv;
+  /** Replaces ENV_ALLOWLIST. Only the conformance suite's deliberately broken runtime uses this. */
+  envAllowlist?: readonly string[];
 }
 
 /**
@@ -40,9 +42,13 @@ export const ENV_ALLOWLIST = [
   'ComSpec',
 ];
 
-export function cleanEnv(base: NodeJS.ProcessEnv, extra: Record<string, string>): Record<string, string> {
+export function cleanEnv(
+  base: NodeJS.ProcessEnv,
+  extra: Record<string, string>,
+  allow: readonly string[] = ENV_ALLOWLIST,
+): Record<string, string> {
   const env: Record<string, string> = {};
-  for (const k of ENV_ALLOWLIST) {
+  for (const k of allow) {
     const v = base[k];
     if (v !== undefined) env[k] = v;
   }
@@ -170,7 +176,7 @@ export function createCliRuntime(name: 'claude-cli' | 'opencode', opts: CliRunti
       ...(model.env ?? {}),
       ...built.extraEnv,
       [RUN_TOKEN_ENV]: req.runToken,
-    });
+    }, opts.envAllowlist);
     const resolved = resolveCommand(command, env);
     const args = [...resolved.args, ...built.args];
     const child = spawn(resolved.file, resolved.shell ? args.map(quoteForCmd) : args, {
