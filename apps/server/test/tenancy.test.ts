@@ -11,19 +11,26 @@ import { startDatabase, type Database } from '../src/db';
 import { withWorkspace } from '../src/db/tenant';
 
 const TABLES = [
+  'action_items',
   'agent_templates',
   'agents',
   'approvals',
   'audit_log',
   'departments',
   'goals',
+  'leads',
   'members',
   'messages',
+  'outreach_messages',
   'run_events',
   'runs',
+  'suppression',
   'tasks',
+  'workspace_settings',
   'workspaces',
 ];
+/** Tables keyed by workspace with no `id` of their own, so no unique (workspace_id, id). */
+const NO_ID = ['members', 'workspace_settings'];
 const TENANT_TABLES = TABLES.filter((t) => t !== 'workspaces');
 
 function freePort(): Promise<number> {
@@ -104,7 +111,7 @@ describe('tenancy', () => {
     removeDir(dir);
   });
 
-  it('builds exactly the twelve slice 0 tables, and every one has row-level security forced', async () => {
+  it('builds exactly the slice 0 and slice 1 tables, and every one has row-level security forced', async () => {
     const r = await db.withOwner((c) =>
       c.query<{ relname: string; relrowsecurity: boolean; relforcerowsecurity: boolean }>(
         `select c.relname, c.relrowsecurity, c.relforcerowsecurity
@@ -120,7 +127,7 @@ describe('tenancy', () => {
     }
   });
 
-  it('every tenant table has workspace_id and unique (workspace_id, id), except members', async () => {
+  it('every tenant table has workspace_id and unique (workspace_id, id), except members and workspace_settings', async () => {
     const cols = await db.withOwner((c) =>
       c.query<{ table_name: string }>(
         `select table_name from information_schema.columns
@@ -141,7 +148,7 @@ describe('tenancy', () => {
       ),
     );
     const withUnique = new Set(uniques.rows.map((x) => x.table_name));
-    for (const t of TENANT_TABLES.filter((t) => t !== 'members')) {
+    for (const t of TENANT_TABLES.filter((t) => !NO_ID.includes(t))) {
       expect(withUnique.has(t), `${t} unique (workspace_id, id)`).toBe(true);
     }
   });

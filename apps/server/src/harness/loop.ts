@@ -20,6 +20,21 @@ export interface LoopDeps {
   timeoutMs?: number;
 }
 
+/** Runs in progress in this process, so the kill switch can stop them. */
+const active = new Map<string, Runtime>();
+
+/** Cancels every run in progress (the kill switch, SPEC 14). */
+export async function cancelAllRuns(): Promise<number> {
+  const runs = [...active.entries()];
+  await Promise.all(runs.map(([id, rt]) => rt.cancel(id).catch(() => undefined)));
+  return runs.length;
+}
+
+export async function killSwitchOn(pool: pg.Pool, workspaceId: string): Promise<boolean> {
+  const r = await withWorkspace(pool, workspaceId, ({ client: c }) => c.query<{ kill_switch: number }>('select kill_switch from workspace_settings'));
+  return (r.rows[0]?.kill_switch ?? 0) === 1;
+}
+
 export type RunOutcome =
   | { status: 'no_task' }
   | { status: 'not_runnable'; reason: string }
@@ -102,6 +117,7 @@ export async function executeRun(deps: LoopDeps, workspaceId: string, agentId: s
     return r.rows[0];
   });
   if (!agent) return { status: 'not_runnable', reason: 'no such agent' };
+  if (await killSwitchOn(deps.pool, workspaceId)) return { status: 'not_runnable', reason: 'the kill switch is on' };
   if (agent.status !== 'active') return { status: 'not_runnable', reason: `agent is ${agent.status}` };
   const runtime = deps.runtimes[agent.runtime];
   if (!runtime) return { status: 'not_runnable', reason: `runtime ${agent.runtime} is not available` };
@@ -133,6 +149,7 @@ export async function executeRun(deps: LoopDeps, workspaceId: string, agentId: s
   let tin = 0;
   let tout = 0;
   let sessionId: string | undefined;
+  active.set(runId, runtime);
   try {
     for await (const e of runtime.start({
       runId,
@@ -173,6 +190,7 @@ export async function executeRun(deps: LoopDeps, workspaceId: string, agentId: s
       c.query('insert into run_events (workspace_id, run_id, type, data) values ($1, $2, $3, $4)', [workspaceId, runId, 'error', JSON.stringify(final)]),
     );
   } finally {
+    active.delete(runId);
     deps.tokens.revokeRun(runId);
   }
 

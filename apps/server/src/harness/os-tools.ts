@@ -3,7 +3,12 @@ import type { RunScope } from './run-tokens';
 
 /** What the `os` tools read and write. The database store implements this; tests use the memory store. */
 export interface OsStore {
+  /** The calling agent's autonomy level (SPEC 6). Tools with a higher `minAutonomy` are hidden and refused. */
+  autonomy(scope: RunScope): Promise<number>;
   getTask(scope: RunScope): Promise<TaskView | null>;
+  getLead(scope: RunScope, leadId: string): Promise<LeadView | null>;
+  /** Queues an email for approval. Never sends. Returns the approval id and whether it already existed. */
+  proposeEmail(scope: RunScope, p: ProposedEmail): Promise<{ approvalId: string; existed: boolean }>;
   comment(scope: RunScope, text: string): Promise<void>;
   completeTask(scope: RunScope, output: string): Promise<void>;
   blockTask(scope: RunScope, reason: string): Promise<void>;
@@ -18,14 +23,44 @@ export interface TaskView {
   comments: { from: string; body: string; at: string }[];
 }
 
+export interface LeadView {
+  id: string;
+  businessName: string | null;
+  website: string | null;
+  contactName: string | null;
+  email: string | null;
+  stage: string;
+  notes: string | null;
+}
+
+export interface ProposedEmail {
+  leadId: string;
+  subject: string;
+  body: string;
+  step: number;
+}
+
 export class ToolError extends Error {}
 
 const NoInput = z.object({}).strict();
+const LeadInput = z.object({ leadId: z.uuid() }).strict();
+const EmailInput = z
+  .object({
+    leadId: z.uuid(),
+    subject: z.string().trim().min(1).max(200),
+    body: z.string().trim().min(1).max(5000),
+    step: z.number().int().min(1).max(10).default(1),
+  })
+  .strict();
 const Text = (name: string, max: number) => z.object({ [name]: z.string().min(1).max(max) }).strict();
 
-/** The five slice 0 tools (SPEC 6, 8). Every handler acts only on the run's own task. */
+/**
+ * The `os` tools (SPEC 6, 8). Every handler acts only on the run's own workspace and task.
+ * `minAutonomy` hides a tool from agents below that level (SPEC 6, autonomy levels).
+ */
 export const osTools = {
   get_task: {
+    minAutonomy: 0,
     description: 'Read your current task: its title, body, status and comments so far.',
     input: NoInput,
     async run(store: OsStore, scope: RunScope) {
@@ -35,6 +70,7 @@ export const osTools = {
     },
   },
   comment: {
+    minAutonomy: 0,
     description: 'Add a progress note to your task thread.',
     input: Text('text', 8000),
     async run(store: OsStore, scope: RunScope, args: { text: string }) {
@@ -43,6 +79,7 @@ export const osTools = {
     },
   },
   complete_task: {
+    minAutonomy: 0,
     description: 'Finish your task with its final answer. Call this once, when the work is done.',
     input: Text('output', 50_000),
     async run(store: OsStore, scope: RunScope, args: { output: string }) {
@@ -51,6 +88,7 @@ export const osTools = {
     },
   },
   block_task: {
+    minAutonomy: 0,
     description: 'Mark your task blocked, with the reason. Use when you cannot continue.',
     input: Text('reason', 4000),
     async run(store: OsStore, scope: RunScope, args: { reason: string }) {
@@ -59,11 +97,34 @@ export const osTools = {
     },
   },
   ask_founder: {
+    minAutonomy: 0,
     description: 'Ask the founder one specific question. Your task is marked blocked until they answer.',
     input: Text('question', 2000),
     async run(store: OsStore, scope: RunScope, args: { question: string }) {
       await store.askFounder(scope, args.question);
       return 'Question sent to the founder. Stop work on this task now.';
+    },
+  },
+  get_lead: {
+    minAutonomy: 0,
+    description: 'Read one lead: business, website, contact, email, stage and notes.',
+    input: LeadInput,
+    async run(store: OsStore, scope: RunScope, args: { leadId: string }) {
+      const lead = await store.getLead(scope, args.leadId);
+      if (!lead) throw new ToolError('No such lead.');
+      return JSON.stringify(lead, null, 2);
+    },
+  },
+  propose_email: {
+    minAutonomy: 2,
+    description:
+      'Queue an email to a lead for the founder to approve. It does NOT send. Plain text only; the company footer is added when it is sent. Call it once per lead and step, then move on.',
+    input: EmailInput,
+    async run(store: OsStore, scope: RunScope, args: ProposedEmail) {
+      const r = await store.proposeEmail(scope, args);
+      return r.existed
+        ? `Already queued as ${r.approvalId}. Do not propose it again.`
+        : `Queued for approval as ${r.approvalId}. Nothing has been sent. Do not retry; finish your task.`;
     },
   },
 } as const;
@@ -73,6 +134,7 @@ export type OsToolName = keyof typeof osTools;
 export async function callOsTool(store: OsStore, scope: RunScope, name: string, args: unknown): Promise<string> {
   const tool = (osTools as Record<string, (typeof osTools)[OsToolName]>)[name];
   if (!tool) throw new ToolError(`Unknown tool "${name}".`);
+  if (tool.minAutonomy > (await store.autonomy(scope))) throw new ToolError(`Unknown tool "${name}".`);
   const parsed = tool.input.safeParse(args ?? {});
   if (!parsed.success) throw new ToolError(`Bad input for ${name}: ${parsed.error.issues.map((i) => i.message).join('; ')}`);
   return (tool.run as (s: OsStore, sc: RunScope, a: unknown) => Promise<string>)(store, scope, parsed.data);
@@ -82,6 +144,17 @@ export async function callOsTool(store: OsStore, scope: RunScope, name: string, 
 export class MemoryOsStore implements OsStore {
   tasks = new Map<string, { id: string; workspaceId: string; title: string; body: string | null; status: string; output?: string; blockedReason?: string }>();
   messages: { workspaceId: string; taskId?: string; from: string; to: string | null; body: string; at: string }[] = [];
+  autonomyLevel = 0;
+
+  async autonomy() {
+    return this.autonomyLevel;
+  }
+  async getLead(): Promise<LeadView | null> {
+    return null;
+  }
+  async proposeEmail(): Promise<{ approvalId: string; existed: boolean }> {
+    throw new ToolError('Proposals need the database store.');
+  }
 
   private task(scope: RunScope) {
     const t = scope.taskId ? this.tasks.get(scope.taskId) : undefined;

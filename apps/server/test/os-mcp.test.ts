@@ -62,7 +62,7 @@ describe('the os MCP server (S0-5)', () => {
     expect(init.result.capabilities.tools).toBeDefined();
     expect((await rpc(tokA, 'notifications/initialized', undefined, null)).status).toBe(202);
     const list = await json(rpc(tokA, 'tools/list'));
-    expect(list.result.tools.map((t: { name: string }) => t.name).sort()).toEqual(['ask_founder', 'block_task', 'comment', 'complete_task', 'get_task']);
+    expect(list.result.tools.map((t: { name: string }) => t.name).sort()).toEqual(['ask_founder', 'block_task', 'comment', 'complete_task', 'get_lead', 'get_task']);
     expect(list.result.tools[0]?.inputSchema.type).toBe('object');
   });
 
@@ -83,6 +83,17 @@ describe('the os MCP server (S0-5)', () => {
     expect(bad.result.isError).toBe(true);
     const unknown = await json(rpc(tokA, 'tools/call', { name: 'send_email', arguments: {} }));
     expect(unknown.result.isError).toBe(true);
+  });
+
+  it('hides and refuses propose_email below autonomy 2, and lists it at 2', async () => {
+    const { rpc, tokA, store } = setup();
+    const hidden = await json(rpc(tokA, 'tools/list'));
+    expect(hidden.result.tools.map((t) => t.name)).not.toContain('propose_email');
+    const refused = await json(rpc(tokA, 'tools/call', { name: 'propose_email', arguments: {} }));
+    expect(refused.result.isError).toBe(true);
+    store.autonomyLevel = 2;
+    const shown = await json(rpc(tokA, 'tools/list'));
+    expect(shown.result.tools.map((t) => t.name)).toContain('propose_email');
   });
 
   it('ask_founder blocks the task with the question', async () => {

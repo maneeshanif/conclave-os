@@ -1,6 +1,7 @@
 import type pg from 'pg';
 import { withWorkspace } from '../db/tenant';
-import { ToolError, type OsStore, type TaskView } from './os-tools';
+import { checkClaims, companyMarkdown, isSuppressed } from '../actions/policy';
+import { ToolError, type LeadView, type OsStore, type ProposedEmail, type TaskView } from './os-tools';
 import type { RunScope } from './run-tokens';
 
 /** The `os` tools on the real database. Every write is scoped to the run's own workspace and task. */
@@ -8,7 +9,66 @@ export class DbOsStore implements OsStore {
   constructor(
     private readonly pool: pg.Pool,
     private readonly onChange: (workspaceId: string, taskId: string) => void = () => undefined,
+    /** Where COMPANY.md lives, for the blocked-claims check on proposals. */
+    private readonly companyRoot?: string,
+    private readonly onApproval: (workspaceId: string, approvalId: string) => void = () => undefined,
   ) {}
+
+  async autonomy(scope: RunScope): Promise<number> {
+    const r = await withWorkspace(this.pool, scope.workspaceId, ({ client: c }) =>
+      c.query<{ autonomy: number; status: string }>('select autonomy, status from agents where id = $1', [scope.agentId]),
+    );
+    const a = r.rows[0];
+    return a && a.status === 'active' ? a.autonomy : 0;
+  }
+
+  async getLead(scope: RunScope, leadId: string): Promise<LeadView | null> {
+    const r = await withWorkspace(this.pool, scope.workspaceId, ({ client: c }) =>
+      c.query<LeadView>(
+        'select id, business_name as "businessName", website, contact_name as "contactName", email, stage, notes from leads where id = $1',
+        [leadId],
+      ),
+    );
+    return r.rows[0] ?? null;
+  }
+
+  /**
+   * The proposal handler (SPEC 6). Every rule that must always hold is checked here, in code:
+   * the lead exists in this workspace, has an address, is not suppressed or marked do-not-contact,
+   * and the text makes no blocked claim (CLAUDE.md rules 1, 7). It never sends.
+   */
+  async proposeEmail(scope: RunScope, p: ProposedEmail): Promise<{ approvalId: string; existed: boolean }> {
+    const companyMd = this.companyRoot ? await companyMarkdown(this.companyRoot) : '';
+    const claims = checkClaims(`${p.subject}\n${p.body}`, companyMd);
+    if (!claims.ok) throw new ToolError(`Refused: ${claims.reasons.join('; ')}. Rewrite without it and propose again.`);
+    const out = await withWorkspace(this.pool, scope.workspaceId, async ({ client: c }) => {
+      const lead = await c.query<{ email: string | null; stage: string }>('select email, stage from leads where id = $1', [p.leadId]);
+      const l = lead.rows[0];
+      if (!l) throw new ToolError('No such lead.');
+      if (!l.email) throw new ToolError('This lead has no email address. Block the task and say so.');
+      if (l.stage === 'do_not_contact') throw new ToolError('This lead is marked do not contact.');
+      const supp = await c.query<{ value: string }>('select value from suppression');
+      if (isSuppressed(l.email, supp.rows.map((r) => r.value))) throw new ToolError('This address is on the suppression list. Do not contact it.');
+      const payload = { leadId: p.leadId, to: l.email, subject: p.subject, body: p.body, step: p.step };
+      const ins = await c.query<{ id: string }>(
+        `insert into approvals (workspace_id, kind, dedupe_key, agent_id, run_id, task_id, payload)
+         values ($1, 'email.send', $2, $3, $4, $5, $6)
+         on conflict (workspace_id, kind, dedupe_key) do nothing returning id`,
+        [scope.workspaceId, `email:${p.leadId}:${p.step}`, scope.agentId, scope.runId, scope.taskId ?? null, JSON.stringify(payload)],
+      );
+      if (!ins.rows[0]) {
+        const existing = await c.query<{ id: string }>("select id from approvals where kind = 'email.send' and dedupe_key = $1", [`email:${p.leadId}:${p.step}`]);
+        return { approvalId: existing.rows[0]!.id, existed: true };
+      }
+      await c.query(
+        "insert into outreach_messages (workspace_id, lead_id, channel, step, to_address, subject, body, approval_id, status) values ($1, $2, 'email', $3, $4, $5, $6, $7, 'queued')",
+        [scope.workspaceId, p.leadId, p.step, l.email, p.subject, p.body, ins.rows[0].id],
+      );
+      return { approvalId: ins.rows[0].id, existed: false };
+    });
+    if (!out.existed) this.onApproval(scope.workspaceId, out.approvalId);
+    return out;
+  }
 
   private async inTask<T>(scope: RunScope, fn: (c: pg.PoolClient, taskId: string, agentKey: string) => Promise<T>): Promise<T> {
     if (!scope.taskId) throw new ToolError('This run has no task.');
