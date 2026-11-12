@@ -126,7 +126,7 @@ export interface WorkdirContext {
 }
 
 /** Every path a render target may write, relative to the working folder. Cleared before each render. */
-const GENERATED = ['CLAUDE.md', 'AGENTS.md', 'opencode.json', '.claude', '.opencode', '.mcp.json', 'ROLE.md'];
+const GENERATED = ['CLAUDE.md', 'AGENTS.md', 'opencode.json', '.claude', '.opencode', '.mcp.json', 'ROLE.md', '.xdg-config'];
 
 async function writeFiles(dir: string, files: Record<string, string>): Promise<string[]> {
   for (const [rel, content] of Object.entries(files)) {
@@ -157,42 +157,67 @@ function osServer(url: string, harness: keyof typeof TOKEN_REF) {
   return { url, headers: { Authorization: `Bearer ${TOKEN_REF[harness]}` } };
 }
 
-/** Files for the Claude Code target. */
+/**
+ * Every harness config lives in the agent folder, and the agent runs one level down, in `work/`, so
+ * its file tools (scoped to the working directory) can never rewrite its own config, permissions or
+ * connectors. Harness files planted in `work/` are removed before every run (see `cleanWorkFolder`).
+ */
+export const WORK_SUBDIR = 'work';
+
+/** Files for the Claude Code target. Claude Code loads CLAUDE.md from the parent of `work/` too. */
 async function claudeTarget(agent: LoadedAgent, t: Template, rules: string, ctx: WorkdirContext) {
   const tools = claudeToolLists(t.permissions);
   return {
-    'CLAUDE.md': rules,
-    'ROLE.md': agent.body + '\n',
+    'CLAUDE.md': `${rules.trim()}\n\n# Your role\n\n${agent.body.trim()}\n`,
     '.claude/settings.json': JSON.stringify({ permissions: { allow: tools.allow, deny: tools.deny } }, null, 2) + '\n',
     '.mcp.json': JSON.stringify({ mcpServers: { os: { type: 'http', ...osServer(ctx.osUrl, 'claude') } } }, null, 2) + '\n',
     ...(await skillFiles(t, '.claude/skills')),
   };
 }
 
-/** Files for the OpenCode target (opencode 1.19 config shape, checked with `opencode debug config`). */
-async function opencodeTarget(agent: LoadedAgent, t: Template, rules: string, ctx: WorkdirContext) {
+/**
+ * Files for the OpenCode target (opencode 1.19 config shape, checked with `opencode debug config`).
+ * The runner points OPENCODE_CONFIG at this file and turns project config off, so a config the agent
+ * writes into `work/` is ignored. The agent, its instructions and its skills are all named here by
+ * absolute path.
+ */
+async function opencodeTarget(agent: LoadedAgent, t: Template, rules: string, ctx: WorkdirContext, dir: string) {
   const modelName = modelNameFor(agent.role.model, 'opencode');
   const permission = opencodePermission(t.permissions);
-  const agentFm: Record<string, unknown> = {
-    description: `${agent.role.name}, ${ctx.departmentName}`,
-    mode: 'primary',
-    ...(modelName ? { model: modelName } : {}),
-    permission,
-  };
   const config = {
     $schema: 'https://opencode.ai/config.json',
     default_agent: agent.role.id,
     share: 'disabled',
     autoupdate: false,
+    instructions: [path.join(dir, 'AGENTS.md')],
+    skills: { paths: [path.join(dir, '.opencode', 'skills')] },
+    agent: {
+      [agent.role.id]: {
+        description: `${agent.role.name}, ${ctx.departmentName}`,
+        mode: 'primary',
+        ...(modelName ? { model: modelName } : {}),
+        permission,
+        prompt: agent.body,
+      },
+    },
     mcp: { os: { type: 'remote', ...osServer(ctx.osUrl, 'opencode'), enabled: true } },
     permission,
   };
   return {
     'AGENTS.md': rules,
-    [`.opencode/agents/${agent.role.id}.md`]: `---\n${stringifyYaml(agentFm).trim()}\n---\n\n${agent.body}\n`,
     'opencode.json': JSON.stringify(config, null, 2) + '\n',
     ...(await skillFiles(t, '.opencode/skills')),
   };
+}
+
+/** Harness files that must never exist inside `work/`, where the agent can write. */
+const PLANTABLE = ['CLAUDE.md', 'CLAUDE.local.md', 'AGENTS.md', 'opencode.json', 'opencode.jsonc', '.claude', '.opencode', '.mcp.json'];
+
+/** Removes any harness config an agent wrote into its `work/` folder. Run before every run. */
+export async function cleanWorkFolder(agentDir: string): Promise<void> {
+  const work = path.join(agentDir, WORK_SUBDIR);
+  await mkdir(work, { recursive: true });
+  for (const f of PLANTABLE) await rm(path.join(work, f), { recursive: true, force: true });
 }
 
 export interface RenderedWorkdir {
@@ -222,13 +247,15 @@ export async function renderWorkdir(agent: LoadedAgent, ctx: WorkdirContext): Pr
       files = await claudeTarget(agent, t, rules, ctx);
       break;
     case 'opencode':
-      files = await opencodeTarget(agent, t, rules, ctx);
+      files = await opencodeTarget(agent, t, rules, ctx, dir);
       break;
     default:
       throw new Error(`Runtime "${agent.role.runtime}" is not built in this slice, so it has no render target yet.`);
   }
   await mkdir(dir, { recursive: true });
   for (const g of GENERATED) await rm(path.join(dir, g), { recursive: true, force: true });
-  await mkdir(path.join(dir, 'work'), { recursive: true });
+  await cleanWorkFolder(dir);
+  // An empty config home for OpenCode, so the owner's global OpenCode config never reaches an agent.
+  await mkdir(path.join(dir, '.xdg-config'), { recursive: true });
   return { dir, runtime: agent.role.runtime, files: await writeFiles(dir, files) };
 }

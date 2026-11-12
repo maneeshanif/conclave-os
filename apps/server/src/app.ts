@@ -26,6 +26,11 @@ export interface AppDeps {
   inngestHandler?: (c: Context) => Promise<Response>;
   /** Browser origins allowed to call the API. Only the local web app. */
   webOrigins?: string[];
+  /**
+   * Host headers the server answers to, such as `127.0.0.1:3100`. Anything else is refused, which
+   * stops DNS rebinding: a page on evil.example resolved to 127.0.0.1 still sends `Host: evil.example`.
+   */
+  hosts?: string[];
 }
 
 /**
@@ -42,7 +47,28 @@ export function createApp(deps?: AppDeps) {
   if (!deps) return app;
 
   const origins = deps.webOrigins ?? ['http://127.0.0.1:3000', 'http://localhost:3000'];
-  app.use('/api/*', cors({ origin: origins, allowMethods: ['GET', 'POST', 'PATCH'] }));
+
+  // CORS headers alone do not stop a request: a page can still POST text/plain with no preflight.
+  // So refuse, in code, a wrong Host, a foreign Origin on anything that changes state, and a write
+  // that is not JSON (which forces a browser preflight that the CORS rules then answer).
+  app.use('*', async (c, next) => {
+    if (deps.hosts && !deps.hosts.includes(c.req.header('host') ?? new URL(c.req.url).host)) return c.json({ error: 'Unknown host.' }, 403);
+    const p = c.req.path;
+    const writes = c.req.method !== 'GET' && c.req.method !== 'HEAD' && c.req.method !== 'OPTIONS';
+    if (writes && (p.startsWith('/api') || p.startsWith('/inngest'))) {
+      const origin = c.req.header('origin');
+      if (origin && !origins.includes(origin)) return c.json({ error: 'Origin not allowed.' }, 403);
+      if (p.startsWith('/api') && !(c.req.header('content-type') ?? '').toLowerCase().startsWith('application/json')) {
+        return c.json({ error: 'Send JSON.' }, 415);
+      }
+    }
+    if (c.req.method === 'GET' && p === '/events') {
+      const origin = c.req.header('origin');
+      if (origin && !origins.includes(origin)) return c.json({ error: 'Origin not allowed.' }, 403);
+    }
+    await next();
+  });
+  app.use('/api/*', cors({ origin: origins, allowMethods: ['GET', 'POST', 'PATCH'], allowHeaders: ['content-type'] }));
   app.use('/api/*', async (c, next) => {
     const after: (() => Promise<void>)[] = [];
     c.set('after', after);

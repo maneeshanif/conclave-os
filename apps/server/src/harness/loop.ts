@@ -2,7 +2,7 @@ import type pg from 'pg';
 import type { Bus } from '../bus';
 import { withWorkspace } from '../db/tenant';
 import { claudeToolLists } from './permissions';
-import { loadTemplate } from './render';
+import { cleanWorkFolder, loadTemplate } from './render';
 import type { RunTokens } from './run-tokens';
 import type { RuntimeName } from '../runtimes/names';
 import type { ErrorKind, RunEvent, Runtime } from '../runtimes/types';
@@ -18,6 +18,8 @@ export interface LoopDeps {
   templatesRoot: string;
   /** Run timeout; default 15 minutes. */
   timeoutMs?: number;
+  /** Renders the agent's folder again from its role file. Called before every run. */
+  prepare?: (agentKey: string) => Promise<void>;
 }
 
 export type RunOutcome =
@@ -91,6 +93,46 @@ async function audit(pool: pg.Pool, ws: string, action: string, subject: string,
  * One run, end to end (SPEC 5, the eight steps; this slice covers wake, checkout, context, act and
  * report). Runs are started only by `agent/run.requested` through a dispatcher.
  */
+/** Runs in progress in this process, so shutdown (and later the kill switch) can stop them. */
+const active = new Map<string, Runtime>();
+
+/** Cancels every run in progress in this process. */
+export async function cancelAllRuns(): Promise<number> {
+  const runs = [...active.entries()];
+  await Promise.all(runs.map(([id, rt]) => rt.cancel(id).catch(() => undefined)));
+  return runs.length;
+}
+
+/**
+ * On server start: a run still marked running or queued belongs to a process that is gone. Mark it
+ * failed and block its task with the reason, so nothing waits forever and a person sees it.
+ */
+export async function reapStaleRuns(pool: pg.Pool, workspaceId: string): Promise<number> {
+  return withWorkspace(pool, workspaceId, async ({ client: c }) => {
+    const runs = await c.query<{ id: string; task_id: string | null }>(
+      "update runs set status = 'failed', ended_at = now(), error = 'runtime: the server stopped during this run' where status in ('running', 'queued') returning id, task_id",
+    );
+    for (const r of runs.rows) {
+      if (r.task_id) {
+        await c.query(
+          "update tasks set status = 'blocked', locked_by = null, blocked_reason = 'The server stopped while this task was running. Move it back to todo to run it again.' where id = $1 and status = 'in_progress'",
+          [r.task_id],
+        );
+      }
+      await c.query("insert into audit_log (workspace_id, actor, action, subject, data) values ($1, 'system', 'run.failed', $2, '{\"reason\":\"server restarted\"}')", [workspaceId, r.id]);
+    }
+    // A task can also be stuck in progress without a run row, if the server died between the two writes.
+    await c.query(
+      "update tasks set status = 'blocked', locked_by = null, blocked_reason = 'The server stopped before this task''s run began. Move it back to todo to run it again.' where status = 'in_progress' and not exists (select 1 from runs r where r.task_id = tasks.id and r.status = 'running')",
+    );
+    return runs.rowCount ?? 0;
+  });
+}
+
+/**
+ * One run, end to end (SPEC 5, the eight steps; this slice covers wake, checkout, context, act and
+ * report). Once a run row exists, a terminal state is always written, whatever fails.
+ */
 export async function executeRun(deps: LoopDeps, workspaceId: string, agentId: string, trigger: string): Promise<RunOutcome> {
   const agent = await withWorkspace(deps.pool, workspaceId, async ({ client: c }) => {
     const r = await c.query<AgentRow>(
@@ -110,22 +152,23 @@ export async function executeRun(deps: LoopDeps, workspaceId: string, agentId: s
   const task = await checkoutTask(deps.pool, workspaceId, agentId);
   if (!task) return { status: 'no_task' };
 
-  const runId = await withWorkspace(deps.pool, workspaceId, async ({ client: c }) => {
-    const r = await c.query<{ id: string }>(
-      `insert into runs (workspace_id, agent_id, task_id, trigger, runtime, model, status, started_at, heartbeat_at)
-       values ($1, $2, $3, $4, $5, $6, 'running', now(), now()) returning id`,
-      [workspaceId, agentId, task.id, trigger, agent.runtime, agent.model_alias],
-    );
-    return r.rows[0]!.id;
-  });
-  await audit(deps.pool, workspaceId, 'run.running', runId, { agent: agent.key, task: task.id, trigger });
-  deps.bus.publish({ kind: 'run.state', workspaceId, runId, taskId: task.id, status: 'running' });
-  deps.bus.publish({ kind: 'task.changed', workspaceId, taskId: task.id });
-
-  const token = deps.tokens.issue({ workspaceId, agentId, runId, taskId: task.id });
-  const { instructions, taskInput } = buildContext(agent, task);
-  let tools: { allow: string[]; deny: string[] } = { allow: [], deny: [] };
-  if (agent.template_key) tools = claudeToolLists((await loadTemplate(deps.templatesRoot, agent.template_key)).permissions);
+  let runId: string;
+  try {
+    runId = await withWorkspace(deps.pool, workspaceId, async ({ client: c }) => {
+      const r = await c.query<{ id: string }>(
+        `insert into runs (workspace_id, agent_id, task_id, trigger, runtime, model, status, started_at, heartbeat_at)
+         values ($1, $2, $3, $4, $5, $6, 'running', now(), now()) returning id`,
+        [workspaceId, agentId, task.id, trigger, agent.runtime, agent.model_alias],
+      );
+      return r.rows[0]!.id;
+    });
+  } catch (err) {
+    // No run row: put the task back so it is not lost.
+    await withWorkspace(deps.pool, workspaceId, ({ client: c }) =>
+      c.query("update tasks set status = 'todo', locked_by = null where id = $1 and status = 'in_progress'", [task.id]),
+    ).catch(() => undefined);
+    throw err;
+  }
 
   let seq = 0;
   let final: RunEvent | undefined;
@@ -133,7 +176,22 @@ export async function executeRun(deps: LoopDeps, workspaceId: string, agentId: s
   let tin = 0;
   let tout = 0;
   let sessionId: string | undefined;
+  active.set(runId, runtime);
   try {
+    await audit(deps.pool, workspaceId, 'run.running', runId, { agent: agent.key, task: task.id, trigger });
+    deps.bus.publish({ kind: 'run.state', workspaceId, runId, taskId: task.id, status: 'running' });
+    deps.bus.publish({ kind: 'task.changed', workspaceId, taskId: task.id });
+
+    const workspaceDir = agentWorkDir(deps.dataDir, deps.workspaceSlug, agent.key);
+    // Fresh harness config for every run, and nothing the agent planted in work/ survives (SPEC 5).
+    if (deps.prepare) await deps.prepare(agent.key);
+    await cleanWorkFolder(workspaceDir);
+
+    const token = deps.tokens.issue({ workspaceId, agentId, runId, taskId: task.id });
+    const { instructions, taskInput } = buildContext(agent, task);
+    let tools: { allow: string[]; deny: string[] } = { allow: [], deny: [] };
+    if (agent.template_key) tools = claudeToolLists((await loadTemplate(deps.templatesRoot, agent.template_key)).permissions);
+
     for await (const e of runtime.start({
       runId,
       workspaceId,
@@ -142,7 +200,7 @@ export async function executeRun(deps: LoopDeps, workspaceId: string, agentId: s
       taskId: task.id,
       instructions,
       taskInput,
-      workspaceDir: agentWorkDir(deps.dataDir, deps.workspaceSlug, agent.key),
+      workspaceDir,
       modelAlias: agent.model_alias,
       maxTurns: agent.max_turns,
       runToken: token,
@@ -159,20 +217,25 @@ export async function executeRun(deps: LoopDeps, workspaceId: string, agentId: s
       }
       if (e.type === 'session') sessionId = e.sessionId;
       if (e.type === 'done' || e.type === 'error') final = e;
-      await withWorkspace(deps.pool, workspaceId, ({ client: c }) =>
-        Promise.all([
-          c.query('insert into run_events (workspace_id, run_id, type, data) values ($1, $2, $3, $4)', [workspaceId, runId, e.type, JSON.stringify(e)]),
-          c.query('update runs set heartbeat_at = now() where id = $1', [runId]),
-        ]),
-      );
+      try {
+        await withWorkspace(deps.pool, workspaceId, ({ client: c }) =>
+          Promise.all([
+            c.query('insert into run_events (workspace_id, run_id, type, data) values ($1, $2, $3, $4)', [workspaceId, runId, e.type, JSON.stringify(e)]),
+            c.query('update runs set heartbeat_at = now() where id = $1', [runId]),
+          ]),
+        );
+      } catch (err) {
+        console.error(`run ${runId}: could not store an event:`, (err as Error).message);
+      }
       deps.bus.publish({ kind: 'run.event', workspaceId, runId, taskId: task.id, seq, event: e });
     }
   } catch (err) {
     final = { type: 'error', kind: 'runtime', message: (err as Error).message };
     await withWorkspace(deps.pool, workspaceId, ({ client: c }) =>
       c.query('insert into run_events (workspace_id, run_id, type, data) values ($1, $2, $3, $4)', [workspaceId, runId, 'error', JSON.stringify(final)]),
-    );
+    ).catch(() => undefined);
   } finally {
+    active.delete(runId);
     deps.tokens.revokeRun(runId);
   }
 
@@ -200,8 +263,13 @@ export async function executeRun(deps: LoopDeps, workspaceId: string, agentId: s
         ]);
       }
     }
+    await c.query("insert into audit_log (workspace_id, actor, action, subject, data) values ($1, 'system', $2, $3, $4)", [
+      workspaceId,
+      `run.${status}`,
+      runId,
+      JSON.stringify({ agent: agent.key, task: task.id, ...(error ? { error } : {}) }),
+    ]);
   });
-  await audit(deps.pool, workspaceId, `run.${status}`, runId, { agent: agent.key, task: task.id, ...(error ? { error } : {}) });
   deps.bus.publish({ kind: 'run.state', workspaceId, runId, taskId: task.id, status, ...(error ? { error: `${error.kind}: ${error.message}` } : {}) });
   deps.bus.publish({ kind: 'task.changed', workspaceId, taskId: task.id });
   return ok ? { status: 'succeeded', runId, taskId: task.id } : { status: 'failed', runId, taskId: task.id, ...(error ? { error } : {}) };

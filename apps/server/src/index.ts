@@ -6,10 +6,10 @@ import { Hono, type Context } from 'hono';
 import { serve as inngestServe } from 'inngest/hono';
 import { createApp } from './app';
 import { Bus } from './bus';
-import { renderAll } from './commands/agent-new';
+import { renderAll, renderOne } from './commands/agent-new';
 import { HOST } from './config';
 import { DbOsStore } from './harness/db-os-store';
-import { executeRun, type LoopDeps } from './harness/loop';
+import { cancelAllRuns, executeRun, reapStaleRuns, type LoopDeps } from './harness/loop';
 import { RunTokens } from './harness/run-tokens';
 import { createCliRuntime } from './runtimes/cli';
 import { openSystem } from './system';
@@ -28,6 +28,9 @@ const store = new DbOsStore(sys.app, (workspaceId, taskId) => bus.publish({ kind
 
 // Every agent's working folder must match its role file before anything runs.
 for (const r of await renderAll(sys)) console.log(`agent ${r.id}: ${r.runtime} folder ready`);
+// Runs left running by a server that stopped are failed now and their tasks blocked with the reason.
+const reaped = await reapStaleRuns(sys.app, sys.workspace.id);
+if (reaped) console.log(`${reaped} run(s) from a previous server were marked failed`);
 
 const loop: LoopDeps = {
   pool: sys.app,
@@ -37,6 +40,7 @@ const loop: LoopDeps = {
   dataDir: sys.dataDir,
   workspaceSlug: sys.workspace.slug,
   templatesRoot: sys.templatesRoot,
+  prepare: (agentKey) => renderOne(sys, agentKey),
 };
 const execute = (e: RunRequestEvent) => executeRun(loop, e.workspaceId, e.agentId, e.trigger);
 
@@ -69,6 +73,7 @@ shell.route(
     bus,
     dispatcher,
     upgradeWebSocket,
+    hosts: [`127.0.0.1:${sys.serverPort}`, `localhost:${sys.serverPort}`],
     ...(inngestHandler ? { inngestHandler } : {}),
   }),
 );
@@ -86,6 +91,10 @@ async function shutdown() {
   if (stopping) return;
   stopping = true;
   if (ticker) clearInterval(ticker);
+  const n = await cancelAllRuns();
+  if (n) console.log(`cancelled ${n} run(s)`);
+  // Give the cancelled runs a moment to write their final state.
+  if (n) await new Promise((r) => setTimeout(r, 2000));
   server.close();
   rmSync(pidFile, { force: true });
   await sys.close();

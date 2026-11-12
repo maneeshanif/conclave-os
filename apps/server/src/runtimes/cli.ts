@@ -143,7 +143,11 @@ const builders: Record<'claude-cli' | 'opencode', (req: RunRequest, files: { sys
         files.prompt,
       ],
       extraEnv: {
-        // Keep the person's own skills out of company agents (checked with opencode 1.19.5).
+        // The agent's config is named explicitly, and nothing else is read: no project config from
+        // work/ (where the agent can write), no global config, no personal skills (checked with 1.19.5).
+        OPENCODE_CONFIG: path.join(req.workspaceDir, 'opencode.json'),
+        OPENCODE_DISABLE_PROJECT_CONFIG: '1',
+        XDG_CONFIG_HOME: path.join(req.workspaceDir, '.xdg-config'),
         OPENCODE_DISABLE_CLAUDE_CODE_SKILLS: '1',
         OPENCODE_DISABLE_EXTERNAL_SKILLS: '1',
         OPENCODE_DISABLE_AUTOUPDATE: '1',
@@ -179,8 +183,11 @@ export function createCliRuntime(name: 'claude-cli' | 'opencode', opts: CliRunti
     }, opts.envAllowlist);
     const resolved = resolveCommand(command, env);
     const args = [...resolved.args, ...built.args];
-    const child = spawn(resolved.file, resolved.shell ? args.map(quoteForCmd) : args, {
-      cwd: req.workspaceDir,
+    // The agent works one level down, in work/, so it cannot touch its own harness config.
+    const cwd = path.join(req.workspaceDir, 'work');
+    await mkdir(cwd, { recursive: true });
+    const child = spawn(resolved.shell ? quoteForCmd(resolved.file) : resolved.file, resolved.shell ? args.map(quoteForCmd) : args, {
+      cwd,
       env,
       shell: resolved.shell,
       stdio: ['pipe', 'pipe', 'pipe'],

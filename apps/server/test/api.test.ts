@@ -55,6 +55,21 @@ describe('API (S0-8, S0-9)', () => {
     expect((await app.request('/api/runs/00000000-0000-4000-8000-000000000000')).status).toBe(404);
   });
 
+  it('refuses a cross-site write: foreign Origin, or a body that is not JSON (no preflight)', async () => {
+    const evil = await app.request('/api/tasks', { method: 'POST', headers: { origin: 'https://evil.example', 'content-type': 'application/json' }, body: JSON.stringify({ title: 'x' }) });
+    expect(evil.status).toBe(403);
+    const textPlain = await app.request('/api/tasks', { method: 'POST', headers: { 'content-type': 'text/plain' }, body: JSON.stringify({ title: 'x' }) });
+    expect(textPlain.status).toBe(415);
+    const tasks = (await (await app.request('/api/tasks')).json()) as { title: string }[];
+    expect(tasks.some((t) => t.title === 'x')).toBe(false);
+  });
+
+  it('refuses requests for an unknown Host (DNS rebinding)', async () => {
+    const guarded = createApp({ pool: sys.app, workspaceId: sys.workspace.id, bus: new Bus(), dispatcher, hosts: ['127.0.0.1:3100'] });
+    expect((await guarded.request('http://evil.example/api/agents')).status).toBe(403);
+    expect((await guarded.request('http://127.0.0.1:3100/api/agents')).status).toBe(200);
+  });
+
   it('only the local web app may call the API from a browser', async () => {
     const ok = await app.request('/api/tasks', { headers: { origin: 'http://127.0.0.1:3000' } });
     expect(ok.headers.get('access-control-allow-origin')).toBe('http://127.0.0.1:3000');

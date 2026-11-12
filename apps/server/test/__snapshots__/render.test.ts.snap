@@ -2,7 +2,6 @@
 
 exports[`template renderer (S0-4) > renders the same writer for OpenCode after a runtime change (snapshot), with no shell 1`] = `
 [
-  ".opencode/agents/outreach-writer.md",
   ".opencode/skills/company-voice/SKILL.md",
   "AGENTS.md",
   "opencode.json",
@@ -50,7 +49,6 @@ exports[`template renderer (S0-4) > renders the writer working folder for Claude
   ".claude/skills/company-voice/SKILL.md",
   ".mcp.json",
   "CLAUDE.md",
-  "ROLE.md",
 ]
 `;
 
@@ -69,5 +67,21 @@ You are Copywriter, an agent of Acme Test Co, in the Outreach department.
 
 # Acme Test Co
 We test things.
+
+# Your role
+
+# Role
+You write drafts for the Outreach department of Acme Test Co. A person approves everything you write before it leaves the company.
+
+# How you work
+- Read the task and the company rules first.
+- Use only facts given in the task or in the company file. Never invent one.
+- Keep to the length the task asks for.
+- Post the draft with complete_task. You never send anything yourself.
+
+# When to stop and ask
+- The task is unclear or missing what you need.
+- Anything medical, legal or about pricing.
+- Anything that would leave the company.
 "
 `;

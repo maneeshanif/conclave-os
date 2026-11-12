@@ -5,21 +5,24 @@ import { readFileSync } from 'node:fs';
 
 // Reads the rendered MCP config in the working folder and calls the os server the way a real
 // harness would: URL from the config, token expanded from the environment.
-async function callOs(tool, args) {
+async function callOs(tool, toolArgs) {
   let url, auth;
-  try {
-    const c = JSON.parse(readFileSync('.mcp.json', 'utf8')).mcpServers.os;
+  // Like the real CLIs: Claude Code gets the file from --mcp-config, OpenCode from OPENCODE_CONFIG.
+  const cliArgs = process.argv.slice(4);
+  const mcpArg = cliArgs.indexOf('--mcp-config');
+  if (mcpArg >= 0) {
+    const c = JSON.parse(readFileSync(cliArgs[mcpArg + 1], 'utf8')).mcpServers.os;
     url = c.url;
     auth = c.headers.Authorization.replace('${CONCLAVE_RUN_TOKEN}', process.env.CONCLAVE_RUN_TOKEN ?? '');
-  } catch {
-    const c = JSON.parse(readFileSync('opencode.json', 'utf8')).mcp.os;
+  } else {
+    const c = JSON.parse(readFileSync(process.env.OPENCODE_CONFIG, 'utf8')).mcp.os;
     url = c.url;
     auth = c.headers.Authorization.replace('{env:CONCLAVE_RUN_TOKEN}', process.env.CONCLAVE_RUN_TOKEN ?? '');
   }
   const res = await fetch(url, {
     method: 'POST',
     headers: { 'content-type': 'application/json', accept: 'application/json, text/event-stream', authorization: auth },
-    body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: tool, arguments: args } }),
+    body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: tool, arguments: toolArgs } }),
   });
   if (res.status !== 200) return { ok: false, text: `HTTP ${res.status}` };
   const j = await res.json();

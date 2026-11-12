@@ -91,3 +91,23 @@ export async function renderAll(sys: System): Promise<AgentNewResult[]> {
   }
   return out;
 }
+
+/**
+ * Renders one agent's folder again from the role file on disk, before a run. A run never starts on a
+ * folder the agent itself may have edited during an earlier run (SPEC 5).
+ */
+export async function renderOne(sys: System, agentKey: string): Promise<void> {
+  const company = await loadCompany(sys.companyRoot);
+  const a = company.agents.find((x) => x.role.id === agentKey);
+  if (!a?.role.template) return;
+  const dept = company.departments.find((d) => d.key === a.role.department)!;
+  await renderWorkdir(a, {
+    dataDir: sys.dataDir,
+    workspaceSlug: sys.workspace.slug,
+    companyName: await companyName(sys.companyRoot),
+    companyMd: company.companyMd,
+    departmentName: dept.name,
+    osUrl: sys.osUrl,
+    templatesRoot: sys.templatesRoot,
+  });
+}
