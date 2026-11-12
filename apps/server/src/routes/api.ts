@@ -4,12 +4,13 @@ import { z } from 'zod';
 import type { AppEnv } from '../app';
 import type { Bus } from '../bus';
 import type { Dispatcher } from '../workflows/dispatch';
+import { approvalRoutes, type ApprovalDecision } from './approvals';
 
 /**
  * The slice 0 API (SPEC 11, API table): agents, tasks, runs. One local workspace, no login yet.
  * Every handler runs in the request transaction from app.ts. Starting a run waits until it commits.
  */
-export function apiRoutes(deps: { workspaceId: string; dispatcher: Dispatcher; bus: Bus }) {
+export function apiRoutes(deps: { workspaceId: string; dispatcher: Dispatcher; bus: Bus; onApprovalDecided?: (d: ApprovalDecision) => Promise<void> | void }) {
   const r = new Hono<AppEnv>();
   const ws = deps.workspaceId;
   const q = async <T extends QueryResultRow>(c: Context<AppEnv>, sql: string, params: unknown[] = []) =>
@@ -18,6 +19,8 @@ export function apiRoutes(deps: { workspaceId: string; dispatcher: Dispatcher; b
   // A malformed id is a 404, not a database error.
   r.use('/:kind/:id/*', async (c, next) => (z.uuid().safeParse(c.req.param('id')).success ? next() : c.json({ error: 'Not found' }, 404)));
   r.use('/:kind/:id', async (c, next) => (z.uuid().safeParse(c.req.param('id')).success ? next() : c.json({ error: 'Not found' }, 404)));
+
+  r.route('/approvals', approvalRoutes({ workspaceId: ws, bus: deps.bus, onDecided: deps.onApprovalDecided }));
 
   r.get('/agents', async (c) =>
     c.json(

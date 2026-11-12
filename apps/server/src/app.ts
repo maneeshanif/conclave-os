@@ -8,6 +8,7 @@ import { withWorkspace, type Tx } from './db/tenant';
 import type { OsStore } from './harness/os-tools';
 import type { RunTokens } from './harness/run-tokens';
 import { apiRoutes } from './routes/api';
+import type { ApprovalDecision } from './routes/approvals';
 import { mcpRoutes } from './routes/mcp';
 import type { Dispatcher } from './workflows/dispatch';
 
@@ -31,6 +32,8 @@ export interface AppDeps {
    * stops DNS rebinding: a page on evil.example resolved to 127.0.0.1 still sends `Host: evil.example`.
    */
   hosts?: string[];
+  /** Called after an approval decision has committed. The gate (S1-3) starts the executor from here. */
+  onApprovalDecided?: (d: ApprovalDecision) => Promise<void> | void;
 }
 
 /**
@@ -83,7 +86,7 @@ export function createApp(deps?: AppDeps) {
   });
 
   if (deps.bus && deps.dispatcher) {
-    app.route('/api', apiRoutes({ workspaceId: deps.workspaceId, dispatcher: deps.dispatcher, bus: deps.bus }));
+    app.route('/api', apiRoutes({ workspaceId: deps.workspaceId, dispatcher: deps.dispatcher, bus: deps.bus, onApprovalDecided: deps.onApprovalDecided }));
   }
   if (deps.tokens && deps.store) app.route('/mcp', mcpRoutes({ tokens: deps.tokens, store: deps.store }));
   if (deps.inngestHandler) app.on(['GET', 'POST', 'PUT'], '/inngest', deps.inngestHandler);

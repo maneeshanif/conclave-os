@@ -2,6 +2,13 @@
 
 Newest first. One entry per decision: what, why, and what it replaced.
 
+## 2026-11-12 (S1-2: approvals API)
+
+- **A decision is one locked move, `pending` to `approved` or `rejected`, and never moves back.** The row is locked (`for update`) while it is decided, so two decisions at the same moment give one 200 and one 409, and the gate hears once. Anything not pending (decided, expired, executing, executed, failed) answers 409 with its current status.
+- **A card can be edited, but only its text.** For an email the edit may change the subject and the body; the recipient, the lead and the step cannot change, and an edit that tries is refused (400) and decides nothing. The proposal is kept as proposed in `payload`; the edit goes in `edited_payload`, which the executor already prefers. A kind with no editable card (a post, for now) refuses an edit but can still be approved or rejected as it is. An edit sent with a rejection is ignored.
+- **Deciding sends nothing.** After the commit the API publishes `approval.changed` for the inbox and calls `onApprovalDecided`, the hook the gate (S1-3) attaches to. Rejecting also closes the queued outreach message.
+- **The decider is recorded as `founder` until login exists** (S1-10), which will pass the signed-in person instead.
+
 ## 2026-11-12 (S1-1: two real bugs found by testing the slice 1 code)
 
 - **A suppressed address was still sent to when its list entry had capitals.** `isSuppressed` lowercased the recipient but compared it to the list as it was stored, so an entry typed as OWNER@CLINIC.COM never matched owner@clinic.com. The executor sent. Both sides are now trimmed and lowercased, and an empty entry matches nothing. S1-4 also normalises on insert.

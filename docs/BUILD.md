@@ -108,7 +108,7 @@ Work them in order. Tick each when its test passes.
   Write the missing tests for `policy.ts`, `transport.ts`, `email.ts`, the two os tools and the kill-switch check, and fix what they find. Read the slice 1 migrations against the tenancy rule: every table has `workspace_id`, composite keys and forced RLS, and the existing tenancy test must cover them.
   *Test:* the claim checks block medical, legal and pricing claims; a suppressed or do-not-contact address is refused by `propose_email`; the outbox transport writes one file per approval; the executor claims `approved` to `executing` once and a second claim does nothing; the table-driven RLS test lists every slice 1 table.
 
-- [ ] **S1-2 Approvals API.** SPEC 6, 11 (API table).
+- [x] **S1-2 Approvals API.** SPEC 6, 11 (API table).
   `GET /api/approvals?status=`, `GET /api/approvals/:id`, `POST /api/approvals/:id/decide` with `approved` or `rejected` and an optional edited payload. Decisions go through one state machine (`pending` to `approved` or `rejected`, never back), record who and when, and publish `approval/decided`.
   *Test:* deciding twice is refused; an edited payload is stored and is what the executor will use; a rejected approval is never executable; a decision for another workspace's approval is a 404.
 
