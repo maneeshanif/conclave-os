@@ -1,0 +1,19 @@
+# Agent template: writer. Neutral sources only; the renderer writes each harness's own format (SPEC 5).
+key: writer
+version: 1
+description: "Drafts text in the company's voice for a person to approve."
+params:
+  - { name: id, required: true }
+  - { name: name, required: true }
+  - { name: department, required: true }
+  - { name: department_name, required: true }
+  - { name: company_name, required: true }
+  - { name: reports_to, required: false }
+defaults:
+  runtime: claude-cli
+  model: writer
+  autonomy: 0
+  monthly_budget_usd: 5
+  max_turns: 20
+  # no heartbeat: runs when given a task
+skills: [company-voice]

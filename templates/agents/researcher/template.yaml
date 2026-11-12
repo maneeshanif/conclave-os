@@ -1,0 +1,19 @@
+# Agent template: researcher. Neutral sources only; the renderer writes each harness's own format (SPEC 5).
+key: researcher
+version: 1
+description: "Finds and checks facts. Reports each fact with where it came from."
+params:
+  - { name: id, required: true }
+  - { name: name, required: true }
+  - { name: department, required: true }
+  - { name: department_name, required: true }
+  - { name: company_name, required: true }
+  - { name: reports_to, required: false }
+defaults:
+  runtime: claude-cli
+  model: researcher
+  autonomy: 0
+  monthly_budget_usd: 5
+  max_turns: 25
+  # no heartbeat: runs when given a task
+skills: [cite-sources]

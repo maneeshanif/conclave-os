@@ -1,0 +1,8 @@
+# Neutral permission rules (SPEC 5, default permissions). The renderer maps these to each harness.
+# shell and network writes are denied for every template except coder and code reviewer.
+read: allow
+write: allow
+shell: deny
+web_search: allow
+web_fetch: allow
+subagents: deny
