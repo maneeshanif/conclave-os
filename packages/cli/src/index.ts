@@ -12,12 +12,6 @@ const usage = `Usage:
 async function main(argv: string[]): Promise<number> {
   const [command, ...rest] = argv;
   switch (command) {
-    case 'db:migrate': {
-      const sys = await openSystem(process.env, (m) => console.log(m));
-      console.log(`database ready on 127.0.0.1:${sys.creds.port}, workspace "${sys.workspace.name}" (${sys.workspace.id})`);
-      await sys.close();
-      return 0;
-    }
     case 'agent:new': {
       const { values, positionals } = parseArgs({
         args: rest,

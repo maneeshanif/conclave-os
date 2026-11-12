@@ -1,5 +1,5 @@
 import type pg from 'pg';
-import { withWorkspace } from '../db/tenancy';
+import { withWorkspace } from '../db/tenant';
 import type { Company } from './loader';
 
 export interface SyncResult {
@@ -14,7 +14,7 @@ export interface SyncResult {
  * truth for its front matter). Status and spend live only in the database and are kept.
  */
 export async function syncCompany(pool: pg.Pool, workspaceId: string, company: Company): Promise<SyncResult> {
-  return withWorkspace(pool, workspaceId, async (c) => {
+  return withWorkspace(pool, workspaceId, async ({ client: c }) => {
     const deptIds = new Map<string, string>();
     for (const d of company.departments) {
       const r = await c.query<{ id: string }>(

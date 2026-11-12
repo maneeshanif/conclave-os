@@ -1,6 +1,6 @@
 import { spawn } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -68,6 +68,7 @@ export async function startDatabase({ dataDir, port }: StartOptions): Promise<Da
   const firstStart = credentials === undefined;
 
   const superuserPassword = secret(); // used once below, then dropped with this scope
+  const isRoot = typeof process.getuid === 'function' && process.getuid() === 0;
 
   // Keep the last lines Postgres printed, so a failed start can say why. The library rejects with
   // `undefined` when the process exits early, which tells nobody anything.
@@ -96,6 +97,8 @@ export async function startDatabase({ dataDir, port }: StartOptions): Promise<Da
       '--no-sync',
     ],
     postgresFlags: ['-c', `listen_addresses=${HOST}`],
+    // Postgres refuses to run as root. On Linux as root (CI, containers) the library runs it as its own user.
+    createPostgresUser: isRoot,
     onLog: (message) => {
       remember(message);
       if (debug) console.log('[postgres]', String(message).trim());
@@ -108,6 +111,10 @@ export async function startDatabase({ dataDir, port }: StartOptions): Promise<Da
 
   let started = false;
   try {
+    if (firstStart && isRoot) {
+      mkdirSync(dataDir, { recursive: true });
+      chmodSync(dataDir, 0o755); // the postgres user must be able to reach its folder
+    }
     if (firstStart) await pg.initialise();
     await startPostgres(pg, port, recent);
     started = true;

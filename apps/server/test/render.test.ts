@@ -69,6 +69,9 @@ describe('template renderer (S0-4)', () => {
     const settings = JSON.parse(await readFile(path.join(out.dir, '.claude/settings.json'), 'utf8'));
     expect(settings.permissions.deny).toContain('Bash');
     expect(settings.permissions.allow).not.toContain('Bash');
+    // File tools are scoped to the working folder; unscoped search tools are denied (checked with the real CLI).
+    expect(settings.permissions.allow).toEqual(['Read(./**)', 'Write(./**)', 'Edit(./**)', 'mcp__os']);
+    expect(settings.permissions.deny).toEqual(expect.arrayContaining(['Glob', 'Grep', 'WebFetch']));
     expect(await readFile(path.join(out.dir, 'CLAUDE.md'), 'utf8')).toMatchSnapshot();
     const mcp = JSON.parse(await readFile(path.join(out.dir, '.mcp.json'), 'utf8'));
     expect(mcp.mcpServers.os.url).toBe('http://127.0.0.1:3100/mcp');
