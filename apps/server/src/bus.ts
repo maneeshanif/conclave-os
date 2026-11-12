@@ -7,7 +7,8 @@ export type BusMessage =
   | { kind: 'run.state'; workspaceId: string; runId: string; taskId: string | null; status: string; error?: string }
   | { kind: 'task.changed'; workspaceId: string; taskId: string }
   | { kind: 'approval.changed'; workspaceId: string; approvalId: string; status: string }
-  | { kind: 'settings.changed'; workspaceId: string };
+  | { kind: 'settings.changed'; workspaceId: string }
+  | { kind: 'action_item.changed'; workspaceId: string; itemId: string };
 
 export class Bus {
   private ee = new EventEmitter();

@@ -78,6 +78,19 @@ export interface Approval {
   lead?: { id: string; business_name: string | null; website: string | null; email: string | null; stage: string; notes: string | null } | null;
 }
 
+/** Something that needs the founder. `derived` ones come from live state and clear themselves. */
+export interface ActionItem {
+  id: string;
+  kind: string;
+  title: string;
+  body: string | null;
+  status: string;
+  task_id: string | null;
+  approval_id: string | null;
+  created_at: string | null;
+  derived?: boolean;
+}
+
 /** What the person decided. An edit carries only the text that may change on an email: the subject and the message. */
 export interface DecisionBody {
   approved: boolean;
@@ -101,5 +114,7 @@ export const api = {
   retry: (id: string) => call<{ ok: true }>(`/api/tasks/${id}`, { method: 'PATCH', body: JSON.stringify({ status: 'todo' }) }),
   runAgent: (id: string) => call<{ requested: true }>(`/api/agents/${id}/run`, { method: 'POST' }),
   approvals: (status?: string) => call<Approval[]>(`/api/approvals${status ? `?status=${encodeURIComponent(status)}` : ''}`),
+  actionItems: () => call<ActionItem[]>('/api/action-items'),
+  resolve: (id: string, note?: string) => call<{ id: string; status: string }>(`/api/action-items/${id}/resolve`, { method: 'POST', body: JSON.stringify(note ? { note } : {}) }),
   decide: (id: string, body: DecisionBody) => call<{ id: string; status: string }>(`/api/approvals/${id}/decide`, { method: 'POST', body: JSON.stringify(body) }),
 };

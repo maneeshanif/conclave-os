@@ -2,6 +2,14 @@
 
 Newest first. One entry per decision: what, why, and what it replaced.
 
+## 2026-11-12 (S1-9: action items)
+
+- **Two kinds of item.** Recorded items are rows in action_items (a question from ask_founder, a failed send, a send of unknown outcome) and are resolved by hand. A blocked task with no open question and the kill switch being on are derived from live state, have no row and clear themselves, so they cannot be resolved (the API says 404 for them; the page shows no button). A task that is blocked because of a question appears once, as the question.
+- **Resolving records and nothing else.** It stores who, when and an optional note, writes an audit line, and announces action_item.changed. It never unblocks, restarts or sends anything: the task stays blocked until someone moves it. A second resolve is refused with 409 and records nothing more.
+- **A failure shows once.** A unique index on (workspace, approval, kind) stops the same failure being recorded twice, and the executor inserts now say on conflict do nothing. Migration 0007 adds task_id (composite FK to tasks), resolved_at, resolved_by, resolution_note and that index.
+- **ask_founder now writes the item,** in the same transaction that blocks the task, so the question cannot be lost between the two.
+- **/action-items page,** "Needs you", linked from the home page; it refreshes on action, task, settings and approval changes. Like the inbox it is tested in jsdom and has not been looked at in a browser yet (S1-12).
+
 ## 2026-11-12 (S1-8: the approvals inbox page)
 
 - **/approvals lists what is pending, one card each.** An email card shows who it goes to, the lead and site it rests on, the findings recorded for the lead, who proposed it, and the full subject and message as editable fields. Approve and Reject sit under it, with an optional note. Any other kind of approval shows its payload as plain text with the same two buttons and nothing to edit.

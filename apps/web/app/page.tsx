@@ -125,6 +125,9 @@ export default function Home() {
           <Link href="/approvals" className="text-sm font-medium underline">
             Approvals
           </Link>
+          <Link href="/action-items" className="text-sm font-medium underline">
+            Needs you
+          </Link>
           <span className={`text-xs ${live ? 'text-green-700' : 'text-neutral-400'}`}>{live ? '● live' : '○ offline'}</span>
         </div>
       </header>

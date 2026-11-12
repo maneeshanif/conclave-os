@@ -447,11 +447,18 @@ export const actionItems = pgTable(
     title: text('title').notNull(),
     body: text('body'),
     approvalId: uuid('approval_id'),
+    taskId: uuid('task_id'),
     status: text('status').notNull().default('open'), // open | done
+    resolvedAt: timestamp('resolved_at', { withTimezone: true }),
+    resolvedBy: text('resolved_by'),
+    resolutionNote: text('resolution_note'),
     createdAt: createdAt(),
   },
   (t) => [
     unique('action_items_ws_id_uq').on(t.workspaceId, t.id),
+    // One item per approval and kind: a failure that is recorded twice still shows once.
+    uniqueIndex('action_items_approval_kind_uq').on(t.workspaceId, t.approvalId, t.kind).where(sql`${t.approvalId} is not null`),
+    foreignKey({ name: 'action_items_task_fk', columns: [t.workspaceId, t.taskId], foreignColumns: [tasks.workspaceId, tasks.id] }),
     foreignKey({ name: 'action_items_approval_fk', columns: [t.workspaceId, t.approvalId], foreignColumns: [approvals.workspaceId, approvals.id] }),
   ],
 );

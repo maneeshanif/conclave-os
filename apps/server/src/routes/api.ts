@@ -6,6 +6,7 @@ import type { Bus } from '../bus';
 import type { Dispatcher } from '../workflows/dispatch';
 import { approvalRoutes, type ApprovalDecision } from './approvals';
 import { leadRoutes } from './leads';
+import { actionItemRoutes } from './action-items';
 import { settingsRoutes } from './settings';
 import { suppressionRoutes } from './suppression';
 
@@ -31,6 +32,7 @@ export function apiRoutes(deps: { workspaceId: string; dispatcher: Dispatcher; b
 
   r.route('/approvals', approvalRoutes({ workspaceId: ws, bus: deps.bus, onDecided: deps.onApprovalDecided }));
   r.route('/leads', leadRoutes({ workspaceId: ws, bus: deps.bus }));
+  r.route('/action-items', actionItemRoutes({ workspaceId: ws, bus: deps.bus }));
   r.route('/suppression', suppressionRoutes({ workspaceId: ws }));
   r.route('/settings', settingsRoutes({ workspaceId: ws, bus: deps.bus, onKillSwitch: deps.onKillSwitch, onReleaseHeld: deps.onReleaseHeld }));
 

@@ -136,7 +136,7 @@ Work them in order. Tick each when its test passes.
   A web page listing pending cards: for an email, the recipient, the full message, the findings it rests on, with approve, reject and edit. Updates arrive over the existing socket. No login yet (S1-10).
   *Test:* a component test that a pending email card shows recipient, subject, body and findings; approving calls the API with the edited text; a decided card leaves the list.
 
-- [ ] **S1-9 Action items.** SPEC 11, 12.
+- [x] **S1-9 Action items.** SPEC 11, 12.
   An `action_items` table and `/api/action-items` for what needs the founder: blocked tasks, `ask_founder` questions, failed approvals, the kill switch being on. A page lists them.
   *Test:* an `ask_founder` call creates an item; resolving it unblocks nothing by itself but is recorded; a failed approval appears once.
 

@@ -113,7 +113,7 @@ export async function executeEmail(deps: ExecutorDeps, approvalId: string): Prom
         [approvalId, outreach, (result.ref as string | undefined) ?? null],
       );
       if (item) {
-        await c.query('insert into action_items (workspace_id, kind, title, body, approval_id) values ($1, $2, $3, $4, $5)', [ws, item.kind, item.title, item.body, approvalId]);
+        await c.query('insert into action_items (workspace_id, kind, title, body, approval_id) values ($1, $2, $3, $4, $5) on conflict do nothing', [ws, item.kind, item.title, item.body, approvalId]);
       }
       await c.query("insert into audit_log (workspace_id, actor, action, subject, data) values ($1, 'executor:email', $2, $3, $4)", [
         ws,
@@ -197,7 +197,7 @@ export async function recoverApprovals(deps: ExecutorDeps): Promise<{ resumed: s
     await withWorkspace(deps.pool, ws, async ({ client: c }) => {
       await c.query("update approvals set status = 'failed', result = $2 where id = $1 and status = 'executing'", [id, JSON.stringify({ reason: 'interrupted while sending; outcome unknown' })]);
       await c.query("update outreach_messages set status = 'failed' where approval_id = $1", [id]);
-      await c.query("insert into action_items (workspace_id, kind, title, body, approval_id) values ($1, 'send_unknown', 'An email may or may not have been sent', 'The server stopped while this email was being sent. It was not resent. Check the provider before approving a new copy.', $2)", [ws, id]);
+      await c.query("insert into action_items (workspace_id, kind, title, body, approval_id) values ($1, 'send_unknown', 'An email may or may not have been sent', 'The server stopped while this email was being sent. It was not resent. Check the provider before approving a new copy.', $2) on conflict do nothing", [ws, id]);
     });
   }
   // In the order they were decided. One that is over a cap stays approved and is reported, so the gate can try again when there is room.

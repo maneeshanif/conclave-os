@@ -129,6 +129,7 @@ export class DbOsStore implements OsStore {
     await this.inTask(scope, async (c, taskId, key) => {
       await c.query("insert into messages (workspace_id, task_id, from_id, to_id, body) values ($1, $2, $3, 'founder', $4)", [scope.workspaceId, taskId, `agent:${key}`, question]);
       await c.query("update tasks set status = 'blocked', blocked_reason = $2, locked_by = null where id = $1", [taskId, `Waiting for the founder: ${question}`]);
+      await c.query("insert into action_items (workspace_id, kind, title, body, task_id) values ($1, 'question', $2, $3, $4)", [scope.workspaceId, `A question from ${key}`, question, taskId]);
     });
   }
 }
