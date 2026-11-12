@@ -1,6 +1,7 @@
 import type pg from 'pg';
 import type { Bus } from '../bus';
 import { withWorkspace } from '../db/tenant';
+import { failureClass } from './failure';
 import { reapRuns } from './reaper';
 import { claudeToolLists } from './permissions';
 import { cleanWorkFolder, loadTemplate } from './render';
@@ -19,6 +20,11 @@ export interface LoopDeps {
   templatesRoot: string;
   /** Run timeout; default 15 minutes. */
   timeoutMs?: number;
+  /**
+   * Retry a transient model error (SPEC 14): wait the first delay, try again, wait the next, and so on, then the agent's
+   * fallback model once. Without it a run makes a single attempt.
+   */
+  retry?: { delaysMs: number[]; sleep?: (ms: number) => Promise<void> };
   /** Renders the agent's folder again from its role file. Called before every run. */
   prepare?: (agentKey: string) => Promise<void>;
 }
@@ -40,6 +46,7 @@ interface AgentRow {
   status: string;
   runtime: RuntimeName;
   model_alias: string;
+  fallback_alias: string | null;
   max_turns: number;
   template_key: string | null;
   department: string | null;
@@ -130,7 +137,7 @@ export async function reapStaleRuns(pool: pg.Pool, workspaceId: string): Promise
 export async function executeRun(deps: LoopDeps, workspaceId: string, agentId: string, trigger: string): Promise<RunOutcome> {
   const agent = await withWorkspace(deps.pool, workspaceId, async ({ client: c }) => {
     const r = await c.query<AgentRow>(
-      `select a.id, a.key, a.name, a.status, a.runtime, a.model_alias, a.max_turns, t.key as template_key, d.name as department
+      `select a.id, a.key, a.name, a.status, a.runtime, a.model_alias, a.fallback_alias, a.max_turns, t.key as template_key, d.name as department
        from agents a left join agent_templates t on t.id = a.template_id left join departments d on d.id = a.department_id
        where a.id = $1`,
       [agentId],
@@ -171,6 +178,12 @@ export async function executeRun(deps: LoopDeps, workspaceId: string, agentId: s
   let tin = 0;
   let tout = 0;
   let sessionId: string | undefined;
+  // Retry plan (S3-2): the waits on the agent's own model, then the fallback model once.
+  let alias = agent.model_alias;
+  let attempts = 0;
+  let planStep = 0;
+  let onFallback = false;
+  const plan = deps.retry ? [...deps.retry.delaysMs.map((wait) => ({ alias: agent.model_alias, wait, fallback: false })), ...(agent.fallback_alias ? [{ alias: agent.fallback_alias, wait: 0, fallback: true }] : [])] : [];
   active.set(runId, runtime);
   try {
     await audit(deps.pool, workspaceId, 'run.running', runId, { agent: agent.key, task: task.id, trigger });
@@ -187,6 +200,9 @@ export async function executeRun(deps: LoopDeps, workspaceId: string, agentId: s
     let tools: { allow: string[]; deny: string[] } = { allow: [], deny: [] };
     if (agent.template_key) tools = claudeToolLists((await loadTemplate(deps.templatesRoot, agent.template_key)).permissions);
 
+    for (;;) {
+    attempts++;
+    final = undefined;
     for await (const e of runtime.start({
       runId,
       workspaceId,
@@ -196,13 +212,13 @@ export async function executeRun(deps: LoopDeps, workspaceId: string, agentId: s
       instructions,
       taskInput,
       workspaceDir,
-      modelAlias: agent.model_alias,
+      modelAlias: alias,
       maxTurns: agent.max_turns,
       runToken: token,
       timeoutMs: deps.timeoutMs ?? 900_000,
       allowedTools: tools.allow,
       deniedTools: tools.deny,
-      ...(task.session_id ? { sessionId: task.session_id } : {}),
+      ...((sessionId ?? task.session_id) ? { sessionId: (sessionId ?? task.session_id)! } : {}),
     })) {
       seq++;
       if (e.type === 'cost') {
@@ -228,6 +244,21 @@ export async function executeRun(deps: LoopDeps, workspaceId: string, agentId: s
         console.error(`run ${runId}: could not store an event:`, (err as Error).message);
       }
       deps.bus.publish({ kind: 'run.event', workspaceId, runId, taskId: task.id, seq, event: e });
+    }
+    // A transient error (rate limit, overload, network) is retried with growing waits, then once on the fallback model.
+    // Anything else, a plan limit included, ends the run here. The kill switch is looked at before and after each wait.
+    const next = plan[planStep];
+    if (final?.type === 'error' && next && failureClass(final) === 'transient' && !(await killSwitchOn(deps.pool, workspaceId))) {
+      planStep++;
+      const note = { attempt: planStep, waitMs: next.wait, model: next.alias, fallback: next.fallback, after: final.message.slice(0, 300) };
+      await withWorkspace(deps.pool, workspaceId, ({ client: c }) => c.query('insert into run_events (workspace_id, run_id, type, data) values ($1, $2, $3, $4)', [workspaceId, runId, 'retry', JSON.stringify(note)])).catch(() => undefined);
+      await (deps.retry?.sleep ?? ((ms: number) => new Promise<void>((r) => setTimeout(r, ms))))(next.wait);
+      if (await killSwitchOn(deps.pool, workspaceId)) break;
+      alias = next.alias;
+      onFallback = next.fallback;
+      continue;
+    }
+    break;
     }
   } catch (err) {
     final = { type: 'error', kind: 'runtime', message: (err as Error).message };
@@ -259,7 +290,7 @@ export async function executeRun(deps: LoopDeps, workspaceId: string, agentId: s
       } else {
         await c.query("update tasks set status = 'blocked', blocked_reason = $2, locked_by = null where id = $1", [
           task.id,
-          `Run ${status}: ${error?.kind}: ${error?.message ?? ''}`.slice(0, 2000),
+          `Run ${status}: ${error?.kind}: ${error?.message ?? ''}${attempts > 1 ? ` (after ${attempts} attempts${onFallback ? ', the last on the fallback model' : ''})` : ''}`.slice(0, 2000),
         ]);
       }
     }

@@ -2,6 +2,15 @@
 
 Newest first. One entry per decision: what, why, and what it replaced.
 
+## 2026-11-13 (S3-2: retry, backoff and the fallback model)
+
+- **Failures are sorted into four classes** (src/harness/failure.ts): transient (rate limit, overload, a 5xx, a network error), plan limit (a usage limit or quota), auth, and permanent (a crash, a bad config, too many turns, a timeout, a cancel). Only transient is retried. A plan limit and an auth error end the run at once, the first for S3-3 to pause the runtime and the second because only a person can fix a sign-in.
+- **The retry plan:** after a transient error the run waits and tries again, three times (5 seconds, 20 seconds, a minute in the real server), and then once on the agent's fallback_model if it has one, then the task is blocked with the last error and what was tried ("after 4 attempts, the last on the fallback model"). The waits are a setting of the loop, not of the model, and tests inject their own so nothing sleeps.
+- **A retry continues the same run and the same session.** It is one run row with the cost of every attempt added up, a `retry` event for each wait (what failed, how long, which model), and the session the first attempt reported passed to the next, so the agent resumes where it was. The attempts are visible in the run log.
+- **The kill switch is looked at before and after each wait,** so turning it on during a backoff ends the retrying instead of starting a new attempt.
+- **Retries are off unless configured:** without a retry setting a run makes one attempt, as before, so nothing existing changed. The server turns them on.
+- **A caution I am leaving here:** a retry after a half-finished run can repeat a tool call that already worked. The os tools that write are safe to repeat (a proposal, a lead and a score all dedupe or replace; a comment would repeat), and the executors that act on the outside world are never retried by this: they run only after an approval is claimed, once.
+
 ## 2026-11-13 (S3-1: the reaper)
 
 - **A run that stops heartbeating is failed and its task goes back.** src/harness/reaper.ts finds runs still running or queued whose last heartbeat is more than 2 minutes old and which this process is not running (a quiet run that is alive is never reaped), marks them failed with the reason, releases the task and puts it back to todo with its session id, so the next run resumes. A task that has now failed three times in a row (counting only the streak since the last run that did not fail) is blocked with the reasons instead. A task a person has since moved or cancelled is left as they left it. Running it again changes nothing.

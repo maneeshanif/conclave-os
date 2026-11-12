@@ -243,7 +243,7 @@ Recorded 2026-11-13. Nothing here is built ahead of its slice (CLAUDE.md, Stack)
   A job that finds runs whose `heartbeat_at` has gone stale, marks them failed, releases the task lock and puts the task back to todo with its session id, so the next run resumes. A task whose third run in a row has failed is blocked with the reasons. Runs the server itself is still executing are never reaped.
   *Test:* a run that stops heartbeating is reaped once and its task requeued with the session id; a live run is left alone; the third failure blocks the task; reaping twice changes nothing; the kill switch does not stop the reaper.
 
-- [ ] **S3-2 Retry, backoff and the fallback model.** SPEC 14 (Model API error), SPEC 7.
+- [x] **S3-2 Retry, backoff and the fallback model.** SPEC 14 (Model API error), SPEC 7.
   A transient runtime error (rate limit, overload, network) retries the step with growing waits; then the agent's `fallback_model` alias; then the task is blocked with the reason. A non-transient error (auth, bad input) does not retry.
   *Test:* with a scripted runtime that fails N times: retries are spaced, the fallback is used after the retries, the task is blocked with the reason after that; an auth error blocks at once; each attempt is a row in the run's events.
 
