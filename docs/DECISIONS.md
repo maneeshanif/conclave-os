@@ -2,6 +2,13 @@
 
 Newest first. One entry per decision: what, why, and what it replaced.
 
+## 2026-11-12 (local model check on the laptop)
+
+- **The machine.** 15.7 GB of RAM, about 3.2 GB free with Chrome, VS Code and Claude Code open. GPU: an NVIDIA MX550 with 2 GB of VRAM (and Intel Iris Xe), which cannot hold a 7B model, so a local model runs on the CPU and in RAM.
+- **What is installed in Ollama.** `gemma4:latest` (7.5B parameters, Q4_K_M, 6.6 GB; its description lists tools, thinking, vision and audio), `nomic-embed-text` (274 MB, an embedding model, the natural fit for slice 8 memory) and `gpt-oss:120b-cloud`.
+- **The only local candidate that fits 16 GB is `gemma4:latest`,** and only with about 8 GB free (weights plus a modest context; its 131k default context must be capped). It is a candidate, not a choice: its description saying it supports tools is not evidence. Per the rule above, it becomes `local-worker` only after `apps/server/test/real-local-model.test.ts` passes (the real opencode binary, the real model, the real `os` server: get_task then complete_task with a run token, a real answer, no shell, no token leak). The test is written and skipped until you opt in, and it refuses to load the model when too little RAM is free. The `local-worker` alias in `config/models.ts` is unchanged and still a placeholder (`qwen3:8b` is not installed here).
+- **`gpt-oss:120b-cloud` is not used for anything.** It runs on Ollama's servers, not here.
+
 ## 2026-11-12 (e2e on the Windows laptop)
 
 - **S0-11 on Windows: Claude Code passes, OpenCode is blocked by an expired OpenCode key.** `pnpm run e2e` ran the researcher on `claude-cli`: task done, answer in the thread with line references, run log free of this repo's CLAUDE.md. On `opencode` (alias `any-model`, which means OpenCode's own default model) the run failed before it started with an expired-key message from OpenCode, so the task was blocked with that reason and nothing was sent. The build does not create or replace keys; the step is in NEEDS-YOU. Per S0-11, the box stays as it was until OpenCode has a working provider, and this entry is the record.
