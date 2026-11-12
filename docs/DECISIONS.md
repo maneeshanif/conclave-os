@@ -2,6 +2,16 @@
 
 Newest first. One entry per decision: what, why, and what it replaced.
 
+## 2026-11-12 (S2-9: the Goals screen)
+
+- **Read-only, on purpose.** The BUILD text said "create, edit". But the goals already come from company/goals.yaml, which the server copies into the database at start; an edit made in the database would be overwritten at the next start, so a second way to edit would lie. Goals change in the file, like departments and agents, and the page says so. If an in-app editor is wanted later it should rewrite the file, and that is its own task.
+- **Progress is measured, never typed.** src/goals/metrics.ts is the list of what can be counted, each a query: monthly_revenue_usd (value of deals won this calendar month, via their client project; a stand-in until payments are recorded), qualified_leads_per_week (verified, scored 70 or more, added in the last 7 days; 70 is the line the score-lead skill draws), positive_replies_per_week (people, not messages), and stage_exits_per_week / stage_exits_per_month (deals that left a named funnel stage in the last 7 / 30 days). A metric name not in the list is shown as "not measured" with no bar and no number, not as zero.
+- **Department goals can name a target and a stage in the file.** goals.yaml now has target and (for the stage metrics) stage: funnel/stage per department goal; the loader refuses a stage that is not in funnels.yaml, naming both files. I replaced the two metric names that nothing could count (concepts_delivered_per_week, slice_sessions_per_month) with stage_exits_per_week on services/free-concept and stage_exits_per_month on product/slice-session, and put example targets in (20 leads, 3 positive replies, 2 concepts a week, 3 slice sessions a month). They are examples, as the file already said of its dates: set your own.
+- **A goal taken out of the file is retired,** not deleted (status retired, hidden from the page), so renaming a metric does not leave the old row showing next to the new one.
+- **The ladder shows revenue against every rung** (the same revenue against each target), the current rung first and marked, and "met" once the number reaches the target; the bar stops at full while the text can say 115%.
+- **Not built:** "working backwards from the current rung to daily activity" (SPEC 3). It needs your planning rates (average first build, concept to build, reply rates), which are still TODO in goals.yaml; with them null there is nothing honest to compute. When you fill them in, that becomes a small task.
+- Page: /goals, linked from the home page, with component tests (progress bars readable by a screen reader, "not measured", met, empty and unreachable states). Like the other pages it is tested in jsdom and builds; a first look in a browser is still yours.
+
 ## 2026-11-12 (S2-8: heartbeats, leads every morning)
 
 - **A scheduled time is handled exactly once,** however many tickers run and however often the server restarts. The agent's row (agents.last_heartbeat_at, migration 0020) stores the last scheduled time handled, and the ticker claims a time with one conditional update, so three tickers at the same moment make one request, and a restart that empties the ticker's memory does not ask again. The old in-memory map is still honoured.

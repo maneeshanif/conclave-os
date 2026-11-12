@@ -128,6 +128,9 @@ export default function Home() {
           <Link href="/action-items" className="text-sm font-medium underline">
             Needs you
           </Link>
+          <Link href="/goals" className="text-sm font-medium underline">
+            Goals
+          </Link>
           <span className={`text-xs ${live ? 'text-green-700' : 'text-neutral-400'}`}>{live ? '● live' : '○ offline'}</span>
         </div>
       </header>

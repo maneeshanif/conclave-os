@@ -44,11 +44,12 @@ export async function syncCompany(pool: pg.Pool, workspaceId: string, company: C
     let deptGoals = 0;
     for (const [dept, g] of Object.entries(company.goals.department_goals)) {
       await c.query(
-        `insert into goals (workspace_id, key, kind, parent_id, department_id, title, metric)
-         values ($1, $2, 'department', $3, $4, $5, $6)
+        `insert into goals (workspace_id, key, kind, parent_id, department_id, title, metric, target, source)
+         values ($1, $2, 'department', $3, $4, $5, $6, $7, $8)
          on conflict (workspace_id, key) do update set parent_id = excluded.parent_id,
-           department_id = excluded.department_id, title = excluded.title, metric = excluded.metric`,
-        [workspaceId, `${dept}:${g.metric}`, rungIds.get(g.serves), deptIds.get(dept), `${dept}: ${g.metric}`, g.metric],
+           department_id = excluded.department_id, title = excluded.title, metric = excluded.metric,
+           target = excluded.target, source = excluded.source, status = 'active'`,
+        [workspaceId, `${dept}:${g.metric}`, rungIds.get(g.serves), deptIds.get(dept), `${dept}: ${g.metric}`, g.metric, g.target ?? null, g.stage ?? null],
       );
       deptGoals++;
     }
@@ -75,6 +76,10 @@ export async function syncCompany(pool: pg.Pool, workspaceId: string, company: C
       }
       await c.query('update funnel_stages set retired = true where funnel_id = $1 and not (key = any($2::text[]))', [funnelId, f.stages.map((s) => s.key)]);
     }
+
+    // A goal taken out of the file is retired, not deleted, so its history stays and nothing points at nothing.
+    const keep = [...company.goals.ladder.map((x) => x.id), ...Object.entries(company.goals.department_goals).map(([d, g]) => `${d}:${g.metric}`)];
+    await c.query("update goals set status = 'retired' where workspace_id = $1 and status <> 'retired' and not (key = any($2::text[]))", [workspaceId, keep]);
 
     const agentIds = new Map<string, string>();
     for (const a of company.agents) {

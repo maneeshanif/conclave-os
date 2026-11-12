@@ -25,7 +25,17 @@ export const GoalsFileSchema = z.object({
   current_rung: key,
   planning_rates: z.record(z.string(), z.number().nullable()).optional(),
   department_goals: z
-    .record(key, z.object({ metric: z.string().min(1), serves: key }))
+    .record(
+      key,
+      z.object({
+        metric: z.string().min(1),
+        serves: key,
+        /** How much per period counts as meeting it. Your own number. */
+        target: z.number().positive().optional(),
+        /** For the stage_exits metrics: which funnel stage, written funnel/stage, such as services/free-concept. */
+        stage: z.string().regex(/^[a-z0-9-]+\/[a-z0-9-]+$/, 'write it as funnel/stage, such as services/free-concept').optional(),
+      }),
+    )
     .optional()
     .default({}),
 });

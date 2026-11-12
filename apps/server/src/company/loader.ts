@@ -136,6 +136,14 @@ export async function loadCompany(root: string): Promise<Company> {
     }
   }
 
+  // A goal that counts a funnel stage must name one that exists.
+  if (funnels.length) {
+    const stageKeys = new Set(funnels.flatMap((f) => f.stages.map((s) => `${f.key}/${s.key}`)));
+    for (const [dept, g] of Object.entries(goals.department_goals)) {
+      if (g.stage && !stageKeys.has(g.stage)) throw new CompanyLoadError('goals.yaml', `department_goals.${dept} counts stage "${g.stage}", which is not in funnels.yaml`);
+    }
+  }
+
   const agents: LoadedAgent[] = [];
   const deptRoot = path.join(root, 'departments');
   if (await exists(deptRoot)) {

@@ -5,6 +5,7 @@ import type { AppEnv } from '../app';
 import type { Bus } from '../bus';
 import type { Dispatcher } from '../workflows/dispatch';
 import { approvalRoutes, type ApprovalDecision } from './approvals';
+import { goalRoutes } from './goals';
 import { leadRoutes } from './leads';
 import { actionItemRoutes } from './action-items';
 import { campaignRoutes } from './campaigns';
@@ -39,6 +40,7 @@ export function apiRoutes(deps: { workspaceId: string; dispatcher: Dispatcher; b
   r.route('/', crmRoutes({ workspaceId: ws, bus: deps.bus }));
   r.route('/', campaignRoutes({ workspaceId: ws, bus: deps.bus }));
   r.route('/', reportRoutes());
+  r.route('/', goalRoutes());
   r.route('/', threadRoutes({ workspaceId: ws, bus: deps.bus }));
   r.route('/action-items', actionItemRoutes({ workspaceId: ws, bus: deps.bus }));
   r.route('/suppression', suppressionRoutes({ workspaceId: ws }));

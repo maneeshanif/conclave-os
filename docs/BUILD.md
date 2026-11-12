@@ -199,7 +199,7 @@ Work them in order. Tick each when its test passes.
   A role-file `heartbeat` (cron in the company's time zone) that the ticker honours. The prospector runs each morning and produces scored leads; the run is skipped while the kill switch is on.
   *Test:* with a fake clock the ticker starts the prospector once per morning, not twice, and not at all while the kill switch is on; a missed day is not replayed in a burst after a restart.
 
-- [ ] **S2-9 The Goals screen.** SPEC 12.
+- [x] **S2-9 The Goals screen.** SPEC 12.
   `/api/goals` over the existing `goals` table (create, edit, progress read from queries, not typed) and a Goals page.
   *Test:* progress for "leads this week" and "deals won" comes from the tables and changes when they do; the page lists goals with their numbers.
 
