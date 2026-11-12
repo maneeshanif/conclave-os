@@ -80,7 +80,7 @@ Work them in order. Tick each when its test passes.
   Run `pnpm agent:new researcher --department research`. Give it the task "List five facts from the company file, each with the line it came from", with `company/COMPANY.md` passed in the task context. Fire a run. Then change the role file's `runtime` to `opencode` and its `model` to an alias that lists `opencode`, render again, and fire the same task.
   *Test, by hand:* both runs end `done`, each answer is in its task thread, every step is visible on the task page, and neither run log contains text from this repo's `CLAUDE.md`. If OpenCode is not installed or has no provider yet, record that in `docs/DECISIONS.md` and leave this box unticked until it is.
 
-- [ ] **S0-12 Windows process handling.** SPEC 5 (the runner), 14.
+- [x] **S0-12 Windows process handling.** SPEC 5 (the runner), 14.
   Resolve an npm `.cmd` shim to `node` plus its script and spawn without a shell; quote `health()` arguments the same way. On win32, cancel with `taskkill /pid <pid> /T /F` so the child's own children die too.
   *Test:* unit tests for the shim resolver on a fake `.cmd` file and for the kill command chosen per platform; by hand on Windows, a cancelled run leaves no `claude` or `opencode` process.
 

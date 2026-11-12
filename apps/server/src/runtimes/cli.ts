@@ -1,5 +1,4 @@
 import { spawn, type ChildProcess } from 'node:child_process';
-import { existsSync } from 'node:fs';
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { createInterface } from 'node:readline';
@@ -7,6 +6,7 @@ import { modelNameFor, resolveModel } from '../config/models';
 import type { RuntimeName } from './names';
 import { claudeParser, opencodeParser, type Parser } from './parsers';
 import { RUN_TOKEN_ENV, type RunEvent, type RunRequest, type Runtime, type RuntimeHealth } from './types';
+import { killTree, resolveWindowsCommand, spawnArgs, type ResolvedCommand } from './win-process';
 
 /** How to start a CLI. Tests point this at a fake script; production uses the binary on PATH. */
 export interface CliCommand {
@@ -55,25 +55,13 @@ export function cleanEnv(
   return { ...env, ...extra };
 }
 
-/** On Windows, finds `name.exe` or `name.cmd` on PATH. A `.cmd` needs a shell to start. */
-function resolveCommand(cmd: CliCommand, env: Record<string, string>): { file: string; args: string[]; shell: boolean } {
-  const prefix = cmd.prefixArgs ?? [];
-  if (process.platform !== 'win32' || path.isAbsolute(cmd.command)) {
-    return { file: cmd.command, args: prefix, shell: false };
-  }
-  const exts = (env.PATHEXT ?? '.EXE;.CMD;.BAT').split(';').map((e) => e.toLowerCase());
-  for (const dir of (env.PATH ?? '').split(';')) {
-    for (const ext of ['.exe', ...exts.filter((e) => e !== '.exe')]) {
-      const full = path.join(dir, cmd.command + ext);
-      if (existsSync(full)) return { file: full, args: prefix, shell: ext !== '.exe' && ext !== '.com' };
-    }
-  }
-  return { file: cmd.command, args: prefix, shell: true };
-}
-
-/** Quotes one argument for cmd.exe. Arguments here are fixed flags and file paths, never user text. */
-function quoteForCmd(a: string): string {
-  return /[\s"&|<>^]/.test(a) ? `"${a.replace(/"/g, '""')}"` : a;
+/**
+ * Elsewhere the command is started as given. On Windows an npm `.cmd` shim is read and the program it forwards
+ * to is started directly, with no shell (see win-process.ts).
+ */
+function resolveCommand(cmd: CliCommand, env: Record<string, string>): ResolvedCommand {
+  if (process.platform !== 'win32') return { file: cmd.command, args: cmd.prefixArgs ?? [], shell: false };
+  return resolveWindowsCommand(cmd, { env });
 }
 
 interface Built {
@@ -182,11 +170,11 @@ export function createCliRuntime(name: 'claude-cli' | 'opencode', opts: CliRunti
       [RUN_TOKEN_ENV]: req.runToken,
     }, opts.envAllowlist);
     const resolved = resolveCommand(command, env);
-    const args = [...resolved.args, ...built.args];
+    const launch = spawnArgs(resolved, built.args);
     // The agent works one level down, in work/, so it cannot touch its own harness config.
     const cwd = path.join(req.workspaceDir, 'work');
     await mkdir(cwd, { recursive: true });
-    const child = spawn(resolved.shell ? quoteForCmd(resolved.file) : resolved.file, resolved.shell ? args.map(quoteForCmd) : args, {
+    const child = spawn(launch.file, launch.args, {
       cwd,
       env,
       shell: resolved.shell,
@@ -208,7 +196,7 @@ export function createCliRuntime(name: 'claude-cli' | 'opencode', opts: CliRunti
     const kill = (reason: RunEvent) => {
       if (killedFor) return;
       killedFor = reason;
-      child.kill();
+      killTree(child);
     };
 
     child.stdin?.on('error', () => undefined);
@@ -279,7 +267,7 @@ export function createCliRuntime(name: 'claude-cli' | 'opencode', opts: CliRunti
       clearTimeout(timer);
       children.delete(req.runId);
       cancelled.delete(req.runId);
-      if (!closed) child.kill();
+      if (!closed) killTree(child);
     }
   }
 
@@ -291,13 +279,14 @@ export function createCliRuntime(name: 'claude-cli' | 'opencode', opts: CliRunti
       const child = children.get(runId);
       if (!child) return;
       cancelled.add(runId);
-      child.kill();
+      killTree(child);
     },
     async health(): Promise<RuntimeHealth> {
       const env = cleanEnv(opts.baseEnv ?? process.env, {});
       const resolved = resolveCommand(command, env);
       return new Promise((resolve) => {
-        const child = spawn(resolved.file, [...resolved.args, '--version'], { env, shell: resolved.shell, windowsHide: true });
+        const launch = spawnArgs(resolved, ['--version']);
+        const child = spawn(launch.file, launch.args, { env, shell: resolved.shell, windowsHide: true });
         let out = '';
         child.stdout?.on('data', (d: Buffer) => (out += d.toString()));
         child.on('error', (err) => resolve({ ok: false, detail: `${command.command} not found: ${err.message}` }));

@@ -2,6 +2,11 @@
 
 Newest first. One entry per decision: what, why, and what it replaced.
 
+## 2026-11-12 (S0-12: Windows process handling)
+
+- **An npm `.cmd` shim is read, not run through a shell.** The resolver parses the shim and starts the program it forwards to: either a native `.exe` (this laptop's `opencode.cmd` does that) or `node` plus a script. A shell is the last resort for a shim it cannot read. Why: a shell adds a process, quoting rules and a second thing to kill. `claude` here is already a native `.exe`. `health()` and `start()` now quote through one function.
+- **Cancel and timeout end the whole process tree on Windows** with `taskkill /pid <pid> /T /F`. `child.kill()` ends only the process we started, and a CLI runs its tools as children. Checked by a test that starts a fake CLI with its own long-lived child, cancels, and finds the child gone. Other platforms keep `child.kill()`.
+
 ## 2026-11-12 (build answers from Anees)
 
 - **All 38 questions are answered** in `docs/QUESTIONS.md`, section "Answers". One branch `dev`, one PR, built mostly on the laptop with the cloud session as a second pair of hands, claims in `docs/PROGRESS.md`.
