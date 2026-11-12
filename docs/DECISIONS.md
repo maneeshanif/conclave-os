@@ -9,6 +9,10 @@ Newest first. One entry per decision: what, why, and what it replaced.
 - **A live AI voice in client calls is wanted,** and built last in slice 10, behind mock-call evals, and it says it is an AI.
 - **Email cap 30 per day, morning brief 13:00 Karachi, backups kept 90 days.** All settings.
 - **Meetings, channels, CRM and tickets sit behind adapters** (several providers each), so a new one is a connector and not a change to the core.
+- **Email cap is a rolling window:** 30 per 5 hours by default, plus a per-day cap, both settings.
+- **Resume after a limit:** laptop `/loop` first, cloud scheduled task as backup, with claims in `PROGRESS.md`.
+- **Meeting consent comes first:** the notice is read at the start of the call, before recording. A "no" stops recording and notifies Anees.
+- **The course-creator company template is a deliverable of slice 9,** documented so another teacher can install it.
 
 ## 2026-11-12 (S0-3 to S0-9, built overnight by Claude in the cloud on top of S0-2)
 

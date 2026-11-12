@@ -134,3 +134,12 @@ Where an answer says "research", the builder researches it, writes the choice an
 - 36. Meeting recording: the Note Taker may only record with the consent notice shown to every participant. The wording is configurable per market, but the notice cannot be switched off. The builder does not build hidden recording. Reason: recording people without telling them is illegal in many places (for example two-party-consent US states, and GDPR in Europe and the UK), and it would expose Anees.
 - 37. Live voice agent in client calls: yes, wanted. Build it last in slice 10, after the Note Taker works, behind evals with mock calls, and it must tell callers it is an AI. Anees's Speko voice connector may be used.
 - 38. Med spa safety rules sign-off: Anees is not sure. Discuss with him in depth before any Vespera pilot. Pilots stay blocked until then.
+
+### Follow-up answers (Anees, 2026-11-12, later)
+
+- **3 (resume).** The builder picks what fits best. Decision: the laptop session runs in `/loop` mode as the main way to resume (it can run Windows tests and Ollama). A cloud scheduled task is the backup only for Linux-side work. Both use the claim line in `docs/PROGRESS.md`.
+- **9 (email cap).** The cap is a rolling window: 30 emails per 5 hours, not per day. Build it as settings (`window_hours` = 5, `window_cap` = 30), plus a per-day cap, so Anees can change both later, like Claude Code's own usage window. Follow-ups count in the same window.
+- **16 (morning brief).** 13:00 Karachi stays. Anees wakes at 14:00, so this is his morning. Keep it a setting.
+- **30 (company templates).** Build the course-creator company template as a real, reusable template folder, so Anees can hand it to another teacher and it works for them with no code change. Write a short `templates/companies/README.md` that says how to install and fill it in.
+- **36 (meeting recording).** The consent notice is shown at the very start of every call, before recording begins, and the Note Taker is only on if nobody objects. If any participant says no, the recording stops (or never starts) and Anees gets a notification so he can talk to them. Recording is never silent.
+- **38.** Parked in `NEEDS-YOU.md`. Discuss later.
