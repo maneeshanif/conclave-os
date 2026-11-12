@@ -1,3 +1,5 @@
+import { rmSync, writeFileSync } from 'node:fs';
+import path from 'node:path';
 import { serve } from '@hono/node-server';
 import { createNodeWebSocket } from '@hono/node-ws';
 import { Hono, type Context } from 'hono';
@@ -75,6 +77,9 @@ const server = serve({ fetch: shell.fetch, port: sys.serverPort, hostname: HOST 
   console.log(`conclave server listening on http://${HOST}:${info.port} (workflows: ${dispatcher.name})`);
 });
 injectWebSocket(server);
+// `pnpm doctor` reads this to report the server's memory (SPEC 17).
+const pidFile = path.join(sys.dataDir, 'server.pid');
+writeFileSync(pidFile, String(process.pid));
 
 let stopping = false;
 async function shutdown() {
@@ -82,6 +87,7 @@ async function shutdown() {
   stopping = true;
   if (ticker) clearInterval(ticker);
   server.close();
+  rmSync(pidFile, { force: true });
   await sys.close();
   process.exit(0);
 }

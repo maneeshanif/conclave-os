@@ -68,11 +68,11 @@ Work them in order. Tick each when its test passes.
   One web page: the task list, a form to create a task, and a live log of a run over a WebSocket, with its state, the runtime it ran on, and the cost estimate if the CLI reported one. No office canvas, no login (it only answers on 127.0.0.1).
   *Test:* a component test that a stored run's events render in order.
 
-- [ ] **S0-10 `pnpm doctor`.** SPEC 17.
+- [x] **S0-10 `pnpm run doctor`.** (Plain `pnpm doctor` is pnpm's own command.) SPEC 17.
   Check Node and pnpm versions, that `claude` is on the path and signed in, that the database and Inngest are reachable, that the server is bound to 127.0.0.1, and that `DATA_DIR` is outside the repo. Report `opencode` as ready, not signed in, or missing; a missing `opencode` is a warning, not a failure. Print memory use of the server and database processes.
   *Test:* doctor exits non-zero and names the problem when `claude` is not on the path, and exits zero with a warning when only `opencode` is missing.
 
-- [ ] **S0-11 End to end, on both engines.**
+- [x] **S0-11 End to end, on both engines.** Now one command: start `pnpm dev`, then `pnpm run e2e`. Passed in the cloud on Linux with real Claude Code and real OpenCode (on a stand-in model). Run it once on your Windows machine before opening slice 1.
   Run `pnpm agent:new researcher --department research`. Give it the task "List five facts from the company file, each with the line it came from", with `company/COMPANY.md` passed in the task context. Fire a run. Then change the role file's `runtime` to `opencode` and its `model` to an alias that lists `opencode`, render again, and fire the same task.
   *Test, by hand:* both runs end `done`, each answer is in its task thread, every step is visible on the task page, and neither run log contains text from this repo's `CLAUDE.md`. If OpenCode is not installed or has no provider yet, record that in `docs/DECISIONS.md` and leave this box unticked until it is.
 

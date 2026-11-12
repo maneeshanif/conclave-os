@@ -7,7 +7,8 @@ const usage = `Usage:
   pnpm db:migrate
   pnpm agent:new <template> --department <key> [--id <id>] [--name <name>] [--runtime <runtime>] [--model <alias>] [--reports-to <id>]
   pnpm agent:render          render every agent's working folder again from its role file
-  pnpm doctor`;
+  pnpm run doctor           (plain 'pnpm doctor' runs pnpm's own doctor)
+  pnpm run e2e              slice 0 end to end on both engines, against a running server`;
 
 async function main(argv: string[]): Promise<number> {
   const [command, ...rest] = argv;
@@ -59,6 +60,10 @@ async function main(argv: string[]): Promise<number> {
         await sys.close();
       }
       return 0;
+    }
+    case 'e2e': {
+      const { e2e } = await import('@conclave/server/commands/e2e');
+      return e2e();
     }
     case 'doctor': {
       const { doctor } = await import('@conclave/server/commands/doctor');

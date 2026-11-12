@@ -17,6 +17,8 @@ Newest first. One entry per decision: what, why, and what it replaced.
 - **Queries are raw SQL on `tx.client` for now.** The Drizzle schema from S0-2 is there for migrations and typed queries later.
 - **`COMPANY_DIR` can point the server at another company folder.** The default is the repo's `company/`. It is used by tests and by the end-to-end smoke run, and later by a second company.
 - **`@embedded-postgres/linux-x64` may run its install script** (the same symlink-only script as Windows). `protobufjs`, pulled in by Inngest, may not: its script only checks versions.
+- **`pnpm run doctor`, not `pnpm doctor`.** pnpm 11 has a built-in `doctor` command that runs instead of the script. The server writes `DATA_DIR/server.pid` so doctor can report its memory.
+- **S0-11 is a command, `pnpm run e2e`,** run against a running server. It hires the researcher if needed, runs the task on Claude Code, switches the role file to OpenCode, runs it again, checks that each answer is in the thread and that no run log holds text from this repo's `CLAUDE.md`, and restores the role file. `E2E_OPENCODE_MODEL` picks the OpenCode alias.
 - **The agent `os` tools are `get_task`, `comment`, `complete_task`, `block_task` and `ask_founder`, over a stateless Streamable HTTP MCP endpoint** with no SSE stream. Real Claude Code and OpenCode both connected to it.
 
 ## 2026-11-12 (v6: client meetings and channels)
