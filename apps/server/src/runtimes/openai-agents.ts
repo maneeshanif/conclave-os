@@ -9,7 +9,10 @@ import {
   type RunStreamEvent,
 } from '@openai/agents';
 import OpenAI from 'openai';
+import path from 'node:path';
+import { readFile } from 'node:fs/promises';
 import { modelNameFor, resolveModel } from '../config/models';
+import { listSkills, loadSkillTool, skillInstructions } from './skills';
 import { type ErrorKind, type RunEvent, type RunRequest, type Runtime } from './types';
 
 /**
@@ -97,12 +100,18 @@ export function createOpenAIAgentsRuntime(options: OpenAIAgentsOptions): Runtime
         ...(allowed?.length ? { toolFilter: { allowedToolNames: allowed } } : {}),
       });
       let lastTool = '';
+      const skillsDir = path.join(req.workspaceDir, '.skills');
       try {
         await mcp.connect();
+        // The rendered folder gives the standing rules (INSTRUCTIONS.md) and the skills this agent was granted (.skills).
+        const standing = await readFile(path.join(req.workspaceDir, 'INSTRUCTIONS.md'), 'utf8').catch(() => '');
+        const skills = await listSkills(skillsDir);
+        const instructions = [standing.trim(), req.instructions.trim(), skillInstructions(skills)].filter(Boolean).join('\n\n');
         const client = new OpenAI({ baseURL: baseUrl, apiKey: options.apiKey ?? 'local', maxRetries: 0 });
         const agent = new Agent({
           name: req.agentKey,
-          instructions: req.instructions,
+          instructions,
+          tools: skills.length ? [loadSkillTool(skillsDir)] : [],
           model: new OpenAIChatCompletionsModel(client, modelNameFor(req.modelAlias, 'openai-agents')),
           mcpServers: [mcp],
         });

@@ -307,7 +307,7 @@ Recorded 2026-11-13. Nothing here is built ahead of its slice (CLAUDE.md, Stack)
   A generic in-process runner behind the one contract in `runtimes/`: builds the agent from the rendered instructions, connects the `os` MCP server over HTTP with the run's token, streams the SDK's events as run events in order, caps turns, handles cancel, and maps a connection refusal, a rate limit and an auth failure to the right error kinds. It is handed its own model settings and nothing else from the environment (CLAUDE.md rule 4). Session resume is kept by the OS: it says it cannot resume natively and the loop restarts the task with its comment history instead.
   *Test:* the conformance tests pass against a fake OpenAI-compatible server in the test: events arrive in order, an `os` tool is called with the run token, a tool the agent was not granted is refused, no secret reaches the process, cancel stops it, a 429 and a 401 map to `limit` and `auth`, and `canResume` is honest.
 
-- [ ] **S4-3 The skill loader.** SPEC 5 (the table), 9.
+- [x] **S4-3 The skill loader.** SPEC 5 (the table), 9.
   The in-process runner has no `.claude/skills`. The renderer writes each skill's name and one-line description into the instructions, and the runner gives the agent a `load_skill` tool that returns the skill's text from the agent's rendered folder, only for skills that agent was given, never a path outside it.
   *Test:* the instructions list the descriptions and not the bodies; `load_skill` returns a granted skill; a skill that was not granted, a path with `..`, an absolute path and a symlink out of the folder are all refused.
 

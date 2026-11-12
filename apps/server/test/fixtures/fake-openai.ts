@@ -4,7 +4,7 @@ import type { AddressInfo } from 'node:net';
 /**
  * A stand-in for an OpenAI-compatible model endpoint (Ollama, say), so the in-process runtime is tested without a model.
  * The first path segment picks the behaviour: http://127.0.0.1:PORT/<mode>/v1. It answers Chat Completions, streaming or not.
- * Modes: ok, mcp, forbidden, env, limit, auth, hang, turns, down-after-tool, thinking.
+ * Modes: ok, mcp, forbidden, env, limit, auth, hang, turns, and skill:<name> (asks for that skill, then repeats what it got).
  */
 export interface FakeOpenAI {
   url(mode: string): string;
@@ -22,14 +22,15 @@ export async function startFakeOpenAI(secrets: Record<string, string> = {}): Pro
     const chunks: Buffer[] = [];
     req.on('data', (c: Buffer) => chunks.push(c));
     req.on('end', () => {
-      const [, mode = 'ok', , tail] = (req.url ?? '').split('/');
+      const [, rawMode = 'ok', , tail] = (req.url ?? '').split('/');
+      const mode = decodeURIComponent(rawMode);
       const body = Buffer.concat(chunks).toString('utf8');
       if (req.method === 'GET' && tail === 'models') {
         res.writeHead(200, { 'content-type': 'application/json' }).end(JSON.stringify({ object: 'list', data: [{ id: 'fake-model', object: 'model' }] }));
         return;
       }
       seen.push({ mode, headers: req.headers, body });
-      const parsed = body ? (JSON.parse(body) as { stream?: boolean; messages?: { role: string }[] }) : {};
+      const parsed = body ? (JSON.parse(body) as { stream?: boolean; messages?: { role: string; content?: unknown }[] }) : {};
       const toolResults = (parsed.messages ?? []).filter((m) => m.role === 'tool').length;
       const fail = (status: number, message: string) => res.writeHead(status, { 'content-type': 'application/json' }).end(JSON.stringify({ error: { message, type: 'error', code: String(status) } }));
 
@@ -44,7 +45,11 @@ export async function startFakeOpenAI(secrets: Record<string, string> = {}): Pro
       let reply: { content?: string; tool?: { name: string; args: unknown } };
       if (mode === 'mcp') reply = toolResults === 0 ? { tool: { name: 'get_task', args: {} } } : toolResults === 1 ? { tool: { name: 'complete_task', args: { output: 'Five facts.' } } } : { content: 'All done.' };
       else if (mode === 'forbidden') reply = toolResults === 0 ? { tool: { name: 'send_email', args: { to: 'x@y.z' } } } : { content: 'gave up' };
-      else if (mode === 'turns') reply = { tool: { name: 'get_task', args: {} } };
+      else if (mode.startsWith('skill:')) {
+        // skill:<name> asks for that skill, then repeats back what it was given.
+        const last = [...(parsed.messages ?? [])].reverse().find((m) => m.role === 'tool');
+        reply = toolResults === 0 ? { tool: { name: 'load_skill', args: { name: mode.slice(6) } } } : { content: `GOT: ${typeof last?.content === 'string' ? last.content : JSON.stringify(last?.content)}` };
+      } else if (mode === 'turns') reply = { tool: { name: 'get_task', args: {} } };
       else if (mode === 'env') {
         const everything = `${body}\n${JSON.stringify(req.headers)}`;
         reply = { content: JSON.stringify({ keys: Object.entries(secrets).filter(([, v]) => everything.includes(v)).map(([k]) => k), args: [] }) };
