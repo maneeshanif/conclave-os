@@ -267,6 +267,76 @@ describe('dispatcher and ticker (S0-8)', () => {
   });
 });
 
+describe('task ownership in the os tools (S0-14)', () => {
+  const store = () => new DbOsStore(sys.app);
+  const scopeFor = (agent: string, taskId: string): RunScope => ({ workspaceId: ws(), agentId: agent, runId: `run-${Math.random().toString(36).slice(2)}`, taskId });
+  const sql = (q: string, p: unknown[] = []) => withWorkspace(sys.app, ws(), ({ client: c }) => c.query(q, p));
+
+  /** A task the run loop has checked out for `agent`: in progress and locked by it. */
+  async function checkedOut(agent: string, title: string) {
+    const id = await addTask(agent, title);
+    await sql("update tasks set status = 'in_progress', locked_by = $2, locked_at = now() where id = $1", [id, agent]);
+    return id;
+  }
+  const messages = async (taskId: string) => (await sql('select 1 from messages where task_id = $1', [taskId])).rowCount;
+
+  const tools: [string, (s: DbOsStore, sc: RunScope) => Promise<unknown>][] = [
+    ['comment', (s, sc) => s.comment(sc, 'a note')],
+    ['complete_task', (s, sc) => s.completeTask(sc, 'the answer')],
+    ['block_task', (s, sc) => s.blockTask(sc, 'cannot go on')],
+    ['ask_founder', (s, sc) => s.askFounder(sc, 'which one?')],
+  ];
+
+  it('the agent that holds an in-progress task can comment on it and complete it', async () => {
+    const writer = await agentId('outreach-writer');
+    const t = await checkedOut(writer, 'owned');
+    await store().comment(scopeFor(writer, t), 'working on it');
+    await store().completeTask(scopeFor(writer, t), 'finished');
+    expect(await task(t)).toMatchObject({ status: 'done' });
+    expect(await messages(t)).toBe(2);
+  });
+
+  for (const [name, call] of tools) {
+    it(`${name}: a run whose task was moved back to todo cannot touch it`, async () => {
+      const writer = await agentId('outreach-writer');
+      const t = await checkedOut(writer, `moved back for ${name}`);
+      const scope = scopeFor(writer, t); // this run's token, issued while the task was in progress
+      await sql("update tasks set status = 'todo', locked_by = null, locked_at = null where id = $1", [t]);
+      await expect(call(store(), scope)).rejects.toThrow(/not in progress/);
+      expect(await task(t)).toMatchObject({ status: 'todo' });
+      expect(await messages(t)).toBe(0);
+    });
+
+    it(`${name}: an agent that does not hold the task cannot touch it`, async () => {
+      const writer = await agentId('outreach-writer');
+      const researcher = await agentId('research-researcher');
+      const t = await checkedOut(writer, `held by the writer for ${name}`);
+      await expect(call(store(), scopeFor(researcher, t))).rejects.toThrow(/held by another agent/);
+      expect(await task(t)).toMatchObject({ status: 'in_progress' });
+      expect(await messages(t)).toBe(0);
+    });
+
+    it(`${name}: a finished, blocked or cancelled task is refused`, async () => {
+      const writer = await agentId('outreach-writer');
+      for (const status of ['done', 'blocked', 'cancelled']) {
+        const t = await checkedOut(writer, `${status} for ${name}`);
+        const scope = scopeFor(writer, t);
+        await sql('update tasks set status = $2, locked_by = null where id = $1', [t, status]);
+        await expect(call(store(), scope)).rejects.toThrow(/not in progress/);
+        expect(await messages(t)).toBe(0);
+      }
+    });
+  }
+
+  it('an in-progress task nobody holds is refused too', async () => {
+    const writer = await agentId('outreach-writer');
+    const t = await addTask(writer, 'in progress with no holder');
+    await sql("update tasks set status = 'in_progress', locked_by = null where id = $1", [t]);
+    await expect(store().completeTask(scopeFor(writer, t), 'x')).rejects.toThrow(/held by another agent|not held/);
+    expect(await task(t)).toMatchObject({ status: 'in_progress' });
+  });
+});
+
 describe('heartbeats and the dispatcher queue (S0-13)', () => {
   it('ten ticks inside one minute request an idle agent once, not ten times', async () => {
     const lead = await agentId('outreach-writer');

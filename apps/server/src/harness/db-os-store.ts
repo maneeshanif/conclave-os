@@ -74,13 +74,18 @@ export class DbOsStore implements OsStore {
     if (!scope.taskId) throw new ToolError('This run has no task.');
     const taskId = scope.taskId;
     const out = await withWorkspace(this.pool, scope.workspaceId, async ({ client: c }) => {
-      const t = await c.query<{ status: string; key: string }>(
-        'select t.status, a.key from tasks t join agents a on a.id = $2 where t.id = $1',
+      // The row is locked until this transaction ends, so a person moving the task back to todo (PATCH) waits
+      // for this call to finish instead of slipping in between the check and the write.
+      const t = await c.query<{ status: string; locked_by: string | null; key: string }>(
+        'select t.status, t.locked_by, a.key from tasks t join agents a on a.id = $2 where t.id = $1 for update of t',
         [taskId, scope.agentId],
       );
       const row = t.rows[0];
       if (!row) throw new ToolError('This run has no task.');
-      if (row.status === 'done' || row.status === 'cancelled') throw new ToolError(`The task is already ${row.status}.`);
+      // A run may act on a task only while it holds it: the run loop checked it out, so it is in progress and
+      // locked by this agent. A task a person has since moved, finished or cancelled is no longer this run's.
+      if (row.status !== 'in_progress') throw new ToolError(`The task is not in progress (it is ${row.status}), so this run cannot change it.`);
+      if (row.locked_by !== scope.agentId) throw new ToolError('The task is not held by this agent (it is held by another agent, or by nobody).');
       return fn(c, taskId, row.key);
     });
     this.onChange(scope.workspaceId, taskId);

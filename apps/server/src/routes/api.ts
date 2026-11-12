@@ -86,7 +86,13 @@ export function apiRoutes(deps: { workspaceId: string; dispatcher: Dispatcher; b
     const id = c.req.param('id');
     const rows = await q(
       c,
-      "update tasks set status = coalesce($2, status), title = coalesce($3, title), blocked_reason = case when $2 = 'todo' then null else blocked_reason end where id = $1 returning id",
+      // Changing the status takes the task away from whichever agent held it, so a run still going for it can no
+      // longer comment on it or finish it (S0-14). Renaming alone leaves the holder in place.
+      `update tasks set status = coalesce($2, status), title = coalesce($3, title),
+         blocked_reason = case when $2 = 'todo' then null else blocked_reason end,
+         locked_by = case when $2::text is not null then null else locked_by end,
+         locked_at = case when $2::text is not null then null else locked_at end
+       where id = $1 returning id`,
       [id, parsed.data.status ?? null, parsed.data.title ?? null],
     );
     if (!rows.length) return c.json({ error: 'Not found' }, 404);

@@ -2,6 +2,12 @@
 
 Newest first. One entry per decision: what, why, and what it replaced.
 
+## 2026-11-12 (S0-14: task ownership)
+
+- **A run acts on a task only while it holds it.** `comment`, `complete_task`, `block_task` and `ask_founder` need the task to be `in_progress` and `locked_by` the calling agent. The check and the write share one transaction with the task row locked (`for update`), so a person moving the task cannot slip in between. Before, only `done` and `cancelled` were refused, so a run still going after its task was reset could finish it. A task already blocked by `ask_founder` refuses a second tool call in the same run.
+- **`PATCH /api/tasks/:id` releases the lock** whenever it changes the status, to `todo` or `cancelled`. Renaming alone leaves the holder in place.
+- **The Inngest registration is pinned by a test** that reads the payload the app sends to Inngest: `agent-run` on `agent/run.requested` with the limits two overall and one per agent, no retries, and a `ticker` every minute.
+
 ## 2026-11-12 (S0-13: heartbeats and turns)
 
 - **The ticker remembers when it last asked each agent**, in memory for as long as the server runs. An agent with nothing to do leaves no run row, so the old rule ("due when the last scheduled time is after the last heartbeat run") kept finding it overdue and asked every minute. A restart forgets, which at worst asks once more.

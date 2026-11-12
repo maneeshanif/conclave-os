@@ -88,7 +88,7 @@ Work them in order. Tick each when its test passes.
   Remember each agent's last heartbeat tick in memory so an idle agent is not requested every minute, and drop a run request when one is already queued for that agent. Count Claude turns by distinct `message.id`, not by event.
   *Test:* ten ticks in one minute queue at most one request per agent; a stream with one message split over three events counts one turn.
 
-- [ ] **S0-14 Task ownership in the os tools.** SPEC 6, 11.
+- [x] **S0-14 Task ownership in the os tools.** SPEC 6, 11.
   `comment`, `complete_task`, `block_task` and `ask_founder` act only when the task is `in_progress` and `locked_by` is the calling agent. `PATCH /api/tasks/:id` clears `locked_by` when it moves a task out of `in_progress`. Add a test that `createWorkflows` registers both functions with the two concurrency limits.
   *Test:* a token for a run whose task was moved back to `todo` cannot complete it; the Inngest config test passes.
 
