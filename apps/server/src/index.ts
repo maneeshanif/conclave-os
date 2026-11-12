@@ -10,7 +10,8 @@ import { renderAll, renderOne } from './commands/agent-new';
 import { createAuth, resolveAuthSecret } from './auth';
 import { loadCompany } from './company/loader';
 import { syncCompany } from './company/sync';
-import { resolveAuthConfig, resolvePgPort } from './config';
+import { dispatchLimit, resolveAuthConfig, resolveLite, resolvePgPort } from './config';
+import { singleFlight } from './workflows/single-flight';
 import { ensureDailyBackup, type DailyState } from './backup';
 import { ensureDailyBrief } from './brief/build';
 import { DbOsStore } from './harness/db-os-store';
@@ -99,7 +100,8 @@ let gate: ApprovalGate;
 const asked = new Map<string, Date>();
 // Each minute: wake agents whose heartbeat is due (S0-13), and let the sequence runner make tasks for people whose next
 // step is due (S2-5). The runner is idempotent, so running it every minute is cheap and safe.
-const everyMinute = async () => {
+const lite = resolveLite(); // LITE=1: one run at a time and no scheduled task overlapping itself (S3-10)
+const runEveryMinute = async () => {
   const tz = process.env.COMPANY_TIMEZONE?.trim() || undefined; // schedules are read in the company's time zone; unset means this machine's
   const woken = await tick(sys.app, sys.workspace.id, dispatcher, new Date(), asked, tz ? { tz } : {});
   const briefTime = process.env.BRIEF_TIME?.trim() || '06:30'; // HH:MM in the company's time zone
@@ -134,17 +136,20 @@ const everyMinute = async () => {
   if (seq.created) console.log(`sequences: made ${seq.created} step task(s)`);
   return woken;
 };
+const everyMinute = lite ? singleFlight(runEveryMinute, [] as string[]) : runEveryMinute;
+if (lite) console.log('lite mode: one run at a time');
 if (useInngest) {
   const wf = createWorkflows({
     execute,
     tickAll: everyMinute,
     approvals: gateOps({ pool: sys.app, workspaceId: sys.workspace.id, bus, executors }),
+    lite,
   });
   dispatcher = wf.dispatcher;
   gate = createInngestGate({ send: (e) => wf.inngest.send(e), pool: sys.app, workspaceId: sys.workspace.id, bus, executors });
   inngestHandler = inngestServe({ client: wf.inngest, functions: wf.functions });
 } else {
-  dispatcher = new LocalDispatcher(execute);
+  dispatcher = new LocalDispatcher(execute, dispatchLimit());
   gate = new LocalApprovalGate({ pool: sys.app, workspaceId: sys.workspace.id, bus, executors });
   ticker = setInterval(
     () => void everyMinute().catch((err) => console.error('ticker:', err)),

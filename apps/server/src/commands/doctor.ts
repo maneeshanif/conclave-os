@@ -1,8 +1,8 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { Socket } from 'node:net';
-import { networkInterfaces } from 'node:os';
+import os, { networkInterfaces } from 'node:os';
 import path from 'node:path';
-import { HOST, resolveDataDir, resolvePgPort, resolvePort } from '../config';
+import { HOST, resolveDataDir, resolveLite, resolvePgPort, resolvePort } from '../config';
 import { cleanEnv } from '../runtimes/cli';
 import { killTree, resolveCommand, spawnResolved } from '../runtimes/win-process';
 
@@ -183,6 +183,9 @@ export async function runChecks(env: Env = process.env): Promise<Check[]> {
     add('inngest', 'ok', 'not configured: workflows run in-process with the same limits');
   }
 
+  // Mode (SPEC 17, S3-10): lite is for a machine with little memory.
+  const gb = (os.totalmem() / 1024 ** 3).toFixed(1);
+  add('mode', 'ok', resolveLite(env) ? `lite (LITE=1): one run at a time, one scheduled task at a time; this machine has ${gb} GB` : `normal: up to two runs at a time; this machine has ${gb} GB. Set LITE=1 if it struggles`);
   // Memory (SPEC 17).
   if (dataDir) {
     const pgPid = readPid(path.join(dataDir, 'postgres', 'postmaster.pid'));

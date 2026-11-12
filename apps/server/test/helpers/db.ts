@@ -1,4 +1,4 @@
-import { cp, mkdtemp } from 'node:fs/promises';
+import { cp, mkdtemp, rm } from 'node:fs/promises';
 import { createServer } from 'node:net';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -33,7 +33,11 @@ export async function testSystem(osUrl = 'http://127.0.0.1:3100/mcp'): Promise<{
     serverPort: 3100,
     osUrl,
     ownsDatabase: true,
-    close: () => db.stop(),
+    // Stops the database and removes both temp folders: each test file used to leave about 50 MB behind, and thousands of runs filled the disk.
+    close: async () => {
+      await db.stop();
+      for (const dir of [dataDir, companyRoot]) await rm(dir, { recursive: true, force: true, maxRetries: 20, retryDelay: 250 }).catch(() => undefined);
+    },
   };
   return { db, sys };
 }

@@ -23,6 +23,16 @@ export function resolvePort(env: Env = process.env): number {
   return portFrom(env.PORT, DEFAULT_PORT);
 }
 
+/** Lite mode (SPEC 17, S3-10): for a machine with little memory. One run at a time, and no task overlaps itself. */
+export function resolveLite(env: Env = process.env): boolean {
+  return ['1', 'true'].includes((env.LITE ?? '').trim().toLowerCase());
+}
+
+/** How many agents may run at once: one in lite mode, two otherwise (SPEC 14). */
+export function dispatchLimit(env: Env = process.env): number {
+  return resolveLite(env) ? 1 : 2;
+}
+
 /** Embedded Postgres port. It listens on 127.0.0.1 only. */
 export function resolvePgPort(env: Env = process.env): number {
   return portFrom(env.PG_PORT, DEFAULT_PG_PORT);

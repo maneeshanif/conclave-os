@@ -3,6 +3,11 @@ import type { RunOutcome } from '../harness/loop';
 import { approvalGateHandler, type GateOps, type GateStep } from './approval-gate';
 import type { Dispatcher, RunRequestEvent } from './dispatch';
 
+/** The `agent-run` limits (SPEC 14): two runs at once and one per agent, or in lite mode (S3-10) one run at a time. */
+export function agentRunConcurrency(lite: boolean): [{ limit: number }] | [{ limit: number }, { limit: number; key: string }] {
+  return lite ? [{ limit: 1 }] : [{ limit: 2 }, { limit: 1, key: 'event.data.agentId' }];
+}
+
 /**
  * Inngest functions (SPEC 11, 14). `agent-run` is the only thing that starts a run, with the two
  * concurrency limits from SPEC 14; `ticker` sends heartbeats once a minute.
@@ -12,6 +17,8 @@ export function createWorkflows(deps: {
   tickAll(): Promise<string[]>;
   /** What the approval gate does. Without it the gate function is not registered (S1-3). */
   approvals?: GateOps;
+  /** Lite mode: one run at a time (S3-10). */
+  lite?: boolean;
 }) {
   const inngest = new Inngest({ id: 'conclave-os' });
 
@@ -19,7 +26,7 @@ export function createWorkflows(deps: {
     {
       id: 'agent-run',
       retries: 0, // a failed run marks its task blocked; a person decides what happens next
-      concurrency: [{ limit: 2 }, { limit: 1, key: 'event.data.agentId' }],
+      concurrency: agentRunConcurrency(deps.lite ?? false),
       triggers: [{ event: 'agent/run.requested' }],
     },
     async ({ event, step }) => {

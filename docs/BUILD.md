@@ -275,11 +275,11 @@ Recorded 2026-11-13. Nothing here is built ahead of its slice (CLAUDE.md, Stack)
   A scheduled job: a database dump into the data folder (keeping the last 14), and a git commit of the company folder. A restore command that checks the dump first. The OS never deletes a database that holds data.
   *Test:* a backup is written and is restorable into an empty database; old ones beyond 14 are pruned; a failed dump leaves the old ones alone and raises an item; the company folder commit happens only when something changed.
 
-- [ ] **S3-10 Lite mode.** SPEC 17.
+- [x] **S3-10 Lite mode.** SPEC 17.
   `LITE=1` for a machine with little memory: one run at a time, no more than one Inngest or ticker task at once, and `doctor` reports the mode and memory.
   *Test:* in lite mode the dispatcher runs at most one agent at a time; the default is unchanged; `doctor` says which mode.
 
-- [ ] **S3-11 Slice 3 end to end.** SPEC 18, row 3.
+- [x] **S3-11 Slice 3 end to end.** SPEC 18, row 3.
   One test: a run is killed halfway and the next run resumes from its session; a plan limit pauses the agents on that runtime and lifts at the reset; a skill change that hurts the sample leads is blocked by the gate. Tag `slice-3-done`.
   *Test:* all three "Done when" checks in one run.
 

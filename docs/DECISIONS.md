@@ -2,6 +2,17 @@
 
 Newest first. One entry per decision: what, why, and what it replaced.
 
+## 2026-11-13 (S3-11: slice 3 end to end, slice 3 done)
+
+- **One test file, `slice3-e2e.test.ts`, runs the three "Done when" checks** on the real run loop, reaper, pause table and eval gate, with a scripted model: (1) a run killed halfway (its process lost, heartbeat stopped) is failed by the reaper, its task goes back to todo still holding the session id, and the next run starts from that session and finishes; (2) a plan limit pauses the runtime for every agent on it while an agent on the other runtime keeps working, the queued tasks wait, the pause lifts only at the reset time and wakes exactly the agents with work, who then finish; (3) the unchanged skill scores at the baseline, and a change that makes the 20 sample drafts long and hyped fails the gate with all 20 leads named.
+- **Slice 3 is tagged `slice-3-done`.** Not done and recorded rather than hidden: the eval set is 20 made-up leads and its baseline is the reference drafter's (real leads and a real-agent drafter are in NEEDS-YOU); breakers cover the os tools only until connectors are live; the lite-mode canvas switch waits for slice 6.
+
+## 2026-11-13 (S3-10: lite mode)
+
+- **`LITE=1` (or `true`) does three things:** the in-process dispatcher runs one agent at a time instead of two; the Inngest `agent-run` function is held to one run at a time (its two limits otherwise stay: two at once and one per agent); and the minute ticker is wrapped so a tick that arrives while the last is still running is skipped, never run beside it. Off by default, and with it off nothing changed: the ticker is not wrapped and the limits are the old ones.
+- **`doctor` has a `mode` line** that says lite or normal and the machine's total memory in GB, next to the existing memory line (what the server, the database and doctor itself use).
+- **The spec's other two lite items are not built, on purpose:** "no local model" (the local model is only tried on request and is not started by the OS) and "canvas off" (the office canvas is slice 6, so there is nothing to turn off yet). Slice 6 reads `resolveLite` to switch the canvas off; noted in BUILD.
+
 ## 2026-11-13 (S3-9: the daily backup)
 
 - **The dump is our own format, because the embedded Postgres ships without `pg_dump`** (checked: its bin folder has initdb, pg_ctl and postgres only). A backup is one gzip file of JSON lines in `DATA_DIR/backups/`, `backup-<day>-<time>.jsonl.gz`: a header (format, time, each table with its row count and columns), the rows in batches, and an end line with a SHA-256 of everything before it. It reads every table in `public` and `auth` in one read-only repeatable-read transaction, as the owner role (which bypasses row-level security, so it sees every workspace; the request role cannot). That is a snapshot, so the dump is consistent while the server runs.
