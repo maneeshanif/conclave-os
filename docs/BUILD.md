@@ -207,7 +207,7 @@ Work them in order. Tick each when its test passes.
   A deterministic builder writes the brief (new scored leads, approvals waiting, replies to triage, stuck deals, goal progress, anything blocked) as a record, and the Chief of Staff template may add one paragraph of narrative that is clearly marked as the agent's. `/brief` shows the latest.
   *Test:* the brief lists exactly what the tables hold on a fixture day; an empty day says so; the narrative is optional and the brief is complete without it.
 
-- [ ] **S2-11 Inbox, pipeline and campaigns pages.** SPEC 12.
+- [x] **S2-11 Inbox, pipeline and campaigns pages.** SPEC 12.
   Web pages for the unified inbox (threads, reply to triage), the pipeline (stages, conversion, stuck deals) and campaigns (status, results, approve, pause). Phone-friendly like the approvals page.
   *Test:* component tests like slice 1; the mobile browser check covers the inbox.
 

@@ -141,6 +141,84 @@ export interface Brief {
   };
 }
 
+/** Inbox (S2-11): one thread per lead. Reply text is data from outside and is only ever shown as text. */
+export interface ThreadSummary {
+  id: string;
+  status: string;
+  last_message_at: string | null;
+  lead_id: string | null;
+  lead_name: string | null;
+  lead_email: string | null;
+  lead_stage: string | null;
+  messages: number;
+  last_body: string | null;
+  last_direction: 'in' | 'out' | null;
+}
+export interface ThreadMessage {
+  id: string;
+  direction: 'in' | 'out';
+  channel: string;
+  subject: string | null;
+  body: string;
+  campaign_id: string | null;
+  classification: 'positive' | 'neutral' | 'negative' | null;
+  at: string;
+}
+export interface ThreadDetail extends Omit<ThreadSummary, 'messages' | 'last_body' | 'last_direction'> {
+  messages: ThreadMessage[];
+}
+
+/** Pipeline (S2-11): conversion and days by stage for one funnel. */
+export interface PipelineStage {
+  key: string;
+  name: string;
+  position: number;
+  owner: string | null;
+  current: number;
+  reached: number;
+  conversion: number | null;
+  avg_days: number | null;
+  median_days: number | null;
+}
+export interface PipelineData {
+  funnel: string;
+  name: string;
+  stages: PipelineStage[];
+  totals: { open: number; won: number; lost: number };
+  stuck: { deal_id: string; account: string; stage: string; days_in_stage: number; missing: string[] }[];
+  stuck_after_days: number;
+}
+
+/** Campaigns (S2-11). */
+export interface CampaignRow {
+  id: string;
+  name: string;
+  market: string | null;
+  channel: string;
+  status: 'draft' | 'approved' | 'running' | 'paused' | 'done';
+  channel_account_id: string | null;
+  channel_handle: string | null;
+  approved_at: string | null;
+  steps: number;
+}
+export interface CampaignResults {
+  campaign: string;
+  name: string;
+  status: string;
+  enrolled: number;
+  enrollment: { active: number; paused: number; unsubscribed: number; done: number };
+  sent: number;
+  delivered: number | null;
+  opened: number | null;
+  replied: number;
+  positive_replies: number;
+  reply_rate: number | null;
+  meetings: number | null;
+  won: number;
+  cost_usd: number;
+}
+export type CampaignAction = 'approve' | 'start' | 'pause' | 'finish';
+
 /** What the person decided. An edit carries only the text that may change on an email: the subject and the message. */
 export interface DecisionBody {
   approved: boolean;
@@ -166,6 +244,15 @@ export const api = {
   runAgent: (id: string) => call<{ requested: true }>(`/api/agents/${id}/run`, { method: 'POST' }),
   approvals: (status?: string) => call<Approval[]>(`/api/approvals${status ? `?status=${encodeURIComponent(status)}` : ''}`),
   goals: () => call<GoalsData>('/api/goals'),
+  threads: () => call<ThreadSummary[]>('/api/threads'),
+  thread: (id: string) => call<ThreadDetail>(`/api/threads/${id}`),
+  recordReply: (threadId: string, body: string) => call<{ messageId: string }>(`/api/threads/${threadId}/inbound`, { method: 'POST', body: JSON.stringify({ body }) }),
+  classify: (messageId: string, classification: 'positive' | 'neutral' | 'negative') =>
+    call<{ id: string }>(`/api/thread-messages/${messageId}/classify`, { method: 'POST', body: JSON.stringify({ classification }) }),
+  pipeline: () => call<PipelineData[]>('/api/pipeline'),
+  campaigns: () => call<CampaignRow[]>('/api/campaigns'),
+  campaignResults: (id: string) => call<CampaignResults>(`/api/campaigns/${id}/results`),
+  campaignAction: (id: string, action: CampaignAction) => call<{ id: string; status: string }>(`/api/campaigns/${id}/${action}`, { method: 'POST', body: '{}' }),
   brief: async (): Promise<Brief | null> => {
     try {
       return await call<Brief>('/api/brief');

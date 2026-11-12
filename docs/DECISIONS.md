@@ -2,6 +2,15 @@
 
 Newest first. One entry per decision: what, why, and what it replaced.
 
+## 2026-11-13 (S2-11: inbox, pipeline and campaigns pages)
+
+- **Three pages over APIs that already existed,** no server change: /inbox (conversations per contact; open one to read it, mark each reply positive, neutral or negative, and paste in a reply to record), /pipeline (per funnel: deals now, reached, moved on, average and median days, totals, and stuck deals with what each waits for) and /campaigns (status, mailbox, steps, results, and the one next step).
+- **Replies are shown as text, never run.** A reply containing markup appears as the characters it is (tested), under a note that replies are data. Recording a reply says what it will do: pause the contact's sequences, make one triage task, and suppress an address that asks to stop.
+- **Approving is the founder's button.** A draft campaign offers only "Approve campaign", an approved or paused one "Start", a running one "Pause"; a finished one offers nothing. If the server refuses (a blocked mailbox, say) the reason is shown and the campaign stays as it was. Double clicks are ignored in the inbox and campaigns pages as in the approvals inbox.
+- **What cannot be known shows as "not tracked",** not a zero: delivered, opened and meetings, as in the API.
+- **The inbox is checked on an Android profile** in the existing browser check (pnpm run e2e:mobile): a long business name and long reply stay on the screen, nothing scrolls sideways, and the buttons are at least 36 px tall.
+- **Not yet:** the pages are tested in jsdom and the inbox in the phone check; the pipeline and campaigns pages have not been looked at in a real browser. Editing a campaign's steps, enrolling leads and creating campaigns are still API-only; a campaign form is not part of this slice.
+
 ## 2026-11-13 (candidate connectors: Chatwoot and Composio)
 
 - **Both recorded as candidates in `docs/BUILD.md`, neither scheduled.** Anees asked about them; the build adds no connector before its slice.

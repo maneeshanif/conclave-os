@@ -48,6 +48,8 @@ const email = {
   lead: { id: 'l1', business_name: 'Glow Aesthetic Clinic and Wellness Studio', website: 'https://glow-aesthetic-clinic-and-wellness-studio.example.test/booking', email: 'dana@a-very-long-clinic-name-example.test', stage: 'new', notes: 'Booking page asks for a phone call first. Verified.' },
 };
 
+const thread = { id: 't1', status: 'open', last_message_at: '2026-11-13T09:00:00Z', lead_id: 'l1', lead_name: 'Glow Aesthetic Clinic and Wellness Studio', lead_email: 'dana@a-very-long-clinic-name-example.test', lead_stage: 'replied', messages: 1, last_body: 'Thanks for the concept, '.repeat(12), last_direction: 'in' };
+
 let server: ChildProcess;
 let browser: Browser;
 let page: Page;
@@ -97,6 +99,8 @@ beforeAll(async () => {
       decisions.push(JSON.parse(req.postData() ?? '{}'));
       return route.fulfill({ status: 200, headers: cors, body: JSON.stringify({ id: email.id, status: 'approved' }) });
     }
+    if (req.url().endsWith('/api/threads')) return route.fulfill({ status: 200, headers: cors, body: JSON.stringify([thread]) });
+    if (req.url().includes('/api/threads/')) return route.fulfill({ status: 200, headers: cors, body: JSON.stringify({ ...thread, messages: [{ id: 'm1', direction: 'in', channel: 'email', subject: 'Re: concept', body: 'Thanks for the concept, '.repeat(12), campaign_id: null, classification: null, at: '2026-11-13T09:00:00Z' }] }) });
     if (req.url().includes('/api/approvals')) return route.fulfill({ status: 200, headers: cors, body: JSON.stringify(decisions.length ? [] : [email]) });
     return route.fulfill({ status: 200, headers: cors, body: '[]' });
   });
@@ -144,6 +148,16 @@ describe('the approvals page on an Android phone (S1-11)', () => {
     await page.getByRole('button', { name: 'Approve' }).tap();
     await page.getByText('Nothing is waiting for you.').waitFor();
     expect(decisions).toEqual([{ approved: true }]);
+  });
+
+  it('lays out the inbox on the phone too: a conversation opens, nothing scrolls sideways, the buttons are tappable', async () => {
+    await page.goto(`${ORIGIN}/inbox`);
+    await page.getByRole('button', { name: /Glow Aesthetic/ }).click();
+    const pos = await page.getByRole('button', { name: 'Positive' }).boundingBox();
+    expect(pos!.height).toBeGreaterThanOrEqual(36);
+    expect(pos!.x + pos!.width).toBeLessThanOrEqual(412);
+    const m = await page.evaluate(() => ({ scroll: document.documentElement.scrollWidth, inner: window.innerWidth }));
+    expect(m.scroll).toBeLessThanOrEqual(m.inner);
   });
 
   it('still opens, on the offline page, when the laptop cannot be reached', async () => {
