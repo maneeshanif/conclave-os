@@ -10,7 +10,7 @@ import { DbOsStore } from '../src/harness/db-os-store';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { agentWorkDir } from '../src/paths';
 import { checkoutTask, executeRun, reapStaleRuns, type LoopDeps } from '../src/harness/loop';
-import type { OsStore } from '../src/harness/os-tools';
+import type { OsStore, ProposedEmail } from '../src/harness/os-tools';
 import { RunTokens, type RunScope } from '../src/harness/run-tokens';
 import { mcpRoutes } from '../src/routes/mcp';
 import { createCliRuntime } from '../src/runtimes/cli';
@@ -44,6 +44,15 @@ function countingRuntime(): Runtime {
 
 class LateStore implements OsStore {
   inner!: OsStore;
+  autonomy(s: RunScope) {
+    return this.inner.autonomy(s);
+  }
+  getLead(s: RunScope, id: string) {
+    return this.inner.getLead(s, id);
+  }
+  proposeEmail(s: RunScope, p: ProposedEmail) {
+    return this.inner.proposeEmail(s, p);
+  }
   getTask(s: RunScope) {
     return this.inner.getTask(s);
   }

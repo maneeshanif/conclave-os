@@ -22,6 +22,11 @@ export interface LoopDeps {
   prepare?: (agentKey: string) => Promise<void>;
 }
 
+export async function killSwitchOn(pool: pg.Pool, workspaceId: string): Promise<boolean> {
+  const r = await withWorkspace(pool, workspaceId, ({ client: c }) => c.query<{ kill_switch: number }>('select kill_switch from workspace_settings'));
+  return (r.rows[0]?.kill_switch ?? 0) === 1;
+}
+
 export type RunOutcome =
   | { status: 'no_task' }
   | { status: 'not_runnable'; reason: string }
@@ -89,11 +94,7 @@ async function audit(pool: pg.Pool, ws: string, action: string, subject: string,
   );
 }
 
-/**
- * One run, end to end (SPEC 5, the eight steps; this slice covers wake, checkout, context, act and
- * report). Runs are started only by `agent/run.requested` through a dispatcher.
- */
-/** Runs in progress in this process, so shutdown (and later the kill switch) can stop them. */
+/** Runs in progress in this process, so shutdown and the kill switch can stop them. */
 const active = new Map<string, Runtime>();
 
 /** Cancels every run in progress in this process. */
@@ -144,6 +145,7 @@ export async function executeRun(deps: LoopDeps, workspaceId: string, agentId: s
     return r.rows[0];
   });
   if (!agent) return { status: 'not_runnable', reason: 'no such agent' };
+  if (await killSwitchOn(deps.pool, workspaceId)) return { status: 'not_runnable', reason: 'the kill switch is on' };
   if (agent.status !== 'active') return { status: 'not_runnable', reason: `agent is ${agent.status}` };
   const runtime = deps.runtimes[agent.runtime];
   if (!runtime) return { status: 'not_runnable', reason: `runtime ${agent.runtime} is not available` };

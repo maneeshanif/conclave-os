@@ -4,7 +4,7 @@ Answer in one message, by number. Anything you skip takes the default. Never pas
 
 ## How the build runs
 
-1. **Merging.** One PR per slice into `master`; you merge them. The next slice starts on top of the unmerged one. *Default: yes.*
+1. **Merging.** Settled: one branch, `dev`, one PR into `master`, merged when you choose.
 2. **Stop rule.** SPEC 18 says not to start a slice until the last one is used every week. Waive it for this run? *Default: waived. Each slice still has to pass its "Done when" check.*
 3. **Usage limits.** When Claude Code hits a plan limit, the session stops; you paste the resume prompt after the reset. *Default: yes.*
 

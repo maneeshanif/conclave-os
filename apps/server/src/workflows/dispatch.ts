@@ -38,6 +38,11 @@ export class LocalDispatcher implements Dispatcher {
     this.pump();
   }
 
+  /** Drops every queued request (the kill switch). Runs already started are cancelled by the loop. */
+  clearQueue(): number {
+    return this.queue.splice(0).length;
+  }
+
   /** Resolves when nothing is queued or running. */
   idle(): Promise<void> {
     if (this.active === 0 && this.queue.length === 0) return Promise.resolve();

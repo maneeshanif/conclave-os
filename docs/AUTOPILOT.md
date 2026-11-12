@@ -4,14 +4,14 @@ Anees turned this on on 2026-11-12. It replaces two rules in `CLAUDE.md` while i
 
 ## The loop
 
-1. **Questions first, once.** Before any code, ask Anees every question in `docs/QUESTIONS.md` in one message, plus any new ones you find while reading. Then wait. This is the only wait.
-2. **Record the answers.** Write them into `docs/QUESTIONS.md` under each question (`**Answer:** ...`). A question he skips takes the default written under it. Log every decision in `docs/DECISIONS.md`. Copy company facts (offers, prices, footer address, markets) into `company/`.
-3. **Then, for each slice from the current one to slice 10, in order:**
-   - Branch `slice-<n>-<name>` from the previous slice's branch, so unmerged work stacks.
-   - Draft the slice's task list in `docs/BUILD.md` in the slice 0 format: small tasks, the SPEC sections to read, one acceptance test each. Commit it. Do not wait for an OK.
-   - For each task: write the test first, build until it passes, then run typecheck, lint and `pnpm test`, tick the task, commit with the task id, push.
-   - When the slice's "Done when" check (SPEC 18) passes, open a PR into `master` with what was built, how it was tested and what needs Anees. Do not merge it. Move to the next slice.
-4. **Keep `docs/PROGRESS.md` current** after every task: branch, last task done, next task, open items. A new session, or a session after a context reset or a plan limit, starts by reading it and carries on from there.
+1. **The questions are already answered.** Anees answers `docs/QUESTIONS.md` before the build starts; the answers sit under each question (`**Answer:** ...`). A question with no answer takes its default. Do not ask them again. Ask only a new question that blocks a task and that the spec and the answers do not settle, and keep building other tasks while you wait.
+2. **Record decisions.** Log every answer that is a decision in `docs/DECISIONS.md`, and copy company facts (offers, prices, footer address, markets) into `company/`.
+3. **One branch, `dev`, for everything.** No branch per slice and no PR per slice. Every slice from the current one to slice 10 is built on `dev`, in order. One PR, `dev` into `master`, stays open; Anees merges it when he chooses.
+   - Draft each slice's task list in `docs/BUILD.md` in the slice 0 format (small tasks, the SPEC sections to read, one acceptance test each) and commit it. Do not wait for an OK.
+   - For each task: write the test first, build until it passes, run typecheck, lint and `pnpm test`, tick the task, commit with the task id, push `dev`.
+   - When a slice's "Done when" check (SPEC 18) passes, tag the commit `slice-<n>-done`, push the tag, add a line to `docs/PROGRESS.md`, and start the next slice.
+   - `dev` must stay green: never push a commit with failing tests.
+4. **Keep `docs/PROGRESS.md` current** after every task: last task done, next task, open items. A new session, or a session after a context reset or a plan limit, starts by reading it and carries on from there.
 
 ## When something needs Anees, do not stop: park it and keep going
 
@@ -33,7 +33,7 @@ Fix the spec first, log it in `docs/DECISIONS.md` with the reason, and continue 
 
 ## Never
 
-- Merge into `master`, force push, or rewrite pushed history.
+- Merge into `master`, force push, rewrite pushed history, or create another long-lived branch.
 - Add a runtime, SDK or library before its slice (CLAUDE.md, Stack).
 - Copy WorkAdventure code or maps. Office art is Kenney (CC0) or drawn here.
 - Give a catalog persona a tool.

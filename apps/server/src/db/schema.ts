@@ -349,3 +349,96 @@ export const auditLog = pgTable(
   },
   (t) => [unique('audit_log_ws_id_uq').on(t.workspaceId, t.id)],
 );
+
+// ---------------------------------------------------------------------------------------------------
+// Slice 1: approvals and outreach (SPEC 6, 10, 15). Same tenancy rule; RLS in *_slice1_rls.sql.
+
+/** A person or business the company may contact. Slice 2 grows this into accounts, contacts and deals. */
+export const leads = pgTable(
+  'leads',
+  {
+    id: id(),
+    workspaceId: workspaceId(),
+    market: text('market').notNull().default('services'), // services | product | founder_network
+    businessName: text('business_name'),
+    website: text('website'),
+    contactName: text('contact_name'),
+    email: text('email'),
+    stage: text('stage').notNull().default('new'), // new | contacted | replied | won | lost | do_not_contact
+    ownerAgentId: uuid('owner_agent_id'),
+    notes: text('notes'),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    unique('leads_ws_id_uq').on(t.workspaceId, t.id),
+    foreignKey({ name: 'leads_owner_fk', columns: [t.workspaceId, t.ownerAgentId], foreignColumns: [agents.workspaceId, agents.id] }),
+  ],
+);
+
+/** Every message drafted or sent to a lead, one row per message. */
+export const outreachMessages = pgTable(
+  'outreach_messages',
+  {
+    id: id(),
+    workspaceId: workspaceId(),
+    leadId: uuid('lead_id').notNull(),
+    channel: text('channel').notNull().default('email'), // email | x_dm | ig_dm | linkedin | call
+    step: smallint('step').notNull().default(1),
+    direction: text('direction').notNull().default('out'),
+    toAddress: text('to_address'),
+    subject: text('subject'),
+    body: text('body'),
+    approvalId: uuid('approval_id'),
+    status: text('status').notNull().default('draft'), // draft | queued | sent | failed | refused
+    sentAt: timestamp('sent_at', { withTimezone: true }),
+    externalRef: text('external_ref'),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    unique('outreach_ws_id_uq').on(t.workspaceId, t.id),
+    index('outreach_ws_sent_idx').on(t.workspaceId, t.channel, t.sentAt),
+    foreignKey({ name: 'outreach_lead_fk', columns: [t.workspaceId, t.leadId], foreignColumns: [leads.workspaceId, leads.id] }),
+    foreignKey({ name: 'outreach_approval_fk', columns: [t.workspaceId, t.approvalId], foreignColumns: [approvals.workspaceId, approvals.id] }),
+  ],
+);
+
+/** One list per workspace. Executors check it at send time (SPEC 10). */
+export const suppression = pgTable(
+  'suppression',
+  {
+    id: id(),
+    workspaceId: workspaceId(),
+    value: text('value').notNull(), // a lowercased email address or a domain such as @example.com
+    reason: text('reason'),
+    addedAt: timestamp('added_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [unique('suppression_ws_value_uq').on(t.workspaceId, t.value), unique('suppression_ws_id_uq').on(t.workspaceId, t.id)],
+);
+
+/** The kill switch and the daily email cap (SPEC 11, slice 1). One row per workspace. */
+export const workspaceSettings = pgTable('workspace_settings', {
+  workspaceId: uuid('workspace_id').primaryKey().references(() => workspaces.id),
+  killSwitch: smallint('kill_switch').notNull().default(0), // 1 = everything stopped
+  killSwitchAt: timestamp('kill_switch_at', { withTimezone: true }),
+  emailDailyCap: integer('email_daily_cap').notNull().default(20),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+/** Things that need a person: a failed executor, a send of unknown outcome, an agent's question. */
+export const actionItems = pgTable(
+  'action_items',
+  {
+    id: id(),
+    workspaceId: workspaceId(),
+    kind: text('kind').notNull(), // executor_failed | send_unknown | question
+    title: text('title').notNull(),
+    body: text('body'),
+    approvalId: uuid('approval_id'),
+    status: text('status').notNull().default('open'), // open | done
+    createdAt: createdAt(),
+  },
+  (t) => [
+    unique('action_items_ws_id_uq').on(t.workspaceId, t.id),
+    foreignKey({ name: 'action_items_approval_fk', columns: [t.workspaceId, t.approvalId], foreignColumns: [approvals.workspaceId, approvals.id] }),
+  ],
+);

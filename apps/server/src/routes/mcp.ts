@@ -19,9 +19,9 @@ const RpcSchema = z.object({
 type Rpc = z.infer<typeof RpcSchema>;
 
 const toolList = Object.entries(osTools).map(([name, t]) => {
-  const schema = z.toJSONSchema(t.input) as Record<string, unknown>;
+  const schema = z.toJSONSchema(t.input, { io: 'input' }) as Record<string, unknown>;
   delete schema.$schema;
-  return { name, description: t.description, inputSchema: schema };
+  return { name, minAutonomy: t.minAutonomy, description: t.description, inputSchema: schema };
 });
 
 function rpcError(id: Rpc['id'] | null, code: number, message: string) {
@@ -79,8 +79,11 @@ export function mcpRoutes(deps: { tokens: RunTokens; store: OsStore }) {
         }
         case 'ping':
           return { jsonrpc: '2.0', id: msg.id, result: {} };
-        case 'tools/list':
-          return { jsonrpc: '2.0', id: msg.id, result: { tools: toolList } };
+        case 'tools/list': {
+          const level = await deps.store.autonomy(scope!);
+          const tools = toolList.filter((t) => t.minAutonomy <= level).map((t) => ({ name: t.name, description: t.description, inputSchema: t.inputSchema }));
+          return { jsonrpc: '2.0', id: msg.id, result: { tools } };
+        }
         case 'tools/call': {
           const name = String(msg.params?.name ?? '');
           try {
