@@ -2,6 +2,14 @@
 
 Newest first. One entry per decision: what, why, and what it replaced.
 
+## 2026-11-13 (S3-8: the eval set and the gate)
+
+- **The eval lives in `eval/<set>/` at the repo root, not in `company/`:** `leads.json` (20 made-up sample leads, flagged as samples in a `note`, no email addresses, nothing about a real business) and `baseline.json`. The code is `apps/server/src/eval`. A lead carries the one observation a good draft is built on and the words the draft must mention.
+- **A draft is scored by the same rules an agent's result faces.** `draftProblems` (subject under 8 words, body under 170, no "agentic", a Subject line) was split out of the `email-draft` check so the gate and the run loop cannot drift apart, plus the lead's own must-mention words. A lead passes or fails; the score is the fraction that pass.
+- **The gate fails on two things:** the score falling below the baseline, or any lead that passed in the baseline failing now (so one lead improving cannot hide another getting worse). It prints which leads got worse and why. An improvement passes and says "better". A baseline for a different set is an error, not a pass.
+- **The drafter is a function that is passed in, and nothing here calls a model.** `pnpm run eval:gate --drafts <file.json>` scores drafts written by whatever produced them; `--reference` uses a deterministic drafter that follows the skill, which is what the shipped baseline was recorded with and what proves the gate itself works. `pnpm run eval:baseline` stores a new baseline (the same flags, plus `--by`). Note `pnpm run <script> --flag` works; a bare `--` before the flag is also accepted.
+- **Not built, and why:** a drafter that has the real outreach rep write 20 drafts. It would spend plan usage on every run and needs the rendered agent folder and a runtime, so it waits for the founder's say-so; recorded in NEEDS-YOU. Until then the shipped baseline is the reference drafter's and says so (`by`).
+
 ## 2026-11-13 (S3-7: the Health screen)
 
 - **One read-only endpoint, `GET /api/health/overview?hours=24`, and a Health page.** The endpoint counts from the tables: queue (todo, running, blocked), runs and failed runs per agent over the window (failed means failed or timed out; the rate is null with no runs, not 0%), spend this month against each agent's budget (over budget at or above it, only if a budget is set), open breakers, active runtime pauses, the kill switch, the last reaper pass and the database size. A window outside 1 to 720 whole hours is a 400.

@@ -29,3 +29,8 @@ Things the build parked for you. Each says what to do.
   5. In Chrome on the phone choose "Add to Home screen" / "Install app". Check that /approvals opens and that an approval shows which device decided it. The laptop must stay awake for the phone to work.
   The layout on an Android profile is already checked by `pnpm run e2e:mobile`; this step is the real-phone check only you can do. Before you switch on remote access, also set Inngest's signing key (see DECISIONS, S1-10): `/inngest` is not behind the login wall.
 - Vercel: log in yourself with the Vercel CLI on the laptop when slice 7 needs it (Q24).
+
+## Eval set (S3-8)
+
+- [ ] The 20 leads in `eval/outreach/leads.json` are made up. When you have real leads in the pipeline, replace them (keep the same fields; the draft must mention the words in `mustMention`), then run `pnpm run eval:baseline --drafts <file>` with drafts from the outreach rep.
+- [ ] Say when it is fine to spend plan usage on a real-agent eval run (20 short drafts). Until then the gate runs on stored drafts or the reference drafter, which costs nothing.

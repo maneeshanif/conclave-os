@@ -24,22 +24,26 @@ const fatal = (reasons: string[]): CheckResult => ({ ok: false, reasons, fatal: 
 
 /**
  * The limits written in the outreach rep's checks README: a subject under 8 words, a body under 170 words, nothing
- * hyped as "agentic". An agent that proposed its email through propose_email is let through, because the proposal handler
- * has already checked what it proposed; this is for the one that writes a draft as its result (an agent on trial).
+ * hyped as "agentic". Plain rules with no database, so the eval gate (S3-8) can score a draft with them too.
  */
-const emailDraft: Check = async (c, ctx) => {
-  const proposed = await c.query("select 1 from approvals where run_id = $1 and kind = 'email.send' limit 1", [ctx.runId]);
-  if (proposed.rows.length) return result([]);
-  const m = /^\s*subject:[ \t]*(.+)$/im.exec(ctx.output);
-  if (!m) return result(['The result is not a draft: it needs a line starting "Subject:" and then the body of the email.']);
+export function draftProblems(output: string): string[] {
+  const m = /^\s*subject:[ \t]*(.+)$/im.exec(output);
+  if (!m) return ['The result is not a draft: it needs a line starting "Subject:" and then the body of the email.'];
   const subject = m[1]!.trim();
-  const body = ctx.output.slice((m.index ?? 0) + m[0].length).trim();
+  const body = output.slice((m.index ?? 0) + m[0].length).trim();
   const reasons: string[] = [];
   if (wordCount(subject) >= 8) reasons.push(`The subject has ${wordCount(subject)} words; it must be under 8.`);
   if (!body) reasons.push('The body is empty.');
   else if (wordCount(body) >= 170) reasons.push(`The body has ${wordCount(body)} words; it must be under 170.`);
-  if (/agentic/i.test(ctx.output)) reasons.push('It uses the word "agentic", which the email must not.');
-  return result(reasons);
+  if (/agentic/i.test(output)) reasons.push('It uses the word "agentic", which the email must not.');
+  return reasons;
+}
+
+/** An agent that proposed its email through propose_email is let through: the proposal handler already checked what it proposed. This is for the one that writes a draft as its result (an agent on trial). */
+const emailDraft: Check = async (c, ctx) => {
+  const proposed = await c.query("select 1 from approvals where run_id = $1 and kind = 'email.send' limit 1", [ctx.runId]);
+  if (proposed.rows.length) return result([]);
+  return result(draftProblems(ctx.output));
 };
 
 const nonEmpty: Check = (_c, ctx) => result(ctx.output.trim() ? [] : ['The result is empty.']);

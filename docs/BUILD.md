@@ -267,7 +267,7 @@ Recorded 2026-11-13. Nothing here is built ahead of its slice (CLAUDE.md, Stack)
   `GET /api/health/overview` (queue depth, runs and failure rate by agent over a window, breakers, runtime pauses, spend against budget per agent, last reaper pass, database size) and a Health page with the kill switch on it.
   *Test:* a fixture gives exact numbers; a paused runtime, an open breaker and an over-budget agent each show up; the page renders each and the empty state.
 
-- [ ] **S3-8 The eval set and the gate.** SPEC 9, 14 (A change makes things worse).
+- [x] **S3-8 The eval set and the gate.** SPEC 9, 14 (A change makes things worse).
   An eval set of 20 sample leads with the checks each draft must pass, a runner that has an agent draft for each lead and scores the drafts by the output checks, a stored baseline, and `pnpm run eval:gate` that fails if a change scores worse than the baseline. Replacing the samples with real leads is a NEEDS-YOU item.
   *Test:* with a scripted drafter the good skill scores at baseline and passes; a skill change that produces over-long drafts scores lower and the gate fails with which leads got worse; an unchanged skill is stable.
 

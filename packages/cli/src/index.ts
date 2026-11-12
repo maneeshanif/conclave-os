@@ -8,6 +8,8 @@ const usage = `Usage:
   pnpm agent:new <template> --department <key> [--id <id>] [--name <name>] [--runtime <runtime>] [--model <alias>] [--autonomy <0-3>] [--reports-to <id>]
   pnpm agent:render          render every agent's working folder again from its role file
   pnpm run doctor           (plain 'pnpm doctor' runs pnpm's own doctor)
+  pnpm run eval:gate -- --drafts <file.json> | --reference   score drafts against the stored baseline; fails if worse
+  pnpm run eval:baseline -- --drafts <file.json> | --reference   store a new baseline
   pnpm run e2e              slice 0 end to end on both engines, against a running server`;
 
 async function main(argv: string[]): Promise<number> {
@@ -70,6 +72,11 @@ async function main(argv: string[]): Promise<number> {
     case 'e2e': {
       const { e2e } = await import('@conclave/server/commands/e2e');
       return e2e();
+    }
+    case 'eval:gate':
+    case 'eval:baseline': {
+      const { evalCommand } = await import('@conclave/server/commands/eval');
+      return evalCommand(command === 'eval:gate' ? 'gate' : 'baseline', rest);
     }
     case 'doctor': {
       const { doctor } = await import('@conclave/server/commands/doctor');
