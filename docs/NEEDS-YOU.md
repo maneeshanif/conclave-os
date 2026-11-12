@@ -12,6 +12,7 @@ Things the build parked for you. Each says what to do.
   ```
 
   It unloads the model when it finishes. `gpt-oss:120b-cloud` is never used for this.
+- **Before promoting an outreach rep to autonomy 2, read its first few drafts.** A new `outreach-rep` starts at autonomy 0 and cannot propose; it writes its first emails as comments on its tasks (its trial). Read the first few. If they are good, promote it: `pnpm agent:new outreach-rep --department outreach --autonomy 2` for a new one, or set `autonomy: 2` in its role file. From then on its drafts arrive in your approvals inbox. The rep's limits (under 170 words, two verified findings, one call to action) are only in its skill text until slice 3 adds a machine check, so your reading is the check for now. Claims, prices, the suppression list, the send caps and the kill switch are enforced in code regardless.
 - Windows run, done on this laptop on 2026-11-12: `pnpm install`, `pnpm test` (174 pass), `pnpm run doctor` (passes) and `pnpm run e2e` on Claude Code (passes). `pnpm run e2e` on OpenCode: see the first item.
 - Fill the TODOs in `company/COMPANY.md`, including the cold email footer address.
 - Cold email footer address and sending domain/service (Q7, Q8). Real sends stay off until both exist.
