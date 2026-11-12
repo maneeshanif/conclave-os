@@ -12,7 +12,7 @@
     "test": "vitest run",
     "typecheck": "pnpm -r --if-present typecheck",
     "lint": "eslint .",
-    "db:migrate": "tsx packages/cli/src/index.ts db:migrate",
+    "db:migrate": "pnpm --filter @conclave/server db:migrate",
     "agent:new": "tsx packages/cli/src/index.ts agent:new",
     "doctor": "tsx packages/cli/src/index.ts doctor"
   },

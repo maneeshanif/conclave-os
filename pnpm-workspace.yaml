@@ -2,6 +2,7 @@ packages:
   - "apps/*"
   - "packages/*"
 
-# Do not run dependency install scripts. esbuild ships its binary as a platform package.
+# Dependency install scripts are denied by default. Allow a package only after reading its script.
 allowBuilds:
-  esbuild: false
+  esbuild: false # ships its binary as a platform package
+  "@embedded-postgres/windows-x64": true # postinstall only recreates symlinks inside its own folder

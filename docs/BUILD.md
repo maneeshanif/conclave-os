@@ -36,7 +36,7 @@ Work them in order. Tick each when its test passes.
   pnpm workspace with `apps/server` (Hono), `apps/web` (Next.js), `packages/shared` (Zod schemas), `packages/cli`, TypeScript, ESLint and Vitest. Both apps listen on 127.0.0.1 only.
   *Test:* `pnpm test` passes a server health check, and `pnpm dev` starts the server and the web app.
 
-- [ ] **S0-2 Database and tenancy.** SPEC 11, the "tenancy rule" and the slice 0 SQL block only.
+- [x] **S0-2 Database and tenancy.** SPEC 11, the "tenancy rule" and the slice 0 SQL block only.
   Embedded Postgres that starts with the server and keeps its files under `DATA_DIR`. Drizzle schema and migrations for the twelve slice 0 tables exactly as that block gives them. The server connects as a non-superuser role that does not own the tables, row-level security is enabled and forced, and each request sets `app.workspace_id` in its transaction. Do not create the vector extension. On first start, create one workspace in local mode.
   *Test:* a query made as workspace A cannot read a row that belongs to workspace B, and a query with no workspace set returns no rows.
 
