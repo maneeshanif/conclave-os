@@ -11,11 +11,14 @@ import { FIRST_START_MARKER, startDatabase, type Database } from '../src/db';
 import { withWorkspace } from '../src/db/tenant';
 
 const TABLES = [
+  'accounts',
   'action_items',
   'agent_templates',
   'agents',
   'approvals',
   'audit_log',
+  'contacts',
+  'deals',
   'departments',
   'goals',
   'leads',

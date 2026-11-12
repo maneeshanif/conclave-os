@@ -71,6 +71,20 @@
       "when": 1794501911013,
       "tag": "0009_auth_grants",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1794503746707,
+      "tag": "0010_accounts_contacts_deals",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1794503748478,
+      "tag": "0011_crm_rls",
+      "breakpoints": true
     }
   ]
 }

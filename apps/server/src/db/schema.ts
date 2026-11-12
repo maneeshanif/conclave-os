@@ -368,15 +368,84 @@ export const leads = pgTable(
     stage: text('stage').notNull().default('new'), // new | contacted | replied | won | lost | do_not_contact
     ownerAgentId: uuid('owner_agent_id'),
     notes: text('notes'),
+    accountId: uuid('account_id'), // set when the lead is promoted (S2-1)
     createdAt: createdAt(),
   },
   (t) => [
     unique('leads_ws_id_uq').on(t.workspaceId, t.id),
+    foreignKey({ name: 'leads_account_fk', columns: [t.workspaceId, t.accountId], foreignColumns: [accounts.workspaceId, accounts.id] }),
     // One lead per address, however it was typed. Many leads may have no address yet.
     uniqueIndex('leads_ws_email_uq')
       .on(t.workspaceId, sql`lower(${t.email})`)
       .where(sql`${t.email} is not null`),
     foreignKey({ name: 'leads_owner_fk', columns: [t.workspaceId, t.ownerAgentId], foreignColumns: [agents.workspaceId, agents.id] }),
+  ],
+);
+
+/** A business: a client or a prospect that has become more than a lead (SPEC 10). */
+export const accounts = pgTable(
+  'accounts',
+  {
+    id: id(),
+    workspaceId: workspaceId(),
+    name: text('name').notNull(),
+    website: text('website'),
+    market: text('market'),
+    stage: text('stage').notNull().default('prospect'), // prospect | client | past_client | lost
+    ownerAgentId: uuid('owner_agent_id'),
+    health: text('health'),
+    notes: text('notes'),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    unique('accounts_ws_id_uq').on(t.workspaceId, t.id),
+    foreignKey({ name: 'accounts_owner_fk', columns: [t.workspaceId, t.ownerAgentId], foreignColumns: [agents.workspaceId, agents.id] }),
+    check('accounts_stage_ck', sql`${t.stage} in ('prospect','client','past_client','lost')`),
+  ],
+);
+
+/** A person at an account, with every channel handle. */
+export const contacts = pgTable(
+  'contacts',
+  {
+    id: id(),
+    workspaceId: workspaceId(),
+    accountId: uuid('account_id').notNull(),
+    name: text('name'),
+    role: text('role'),
+    email: text('email'),
+    phone: text('phone'),
+    instagram: text('instagram'),
+    xHandle: text('x_handle'),
+    linkedin: text('linkedin'),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    unique('contacts_ws_id_uq').on(t.workspaceId, t.id),
+    foreignKey({ name: 'contacts_account_fk', columns: [t.workspaceId, t.accountId], foreignColumns: [accounts.workspaceId, accounts.id] }),
+    index('contacts_account_idx').on(t.workspaceId, t.accountId),
+  ],
+);
+
+/** An open opportunity: offer, value, stage, next step, due date. */
+export const deals = pgTable(
+  'deals',
+  {
+    id: id(),
+    workspaceId: workspaceId(),
+    accountId: uuid('account_id').notNull(),
+    offer: text('offer'),
+    value: numeric('value'),
+    stage: text('stage').notNull().default('open'),
+    nextStep: text('next_step'),
+    due: date('due'),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    unique('deals_ws_id_uq').on(t.workspaceId, t.id),
+    foreignKey({ name: 'deals_account_fk', columns: [t.workspaceId, t.accountId], foreignColumns: [accounts.workspaceId, accounts.id] }),
+    check('deals_value_ck', sql`${t.value} is null or ${t.value} >= 0`),
+    index('deals_account_idx').on(t.workspaceId, t.accountId),
   ],
 );
 

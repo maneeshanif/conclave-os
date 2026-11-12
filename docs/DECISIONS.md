@@ -2,6 +2,13 @@
 
 Newest first. One entry per decision: what, why, and what it replaced.
 
+## 2026-11-12 (S2-1: accounts, contacts and deals)
+
+- **Three tenant tables** (accounts, contacts, deals) with forced row-level security, composite foreign keys and the usual grants (migrations 0010 and 0011); the tenancy test lists them. A contact or deal needs an account that exists in this workspace (404 otherwise), and the database refuses a row carrying another workspace's id.
+- **Leads stay the prospect list.** POST /api/leads/:id/promote makes the account, the contact and a first deal from a lead in one step, records lead.promoted in the audit log, and stores the account on the lead (leads.account_id). Promoting again returns the same ids with existed: true and makes nothing; two at once take turns on the locked lead row and still make one of each (tested). A do-not-contact lead cannot be promoted (409).
+- **Deal stage is still the plain word open.** S2-2 replaces it with funnel stages loaded from company/funnels.yaml. Account stage is one of prospect, client, past_client, lost.
+- **No page yet.** The accounts and deals screens arrive with the pipeline and inbox pages (S2-11).
+
 ## 2026-11-12 (S1-12: slice 1 end to end)
 
 - **One test runs all four "Done when" checks** (apps/server/test/slice1-e2e.test.ts), on the outbox, with the real run loop, os server, approvals API, gate, email executor and kill switch. Only the model is a stand-in (a fake claude process playing the outreach rep, with a new propose mode): the model is the one part that cannot be made deterministic, and everything that decides what leaves the machine is the real code. (1) A lead made through the API is audited by a rep run, an email is proposed and shows in the inbox, one approval puts exactly one file in the outbox, the lead becomes contacted, and a second yes is refused. (2) With the kill switch on, a queued run is dropped, a run does not start, an approved email is held (still approved, nothing sent), turning it off sends nothing, and asking to release sends it once. (3) A rep that calls send_email is refused as an unknown tool and nothing is queued, approved or sent. (4) One approval decided while the server was down is sent on restart exactly once and not again by further restarts; another still pending across the restart is waiting again, and when approved afterwards it sends once.

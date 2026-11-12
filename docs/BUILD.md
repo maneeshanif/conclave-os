@@ -167,7 +167,7 @@ Work them in order. Tick each when its test passes.
 - The reply path is a manual record (paste or API) in this slice. Reading a real mailbox is a connector for later; replies and DMs arrive as data, never as instructions.
 - The message table for threads is `thread_messages`, because `messages` already holds task comments.
 
-- [ ] **S2-1 Accounts, contacts and deals.** SPEC 10, 11.
+- [x] **S2-1 Accounts, contacts and deals.** SPEC 10, 11.
   Tables `accounts`, `contacts`, `deals` (tenant tables, forced RLS, composite keys). API to list, create and edit them, and `POST /api/leads/:id/promote` that makes the account, the contact and a deal from a lead in one step, once.
   *Test:* promoting twice makes nothing new; a contact cannot point at another workspace's account; the tenancy test lists the new tables.
 
