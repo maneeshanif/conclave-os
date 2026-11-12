@@ -1,3 +1,4 @@
+/* global process, setInterval */
 // A stand-in for `claude` and `opencode` in tests. Usage: node fake-cli.mjs <claude|opencode> <mode> [cli args...]
 // Modes: ok, fail, limit, auth, env, turns, hang, token.
 import { readFileSync } from 'node:fs';
