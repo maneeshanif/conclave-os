@@ -226,6 +226,63 @@ Recorded 2026-11-13. Nothing here is built ahead of its slice (CLAUDE.md, Stack)
 - **Chatwoot** (open-source shared inbox and help desk). Fits the help desk connectors row in SPEC 10, slice 10, next to Zendesk, Freshdesk and Intercom. It would be a connector that feeds conversations into the existing inbox, and could replace pasting replies in by hand. It can be self-hosted, so it may need no outside account; unconfirmed. Replies to clients still go through `propose_*` and an executor after approval (hard rules 1 and 3).
 - **Composio** (hosted service with ready-made tool integrations and managed logins). Needs Anees's own account and API key, which the build cannot create or enter: it would go in `docs/NEEDS-YOU.md`. It pulls against the hard rules, so it may come in only as a read-only connector, or behind a `propose_*` tool with its own executor, never as a direct tool for an agent (rules 1, 4, 5 and 11). Lowest priority of the two.
 
+## Slice 3: Reliability
+
+**Done when (SPEC 18, row 3):** you can kill a run halfway and it resumes, a plan limit pauses agents cleanly, and a skill change that hurts the 20 leads is blocked.
+
+**Reads:** SPEC 5, 6, 7, 11, 12, 14, 15. SPEC 14 is the table of failures and what the OS does for each; this slice builds the rows that are not built yet. Every failure ends as a permanent fix (the ratchet).
+
+**Already there from earlier slices:** run states and their audit rows, the task's session id kept for resume, recovery of runs left `running` when the server restarts, the kill switch, the claim-once executors, approval expiry, and the error kinds the runtimes report (including a limit kind).
+
+**Decided in drafting (logged in DECISIONS.md when built):**
+- The "20 real leads" eval needs real leads. The build cannot supply them, so it ships 20 clearly-labelled sample leads and the runner; replacing them with real ones is a NEEDS-YOU item.
+- Output checks are plain code with names (the role file's `output_check` picks one). A check passes or fails with a reason; it never calls a model.
+- Pausing for a plan limit is per runtime, not per agent, and lifts itself at the reset time the runtime reported (or after a default wait if it gave none).
+
+- [ ] **S3-1 The reaper.** SPEC 14 (Run process dies).
+  A job that finds runs whose `heartbeat_at` has gone stale, marks them failed, releases the task lock and puts the task back to todo with its session id, so the next run resumes. A task whose third run in a row has failed is blocked with the reasons. Runs the server itself is still executing are never reaped.
+  *Test:* a run that stops heartbeating is reaped once and its task requeued with the session id; a live run is left alone; the third failure blocks the task; reaping twice changes nothing; the kill switch does not stop the reaper.
+
+- [ ] **S3-2 Retry, backoff and the fallback model.** SPEC 14 (Model API error), SPEC 7.
+  A transient runtime error (rate limit, overload, network) retries the step with growing waits; then the agent's `fallback_model` alias; then the task is blocked with the reason. A non-transient error (auth, bad input) does not retry.
+  *Test:* with a scripted runtime that fails N times: retries are spaced, the fallback is used after the retries, the task is blocked with the reason after that; an auth error blocks at once; each attempt is a row in the run's events.
+
+- [ ] **S3-3 Plan-limit handling.** SPEC 7 (Plan limits are part of the design), SPEC 14.
+  A limit error pauses every agent on that runtime until the reset time (or a default wait), leaves their tasks queued, raises one action item, and lifts the pause by itself at the reset. Nothing is retried in the meantime.
+  *Test:* one limit error pauses all agents on that runtime and none on another; queued tasks stay todo; exactly one action item however many agents hit it; at the reset time runs start again; a person can lift the pause early.
+
+- [ ] **S3-4 Budgets.** SPEC 14 (Budget exhausted).
+  A ledger of what each agent's runs cost this month, checked before every run: over its monthly budget, the agent is paused and one action item is raised. A person raising the budget or unpausing lifts it.
+  *Test:* a run that would start over budget does not start; the agent is paused with an item; the item appears once; a new month starts a new total; raising the budget resumes.
+
+- [ ] **S3-5 Output checks, repair and escalation.** SPEC 14 (Wrong or malformed output), SPEC 5.
+  A registry of named checks (the first: `email-draft`, the limits written in the outreach rep's checks README; and `document-figures` from S2-12). After a run reports done, the role's check runs. On failure: one repair attempt in the same session showing the error, then the stronger model alias, then the task is blocked for the founder with the failures.
+  *Test:* a passing output ends the task; a failing one is repaired once; still failing escalates once; still failing blocks with the reasons; a role with no check is untouched; the check never calls a model.
+
+- [ ] **S3-6 Circuit breakers.** SPEC 14 (Tool or connector error).
+  Three failures in a row of a tool or connector open its breaker: further calls are refused at once with a clear message, one action item is raised, and the breaker closes after a cooldown or when a person resets it. A success resets the count.
+  *Test:* three failures open it; calls are refused while open and not counted; it closes after the cooldown; a success in between resets; one breaker's state does not affect another's.
+
+- [ ] **S3-7 The Health screen.** SPEC 12, 14.
+  `GET /api/health/overview` (queue depth, runs and failure rate by agent over a window, breakers, runtime pauses, spend against budget per agent, last reaper pass, database size) and a Health page with the kill switch on it.
+  *Test:* a fixture gives exact numbers; a paused runtime, an open breaker and an over-budget agent each show up; the page renders each and the empty state.
+
+- [ ] **S3-8 The eval set and the gate.** SPEC 9, 14 (A change makes things worse).
+  An eval set of 20 sample leads with the checks each draft must pass, a runner that has an agent draft for each lead and scores the drafts by the output checks, a stored baseline, and `pnpm run eval:gate` that fails if a change scores worse than the baseline. Replacing the samples with real leads is a NEEDS-YOU item.
+  *Test:* with a scripted drafter the good skill scores at baseline and passes; a skill change that produces over-long drafts scores lower and the gate fails with which leads got worse; an unchanged skill is stable.
+
+- [ ] **S3-9 The daily backup.** SPEC 14 (Data loss).
+  A scheduled job: a database dump into the data folder (keeping the last 14), and a git commit of the company folder. A restore command that checks the dump first. The OS never deletes a database that holds data.
+  *Test:* a backup is written and is restorable into an empty database; old ones beyond 14 are pruned; a failed dump leaves the old ones alone and raises an item; the company folder commit happens only when something changed.
+
+- [ ] **S3-10 Lite mode.** SPEC 17.
+  `LITE=1` for a machine with little memory: one run at a time, no more than one Inngest or ticker task at once, and `doctor` reports the mode and memory.
+  *Test:* in lite mode the dispatcher runs at most one agent at a time; the default is unchanged; `doctor` says which mode.
+
+- [ ] **S3-11 Slice 3 end to end.** SPEC 18, row 3.
+  One test: a run is killed halfway and the next run resumes from its session; a plan limit pauses the agents on that runtime and lifts at the reset; a skill change that hurts the sample leads is blocked by the gate. Tag `slice-3-done`.
+  *Test:* all three "Done when" checks in one run.
+
 ## Opening the next slice
 
 When slice 0 is in daily use, paste this:
