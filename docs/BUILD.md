@@ -148,7 +148,7 @@ Work them in order. Tick each when its test passes.
   `ACCESS_MODE` lets the server also answer on a Tailscale address, and only if S1-10's login is on. The web app becomes an installable PWA (manifest, icons, service worker for the shell). Tailscale itself is Anees's step (NEEDS-YOU).
   *Test:* the server refuses to bind a non-loopback address with login off; the manifest and service worker validate; the approvals page lays out on an Android Chrome device profile in Playwright. The real phone check is in NEEDS-YOU.
 
-- [ ] **S1-12 Slice 1 end to end.** SPEC 18, row 1.
+- [x] **S1-12 Slice 1 end to end.** SPEC 18, row 1.
   One script drives the whole path on the outbox: create a lead, run the audit task, `propose_email`, approve it in the API, see the send in the outbox, flip the kill switch, try a forbidden route, restart the server mid-wait and check it sends once.
   *Test:* all four "Done when" checks pass in one run. Tag `slice-1-done`.
   Also, once: run the approval gate against a real Inngest dev server (`INNGEST_DEV=1`), because S1-3 tested the Inngest function with a stand-in for its `step` only (no Inngest server on the laptop). Nothing else about slice 1 depends on it: the default gate is the in-process one.

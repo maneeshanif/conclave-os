@@ -1,6 +1,6 @@
 /* global process, setInterval, fetch */
 // A stand-in for `claude` and `opencode` in tests. Usage: node fake-cli.mjs <claude|opencode> <mode> [cli args...]
-// Modes: ok, fail, limit, auth, env, turns, hang, token.
+// Modes: ok, fail, limit, auth, env, turns, hang, token, mcp, forbidden, propose (claude only).
 import { readFileSync } from 'node:fs';
 
 // Reads the rendered MCP config in the working folder and calls the os server the way a real
@@ -48,6 +48,20 @@ if (flavor === 'claude') {
     process.exit(3);
   }
   if (mode === 'hang') setInterval(() => undefined, 1000);
+  else if (mode === 'propose') {
+    // An outreach rep that reads its task, finds the lead id in it, proposes one email and finishes.
+    const call = async (i, tool, input) => {
+      out({ type: 'assistant', message: { content: [{ type: 'tool_use', id: `p${i}`, name: `mcp__os__${tool}`, input }] } });
+      const r = await callOs(tool, input);
+      out({ type: 'user', message: { content: [{ type: 'tool_result', tool_use_id: `p${i}`, content: r.text, is_error: !r.ok }] } });
+      return r;
+    };
+    const task = await call(0, 'get_task', {});
+    const leadId = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/.exec(JSON.parse(task.text).body ?? '')?.[0];
+    await call(1, 'propose_email', { leadId, subject: 'A homepage concept for you', body: 'Hi, I looked at your booking page and it asks visitors to phone first. Happy to share a concept.', step: 1 });
+    await call(2, 'complete_task', { output: 'Proposed one email.' });
+    out({ type: 'result', subtype: 'success', is_error: false, result: 'finished', session_id: sid, total_cost_usd: 0, usage: {} });
+  }
   else if (mode === 'mcp' || mode === 'forbidden') {
     const steps = mode === 'mcp' ? [['get_task', {}], ['complete_task', { output: 'Five facts.' }]] : [['send_email', { to: 'x@y.z' }]];
     for (const [i, [tool, input]] of steps.entries()) {
