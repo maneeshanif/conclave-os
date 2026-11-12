@@ -1,0 +1,19 @@
+# Agent template: lead. Neutral sources only; the renderer writes each harness's own format (SPEC 5).
+key: lead
+version: 1
+description: "Leads a department: splits work into tasks, hands them to its agents and reports the week's number."
+params:
+  - { name: id, required: true }
+  - { name: name, required: true }
+  - { name: department, required: true }
+  - { name: department_name, required: true }
+  - { name: company_name, required: true }
+  - { name: reports_to, required: false }
+defaults:
+  runtime: claude-cli
+  model: strong-writer
+  autonomy: 0
+  monthly_budget_usd: 10
+  max_turns: 30
+  heartbeat: "0 9 * * 1-5"
+skills: [weekly-number]
