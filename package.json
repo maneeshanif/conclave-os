@@ -13,8 +13,9 @@
     "typecheck": "pnpm -r --if-present typecheck",
     "lint": "eslint .",
     "db:migrate": "pnpm --filter @conclave/server db:migrate",
-    "agent:new": "tsx packages/cli/src/index.ts agent:new",
-    "doctor": "tsx packages/cli/src/index.ts doctor"
+    "agent:new": "tsx --env-file-if-exists=.env packages/cli/src/index.ts agent:new",
+    "doctor": "tsx --env-file-if-exists=.env packages/cli/src/index.ts doctor",
+    "agent:render": "tsx --env-file-if-exists=.env packages/cli/src/index.ts agent:render"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

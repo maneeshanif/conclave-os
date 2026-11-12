@@ -1,26 +1,23 @@
-import { cp, mkdtemp } from 'node:fs/promises';
 import type { AddressInfo } from 'node:net';
-import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { serve } from '@hono/node-server';
 import { Hono } from 'hono';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { Bus } from '../src/bus';
 import { agentNew } from '../src/commands/agent-new';
-import { bootstrapLocalWorkspace, withWorkspace } from '../src/db/tenancy';
+import { withWorkspace } from '../src/db/tenant';
 import { DbOsStore } from '../src/harness/db-os-store';
 import { checkoutTask, executeRun, type LoopDeps } from '../src/harness/loop';
-import { RunTokens } from '../src/harness/run-tokens';
-import { REPO_ROOT } from '../src/paths';
+import type { OsStore } from '../src/harness/os-tools';
+import { RunTokens, type RunScope } from '../src/harness/run-tokens';
 import { mcpRoutes } from '../src/routes/mcp';
 import { createCliRuntime } from '../src/runtimes/cli';
 import type { RunEvent, RunRequest, Runtime } from '../src/runtimes/types';
 import type { System } from '../src/system';
 import { heartbeatDue, LocalDispatcher, tick } from '../src/workflows/dispatch';
-import { testDb } from './helpers/db';
+import { testSystem } from './helpers/db';
 
 const fake = path.join(__dirname, 'fixtures', 'fake-cli.mjs');
-let db: Awaited<ReturnType<typeof testDb>>;
 let sys: System;
 let server: ReturnType<typeof serve>;
 const tokens = new RunTokens();
@@ -43,51 +40,58 @@ function countingRuntime(): Runtime {
   };
 }
 
+class LateStore implements OsStore {
+  inner!: OsStore;
+  getTask(s: RunScope) {
+    return this.inner.getTask(s);
+  }
+  comment(s: RunScope, t: string) {
+    return this.inner.comment(s, t);
+  }
+  completeTask(s: RunScope, o: string) {
+    return this.inner.completeTask(s, o);
+  }
+  blockTask(s: RunScope, r: string) {
+    return this.inner.blockTask(s, r);
+  }
+  askFounder(s: RunScope, q: string) {
+    return this.inner.askFounder(s, q);
+  }
+}
+
 let deps: LoopDeps;
 const ws = () => sys.workspace.id;
 
 async function agentId(key: string): Promise<string> {
-  const r = await withWorkspace(sys.app, ws(), (c) => c.query('select id from agents where key = $1', [key]));
+  const r = await withWorkspace(sys.app, ws(), ({ client: c }) => c.query('select id from agents where key = $1', [key]));
   return r.rows[0].id;
 }
 async function addTask(assignee: string, title: string): Promise<string> {
-  const r = await withWorkspace(sys.app, ws(), (c) =>
+  const r = await withWorkspace(sys.app, ws(), ({ client: c }) =>
     c.query("insert into tasks (workspace_id, assignee_id, title, body, created_by) values ($1, $2, $3, 'Use the company file.', 'founder') returning id", [ws(), assignee, title]),
   );
   return r.rows[0].id;
 }
 async function task(id: string) {
-  return (await withWorkspace(sys.app, ws(), (c) => c.query('select status, blocked_reason from tasks where id = $1', [id]))).rows[0];
+  return (await withWorkspace(sys.app, ws(), ({ client: c }) => c.query('select status, blocked_reason from tasks where id = $1', [id]))).rows[0];
 }
 
 beforeAll(async () => {
-  db = await testDb();
-  const app = new Hono().route('/mcp', mcpRoutes({ tokens, store: new DbOsStore(db.app) }));
+  // The os server starts before the database exists, so it gets a store that is filled in below.
+  const store = new LateStore();
+  const app = new Hono().route('/mcp', mcpRoutes({ tokens, store }));
   await new Promise<void>((r) => {
     server = serve({ fetch: app.fetch, port: 0, hostname: '127.0.0.1' }, () => r());
   });
-  const companyRoot = await mkdtemp(path.join(tmpdir(), 'conclave-co-'));
-  await cp(path.join(REPO_ROOT, 'company'), companyRoot, { recursive: true });
-  sys = {
-    dataDir: db.dataDir,
-    companyRoot,
-    templatesRoot: path.join(REPO_ROOT, 'templates'),
-    workspace: await bootstrapLocalWorkspace(db.owner, 'Acme'),
-    app: db.app,
-    owner: db.owner,
-    creds: db.cluster.creds,
-    serverPort: 0,
-    osUrl: `http://127.0.0.1:${(server.address() as AddressInfo).port}/mcp`,
-    ownsDatabase: true,
-    close: async () => undefined,
-  };
+  sys = (await testSystem(`http://127.0.0.1:${(server.address() as AddressInfo).port}/mcp`)).sys;
+  store.inner = new DbOsStore(sys.app);
   await agentNew(sys, { template: 'researcher', department: 'research' });
   await agentNew(sys, { template: 'writer', department: 'outreach' });
   deps = { pool: sys.app, tokens, bus, runtimes: { 'claude-cli': countingRuntime() }, dataDir: sys.dataDir, workspaceSlug: sys.workspace.slug, templatesRoot: sys.templatesRoot, timeoutMs: 20_000 };
-}, 120_000);
+}, 180_000);
 afterAll(async () => {
   server?.close();
-  await db?.close();
+  await sys?.close();
 });
 
 describe('run loop (S0-8)', () => {
@@ -103,7 +107,7 @@ describe('run loop (S0-8)', () => {
     const t1 = await addTask(writer, 'one');
     const [a, b] = await Promise.all([checkoutTask(sys.app, ws(), writer), checkoutTask(sys.app, ws(), writer)]);
     expect([a?.id, b?.id].filter(Boolean)).toEqual([t1]);
-    await withWorkspace(sys.app, ws(), (c) => c.query("update tasks set status = 'cancelled' where id = $1", [t1]));
+    await withWorkspace(sys.app, ws(), ({ client: c }) => c.query("update tasks set status = 'cancelled' where id = $1", [t1]));
   });
 
   it('runs a task end to end: the agent reads and completes it through the os server, events are stored in order', async () => {
@@ -116,15 +120,15 @@ describe('run loop (S0-8)', () => {
     off();
     expect(out.status).toBe('succeeded');
     expect(await task(t)).toMatchObject({ status: 'done' });
-    const run = await withWorkspace(sys.app, ws(), (c) => c.query('select status, session_id, trigger from runs where task_id = $1', [t]));
+    const run = await withWorkspace(sys.app, ws(), ({ client: c }) => c.query('select status, session_id, trigger from runs where task_id = $1', [t]));
     expect(run.rows[0]).toMatchObject({ status: 'succeeded', trigger: 'manual' });
-    const events = await withWorkspace(sys.app, ws(), (c) => c.query('select type, data from run_events where run_id = (select id from runs where task_id = $1) order by id', [t]));
+    const events = await withWorkspace(sys.app, ws(), ({ client: c }) => c.query('select type, data from run_events where run_id = (select id from runs where task_id = $1) order by id', [t]));
     expect(events.rows.map((r) => r.type)).toEqual(seen);
     expect(events.rows[0].type).toBe('session');
     expect(events.rows.at(-1).type).toBe('done');
-    const thread = await withWorkspace(sys.app, ws(), (c) => c.query('select from_id, body from messages where task_id = $1', [t]));
+    const thread = await withWorkspace(sys.app, ws(), ({ client: c }) => c.query('select from_id, body from messages where task_id = $1', [t]));
     expect(thread.rows).toEqual([{ from_id: 'agent:research-researcher', body: 'Five facts.' }]);
-    const audit = await withWorkspace(sys.app, ws(), (c) => c.query("select action from audit_log where action like 'run.%' order by id"));
+    const audit = await withWorkspace(sys.app, ws(), ({ client: c }) => c.query("select action from audit_log where action like 'run.%' order by id"));
     expect(audit.rows.map((r) => r.action)).toEqual(['run.running', 'run.succeeded']);
   });
 
@@ -140,9 +144,9 @@ describe('run loop (S0-8)', () => {
 
   it('a paused agent does not run', async () => {
     const writer = await agentId('outreach-writer');
-    await withWorkspace(sys.app, ws(), (c) => c.query("update agents set status = 'paused' where id = $1", [writer]));
+    await withWorkspace(sys.app, ws(), ({ client: c }) => c.query("update agents set status = 'paused' where id = $1", [writer]));
     expect(await executeRun(deps, ws(), writer, 'manual')).toMatchObject({ status: 'not_runnable' });
-    await withWorkspace(sys.app, ws(), (c) => c.query("update agents set status = 'active' where id = $1", [writer]));
+    await withWorkspace(sys.app, ws(), ({ client: c }) => c.query("update agents set status = 'active' where id = $1", [writer]));
   });
 });
 
@@ -179,7 +183,7 @@ describe('dispatcher and ticker (S0-8)', () => {
 
   it('the ticker requests runs only for due, active agents with a heartbeat', async () => {
     const lead = await agentId('outreach-writer');
-    await withWorkspace(sys.app, ws(), (c) => c.query("update agents set heartbeat_cron = '* * * * *' where id = $1", [lead]));
+    await withWorkspace(sys.app, ws(), ({ client: c }) => c.query("update agents set heartbeat_cron = '* * * * *' where id = $1", [lead]));
     const sent: string[] = [];
     const due = await tick(sys.app, ws(), { name: 'local', request: async (e) => void sent.push(e.agentId) });
     expect(due).toEqual([lead]);

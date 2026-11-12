@@ -12,14 +12,21 @@
   "dependencies": {
     "@conclave/shared": "workspace:*",
     "@hono/node-server": "2.1.6",
+    "@hono/node-ws": "^1.3.1",
+    "cron-parser": "^5.10.4",
     "drizzle-orm": "0.45.4",
     "embedded-postgres": "18.6.0-beta.19",
     "hono": "4.13.17",
+    "inngest": "4.26.2",
     "pg": "8.23.1",
+    "yaml": "^2.9.1",
     "zod": "^4.6.7"
   },
   "devDependencies": {
     "@types/pg": "8.23.1",
     "drizzle-kit": "0.31.11"
+  },
+  "exports": {
+    "./*": "./src/*.ts"
   }
 }

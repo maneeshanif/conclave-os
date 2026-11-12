@@ -260,24 +260,24 @@ describe('tenancy', () => {
   describe('the request middleware', () => {
     it('opens one transaction per request with app.workspace_id set', async () => {
       const app = createApp({ pool: db.appPool, workspaceId: wsA });
-      app.get('/_probe', async (c) => {
+      app.get('/api/_probe', async (c) => {
         const r = await c.get('tx').client.query(
           "select current_setting('app.workspace_id') as ws, (select count(*)::int from departments) as n",
         );
         return c.json(r.rows[0]);
       });
-      const res = await app.request('/_probe');
+      const res = await app.request('/api/_probe');
       expect(res.status).toBe(200);
       expect(await res.json()).toEqual({ ws: wsA, n: 1 });
     });
 
     it('rolls the transaction back when the handler fails', async () => {
       const app = createApp({ pool: db.appPool, workspaceId: wsA });
-      app.get('/_boom', async (c) => {
+      app.get('/api/_boom', async (c) => {
         await c.get('tx').client.query("insert into departments (workspace_id, key, name) values ($1, 'ghost', 'ghost')", [wsA]);
         throw new Error('boom');
       });
-      const res = await app.request('/_boom');
+      const res = await app.request('/api/_boom');
       expect(res.status).toBe(500);
       const r = await withWorkspace(db.appPool, wsA, ({ client }) =>
         client.query("select 1 from departments where key = 'ghost'"),

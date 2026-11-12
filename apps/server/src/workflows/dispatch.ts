@@ -1,6 +1,6 @@
 import { CronExpressionParser } from 'cron-parser';
 import type pg from 'pg';
-import { withWorkspace } from '../db/tenancy';
+import { withWorkspace } from '../db/tenant';
 import type { RunOutcome } from '../harness/loop';
 
 /** Everything that starts a run sends this one request (SPEC 11: one event starts every run). */
@@ -80,7 +80,7 @@ export function heartbeatDue(cron: string, lastHeartbeat: Date | null, now: Date
 
 /** Sends a run request for every active agent whose heartbeat is due (SPEC 11). */
 export async function tick(pool: pg.Pool, workspaceId: string, dispatcher: Dispatcher, now = new Date()): Promise<string[]> {
-  const agents = await withWorkspace(pool, workspaceId, (c) =>
+  const agents = await withWorkspace(pool, workspaceId, ({ client: c }) =>
     c.query<{ id: string; heartbeat_cron: string; last: Date | null }>(
       `select a.id, a.heartbeat_cron,
               (select max(r.started_at) from runs r where r.agent_id = a.id and r.trigger = 'heartbeat') as last
