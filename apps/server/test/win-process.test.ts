@@ -5,7 +5,15 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { createCliRuntime } from '../src/runtimes/cli';
 import type { RunEvent, RunRequest } from '../src/runtimes/types';
-import { killCommand, parseCmdShim, quoteForCmd, resolveWindowsCommand, spawnArgs } from '../src/runtimes/win-process';
+import {
+  commandLine,
+  killCommand,
+  parseCmdShim,
+  quoteForCmd,
+  resolveCommand,
+  resolveWindowsCommand,
+  spawnResolved,
+} from '../src/runtimes/win-process';
 
 // The text of the shim npm wrote for opencode on a real Windows machine: it starts a native .exe.
 const EXE_SHIM = `@ECHO off
@@ -127,11 +135,28 @@ describe('quoting for cmd.exe (S0-12)', () => {
     expect(quoteForCmd('a&b')).toBe('"a&b"');
   });
 
-  it('quotes the file and every argument the same way for health() and start()', () => {
+  it('builds one quoted command line for the shell fallback, so no argument list is passed to a shell', () => {
     const shelled = { file: 'C:\\Program Files\\tool.cmd', args: ['run'], shell: true };
-    expect(spawnArgs(shelled, ['--version'])).toEqual({ file: '"C:\\Program Files\\tool.cmd"', args: ['run', '--version'] });
-    const direct = { file: 'C:\\Program Files\\tool.exe', args: ['run'], shell: false };
-    expect(spawnArgs(direct, ['--version'])).toEqual({ file: 'C:\\Program Files\\tool.exe', args: ['run', '--version'] });
+    expect(commandLine(shelled, ['--version'])).toBe('"C:\\Program Files\\tool.cmd" run --version');
+    expect(commandLine({ file: 'tool', args: [], shell: true })).toBe('tool');
+  });
+});
+
+describe('starting a resolved command (S0-12)', () => {
+  const printVersion = { command: process.execPath, prefixArgs: ['-e', 'console.log("v1.2.3")'] };
+
+  it('starts a program directly and reads its output, for start() and health() alike', async () => {
+    const resolved = resolveCommand(printVersion, { PATH: process.env.PATH });
+    expect(resolved.shell).toBe(false);
+    const child = spawnResolved(resolved, [], { windowsHide: true });
+    let out = '';
+    child.stdout?.on('data', (d: Buffer) => (out += d.toString()));
+    await new Promise((r) => child.on('close', r));
+    expect(out.trim()).toBe('v1.2.3');
+  });
+
+  it('leaves a non-Windows command alone', () => {
+    expect(resolveCommand({ command: 'claude', prefixArgs: ['-p'] }, {}, 'linux')).toEqual({ file: 'claude', args: ['-p'], shell: false });
   });
 });
 

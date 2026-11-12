@@ -1,4 +1,4 @@
-import { spawn, type ChildProcess } from 'node:child_process';
+import type { ChildProcess } from 'node:child_process';
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { createInterface } from 'node:readline';
@@ -6,7 +6,7 @@ import { modelNameFor, resolveModel } from '../config/models';
 import type { RuntimeName } from './names';
 import { claudeParser, opencodeParser, type Parser } from './parsers';
 import { RUN_TOKEN_ENV, type RunEvent, type RunRequest, type Runtime, type RuntimeHealth } from './types';
-import { killTree, resolveWindowsCommand, spawnArgs, type ResolvedCommand } from './win-process';
+import { killTree, resolveCommand, spawnResolved } from './win-process';
 
 /** How to start a CLI. Tests point this at a fake script; production uses the binary on PATH. */
 export interface CliCommand {
@@ -53,15 +53,6 @@ export function cleanEnv(
     if (v !== undefined) env[k] = v;
   }
   return { ...env, ...extra };
-}
-
-/**
- * Elsewhere the command is started as given. On Windows an npm `.cmd` shim is read and the program it forwards
- * to is started directly, with no shell (see win-process.ts).
- */
-function resolveCommand(cmd: CliCommand, env: Record<string, string>): ResolvedCommand {
-  if (process.platform !== 'win32') return { file: cmd.command, args: cmd.prefixArgs ?? [], shell: false };
-  return resolveWindowsCommand(cmd, { env });
 }
 
 interface Built {
@@ -170,17 +161,10 @@ export function createCliRuntime(name: 'claude-cli' | 'opencode', opts: CliRunti
       [RUN_TOKEN_ENV]: req.runToken,
     }, opts.envAllowlist);
     const resolved = resolveCommand(command, env);
-    const launch = spawnArgs(resolved, built.args);
     // The agent works one level down, in work/, so it cannot touch its own harness config.
     const cwd = path.join(req.workspaceDir, 'work');
     await mkdir(cwd, { recursive: true });
-    const child = spawn(launch.file, launch.args, {
-      cwd,
-      env,
-      shell: resolved.shell,
-      stdio: ['pipe', 'pipe', 'pipe'],
-      windowsHide: true,
-    });
+    const child = spawnResolved(resolved, built.args, { cwd, env, stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true });
     children.set(req.runId, child);
 
     const queue: RunEvent[] = [];
@@ -285,8 +269,7 @@ export function createCliRuntime(name: 'claude-cli' | 'opencode', opts: CliRunti
       const env = cleanEnv(opts.baseEnv ?? process.env, {});
       const resolved = resolveCommand(command, env);
       return new Promise((resolve) => {
-        const launch = spawnArgs(resolved, ['--version']);
-        const child = spawn(launch.file, launch.args, { env, shell: resolved.shell, windowsHide: true });
+        const child = spawnResolved(resolved, ['--version'], { env, windowsHide: true });
         let out = '';
         child.stdout?.on('data', (d: Buffer) => (out += d.toString()));
         child.on('error', (err) => resolve({ ok: false, detail: `${command.command} not found: ${err.message}` }));

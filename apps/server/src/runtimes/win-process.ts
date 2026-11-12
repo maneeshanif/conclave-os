@@ -5,7 +5,7 @@
 //     and an extra process. The shim only forwards to a real program, so we read it and start that program.
 //  2. `child.kill()` ends the process we started, not the processes it started. A CLI runs tools as children,
 //     so a cancelled run would leave them behind. `taskkill /T /F` ends the whole tree.
-import { spawn, type ChildProcess } from 'node:child_process';
+import { spawn, type ChildProcess, type SpawnOptions } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 
@@ -83,10 +83,25 @@ export function quoteForCmd(a: string): string {
   return /[\s"&|<>^]/.test(a) ? `"${a.replace(/"/g, '""')}"` : a;
 }
 
-/** The file and arguments to hand to spawn. When a shell will run them, every part is quoted, in start() and health() alike. */
-export function spawnArgs(resolved: ResolvedCommand, extra: string[] = []): { file: string; args: string[] } {
-  const args = [...resolved.args, ...extra];
-  return resolved.shell ? { file: quoteForCmd(resolved.file), args: args.map(quoteForCmd) } : { file: resolved.file, args };
+/** One command line with every part quoted, for the shell fallback. */
+export function commandLine(resolved: ResolvedCommand, extra: string[] = []): string {
+  return [resolved.file, ...resolved.args, ...extra].map(quoteForCmd).join(' ');
+}
+
+/** Elsewhere the command is started as given. On Windows, shims are read first (see resolveWindowsCommand). */
+export function resolveCommand(cmd: CommandSpec, env: Record<string, string | undefined>, platform: NodeJS.Platform = process.platform): ResolvedCommand {
+  if (platform !== 'win32') return { file: cmd.command, args: cmd.prefixArgs ?? [], shell: false };
+  return resolveWindowsCommand(cmd, { env });
+}
+
+/**
+ * Starts a resolved command. Almost always that is the program itself with an argument list and no shell.
+ * Only the last-resort fallback uses a shell, and then as one quoted command string: Node warns (DEP0190)
+ * about handing a shell an argument list, because it only joins the arguments without escaping them.
+ */
+export function spawnResolved(resolved: ResolvedCommand, extra: string[], options: SpawnOptions): ChildProcess {
+  if (resolved.shell) return spawn(commandLine(resolved, extra), { ...options, shell: true });
+  return spawn(resolved.file, [...resolved.args, ...extra], { ...options, shell: false });
 }
 
 /** The command that ends a process and everything it started, or undefined where `child.kill()` is enough. */

@@ -1,10 +1,10 @@
-import { spawn } from 'node:child_process';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { Socket } from 'node:net';
 import { networkInterfaces } from 'node:os';
 import path from 'node:path';
 import { HOST, resolveDataDir, resolvePgPort, resolvePort } from '../config';
 import { cleanEnv } from '../runtimes/cli';
+import { killTree, resolveCommand, spawnResolved } from '../runtimes/win-process';
 
 export type Level = 'ok' | 'warn' | 'fail';
 export interface Check {
@@ -21,8 +21,11 @@ function run(cmd: string, args: string[], env: Env, timeoutMs = 20_000): Promise
     const win = process.platform === 'win32';
     let out = '';
     let missing = false;
-    const child = spawn(cmd, args, { env: env as NodeJS.ProcessEnv, shell: win, windowsHide: true });
-    const timer = setTimeout(() => child.kill(), timeoutMs);
+    // The same resolver the runtime uses: a real program is started directly, an npm shim is read, and only a
+    // command we cannot find falls back to the shell (which then reports "is not recognized", handled below).
+    const resolved = resolveCommand({ command: cmd, prefixArgs: [] }, env);
+    const child = spawnResolved(resolved, args, { env: env as NodeJS.ProcessEnv, windowsHide: true });
+    const timer = setTimeout(() => killTree(child), timeoutMs);
     child.stdout?.on('data', (d: Buffer) => (out += d.toString()));
     child.stderr?.on('data', (d: Buffer) => (out += d.toString()));
     child.on('error', (err: NodeJS.ErrnoException) => {

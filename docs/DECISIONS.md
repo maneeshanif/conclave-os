@@ -17,6 +17,7 @@ Newest first. One entry per decision: what, why, and what it replaced.
 ## 2026-11-12 (S0-12: Windows process handling)
 
 - **An npm `.cmd` shim is read, not run through a shell.** The resolver parses the shim and starts the program it forwards to: either a native `.exe` (this laptop's `opencode.cmd` does that) or `node` plus a script. A shell is the last resort for a shim it cannot read. Why: a shell adds a process, quoting rules and a second thing to kill. `claude` here is already a native `.exe`. `health()` and `start()` now quote through one function.
+- **One way to start a command, in the runner, `health()` and `pnpm run doctor`.** A shell is the last resort, and then it gets one quoted command string, never an argument list (Node warns about that, DEP0190). Doctor used to start everything through a shell on Windows.
 - **Cancel and timeout end the whole process tree on Windows** with `taskkill /pid <pid> /T /F`. `child.kill()` ends only the process we started, and a CLI runs its tools as children. Checked by a test that starts a fake CLI with its own long-lived child, cancels, and finds the child gone. Other platforms keep `child.kill()`.
 
 ## 2026-11-12 (build answers from Anees)
