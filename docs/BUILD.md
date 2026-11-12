@@ -96,6 +96,62 @@ Work them in order. Tick each when its test passes.
   `pnpm run e2e` hires its researcher into the repo's `company/` when none exists, so every run leaves `company/departments/research/...` untracked. Point it at its own company folder (`COMPANY_DIR` already exists for that) and remove the folder when it ends. Also retry the OpenCode half once Anees has replaced the expired OpenCode key (NEEDS-YOU).
   *Test:* after `pnpm run e2e`, `git status` shows no new files in the repo.
 
+## Slice 1: Approvals and Outreach
+
+**Done when (SPEC 18):** a lead goes from audit to approved email to sent; the kill switch stops everything; an agent told to send an email by any other route fails; and an approval decided after a restart still sends exactly once.
+
+**Hard limits for this slice.** Real transports stay off: sending goes to the outbox (a folder of files), never to a real address, and the Resend adapter stays unused until Anees turns it on in `.env`. No account is created and no secret is asked for. Login is the owner only (Q10); roles stay in the schema for slice 9.
+
+**Already on `dev`, not reviewed:** tables and RLS migrations 0002/0003, `actions/policy.ts` (claim checks, footer, suppression), `actions/transport.ts` (outbox by default, Resend untested), `actions/email.ts` (claim-once executor, restart recovery), the `propose_email` and `get_lead` os tools, the kill-switch check in the run loop. S1-1 gives them tests before anything is built on them.
+
+- [ ] **S1-1 Test what is already there.** SPEC 6 (rules around the gate), 14, 15.
+  Write the missing tests for `policy.ts`, `transport.ts`, `email.ts`, the two os tools and the kill-switch check, and fix what they find. Read the slice 1 migrations against the tenancy rule: every table has `workspace_id`, composite keys and forced RLS, and the existing tenancy test must cover them.
+  *Test:* the claim checks block medical, legal and pricing claims; a suppressed or do-not-contact address is refused by `propose_email`; the outbox transport writes one file per approval; the executor claims `approved` to `executing` once and a second claim does nothing; the table-driven RLS test lists every slice 1 table.
+
+- [ ] **S1-2 Approvals API.** SPEC 6, 11 (API table).
+  `GET /api/approvals?status=`, `GET /api/approvals/:id`, `POST /api/approvals/:id/decide` with `approved` or `rejected` and an optional edited payload. Decisions go through one state machine (`pending` to `approved` or `rejected`, never back), record who and when, and publish `approval/decided`.
+  *Test:* deciding twice is refused; an edited payload is stored and is what the executor will use; a rejected approval is never executable; a decision for another workspace's approval is a 404.
+
+- [ ] **S1-3 The gate workflow, and restart recovery.** SPEC 6 (how the gate is built, three rules), 11, 14.
+  `approval-gate` on Inngest and its in-process equivalent, with the same behaviour: wait for the decision (3 day timeout marks it `expired`), then run the executor once. On server start, request again every `pending` approval that has no live wait. The execute step never retries.
+  *Test:* an approval decided after a simulated restart sends exactly once; two executors racing for one approval send once; a pending approval left over from before a restart is picked up; an expired approval never sends.
+
+- [ ] **S1-4 Leads and the suppression list.** SPEC 10, 15.
+  `POST/GET/PATCH /api/leads` (create, list, one lead, stage and do-not-contact) and `GET/POST/DELETE /api/suppression`. Addresses are normalised and matched case-insensitively. An unsubscribe adds to the list and nothing removes it silently.
+  *Test:* a lead marked do-not-contact is refused by `propose_email`; adding an address to the list blocks proposals for it in any case; removing needs an explicit call and is logged in `audit_log`.
+
+- [ ] **S1-5 Settings, the kill switch and the send caps.** SPEC 6, 14, 15; QUESTIONS 9.
+  `workspace_settings` holds the kill switch and the caps: `window_hours` = 5 and `window_cap` = 30 (a rolling window), plus a per-day cap. Follow-ups count in the same window. `GET/PATCH /api/settings`. With the kill switch on: no new run starts, running runs are cancelled, queued requests are dropped, and no executor sends, including approvals already approved.
+  *Test:* the 31st email inside five hours is held and the 31st after the window moves is allowed; the kill switch stops a running fake run, empties the queue and blocks an executor on an already-approved email; turning it off does not resurrect dropped work.
+
+- [ ] **S1-6 The `outreach-rep` template and `outreach-kit`.** SPEC 5 (templates, default permissions), 8, 10.
+  A neutral template for the first-touch writer: role file, rules, `permissions.yaml` (the `os` tools only, no shell, no network write), a procedure skill for the first email, and an output check. `outreach-kit` carries the skill and the connector entry.
+  *Test:* a snapshot of the rendered folder for both engines; neither grants a shell or a network-writing tool; through the conformance suite's `forbidden` mode, an attempt to send by any route other than `propose_email` is refused and nothing is sent.
+
+- [ ] **S1-7 The email executor, wired.** SPEC 6, 14, 15.
+  Register the executor with the gate in `index.ts`. Sending requires the footer address from `company/` and a transport; with no footer the approval ends `failed` with that reason and nothing is sent. The outbox is the default transport; Resend is selected only by an explicit setting. Every send records the outcome on `outreach_messages` and in `audit_log`.
+  *Test:* an approved email lands in the outbox exactly once; with the footer unset the executor refuses and says why; a blocked claim added after approval is still refused at send time; the outbox is the transport unless the setting says otherwise.
+
+- [ ] **S1-8 The approvals inbox page.** SPEC 12.
+  A web page listing pending cards: for an email, the recipient, the full message, the findings it rests on, with approve, reject and edit. Updates arrive over the existing socket. No login yet (S1-10).
+  *Test:* a component test that a pending email card shows recipient, subject, body and findings; approving calls the API with the edited text; a decided card leaves the list.
+
+- [ ] **S1-9 Action items.** SPEC 11, 12.
+  An `action_items` table and `/api/action-items` for what needs the founder: blocked tasks, `ask_founder` questions, failed approvals, the kill switch being on. A page lists them.
+  *Test:* an `ask_founder` call creates an item; resolving it unblocks nothing by itself but is recorded; a failed approval appears once.
+
+- [ ] **S1-10 Login for the owner.** SPEC 11 (Auth), 12.
+  Better Auth with passkeys, one owner (Q10), sessions and devices tables. In local mode on 127.0.0.1 nothing changes. A login wall is required before anything listens on another interface (CLAUDE.md rule 9). Check the Better Auth docs for the current API before using it.
+  *Test:* with login on, an API call without a session is 401 and with one is 200; the wall cannot be switched off while a non-loopback interface is configured; a session cookie is HttpOnly, Secure when not on loopback, and SameSite.
+
+- [ ] **S1-11 Phone access and the installable app.** SPEC 12; QUESTIONS 11.
+  `ACCESS_MODE` lets the server also answer on a Tailscale address, and only if S1-10's login is on. The web app becomes an installable PWA (manifest, icons, service worker for the shell). Tailscale itself is Anees's step (NEEDS-YOU).
+  *Test:* the server refuses to bind a non-loopback address with login off; the manifest and service worker validate; the approvals page lays out on an Android Chrome device profile in Playwright. The real phone check is in NEEDS-YOU.
+
+- [ ] **S1-12 Slice 1 end to end.** SPEC 18, row 1.
+  One script drives the whole path on the outbox: create a lead, run the audit task, `propose_email`, approve it in the API, see the send in the outbox, flip the kill switch, try a forbidden route, restart the server mid-wait and check it sends once.
+  *Test:* all four "Done when" checks pass in one run. Tag `slice-1-done`.
+
 ## Opening the next slice
 
 When slice 0 is in daily use, paste this:
