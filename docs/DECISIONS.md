@@ -19,6 +19,14 @@ Newest first. One entry per decision: what, why, and what it replaced.
 - **Server on port 3100, web on 3000, both on 127.0.0.1.** The server reads `PORT` and defaults to 3100, matching `.env.example`. SPEC 11, CLAUDE.md rule 9.
 - **Lint uses plain `typescript-eslint` for now.** `eslint-config-next` for `apps/web` is added in S0-9, when there is UI to lint.
 
+## 2026-11-12 (v6: client meetings and channels)
+
+- **Client meeting room with video, on LiveKit.** Apache 2.0, separate from the OS server. Clients join by a one-meeting guest link. The OS itself never becomes public. SPEC 10, 12.
+- **AI in client calls starts as note taker only.** A live AI speaker waits for a month of notes and passing mock-call evals, because nothing said live can be approved first. SPEC 10, 19.
+- **Recording needs consent per call.** SPEC 10.
+- **Slack, Jira, help desks, CRMs and calendars are connectors behind the approval gate.** One system of record per workspace, the OS by default. SPEC 10.
+- **Room 19, Meetings Desk, and slice 10.** Booking and briefs start in slice 2. SPEC 4, 18.
+
 ## 2026-11-12 (v5: talent catalog and the office world)
 
 - **Hiring draws from a talent catalog.** Personas are imported from Agency Agents (MIT) and the Paperclip companies at a pinned commit, then framed with a template and the company rules. A hire is persona + frame + company. SPEC 9.
