@@ -105,6 +105,10 @@ export const agents = pgTable(
     modelAlias: text('model_alias').notNull(),
     fallbackAlias: text('fallback_alias'),
     heartbeatCron: text('heartbeat_cron'),
+    // What the scheduled morning run asks the agent to do, from the role file. Empty: the agent is only woken (S2-8).
+    heartbeatTask: text('heartbeat_task'),
+    // The last scheduled time a heartbeat was handled (asked, skipped or let go). Kept in the database so a restart does not ask again.
+    lastHeartbeatAt: timestamp('last_heartbeat_at', { withTimezone: true }),
     autonomy: smallint('autonomy').notNull().default(0),
     maxTurns: integer('max_turns').notNull().default(25),
     outputCheck: text('output_check'),

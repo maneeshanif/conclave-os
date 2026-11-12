@@ -141,6 +141,13 @@
       "when": 1794507379048,
       "tag": "0019_leadgen_columns",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1794508225976,
+      "tag": "0020_heartbeats",
+      "breakpoints": true
     }
   ]
 }

@@ -91,7 +91,8 @@ const asked = new Map<string, Date>();
 // Each minute: wake agents whose heartbeat is due (S0-13), and let the sequence runner make tasks for people whose next
 // step is due (S2-5). The runner is idempotent, so running it every minute is cheap and safe.
 const everyMinute = async () => {
-  const woken = await tick(sys.app, sys.workspace.id, dispatcher, new Date(), asked);
+  const tz = process.env.COMPANY_TIMEZONE?.trim() || undefined; // schedules are read in the company's time zone; unset means this machine's
+  const woken = await tick(sys.app, sys.workspace.id, dispatcher, new Date(), asked, tz ? { tz } : {});
   const seq = await runSequences({ pool: sys.app, workspaceId: sys.workspace.id, bus });
   if (seq.created) console.log(`sequences: made ${seq.created} step task(s)`);
   return woken;

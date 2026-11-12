@@ -16,6 +16,8 @@ defaults:
   autonomy: 1
   monthly_budget_usd: 10
   max_turns: 40
-  # no heartbeat of its own: S2-8 gives the morning run
+  # Every morning at 07:00 in the company's time zone, with a task to do. Change either in the role file.
+  heartbeat: "0 7 * * *"
+  heartbeat_task: "Find 10 new businesses that fit the target in the company file and add each one with add_lead, giving the page you found it on as sourceUrl. Skip any that are already in the list. When you are done, call complete_task with how many you added."
 skills: []
 plugins: [leadgen-kit]

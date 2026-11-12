@@ -2,6 +2,16 @@
 
 Newest first. One entry per decision: what, why, and what it replaced.
 
+## 2026-11-12 (S2-8: heartbeats, leads every morning)
+
+- **A scheduled time is handled exactly once,** however many tickers run and however often the server restarts. The agent's row (agents.last_heartbeat_at, migration 0020) stores the last scheduled time handled, and the ticker claims a time with one conditional update, so three tickers at the same moment make one request, and a restart that empties the ticker's memory does not ask again. The old in-memory map is still honoured.
+- **Handled means one of three things:** asked; skipped because the kill switch is on; or let go because the laptop slept through it. Only the first sends anything. A morning skipped by the kill switch is gone: turning the switch off at 07:30 does not run the 07:00 heartbeat. The switch means stop, and releasing it should not wake agents with old orders.
+- **No bursts, one catch-up.** After being down for days, the agent is asked once for the most recent scheduled time, not once per missed day, and only if that time was within 6 hours (CATCH_UP_MS). Later than that the morning is let go and the next one runs. Six hours is my choice: a 07:00 run that starts at 11:00 is still useful; one that starts at 15:00 is a surprise.
+- **A schedule can carry a task.** Role files and templates take heartbeat_task, the standing order for each scheduled run (stored on the agent). When the heartbeat fires a task with that text, named "Scheduled run <date>", is made for the agent, unless an earlier one is still open (so a missed day does not pile tasks up; the agent is still woken to finish what is open). Without heartbeat_task the agent is only woken, as before.
+- **The prospector ships with one:** 07:00 every day, "find 10 new businesses that fit, add each with add_lead and its source, skip those already listed". The scorer and outreach rep have no schedule of their own.
+- **The company's time zone:** schedules are read in COMPANY_TIMEZONE (an IANA name such as Asia/Karachi); unset means this machine's own, as before. The ticker passes it through; it is a single setting, not per agent.
+- **What this does not do yet:** nothing scores the new leads each morning. The prospector finds and adds; the scorer needs its own schedule or a task, which the morning brief (S2-10) and the slice end-to-end (S2-13) decide. The brief will say how many scored and unscored leads arrived.
+
 ## 2026-11-12 (S2-7: leadgen-kit and the lead-gen templates)
 
 - **Two os tools at autonomy 1** (write to internal tables, SPEC 6): add_lead and score_lead. Neither can reach anyone outside. An agent on trial (autonomy 0) is not offered them and is told "Unknown tool".

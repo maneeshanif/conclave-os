@@ -2,7 +2,7 @@ import type { AddressInfo } from 'node:net';
 import path from 'node:path';
 import { serve } from '@hono/node-server';
 import { Hono } from 'hono';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, beforeEach } from 'vitest';
 import { createApp } from '../src/app';
 import { Bus } from '../src/bus';
 import { agentNew } from '../src/commands/agent-new';
@@ -270,6 +270,7 @@ describe('dispatcher and ticker (S0-8)', () => {
   });
 
   it('the ticker requests runs only for due, active agents with a heartbeat', async () => {
+    await withWorkspace(sys.app, ws(), ({ client: c }) => c.query('update agents set last_heartbeat_at = null'));
     const lead = await agentId('outreach-writer');
     await withWorkspace(sys.app, ws(), ({ client: c }) => c.query("update agents set heartbeat_cron = '* * * * *' where id = $1", [lead]));
     const sent: string[] = [];
@@ -433,6 +434,11 @@ describe('turning the kill switch on stops everything (S1-5)', () => {
 });
 
 describe('heartbeats and the dispatcher queue (S0-13)', () => {
+  // The ticker now stores the last heartbeat it handled on the agent; each test here starts from none.
+  beforeEach(async () => {
+    await withWorkspace(sys.app, ws(), ({ client: c }) => c.query('update agents set last_heartbeat_at = null'));
+  });
+
   it('ten ticks inside one minute request an idle agent once, not ten times', async () => {
     const lead = await agentId('outreach-writer');
     await withWorkspace(sys.app, ws(), ({ client: c }) => c.query("update agents set heartbeat_cron = '* * * * *' where id = $1", [lead]));

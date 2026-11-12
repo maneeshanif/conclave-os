@@ -195,7 +195,7 @@ Work them in order. Tick each when its test passes.
   Plugin `leadgen-kit` with skills for finding, enriching and scoring a lead, and `os` tools `add_lead` (autonomy 1, dedupes by email and domain, never marks anything verified without a source URL) and `score_lead`. Templates `prospector` and `scorer`. CSV import at `POST /api/leads/import` with a preview and a duplicate report.
   *Test:* `add_lead` twice makes one lead; a lead without a source URL is stored as unverified and is not eligible for a campaign; a scripted agent run adds and scores leads; the CSV import reports duplicates and bad rows without writing them.
 
-- [ ] **S2-8 Heartbeats: leads every morning.** SPEC 11, 14.
+- [x] **S2-8 Heartbeats: leads every morning.** SPEC 11, 14.
   A role-file `heartbeat` (cron in the company's time zone) that the ticker honours. The prospector runs each morning and produces scored leads; the run is skipped while the kill switch is on.
   *Test:* with a fake clock the ticker starts the prospector once per morning, not twice, and not at all while the kill switch is on; a missed day is not replayed in a burst after a restart.
 

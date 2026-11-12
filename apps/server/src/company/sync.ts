@@ -91,17 +91,17 @@ export async function syncCompany(pool: pg.Pool, workspaceId: string, company: C
       }
       const row = await c.query<{ id: string }>(
         `insert into agents (workspace_id, key, name, department_id, template_id, template_version, runtime, model_alias,
-           fallback_alias, heartbeat_cron, autonomy, max_turns, output_check, monthly_budget_usd, status, role_path)
-         values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,'active',$15)
+           fallback_alias, heartbeat_cron, heartbeat_task, autonomy, max_turns, output_check, monthly_budget_usd, status, role_path)
+         values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,'active',$16)
          on conflict (workspace_id, key) do update set name = excluded.name, department_id = excluded.department_id,
            template_id = excluded.template_id, template_version = excluded.template_version, runtime = excluded.runtime,
-           model_alias = excluded.model_alias, fallback_alias = excluded.fallback_alias, heartbeat_cron = excluded.heartbeat_cron,
+           model_alias = excluded.model_alias, fallback_alias = excluded.fallback_alias, heartbeat_cron = excluded.heartbeat_cron, heartbeat_task = excluded.heartbeat_task,
            autonomy = excluded.autonomy, max_turns = excluded.max_turns, output_check = excluded.output_check,
            monthly_budget_usd = excluded.monthly_budget_usd, role_path = excluded.role_path,
            status = case when agents.status = 'retired' then 'active' else agents.status end
          returning id`,
         [workspaceId, r.id, r.name, deptIds.get(r.department), templateId, r.template_version ?? null, r.runtime, r.model,
-          r.fallback_model ?? null, r.heartbeat ?? null, r.autonomy, r.max_turns, r.output_check ?? null, r.monthly_budget_usd, a.rolePath],
+          r.fallback_model ?? null, r.heartbeat ?? null, r.heartbeat_task ?? null, r.autonomy, r.max_turns, r.output_check ?? null, r.monthly_budget_usd, a.rolePath],
       );
       agentIds.set(r.id, row.rows[0]!.id);
     }
