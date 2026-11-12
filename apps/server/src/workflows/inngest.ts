@@ -1,5 +1,6 @@
 import { Inngest } from 'inngest';
 import type { RunOutcome } from '../harness/loop';
+import { approvalGateHandler, type GateOps, type GateStep } from './approval-gate';
 import type { Dispatcher, RunRequestEvent } from './dispatch';
 
 /**
@@ -9,6 +10,8 @@ import type { Dispatcher, RunRequestEvent } from './dispatch';
 export function createWorkflows(deps: {
   execute(e: RunRequestEvent): Promise<RunOutcome>;
   tickAll(): Promise<string[]>;
+  /** What the approval gate does. Without it the gate function is not registered (S1-3). */
+  approvals?: GateOps;
 }) {
   const inngest = new Inngest({ id: 'conclave-os' });
 
@@ -30,6 +33,14 @@ export function createWorkflows(deps: {
     async ({ step }) => step.run('tick', () => deps.tickAll()),
   );
 
+  // The approval gate (SPEC 6): waits for a decision up to three days, then runs the executor once. No retries.
+  const approvalGate = deps.approvals
+    ? inngest.createFunction(
+        { id: 'approval-gate', retries: 0, triggers: [{ event: 'approval/requested' }] },
+        async ({ event, step }) => approvalGateHandler(deps.approvals!)({ event: event as unknown as { data: { approvalId: string } }, step: step as unknown as GateStep }),
+      )
+    : undefined;
+
   const dispatcher: Dispatcher = {
     name: 'inngest',
     async request(e) {
@@ -37,5 +48,5 @@ export function createWorkflows(deps: {
     },
   };
 
-  return { inngest, functions: [agentRun, ticker], dispatcher };
+  return { inngest, functions: approvalGate ? [agentRun, approvalGate, ticker] : [agentRun, ticker], dispatcher };
 }

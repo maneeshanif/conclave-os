@@ -2,6 +2,14 @@
 
 Newest first. One entry per decision: what, why, and what it replaced.
 
+## 2026-11-12 (S1-3: the approval gate)
+
+- **One decision flow, two engines.** Wait up to three days for the decision; approved runs the executor once; rejected does nothing; no decision marks it expired. As an Inngest function it uses `step.waitForEvent` on `approval/decided`; in process it uses one timer per pending approval. The in-process gate is the default; Inngest is used only when configured, exactly like the run loop.
+- **The wait matches by field, not by string.** `match: "data.approvalId"` instead of the SPEC sketch's `if` expression with the id spliced in, so no id can alter the expression.
+- **The database row is the truth, and start-up rebuilds the waits.** On start the gate gives every still-pending approval a live wait again (with the time already spent counted, so a two-day-old proposal has one day left), expires any older than three days (never sent, a late decision answers 409), sends approved emails that never ran, and marks anything left mid-send as failed and raised to a person, never resent. Running recovery twice sends nothing the second time.
+- **Sending exactly once rests on the claim, not on the gate.** Two processes that both hear one decision both call the executor; the `approved` to `executing` claim lets one through. The gate never retries the execute step, and an executor that throws is logged and does not fail the API call that made the decision (it already committed). With the kill switch on, an approved email is held, not lost, and goes out when recovery runs after the switch is off.
+- **Not yet verified on a real Inngest server.** The function is registered with the right trigger and `retries: 0` and its logic is tested with a stand-in for `step`, but no Inngest server is installed on the laptop, so the durable wait itself has not been run. Logged in BUILD.md (S1-12). Wiring the gate into `index.ts` waits for S1-7, which also owns the transport and footer settings.
+
 ## 2026-11-12 (S1-2: approvals API)
 
 - **A decision is one locked move, `pending` to `approved` or `rejected`, and never moves back.** The row is locked (`for update`) while it is decided, so two decisions at the same moment give one 200 and one 409, and the gate hears once. Anything not pending (decided, expired, executing, executed, failed) answers 409 with its current status.

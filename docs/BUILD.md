@@ -112,7 +112,7 @@ Work them in order. Tick each when its test passes.
   `GET /api/approvals?status=`, `GET /api/approvals/:id`, `POST /api/approvals/:id/decide` with `approved` or `rejected` and an optional edited payload. Decisions go through one state machine (`pending` to `approved` or `rejected`, never back), record who and when, and publish `approval/decided`.
   *Test:* deciding twice is refused; an edited payload is stored and is what the executor will use; a rejected approval is never executable; a decision for another workspace's approval is a 404.
 
-- [ ] **S1-3 The gate workflow, and restart recovery.** SPEC 6 (how the gate is built, three rules), 11, 14.
+- [x] **S1-3 The gate workflow, and restart recovery.** SPEC 6 (how the gate is built, three rules), 11, 14.
   `approval-gate` on Inngest and its in-process equivalent, with the same behaviour: wait for the decision (3 day timeout marks it `expired`), then run the executor once. On server start, request again every `pending` approval that has no live wait. The execute step never retries.
   *Test:* an approval decided after a simulated restart sends exactly once; two executors racing for one approval send once; a pending approval left over from before a restart is picked up; an expired approval never sends.
 
@@ -151,6 +151,7 @@ Work them in order. Tick each when its test passes.
 - [ ] **S1-12 Slice 1 end to end.** SPEC 18, row 1.
   One script drives the whole path on the outbox: create a lead, run the audit task, `propose_email`, approve it in the API, see the send in the outbox, flip the kill switch, try a forbidden route, restart the server mid-wait and check it sends once.
   *Test:* all four "Done when" checks pass in one run. Tag `slice-1-done`.
+  Also, once: run the approval gate against a real Inngest dev server (`INNGEST_DEV=1`), because S1-3 tested the Inngest function with a stand-in for its `step` only (no Inngest server on the laptop). Nothing else about slice 1 depends on it: the default gate is the in-process one.
 
 ## Opening the next slice
 
