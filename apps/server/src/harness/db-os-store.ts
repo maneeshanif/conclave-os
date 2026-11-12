@@ -1,5 +1,5 @@
 import type pg from 'pg';
-import { withWorkspace } from '../db/tenancy';
+import { withWorkspace } from '../db/tenant';
 import { ToolError, type OsStore, type TaskView } from './os-tools';
 import type { RunScope } from './run-tokens';
 
@@ -13,7 +13,7 @@ export class DbOsStore implements OsStore {
   private async inTask<T>(scope: RunScope, fn: (c: pg.PoolClient, taskId: string, agentKey: string) => Promise<T>): Promise<T> {
     if (!scope.taskId) throw new ToolError('This run has no task.');
     const taskId = scope.taskId;
-    const out = await withWorkspace(this.pool, scope.workspaceId, async (c) => {
+    const out = await withWorkspace(this.pool, scope.workspaceId, async ({ client: c }) => {
       const t = await c.query<{ status: string; key: string }>(
         'select t.status, a.key from tasks t join agents a on a.id = $2 where t.id = $1',
         [taskId, scope.agentId],
@@ -29,7 +29,7 @@ export class DbOsStore implements OsStore {
 
   async getTask(scope: RunScope): Promise<TaskView | null> {
     if (!scope.taskId) return null;
-    return withWorkspace(this.pool, scope.workspaceId, async (c) => {
+    return withWorkspace(this.pool, scope.workspaceId, async ({ client: c }) => {
       const t = await c.query<{ id: string; title: string; body: string | null; status: string }>(
         'select id, title, body, status from tasks where id = $1',
         [scope.taskId],
