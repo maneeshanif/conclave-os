@@ -283,6 +283,62 @@ Recorded 2026-11-13. Nothing here is built ahead of its slice (CLAUDE.md, Stack)
   One test: a run is killed halfway and the next run resumes from its session; a plan limit pauses the agents on that runtime and lifts at the reset; a skill change that hurts the sample leads is blocked by the gate. Tag `slice-3-done`.
   *Test:* all three "Done when" checks in one run.
 
+## Slice 4: A local model, all day
+
+**Done when (SPEC 18, row 4):** scouts run around the clock on your machine and you get a short list of qualified signals each morning.
+
+**Reads:** SPEC 5 (the portability rule and the table of what each engine needs), 7 (runtimes, model aliases, the in-process runner, plan limits), 9 (templates and plugins), 11 (the `signals` table), 12, 14, 17 (what the machine can carry). Rooms 6 and 9 in SPEC 3 say what the scouts look for.
+
+**Already there from earlier slices:** the runtime contract and conformance tests, `claude-cli` and `opencode`, the renderer with one target per runtime, the `os` MCP server with run tokens, heartbeats, output checks with repair and escalation, the pause per runtime for a plan limit, the Health screen, lite mode, the morning brief.
+
+**Decided in drafting (logged in DECISIONS.md when built):**
+- The model is never needed to prove the plumbing. The runner is tested against a small fake OpenAI-compatible server inside the test, so the whole slice is verifiable on this laptop without a model loaded. Trying a real local model is one opt-in task (S4-9) and the model that fits 16 GB is a NEEDS-YOU item because the laptop has to be free for it.
+- `openai-agents` gets only the `os` tools plus `load_skill`. No shell, no files, no network of its own (CLAUDE.md rule 10). The `@openai/agents` calls in the SPEC are an unrun sketch: check the package's current docs before using any of them.
+- The scouts only read. They file a signal through an `os` tool; the OS dedupes by URL. Where a signal comes from (a scraper or API, within each site's terms) is a connector the founder sets up; until then the scout works from what it is handed or can search, and the real sources go in NEEDS-YOU.
+- Rooms 9 and 10 are configured but paused, as the spec says. Room 6's Problem Scout and room 9's scout are the two scouts this slice turns on; the Research room waits for its own slice.
+
+**Tasks**
+
+- [ ] **S4-1 Model aliases and the `local-worker` alias.** SPEC 7 (Model aliases).
+  One file maps each alias to a model, the runtimes it works on and, where needed, a base URL and a key reference. Add `local-worker` (an OpenAI-compatible endpoint, Ollama's by default, `on: ['openai-agents', 'opencode']`). The role-file loader rejects an alias that does not list the agent's runtime, with the file and the reason. The base URL must be loopback unless the founder sets it explicitly.
+  *Test:* a role file naming `local-worker` on `openai-agents` loads; the same alias on `claude-cli` is refused with a message naming both; a missing alias is refused; an unknown field in the alias file is an error.
+
+- [ ] **S4-2 The `openai-agents` runtime.** SPEC 7 (the in-process runner), 5 (the portability rule).
+  A generic in-process runner behind the one contract in `runtimes/`: builds the agent from the rendered instructions, connects the `os` MCP server over HTTP with the run's token, streams the SDK's events as run events in order, caps turns, handles cancel, and maps a connection refusal, a rate limit and an auth failure to the right error kinds. It is handed its own model settings and nothing else from the environment (CLAUDE.md rule 4). Session resume is kept by the OS: it says it cannot resume natively and the loop restarts the task with its comment history instead.
+  *Test:* the conformance tests pass against a fake OpenAI-compatible server in the test: events arrive in order, an `os` tool is called with the run token, a tool the agent was not granted is refused, no secret reaches the process, cancel stops it, a 429 and a 401 map to `limit` and `auth`, and `canResume` is honest.
+
+- [ ] **S4-3 The skill loader.** SPEC 5 (the table), 9.
+  The in-process runner has no `.claude/skills`. The renderer writes each skill's name and one-line description into the instructions, and the runner gives the agent a `load_skill` tool that returns the skill's text from the agent's rendered folder, only for skills that agent was given, never a path outside it.
+  *Test:* the instructions list the descriptions and not the bodies; `load_skill` returns a granted skill; a skill that was not granted, a path with `..`, an absolute path and a symlink out of the folder are all refused.
+
+- [ ] **S4-4 The renderer target for `openai-agents`.** SPEC 5.
+  One more target in the renderer: standing rules, role, skill descriptions and the per-run context become one `instructions` string; connectors become the MCP server list; permissions become the tool list the runner hands over. Nothing outside `runtimes/` and the renderer's per-runtime targets names the runtime (rule 11).
+  *Test:* snapshot of a scout rendered for `openai-agents`; the same template rendered for `claude-cli` is unchanged; a permission the runner cannot enforce is a render error, not a silent drop.
+
+- [ ] **S4-5 Move short jobs to the local model when Claude is paused.** SPEC 7 (Plan limits are part of the design), 14.
+  When a runtime is paused for a plan limit, waiting scout and triage tasks go to the agent's local alternative instead of waiting; writing tasks stay queued. A role file names it (`fallback_runtime` and `fallback_model`), and escalation from a failed output check may cross to a stronger runtime the same way (local to Claude). The move is recorded on the run and shown on the Health screen.
+  *Test:* with `claude-cli` paused, a triage task runs on the local alias and a writing task stays queued; after the lift both are back on their own runtime; a failed check on the local model escalates to Claude once and then blocks; an agent with no fallback is unchanged.
+
+- [ ] **S4-6 The `signals` table and its API.** SPEC 11 (`signals`), 12.
+  Migration with forced row-level security, `(workspace_id, url)` unique, kinds `service_request | pain_point | tool_news`, statuses `new | qualified | dismissed | promoted`. Routes to list (by status and kind), read, qualify, dismiss and promote to a lead (the lead carries the signal as its reason, and the existing lead checks still apply).
+  *Test:* the same URL twice is one signal; a signal from another workspace is invisible; promote creates one lead and links it, twice is a no-op; a bad status or kind is refused.
+
+- [ ] **S4-7 The scout template and the signal tools.** SPEC 9, 3 (rooms 6 and 9), 6.
+  A `scout` template that runs on `openai-agents` with `local-worker`, a heartbeat, and a short skill that says what counts as a signal and what does not. Two `os` tools: `add_signal` (kind, source, URL, excerpt; refuses a missing URL, an excerpt that is not text, and anything shaped like an instruction to the agent) and `score_signal`. The tools do not post, message or follow anyone (rule 6). The Demand Radar and Problem Scout agents are configured and paused; turning one on is a setting.
+  *Test:* the template renders and hires; `add_signal` dedupes and records who found it; a page that tells the agent to ignore its rules is stored as data and changes nothing; the paused agents do not run on a heartbeat until switched on.
+
+- [ ] **S4-8 Signals in the morning brief and a Signals page.** SPEC 3, 12, 18 (the "Done when").
+  The brief gets a part "Signals" counting qualified signals since the last brief with the top few (counted from the table, not written by a model), and a Signals page lists them by status with qualify, dismiss and promote.
+  *Test:* a fixture gives exact counts in the brief; the page renders each status and the empty state; promote from the page makes the lead.
+
+- [ ] **S4-9 Try a real local model (opt-in).** SPEC 17, 7.
+  The conformance tests, run against Ollama on this machine when `CONCLAVE_TEST_OLLAMA=<model>` is set, and a note of which tool-calling model fits comfortably in 16 GB while the server and the database are running. Skipped by default.
+  *Test:* skipped without the variable; with it, the conformance tests pass on the real endpoint. Running it is a NEEDS-YOU item (RAM must be free).
+
+- [ ] **S4-10 Slice 4 end to end.** SPEC 18, row 4.
+  One test on the fake OpenAI-compatible server: the ticker wakes the scout on its heartbeat, it files signals through `add_signal`, a failing output check escalates once to Claude (scripted), a plan limit on Claude moves a triage task to the local model, and the morning brief lists the qualified signals. Tag `slice-4-done`.
+  *Test:* all of it in one run.
+
 ## Opening the next slice
 
 When slice 0 is in daily use, paste this:
