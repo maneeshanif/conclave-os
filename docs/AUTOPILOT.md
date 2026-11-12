@@ -37,3 +37,15 @@ Fix the spec first, log it in `docs/DECISIONS.md` with the reason, and continue 
 - Add a runtime, SDK or library before its slice (CLAUDE.md, Stack).
 - Copy WorkAdventure code or maps. Office art is Kenney (CC0) or drawn here.
 - Give a catalog persona a tool.
+
+## Resuming after a limit
+
+A session that hits a usage limit stops. Nothing inside the repo can wake a stopped session, so resuming needs a trigger outside it:
+
+1. **On the laptop:** run the session in `/loop` mode with the resume prompt below. The loop re-fires on a timer, reads `docs/PROGRESS.md`, and carries on when the limit has reset. If the limit is still active the turn fails and the loop tries again later.
+2. **From the cloud:** a scheduled task can start a fresh cloud session every few hours with the same resume prompt. It only works on what runs on Linux, and it must claim its task first (see below).
+3. **Either way:** before starting a task, write `Working now: <task id>, <laptop|cloud>, <time>` in `docs/PROGRESS.md` and push. If a claim is under two hours old, pick the next task. Clear the line when the task is committed.
+
+Resume prompt:
+
+> Autopilot. Read CLAUDE.md, docs/AUTOPILOT.md, docs/QUESTIONS.md (the Answers section) and docs/PROGRESS.md. Claim the next unclaimed task and continue on the `dev` branch. Do not ask anything already answered.

@@ -2,6 +2,14 @@
 
 Newest first. One entry per decision: what, why, and what it replaced.
 
+## 2026-11-12 (build answers from Anees)
+
+- **All 38 questions are answered** in `docs/QUESTIONS.md`, section "Answers". One branch `dev`, one PR, built mostly on the laptop with the cloud session as a second pair of hands, claims in `docs/PROGRESS.md`.
+- **No hidden recording.** Anees asked to record client meetings without telling them. The Note Taker records only with a consent notice every participant sees; the wording follows the market but the notice cannot be switched off. Recording people without telling them is illegal in many places.
+- **A live AI voice in client calls is wanted,** and built last in slice 10, behind mock-call evals, and it says it is an AI.
+- **Email cap 30 per day, morning brief 13:00 Karachi, backups kept 90 days.** All settings.
+- **Meetings, channels, CRM and tickets sit behind adapters** (several providers each), so a new one is a connector and not a change to the core.
+
 ## 2026-11-12 (S0-3 to S0-9, built overnight by Claude in the cloud on top of S0-2)
 
 - **Built on this S0-2 as it stands.** The overnight session also wrote an S0-2 of its own while this one was still in progress. When this one landed, that copy was dropped and everything else was rebased onto it, because this one runs on Windows and fixes the Postgres shutdown.
