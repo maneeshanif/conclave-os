@@ -162,6 +162,13 @@
       "when": 1794509781244,
       "tag": "0022_briefs_rls",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1794515503293,
+      "tag": "0023_deal_figures",
+      "breakpoints": true
     }
   ]
 }

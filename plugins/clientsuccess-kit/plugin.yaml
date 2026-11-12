@@ -1,0 +1,8 @@
+# Plugin: clientsuccess-kit (SPEC 10). Skills for client success: the outcome note and the monthly proof report.
+# They write drafts for a person to review. Nothing in them can send, and a draft may state only figures from the tables.
+name: clientsuccess-kit
+version: 1
+description: "Drafts the one-page outcome note and the monthly proof report, using only the numbers recorded on the deal. It cannot send anything."
+skills: [outcome-note, proof-report]
+connectors: [os]
+tools: [get_task, get_deal, save_draft, complete_task, block_task]

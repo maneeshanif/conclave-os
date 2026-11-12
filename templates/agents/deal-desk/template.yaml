@@ -1,0 +1,20 @@
+# Agent template: deal-desk. Neutral sources only; the renderer writes each harness's own format (SPEC 5).
+key: deal-desk
+version: 1
+description: "Drafts the bounded free offer and the contract of success for a deal, using only the numbers recorded on it. It cannot send anything."
+params:
+  - { name: id, required: true }
+  - { name: name, required: true }
+  - { name: department, required: true }
+  - { name: department_name, required: true }
+  - { name: company_name, required: true }
+  - { name: reports_to, required: false }
+defaults:
+  runtime: claude-cli
+  model: writer
+  # Level 1 may write to internal tables; a draft is a comment on its task. Nothing leaves (SPEC 6).
+  autonomy: 1
+  monthly_budget_usd: 8
+  max_turns: 20
+skills: []
+plugins: [dealdesk-kit]

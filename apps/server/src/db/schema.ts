@@ -531,6 +531,12 @@ export const deals = pgTable(
     stage: text('stage').notNull().default('open'), // a stage key of its funnel
     status: text('status').notNull().default('open'), // open | won | lost
     decisionMaker: text('decision_maker'),
+    // The one number the deal is about (S2-12): what is measured, where it started, the target, and where it ended up.
+    // Documents may quote these and nothing else.
+    metric: text('metric'),
+    baselineValue: numeric('baseline_value'),
+    targetValue: numeric('target_value'),
+    outcomeValue: numeric('outcome_value'),
     lostReason: text('lost_reason'),
     stageChangedAt: timestamp('stage_changed_at', { withTimezone: true }).notNull().defaultNow(),
     nextStep: text('next_step'),
@@ -543,6 +549,7 @@ export const deals = pgTable(
     check('deals_status_ck', sql`${t.status} in ('open','won','lost')`),
     foreignKey({ name: 'deals_account_fk', columns: [t.workspaceId, t.accountId], foreignColumns: [accounts.workspaceId, accounts.id] }),
     check('deals_value_ck', sql`${t.value} is null or ${t.value} >= 0`),
+    check('deals_figures_ck', sql`(${t.baselineValue} is null or ${t.baselineValue} >= 0) and (${t.targetValue} is null or ${t.targetValue} >= 0) and (${t.outcomeValue} is null or ${t.outcomeValue} >= 0)`),
     index('deals_account_idx').on(t.workspaceId, t.accountId),
   ],
 );

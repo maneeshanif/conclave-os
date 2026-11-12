@@ -211,7 +211,7 @@ Work them in order. Tick each when its test passes.
   Web pages for the unified inbox (threads, reply to triage), the pipeline (stages, conversion, stuck deals) and campaigns (status, results, approve, pause). Phone-friendly like the approvals page.
   *Test:* component tests like slice 1; the mobile browser check covers the inbox.
 
-- [ ] **S2-12 `deal-desk` and `client-success` templates.** SPEC 10.
+- [x] **S2-12 `deal-desk` and `client-success` templates.** SPEC 10.
   Templates and skills for the bounded free offer, the contract of success and outcome note, and the monthly proof report. They draft documents as task comments; nothing leaves the building. Case text may only quote numbers from the tables.
   *Test:* rendered on both engines, conformance passes; the outcome-note skill refuses to state a number not in the tables (checked by a fixture).
 

@@ -2,6 +2,15 @@
 
 Newest first. One entry per decision: what, why, and what it replaced.
 
+## 2026-11-13 (S2-12: deal-desk and client-success templates)
+
+- **Two templates, two plugins.** deal-desk (plugin dealdesk-kit: free-offer, contract-of-success) and client-success (plugin clientsuccess-kit: outcome-note, proof-report). Both autonomy 1, os connector only, no web, no shell, no heartbeat. They draft; they have no way to send.
+- **"Never invent an outcome" is enforced in code, not asked for.** Two os tools: get_deal (autonomy 0) returns a deal with its figures, and save_draft (autonomy 1) keeps a draft as a comment on the task labelled "Draft ... For review; nothing has been sent", after checking every figure in the text (src/documents/figures.ts) against the deal's own recorded numbers. A draft with any other figure is refused, naming the figures. What counts as a figure: money, percentages, decimals and whole numbers above 10; small unsigned numbers (list numbers, "step 2 of 3") and years are allowed. An agent cannot compute a percentage or a difference either, because a computed number is not in the tables: the skills tell it to state the two numbers side by side.
+- **Deals now carry the numbers a document may quote:** a metric and its baseline, target and outcome (migration 0023; PATCH-able; never negative). Where the client's baseline comes from is the founder, as the spec says: it can only be learned from them.
+- **A document is refused when its basis is missing.** An outcome note or proof report needs a recorded outcome; a contract of success needs the metric, baseline and target. The tool says what is missing and the skill tells the agent to block the task, so nothing is made up to fill a gap.
+- **Limits, plainly:** the check proves a number is one of the deal's numbers, not that the sentence around it is true ("12 rose to 5" would pass); a person reads every draft, and the machine output checks for wording are slice 3. A draft is a comment on the task, not a document record; a documents table can follow when drafts need versions.
+- Tested on both engines: each template renders for Claude Code and OpenCode with the same skill byte for byte, with the deny rules in place. The os tool list for a trial agent grew by get_deal.
+
 ## 2026-11-13 (S2-11: inbox, pipeline and campaigns pages)
 
 - **Three pages over APIs that already existed,** no server change: /inbox (conversations per contact; open one to read it, mark each reply positive, neutral or negative, and paste in a reply to record), /pipeline (per funnel: deals now, reached, moved on, average and median days, totals, and stuck deals with what each waits for) and /campaigns (status, mailbox, steps, results, and the one next step).

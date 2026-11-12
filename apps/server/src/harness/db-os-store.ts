@@ -3,8 +3,9 @@ import { withWorkspace } from '../db/tenant';
 import { checkClaims, companyMarkdown, isSuppressed } from '../actions/policy';
 import { briefOn, dayOf, latestBrief, rebuildBrief } from '../brief/build';
 import { companyTimezone } from '../config';
+import { checkFigures } from '../documents/figures';
 import { ingestLead } from '../leads/ingest';
-import { ToolError, type AddLeadInput, type BriefView, type LeadView, type OsStore, type ProposedEmail, type TaskView } from './os-tools';
+import { ToolError, type AddLeadInput, type BriefView, type DealView, type DraftKind, type LeadView, type OsStore, type ProposedEmail, type TaskView } from './os-tools';
 import type { RunScope } from './run-tokens';
 
 /** The `os` tools on the real database. Every write is scoped to the run's own workspace and task. */
@@ -45,6 +46,52 @@ export class DbOsStore implements OsStore {
         JSON.stringify({ verified, sourceUrl: input.sourceUrl ?? null }),
       ]);
       return { id: r.id, existed: false, verified };
+    });
+  }
+
+  async getDeal(scope: RunScope, dealId: string): Promise<DealView | null> {
+    return withWorkspace(this.pool, scope.workspaceId, async ({ client: c }) => {
+      const r = await c.query<{ id: string; account: string; offer: string | null; stage: string; status: string; decision_maker: string | null; due: Date | null; metric: string | null; value: string | null; baseline_value: string | null; target_value: string | null; outcome_value: string | null }>(
+        `select d.id, a.name as account, d.offer, d.stage, d.status, d.decision_maker, d.due, d.metric, d.value, d.baseline_value, d.target_value, d.outcome_value
+           from deals d join accounts a on a.id = d.account_id where d.id = $1`,
+        [dealId],
+      );
+      const d = r.rows[0];
+      if (!d) return null;
+      const num = (v: string | null) => (v === null ? null : Number(v));
+      const v = { value: num(d.value), baselineValue: num(d.baseline_value), targetValue: num(d.target_value), outcomeValue: num(d.outcome_value) };
+      return {
+        dealId: d.id,
+        account: d.account,
+        offer: d.offer,
+        stage: d.stage,
+        status: d.status,
+        decisionMaker: d.decision_maker,
+        due: d.due ? d.due.toISOString().slice(0, 10) : null,
+        metric: d.metric,
+        ...v,
+        figures: Object.values(v).filter((x): x is number => x !== null),
+      };
+    });
+  }
+
+  async saveDraft(scope: RunScope, d: { dealId: string; kind: DraftKind; text: string }): Promise<void> {
+    const deal = await this.getDeal(scope, d.dealId);
+    if (!deal) throw new ToolError('No such deal.');
+    // What each kind of document needs on record before it can be written honestly.
+    if ((d.kind === 'outcome-note' || d.kind === 'proof-report') && deal.outcomeValue === null) {
+      throw new ToolError('This deal has no recorded outcome yet, so an outcome note or a proof report cannot be written. Block the task and say the outcome number is missing.');
+    }
+    if (d.kind === 'contract-of-success' && (deal.baselineValue === null || deal.targetValue === null || !deal.metric)) {
+      throw new ToolError('A contract of success needs the metric, the baseline and the target recorded on the deal. Block the task and say which is missing.');
+    }
+    const check = checkFigures(d.text, new Set(deal.figures));
+    if (!check.ok) {
+      throw new ToolError(`These figures are not in the tables for this deal: ${check.unknown.join(', ')}. A draft may state only figures from get_deal (${deal.figures.join(', ') || 'none recorded'}). Remove them or say the number is not known yet.`);
+    }
+    await this.comment(scope, `[Draft: ${d.kind}. For review; nothing has been sent.]\n${d.text}`);
+    await withWorkspace(this.pool, scope.workspaceId, async ({ client: c }) => {
+      await c.query("insert into audit_log (workspace_id, actor, action, subject, data) values ($1, $2, 'draft.saved', $3, $4)", [scope.workspaceId, await this.actor(c, scope), d.dealId, JSON.stringify({ kind: d.kind })]);
     });
   }
 

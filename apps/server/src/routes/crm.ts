@@ -49,16 +49,16 @@ const NewContact = z.object({
   linkedin: Text(300).optional(),
 });
 
-const NewDeal = z.object({ accountId: uuid, funnel: Text(60).optional(), offer: Text(300).optional(), value: Money.optional(), nextStep: Text(500).optional(), due: Day.optional(), decisionMaker: Text(200).optional() });
+const NewDeal = z.object({ accountId: uuid, funnel: Text(60).optional(), offer: Text(300).optional(), value: Money.optional(), nextStep: Text(500).optional(), due: Day.optional(), decisionMaker: Text(200).optional(), metric: Text(100).optional(), baselineValue: Money.optional(), targetValue: Money.optional(), outcomeValue: Money.optional() });
 const MoveDeal = z.object({ stage: Text(60), note: z.string().trim().max(500).optional() });
 const LoseDeal = z.object({ reason: Text(500) });
 const PatchDeal = z
-  .object({ offer: Text(300).nullable(), value: Money.nullable(), nextStep: Text(500).nullable(), due: Day.nullable(), decisionMaker: Text(200).nullable() })
+  .object({ offer: Text(300).nullable(), value: Money.nullable(), nextStep: Text(500).nullable(), due: Day.nullable(), decisionMaker: Text(200).nullable(), metric: Text(100).nullable(), baselineValue: Money.nullable(), targetValue: Money.nullable(), outcomeValue: Money.nullable() })
   .partial()
   .refine((v) => Object.values(v).some((x) => x !== undefined), { message: 'Nothing to change.' });
 
 const ACCOUNT_COLUMNS: Record<string, string> = { name: 'name', website: 'website', market: 'market', stage: 'stage', health: 'health', notes: 'notes' };
-const DEAL_COLUMNS: Record<string, string> = { offer: 'offer', value: 'value', nextStep: 'next_step', due: 'due', decisionMaker: 'decision_maker' };
+const DEAL_COLUMNS: Record<string, string> = { offer: 'offer', value: 'value', nextStep: 'next_step', due: 'due', decisionMaker: 'decision_maker', metric: 'metric', baselineValue: 'baseline_value', targetValue: 'target_value', outcomeValue: 'outcome_value' };
 
 const REQUIREMENT_LABEL: Record<string, string> = { decision_maker: 'a named decision-maker', due: 'a date (due)' };
 const DEAL_FIELD: Record<string, string> = { decision_maker: 'decision_maker', due: 'due' };
@@ -143,7 +143,7 @@ export function crmRoutes(deps: { workspaceId: string; bus: Bus }) {
   });
 
   // ---- deals
-  const DEAL_SELECT = `select d.id, d.account_id, d.offer, d.value, d.stage, d.status, d.decision_maker, d.next_step, d.due, d.stage_changed_at, d.lost_reason, f.key as funnel
+  const DEAL_SELECT = `select d.id, d.account_id, d.offer, d.value, d.stage, d.status, d.decision_maker, d.next_step, d.due, d.stage_changed_at, d.lost_reason, d.metric, d.baseline_value, d.target_value, d.outcome_value, f.key as funnel
                         from deals d left join funnels f on f.id = d.funnel_id`;
 
   r.get('/funnels', async (c) => {
@@ -169,8 +169,8 @@ export function crmRoutes(deps: { workspaceId: string; bus: Bus }) {
     if (d.funnel && !start) return c.json({ error: `No such funnel "${d.funnel}".` }, 400);
     const [row] = await q<{ id: string }>(
       c,
-      'insert into deals (workspace_id, account_id, offer, value, next_step, due, decision_maker, funnel_id, stage) values ($1, $2, $3, $4, $5, $6, $7, $8, coalesce($9, \'open\')) returning id',
-      [ws, d.accountId, d.offer ?? null, d.value ?? null, d.nextStep ?? null, d.due ?? null, d.decisionMaker ?? null, start?.funnelId ?? null, start?.stage ?? null],
+      'insert into deals (workspace_id, account_id, offer, value, next_step, due, decision_maker, funnel_id, stage, metric, baseline_value, target_value, outcome_value) values ($1, $2, $3, $4, $5, $6, $7, $8, coalesce($9, \'open\'), $10, $11, $12, $13) returning id',
+      [ws, d.accountId, d.offer ?? null, d.value ?? null, d.nextStep ?? null, d.due ?? null, d.decisionMaker ?? null, start?.funnelId ?? null, start?.stage ?? null, d.metric ?? null, d.baselineValue ?? null, d.targetValue ?? null, d.outcomeValue ?? null],
     );
     return c.json({ id: row!.id }, 201);
   });

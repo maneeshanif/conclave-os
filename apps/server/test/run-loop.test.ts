@@ -68,6 +68,12 @@ class LateStore implements OsStore {
   getBrief(s: RunScope) {
     return this.inner.getBrief(s);
   }
+  getDeal(s: RunScope, id: string) {
+    return this.inner.getDeal(s, id);
+  }
+  saveDraft(s: RunScope, d: Parameters<OsStore['saveDraft']>[1]) {
+    return this.inner.saveDraft(s, d);
+  }
   addBriefNote(s: RunScope, t: string) {
     return this.inner.addBriefNote(s, t);
   }

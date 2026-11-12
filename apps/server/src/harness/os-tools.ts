@@ -11,6 +11,10 @@ export interface OsStore {
   addLead(scope: RunScope, input: AddLeadInput): Promise<{ id: string; existed: boolean; by?: 'email' | 'website'; verified: boolean }>;
   /** Records a 0 to 100 score and its reason on a lead (autonomy 1). */
   scoreLead(scope: RunScope, input: { leadId: string; score: number; reason: string }): Promise<void>;
+  /** A deal with the figures a draft may quote (autonomy 0). Null if there is no such deal. */
+  getDeal(scope: RunScope, dealId: string): Promise<DealView | null>;
+  /** Keeps a draft document as a labelled comment on the task, after checking its figures (autonomy 1). */
+  saveDraft(scope: RunScope, d: { dealId: string; kind: DraftKind; text: string }): Promise<void>;
   /** The latest morning brief, or null if there is none yet (autonomy 0: reading is for everyone). */
   getBrief(scope: RunScope): Promise<BriefView | null>;
   /** Sets the agent's paragraph on today's brief, building the brief first if needed (autonomy 1). */
@@ -47,6 +51,26 @@ export interface ProposedEmail {
   body: string;
   step: number;
   campaignId?: string | undefined;
+}
+
+export const DRAFT_KINDS = ['free-offer', 'contract-of-success', 'outcome-note', 'proof-report'] as const;
+export type DraftKind = (typeof DRAFT_KINDS)[number];
+
+export interface DealView {
+  dealId: string;
+  account: string;
+  offer: string | null;
+  stage: string;
+  status: string;
+  decisionMaker: string | null;
+  due: string | null;
+  metric: string | null;
+  value: number | null;
+  baselineValue: number | null;
+  targetValue: number | null;
+  outcomeValue: number | null;
+  /** Every figure in the deal's own fields. A draft may state these and no others. */
+  figures: number[];
 }
 
 export interface BriefView {
@@ -186,6 +210,26 @@ export const osTools = {
       return `Scored ${args.score} out of 100.`;
     },
   },
+  get_deal: {
+    minAutonomy: 0,
+    description: 'Read one deal: the account, the offer, the stage and the numbers recorded for it (value, baseline, target, outcome). A draft may state these figures and no others.',
+    input: z.object({ dealId: z.uuid() }).strict(),
+    async run(store: OsStore, scope: RunScope, args: { dealId: string }) {
+      const d = await store.getDeal(scope, args.dealId);
+      if (!d) throw new ToolError('No such deal.');
+      return JSON.stringify(d, null, 2);
+    },
+  },
+  save_draft: {
+    minAutonomy: 1,
+    description:
+      'Keep a draft document for a person to review: a free offer, a contract of success, an outcome note or a monthly proof report. It is saved as a comment on your task and nothing is sent. Every figure in it must be one that get_deal returned; a draft with any other figure is refused.',
+    input: z.object({ dealId: z.uuid(), kind: z.enum(DRAFT_KINDS), text: z.string().trim().min(1).max(8000) }).strict(),
+    async run(store: OsStore, scope: RunScope, args: { dealId: string; kind: DraftKind; text: string }) {
+      await store.saveDraft(scope, args);
+      return `Saved as a draft (${args.kind}) on your task for a person to review. Nothing has been sent.`;
+    },
+  },
   get_brief: {
     minAutonomy: 0,
     description: 'Read the latest morning brief: what happened, what needs the founder, and how the goals stand. All numbers are counted from the tables.',
@@ -254,6 +298,12 @@ export class MemoryOsStore implements OsStore {
   }
   async getBrief(): Promise<BriefView | null> {
     return null;
+  }
+  async getDeal(): Promise<DealView | null> {
+    return null;
+  }
+  async saveDraft(): Promise<void> {
+    throw new ToolError('Drafts need the database store.');
   }
   async addBriefNote(): Promise<{ day: string }> {
     throw new ToolError('The brief needs the database store.');
