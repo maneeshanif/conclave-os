@@ -128,6 +128,9 @@ export default function Home() {
           <Link href="/action-items" className="text-sm font-medium underline">
             Needs you
           </Link>
+          <Link href="/brief" className="text-sm font-medium underline">
+            Brief
+          </Link>
           <Link href="/goals" className="text-sm font-medium underline">
             Goals
           </Link>

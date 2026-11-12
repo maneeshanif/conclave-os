@@ -47,6 +47,11 @@ export function resolveDataDir(env: Env = process.env): string {
   return dir;
 }
 
+/** The company's time zone, an IANA name such as Asia/Karachi, from COMPANY_TIMEZONE. Undefined means this machine's own. */
+export function companyTimezone(env: Env = process.env): string | undefined {
+  return env.COMPANY_TIMEZONE?.trim() || undefined;
+}
+
 /** Where the server listens, and whether a login is needed (CLAUDE.md rule 9, SPEC 12). */
 export interface AuthConfig {
   /** Every request needs a signed-in owner. Always true when the server listens beyond loopback. */

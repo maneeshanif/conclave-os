@@ -11,6 +11,10 @@ export interface OsStore {
   addLead(scope: RunScope, input: AddLeadInput): Promise<{ id: string; existed: boolean; by?: 'email' | 'website'; verified: boolean }>;
   /** Records a 0 to 100 score and its reason on a lead (autonomy 1). */
   scoreLead(scope: RunScope, input: { leadId: string; score: number; reason: string }): Promise<void>;
+  /** The latest morning brief, or null if there is none yet (autonomy 0: reading is for everyone). */
+  getBrief(scope: RunScope): Promise<BriefView | null>;
+  /** Sets the agent's paragraph on today's brief, building the brief first if needed (autonomy 1). */
+  addBriefNote(scope: RunScope, text: string): Promise<{ day: string }>;
   /** Queues an email for approval. Never sends. Returns the approval id and whether it already existed. */
   proposeEmail(scope: RunScope, p: ProposedEmail): Promise<{ approvalId: string; existed: boolean }>;
   comment(scope: RunScope, text: string): Promise<void>;
@@ -43,6 +47,14 @@ export interface ProposedEmail {
   body: string;
   step: number;
   campaignId?: string | undefined;
+}
+
+export interface BriefView {
+  day: string;
+  quiet: boolean;
+  summary: string[];
+  narrative: string | null;
+  content: unknown;
 }
 
 export interface AddLeadInput {
@@ -174,6 +186,26 @@ export const osTools = {
       return `Scored ${args.score} out of 100.`;
     },
   },
+  get_brief: {
+    minAutonomy: 0,
+    description: 'Read the latest morning brief: what happened, what needs the founder, and how the goals stand. All numbers are counted from the tables.',
+    input: NoInput,
+    async run(store: OsStore, scope: RunScope) {
+      const b = await store.getBrief(scope);
+      if (!b) throw new ToolError('There is no brief yet.');
+      return JSON.stringify(b, null, 2);
+    },
+  },
+  add_brief_note: {
+    minAutonomy: 1,
+    description: 'Add one short paragraph (up to 1,500 characters) to today\'s brief, in your own words. It is shown as yours, beside the counted numbers, and a new one replaces the old.',
+    input: Text('text', 1500),
+    async run(store: OsStore, scope: RunScope, args: { text: string }) {
+      if (!args.text.trim()) throw new ToolError('The note is empty.');
+      const r = await store.addBriefNote(scope, args.text.trim());
+      return `Added to the brief for ${r.day}.`;
+    },
+  },
   propose_email: {
     minAutonomy: 2,
     description:
@@ -219,6 +251,12 @@ export class MemoryOsStore implements OsStore {
   }
   async scoreLead(): Promise<void> {
     throw new ToolError('Leads need the database store.');
+  }
+  async getBrief(): Promise<BriefView | null> {
+    return null;
+  }
+  async addBriefNote(): Promise<{ day: string }> {
+    throw new ToolError('The brief needs the database store.');
   }
 
   private task(scope: RunScope) {

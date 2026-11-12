@@ -11,6 +11,7 @@ import { createAuth, resolveAuthSecret } from './auth';
 import { loadCompany } from './company/loader';
 import { syncCompany } from './company/sync';
 import { resolveAuthConfig } from './config';
+import { ensureDailyBrief } from './brief/build';
 import { DbOsStore } from './harness/db-os-store';
 import { stopEverything } from './harness/kill-switch';
 import { approvalHooks, createOutreach } from './outreach';
@@ -93,6 +94,9 @@ const asked = new Map<string, Date>();
 const everyMinute = async () => {
   const tz = process.env.COMPANY_TIMEZONE?.trim() || undefined; // schedules are read in the company's time zone; unset means this machine's
   const woken = await tick(sys.app, sys.workspace.id, dispatcher, new Date(), asked, tz ? { tz } : {});
+  const briefTime = process.env.BRIEF_TIME?.trim() || '06:30'; // HH:MM in the company's time zone
+  const brief = await ensureDailyBrief({ pool: sys.app, workspaceId: sys.workspace.id, tz, after: briefTime });
+  if (brief) console.log(`morning brief for ${brief.day} is ready`);
   const seq = await runSequences({ pool: sys.app, workspaceId: sys.workspace.id, bus });
   if (seq.created) console.log(`sequences: made ${seq.created} step task(s)`);
   return woken;

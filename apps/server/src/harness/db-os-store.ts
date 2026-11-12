@@ -1,8 +1,10 @@
 import type pg from 'pg';
 import { withWorkspace } from '../db/tenant';
 import { checkClaims, companyMarkdown, isSuppressed } from '../actions/policy';
+import { briefOn, dayOf, latestBrief, rebuildBrief } from '../brief/build';
+import { companyTimezone } from '../config';
 import { ingestLead } from '../leads/ingest';
-import { ToolError, type AddLeadInput, type LeadView, type OsStore, type ProposedEmail, type TaskView } from './os-tools';
+import { ToolError, type AddLeadInput, type BriefView, type LeadView, type OsStore, type ProposedEmail, type TaskView } from './os-tools';
 import type { RunScope } from './run-tokens';
 
 /** The `os` tools on the real database. Every write is scoped to the run's own workspace and task. */
@@ -43,6 +45,24 @@ export class DbOsStore implements OsStore {
         JSON.stringify({ verified, sourceUrl: input.sourceUrl ?? null }),
       ]);
       return { id: r.id, existed: false, verified };
+    });
+  }
+
+  async getBrief(scope: RunScope): Promise<BriefView | null> {
+    return withWorkspace(this.pool, scope.workspaceId, async ({ client: c }) => {
+      const b = await latestBrief(c);
+      return b ? { day: b.day, quiet: b.quiet, summary: b.summary, narrative: b.narrative, content: b.content } : null;
+    });
+  }
+
+  async addBriefNote(scope: RunScope, text: string): Promise<{ day: string }> {
+    return withWorkspace(this.pool, scope.workspaceId, async ({ client: c }) => {
+      const now = new Date();
+      const day = dayOf(now, companyTimezone());
+      if (!(await briefOn(c, day))) await rebuildBrief(c, scope.workspaceId, now); // the note goes on a brief that exists
+      await c.query('update briefs set narrative = $2, narrative_by = $3, updated_at = now() where day = $1', [day, text, await this.actor(c, scope)]);
+      await c.query("insert into audit_log (workspace_id, actor, action, subject, data) values ($1, $2, 'brief.note', $3, '{}')", [scope.workspaceId, await this.actor(c, scope), day]);
+      return { day };
     });
   }
 

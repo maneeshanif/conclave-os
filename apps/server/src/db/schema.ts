@@ -682,6 +682,25 @@ export const threadMessages = pgTable(
   ],
 );
 
+/** The morning brief: one record per day, built from the tables and kept as it was (S2-10). */
+export const briefs = pgTable(
+  'briefs',
+  {
+    id: id(),
+    workspaceId: workspaceId(),
+    day: date('day').notNull(),
+    quiet: boolean('quiet').notNull().default(false),
+    summary: jsonb('summary').notNull().default(sql`'[]'::jsonb`),
+    content: jsonb('content').notNull(),
+    // One paragraph written by the chief of staff agent. Shown as the agent's; the numbers never depend on it.
+    narrative: text('narrative'),
+    narrativeBy: text('narrative_by'),
+    createdAt: createdAt(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [unique('briefs_ws_id_uq').on(t.workspaceId, t.id), unique('briefs_ws_day_uq').on(t.workspaceId, t.day)],
+);
+
 /** Every message drafted or sent to a lead, one row per message. */
 export const outreachMessages = pgTable(
   'outreach_messages',

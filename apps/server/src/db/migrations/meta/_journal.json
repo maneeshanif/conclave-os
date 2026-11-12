@@ -148,6 +148,20 @@
       "when": 1794508225976,
       "tag": "0020_heartbeats",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1794509778802,
+      "tag": "0021_briefs",
+      "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1794509781244,
+      "tag": "0022_briefs_rls",
+      "breakpoints": true
     }
   ]
 }

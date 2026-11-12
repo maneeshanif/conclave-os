@@ -17,6 +17,7 @@ const TABLES = [
   'agents',
   'approvals',
   'audit_log',
+  'briefs',
   'campaigns',
   'channel_accounts',
   'contacts',

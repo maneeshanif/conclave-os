@@ -203,7 +203,7 @@ Work them in order. Tick each when its test passes.
   `/api/goals` over the existing `goals` table (create, edit, progress read from queries, not typed) and a Goals page.
   *Test:* progress for "leads this week" and "deals won" comes from the tables and changes when they do; the page lists goals with their numbers.
 
-- [ ] **S2-10 The morning brief.** SPEC 3, 12.
+- [x] **S2-10 The morning brief.** SPEC 3, 12.
   A deterministic builder writes the brief (new scored leads, approvals waiting, replies to triage, stuck deals, goal progress, anything blocked) as a record, and the Chief of Staff template may add one paragraph of narrative that is clearly marked as the agent's. `/brief` shows the latest.
   *Test:* the brief lists exactly what the tables hold on a fixture day; an empty day says so; the narrative is optional and the brief is complete without it.
 

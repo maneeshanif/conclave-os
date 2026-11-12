@@ -2,6 +2,16 @@
 
 Newest first. One entry per decision: what, why, and what it replaced.
 
+## 2026-11-13 (S2-10: the morning brief)
+
+- **A record, built by plain code.** One row per day in a briefs table (migrations 0021, 0022). src/brief/build.ts counts, from the tables and nothing else: new leads in the last day (scored, qualified, the best five), approvals waiting and how long the oldest has waited, replies to triage, deals stuck over 14 days, blocked tasks, open action items, emails sent in the last day, the kill switch, and how the goals stand (the same code as the Goals screen, so the two cannot disagree). The summary lines are written from those numbers. An empty day says "Nothing happened overnight, and nothing needs you."; a day with the kill switch on is never called quiet.
+- **A snapshot, not a live view.** The brief is kept as it was counted; reading it later shows that morning. The page says when it was counted and has a "Count again" button (POST /api/brief/rebuild) that refreshes today's numbers. The agent's paragraph survives a rebuild.
+- **Built each morning by the ticker** at the first minute at or after 06:30 in the company's time zone (BRIEF_TIME changes it), once a day even with several tickers at the same moment (the table holds one row per day; tested with four at once). The 06:30 is my choice: before the 06:45 chief of staff run, and before a 07:00 day starts.
+- **The agent's paragraph is separate and labelled.** A chief-of-staff template (autonomy 1, no web, no shell, runs at 06:45 with a standing task) uses a briefing-kit plugin and two os tools: get_brief (reading, offered to everyone) and add_brief_note (up to 1,500 characters, autonomy 1, replaces the old note, builds today's brief first if there is none). The note is stored in its own column with the agent's name; the page shows it in a box saying who wrote it and that it is "not counted". It cannot change a number (tested: the counts and summary are identical before and after a note) and a note that gives orders changes no setting or approval. The brief is complete without it.
+- **The os server now offers get_brief to every agent,** including those on trial, so its tools list grew by one (the MCP test says so).
+- **Not in the brief yet:** how many of the morning's new leads are still unscored is shown (scored vs new), but nothing schedules the scorer; that is for S2-13 or a heartbeat task you give it. Also not there: the weekly plan and the "work backwards from the ladder" section, which need your planning rates (see S2-9).
+- Page: /brief, linked from the home page, with component tests (summary first, each part with its items, the agent's paragraph labelled and apart, a quiet day, count again, no brief yet, unreachable). Tested in jsdom and builds; a first look in a browser is still yours.
+
 ## 2026-11-12 (S2-9: the Goals screen)
 
 - **Read-only, on purpose.** The BUILD text said "create, edit". But the goals already come from company/goals.yaml, which the server copies into the database at start; an edit made in the database would be overwritten at the next start, so a second way to edit would lie. Goals change in the file, like departments and agents, and the page says so. If an in-app editor is wanted later it should rewrite the file, and that is its own task.

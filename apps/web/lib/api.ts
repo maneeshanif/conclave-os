@@ -121,6 +121,26 @@ export interface GoalsData {
   departments: DepartmentGoal[];
 }
 
+/** The morning brief (S2-10): counted from the tables; the narrative is the chief of staff agent's own paragraph. */
+export interface Brief {
+  day: string;
+  quiet: boolean;
+  summary: string[];
+  narrative: string | null;
+  narrative_by: string | null;
+  created_at: string;
+  updated_at: string;
+  content: {
+    leads: { new: number; scored: number; qualified: number; top: { id: string; name: string | null; score: number; reason: string | null }[] };
+    approvals: { waiting: number; oldest_hours: number | null; items: { id: string; kind: string; label: string; created_at: string }[] };
+    replies: { to_triage: number; items: { task_id: string; title: string }[] };
+    deals: { stuck: number; items: { deal_id: string; account: string; stage: string; days: number }[] };
+    attention: { blocked: { task_id: string; title: string; reason: string | null }[]; action_items: { id: string; kind: string; title: string }[]; kill_switch: boolean };
+    sent: { emails_24h: number };
+    goals: { current_rung: string | null; rungs: { key: string; title: string | null; target: number | null; current: number | null; pct: number | null; met: boolean }[]; departments: unknown[] };
+  };
+}
+
 /** What the person decided. An edit carries only the text that may change on an email: the subject and the message. */
 export interface DecisionBody {
   approved: boolean;
@@ -146,6 +166,15 @@ export const api = {
   runAgent: (id: string) => call<{ requested: true }>(`/api/agents/${id}/run`, { method: 'POST' }),
   approvals: (status?: string) => call<Approval[]>(`/api/approvals${status ? `?status=${encodeURIComponent(status)}` : ''}`),
   goals: () => call<GoalsData>('/api/goals'),
+  brief: async (): Promise<Brief | null> => {
+    try {
+      return await call<Brief>('/api/brief');
+    } catch (err) {
+      if ((err as Error).message.startsWith('There is no brief')) return null;
+      throw err;
+    }
+  },
+  rebuildBrief: () => call<Brief>('/api/brief/rebuild', { method: 'POST', body: '{}' }),
   actionItems: () => call<ActionItem[]>('/api/action-items'),
   resolve: (id: string, note?: string) => call<{ id: string; status: string }>(`/api/action-items/${id}/resolve`, { method: 'POST', body: JSON.stringify(note ? { note } : {}) }),
   decide: (id: string, body: DecisionBody) => call<{ id: string; status: string }>(`/api/approvals/${id}/decide`, { method: 'POST', body: JSON.stringify(body) }),
