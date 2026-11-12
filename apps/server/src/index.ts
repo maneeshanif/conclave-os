@@ -16,6 +16,7 @@ import { DbOsStore } from './harness/db-os-store';
 import { stopEverything } from './harness/kill-switch';
 import { approvalHooks, createOutreach } from './outreach';
 import { cancelAllRuns, executeRun, isRunActive, reapStaleRuns, type LoopDeps } from './harness/loop';
+import { closeBudgetItems } from './harness/budget';
 import { liftExpiredPauses } from './harness/pauses';
 import { reapRuns } from './harness/reaper';
 import { RunTokens } from './harness/run-tokens';
@@ -109,6 +110,9 @@ const everyMinute = async () => {
   const lifted = await liftExpiredPauses({ pool: sys.app, workspaceId: sys.workspace.id });
   for (const agentId of lifted.agentsWithWork) void dispatcher.request({ workspaceId: sys.workspace.id, agentId, trigger: 'task_assigned' });
   if (lifted.lifted.length) console.log(`plan limit reset: ${lifted.lifted.join(', ')} can run again`);
+  // An agent that is back under its budget (a raised budget, a new month) is let go and woken if it has work (S3-4).
+  const budgets = await closeBudgetItems({ pool: sys.app, workspaceId: sys.workspace.id });
+  for (const agentId of budgets.agentsWithWork) void dispatcher.request({ workspaceId: sys.workspace.id, agentId, trigger: 'task_assigned' });
   const seq = await runSequences({ pool: sys.app, workspaceId: sys.workspace.id, bus });
   if (seq.created) console.log(`sequences: made ${seq.created} step task(s)`);
   return woken;
@@ -160,6 +164,10 @@ shell.route(
     hosts: [`127.0.0.1:${sys.serverPort}`, `localhost:${sys.serverPort}`, new URL(authConfig.apiOrigin).host, `${authConfig.host}:${sys.serverPort}`],
     ...(auth ? { auth } : {}),
     onApprovalDecided: hooks.onApprovalDecided,
+    onCompanyReload: async () => {
+      const synced = await syncCompany(sys.app, sys.workspace.id, await loadCompany(sys.companyRoot));
+      return { departments: synced.departments, agents: synced.agents, funnels: synced.funnels, goals: synced.goals };
+    },
     onReleaseHeld: hooks.onReleaseHeld,
     // Turning the kill switch on stops what is running and drops what is queued (S1-5).
     onKillSwitch: async (on) => {

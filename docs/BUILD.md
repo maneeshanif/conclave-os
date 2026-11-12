@@ -251,7 +251,7 @@ Recorded 2026-11-13. Nothing here is built ahead of its slice (CLAUDE.md, Stack)
   A limit error pauses every agent on that runtime until the reset time (or a default wait), leaves their tasks queued, raises one action item, and lifts the pause by itself at the reset. Nothing is retried in the meantime.
   *Test:* one limit error pauses all agents on that runtime and none on another; queued tasks stay todo; exactly one action item however many agents hit it; at the reset time runs start again; a person can lift the pause early.
 
-- [ ] **S3-4 Budgets.** SPEC 14 (Budget exhausted).
+- [x] **S3-4 Budgets.** SPEC 14 (Budget exhausted).
   A ledger of what each agent's runs cost this month, checked before every run: over its monthly budget, the agent is paused and one action item is raised. A person raising the budget or unpausing lifts it.
   *Test:* a run that would start over budget does not start; the agent is paused with an item; the item appears once; a new month starts a new total; raising the budget resumes.
 

@@ -2,6 +2,14 @@
 
 Newest first. One entry per decision: what, why, and what it replaced.
 
+## 2026-11-13 (S3-4: budgets)
+
+- **The ledger is the runs table.** Before every run, what the agent's runs have cost this calendar month (this machine's month) is compared with its monthly_budget_usd. At or over it, the agent starts nothing and no task is taken, and the tasks stay queued. Nothing is killed mid-run: a run that crosses the line finishes and the next one is refused, because the cost of a run is not known before it starts. A budget of zero means nothing is allowed.
+- **"Paused" is this live check, not the agent's status.** I did not set the agent to paused, because that status also means "a person paused it", and the two would get mixed up. The Health screen (S3-7) will show an over-budget agent from the same numbers, and one action item per agent per month names the agent and the numbers.
+- **It lifts by itself.** A raised budget, or a new month, ends it: the ticker closes the item and wakes the agent if it has work waiting. If it goes over again the next month, that is a new item rather than the old one reopened.
+- **Raising a budget means editing monthly_budget_usd in the role file, then reloading.** The company file is where agent settings live and a database-only change would be overwritten at the next start. So there is now POST /api/company/reload, which copies the company folder into the database on request (departments, goals, funnels, agents) and returns what it synced; a mistake in a file comes back as a 400 naming the file and changes nothing. That also lets a new goal target or funnel stage take effect without a restart.
+- **Not done, and why:** a budget per task or per day, and a company-wide ceiling. The spec asks only for the per-agent monthly one; a company ceiling would be a small addition if wanted.
+
 ## 2026-11-13 (S3-3: plan-limit handling)
 
 - **A plan limit pauses the runtime, not the work.** When a run ends on a usage limit, the runtime it ran on (Claude Code, OpenCode...) is paused: no agent on it starts a run or takes a task until the reset, agents on other runtimes carry on, and the task that hit the limit goes back to todo with its session kept instead of being blocked (it is not the task's fault, so no person need look at it). One pause per runtime at a time, in a runtime_pauses table (migrations 0024, 0025); a second limit while paused only keeps the later reset.

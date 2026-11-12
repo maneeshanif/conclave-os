@@ -1,6 +1,7 @@
 import type pg from 'pg';
 import type { Bus } from '../bus';
 import { withWorkspace } from '../db/tenant';
+import { checkBudget } from './budget';
 import { failureClass } from './failure';
 import { activePause, pauseRuntime, parseResetTime, RUNTIME_LABEL } from './pauses';
 import { reapRuns } from './reaper';
@@ -50,6 +51,7 @@ interface AgentRow {
   runtime: RuntimeName;
   model_alias: string;
   fallback_alias: string | null;
+  monthly_budget_usd: string;
   max_turns: number;
   template_key: string | null;
   department: string | null;
@@ -140,7 +142,7 @@ export async function reapStaleRuns(pool: pg.Pool, workspaceId: string): Promise
 export async function executeRun(deps: LoopDeps, workspaceId: string, agentId: string, trigger: string): Promise<RunOutcome> {
   const agent = await withWorkspace(deps.pool, workspaceId, async ({ client: c }) => {
     const r = await c.query<AgentRow>(
-      `select a.id, a.key, a.name, a.status, a.runtime, a.model_alias, a.fallback_alias, a.max_turns, t.key as template_key, d.name as department
+      `select a.id, a.key, a.name, a.status, a.runtime, a.model_alias, a.fallback_alias, a.monthly_budget_usd, a.max_turns, t.key as template_key, d.name as department
        from agents a left join agent_templates t on t.id = a.template_id left join departments d on d.id = a.department_id
        where a.id = $1`,
       [agentId],
@@ -152,6 +154,9 @@ export async function executeRun(deps: LoopDeps, workspaceId: string, agentId: s
   if (agent.status !== 'active') return { status: 'not_runnable', reason: `agent is ${agent.status}` };
   const runtime = deps.runtimes[agent.runtime];
   if (!runtime) return { status: 'not_runnable', reason: `runtime ${agent.runtime} is not available` };
+  // The month's budget is checked before every run: at or over it, nothing starts and no task is taken (S3-4).
+  const budget = await checkBudget(deps.pool, workspaceId, agent, (deps.now ?? (() => new Date()))());
+  if (budget.over) return { status: 'not_runnable', reason: `${agent.name} is over its budget for the month ($${budget.spent.toFixed(2)} of $${budget.budget.toFixed(2)})` };
   // A runtime that has hit its plan limit starts nothing, and no task is taken, until the reset (S3-3).
   const paused = await activePause(deps.pool, workspaceId, agent.runtime, (deps.now ?? (() => new Date()))());
   if (paused) return { status: 'not_runnable', reason: `${RUNTIME_LABEL[agent.runtime] ?? agent.runtime} is paused until ${paused.until.toISOString()} (a plan limit was reached)` };
