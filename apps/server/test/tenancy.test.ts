@@ -33,9 +33,12 @@ const TABLES = [
   'projects',
   'run_events',
   'runs',
+  'sequence_enrollments',
   'sequence_steps',
   'suppression',
   'tasks',
+  'thread_messages',
+  'threads',
   'workspace_settings',
   'workspaces',
 ];

@@ -148,13 +148,24 @@ export async function executeEmail(deps: ExecutorDeps, approvalId: string): Prom
   if (outcome.kind === 'none') return { status: 'already_claimed' };
   const claimed = outcome.row;
 
-  const finish = async (status: 'executed' | 'failed', result: Record<string, unknown>, outreach: 'sent' | 'refused' | 'failed', item?: { kind: string; title: string; body: string }) => {
+  const finish = async (status: 'executed' | 'failed', result: Record<string, unknown>, outreach: 'sent' | 'refused' | 'failed', item?: { kind: string; title: string; body: string }, thread?: { leadId: string; subject: string; body: string; campaignId?: string | undefined }) => {
     await withWorkspace(deps.pool, ws, async ({ client: c }) => {
       await c.query('update approvals set status = $2, result = $3 where id = $1', [approvalId, status, JSON.stringify(result)]);
       await c.query(
         "update outreach_messages set status = $2, sent_at = case when $2 = 'sent' then now() else sent_at end, external_ref = $3 where approval_id = $1",
         [approvalId, outreach, (result.ref as string | undefined) ?? null],
       );
+      if (thread) {
+        // What was actually sent (with the founder's edit, if any) goes in the lead's one thread.
+        const t = await c.query<{ id: string }>(
+          'insert into threads (workspace_id, lead_id, last_message_at) values ($1, $2, now()) on conflict (workspace_id, lead_id) where lead_id is not null do update set last_message_at = now() returning id',
+          [ws, thread.leadId],
+        );
+        await c.query("insert into thread_messages (workspace_id, thread_id, direction, channel, subject, body, campaign_id) values ($1, $2, 'out', 'email', $3, $4, $5)", [ws, t.rows[0]!.id, thread.subject, thread.body, thread.campaignId ?? null]);
+        if (thread.campaignId) {
+          await c.query("update sequence_enrollments set steps_sent = steps_sent + 1, last_sent_at = now() where campaign_id = $1 and lead_id = $2 and status = 'active'", [thread.campaignId, thread.leadId]);
+        }
+      }
       if (item) {
         await c.query('insert into action_items (workspace_id, kind, title, body, approval_id) values ($1, $2, $3, $4, $5) on conflict do nothing', [ws, item.kind, item.title, item.body, approvalId]);
       }
@@ -212,7 +223,7 @@ export async function executeEmail(deps: ExecutorDeps, approvalId: string): Prom
       text: `${p.body}\n\n--\n${footer.text}`,
       headers: { 'List-Unsubscribe': `<mailto:${deps.from.replace(/^.*<|>$/g, '')}?subject=unsubscribe>`, 'X-Conclave-Approval': approvalId },
     });
-    await finish('executed', { ref, transport: deps.transport.name }, 'sent');
+    await finish('executed', { ref, transport: deps.transport.name }, 'sent', undefined, { leadId: p.leadId, subject: p.subject, body: p.body, campaignId: p.campaignId });
     await withWorkspace(deps.pool, ws, ({ client: c }) => c.query("update leads set stage = 'contacted' where id = $1 and stage = 'new'", [p.leadId]));
     return { status: 'executed', ref };
   } catch (err) {

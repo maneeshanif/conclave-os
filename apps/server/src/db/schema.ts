@@ -597,6 +597,75 @@ export const sequenceSteps = pgTable(
   ],
 );
 
+/** Who is in which campaign, and where they are in its sequence. A reply or an unsubscribe pauses it (S2-4). */
+export const sequenceEnrollments = pgTable(
+  'sequence_enrollments',
+  {
+    id: id(),
+    workspaceId: workspaceId(),
+    campaignId: uuid('campaign_id').notNull(),
+    leadId: uuid('lead_id').notNull(),
+    stepsSent: smallint('steps_sent').notNull().default(0),
+    lastSentAt: timestamp('last_sent_at', { withTimezone: true }),
+    status: text('status').notNull().default('active'), // active | paused | done | unsubscribed
+    pausedReason: text('paused_reason'),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    unique('sequence_enrollments_ws_id_uq').on(t.workspaceId, t.id),
+    unique('sequence_enrollments_campaign_lead_uq').on(t.workspaceId, t.campaignId, t.leadId),
+    foreignKey({ name: 'sequence_enrollments_campaign_fk', columns: [t.workspaceId, t.campaignId], foreignColumns: [campaigns.workspaceId, campaigns.id] }),
+    foreignKey({ name: 'sequence_enrollments_lead_fk', columns: [t.workspaceId, t.leadId], foreignColumns: [leads.workspaceId, leads.id] }),
+    check('sequence_enrollments_status_ck', sql`${t.status} in ('active','paused','done','unsubscribed')`),
+    index('sequence_enrollments_lead_idx').on(t.workspaceId, t.leadId),
+  ],
+);
+
+/** One thread per contact (or lead): every email, reply and note with them, in order (SPEC 10). */
+export const threads = pgTable(
+  'threads',
+  {
+    id: id(),
+    workspaceId: workspaceId(),
+    leadId: uuid('lead_id'),
+    contactId: uuid('contact_id'),
+    status: text('status').notNull().default('open'), // open | closed
+    lastMessageAt: timestamp('last_message_at', { withTimezone: true }),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    unique('threads_ws_id_uq').on(t.workspaceId, t.id),
+    uniqueIndex('threads_ws_lead_uq').on(t.workspaceId, t.leadId).where(sql`${t.leadId} is not null`),
+    foreignKey({ name: 'threads_lead_fk', columns: [t.workspaceId, t.leadId], foreignColumns: [leads.workspaceId, leads.id] }),
+    foreignKey({ name: 'threads_contact_fk', columns: [t.workspaceId, t.contactId], foreignColumns: [contacts.workspaceId, contacts.id] }),
+    check('threads_who_ck', sql`${t.leadId} is not null or ${t.contactId} is not null`),
+  ],
+);
+
+/** A message in a thread. Inbound text is data from outside: stored and shown, never obeyed. */
+export const threadMessages = pgTable(
+  'thread_messages',
+  {
+    id: id(),
+    workspaceId: workspaceId(),
+    threadId: uuid('thread_id').notNull(),
+    direction: text('direction').notNull(), // in | out
+    channel: text('channel').notNull().default('email'),
+    subject: text('subject'),
+    body: text('body').notNull(),
+    campaignId: uuid('campaign_id'),
+    classification: text('classification'), // positive | neutral | negative
+    at: timestamp('at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    unique('thread_messages_ws_id_uq').on(t.workspaceId, t.id),
+    foreignKey({ name: 'thread_messages_thread_fk', columns: [t.workspaceId, t.threadId], foreignColumns: [threads.workspaceId, threads.id] }),
+    check('thread_messages_direction_ck', sql`${t.direction} in ('in','out')`),
+    check('thread_messages_class_ck', sql`${t.classification} is null or ${t.classification} in ('positive','neutral','negative')`),
+    index('thread_messages_thread_idx').on(t.workspaceId, t.threadId, t.at),
+  ],
+);
+
 /** Every message drafted or sent to a lead, one row per message. */
 export const outreachMessages = pgTable(
   'outreach_messages',

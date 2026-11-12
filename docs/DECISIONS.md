@@ -2,6 +2,15 @@
 
 Newest first. One entry per decision: what, why, and what it replaced.
 
+## 2026-11-12 (S2-4: threads, replies and triage)
+
+- **One thread per lead,** with every email sent landing in it (the executor writes it in the same transaction that marks the email sent, with the founder's edit if there was one) and every reply recorded against it. Contacts get the same thread when contacts carry the conversation (the column is there; leads are the path used now). Tables sequence_enrollments, threads and thread_messages (migrations 0016, 0017).
+- **Enrolment is explicit and checked:** POST /campaigns/:id/enroll takes lead ids and reports why each skipped one was skipped (no such lead, no email, do not contact, on the suppression list, already enrolled). A finished campaign takes no one. The sequence runner (S2-5) reads these rows; the sent count on an enrolment rises when an email of that campaign goes out.
+- **A reply pauses every active sequence for that lead and makes one triage task.** The task goes to the agent that wrote to the lead, else an active outreach agent, else nobody; while one is open, further replies add to the thread and make no second task; once it is done a new reply makes a new one. The lead becomes "replied" (only from new or contacted).
+- **A reply is data (rule 5).** Its text is stored and shown, and the only things it can cause are the task and, if it asks to stop, a suppression. In the task the text sits inside a fence under a line saying it is data from outside, and fence markers inside the reply are defused so it cannot close the fence and pose as instructions (tested with an order to approve everything and turn the kill switch off: no approval, setting, outbox or suppression changed).
+- **"Asked to stop" is deliberately narrow:** unsubscribe, remove me, take me off, opt out, stop emailing and similar, and do not contact me. It suppresses the address, marks the lead do-not-contact and ends every sequence for good (status unsubscribed). "Not right now, maybe in the new year" is only a reply. A missed phrase costs a person reading the task; a false match costs a lead, so the pattern errs narrow. The triage task still exists for a person to check either way.
+- **Classification:** a person (or the triage agent) marks an inbound message positive, neutral or negative; S2-6 counts positive replies from it. Recording replies is by hand or API for now; reading a mailbox is a later connector.
+
 ## 2026-11-12 (S2-3: channel accounts, campaigns and sequences)
 
 - **Caps live on the channel account** (daily cap, a smaller warm-up cap used until a warm-up date, a health of ok, paused or blocked), and the email executor enforces them in the same claim transaction, under the same workspace send lock, as the workspace caps. An email over its mailbox cap is held, not failed: it stays approved and goes the next day. Mid-send emails count, so parallel sends cannot pass the cap (tested with eight at once against a cap of three). Two mailboxes are counted apart. The workspace caps from S1-5 still apply on top; when both hold, the later release time wins.

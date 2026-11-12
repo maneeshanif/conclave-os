@@ -158,6 +158,47 @@ export function campaignRoutes(deps: { workspaceId: string; bus: Bus }) {
     return c.json({ id, status: to });
   }
 
+  r.get('/campaigns/:id/enrollments', async (c) =>
+    c.json(
+      await q(
+        c,
+        `select e.lead_id, l.business_name, l.email, e.status, e.paused_reason, e.steps_sent, e.last_sent_at
+           from sequence_enrollments e join leads l on l.id = e.lead_id where e.campaign_id = $1 order by e.created_at, e.id`,
+        [c.req.param('id')],
+      ),
+    ),
+  );
+
+  r.post('/campaigns/:id/enroll', async (c) => {
+    const p = z.object({ leadIds: z.array(z.uuid()).min(1).max(500) }).safeParse(await body(c));
+    if (!p.success) return bad(c, p.error);
+    const id = c.req.param('id') as string;
+    const [k] = await q<{ status: string }>(c, 'select status from campaigns where id = $1 for update', [id]);
+    if (!k) return c.json({ error: 'Not found' }, 404);
+    if (k.status === 'done') return c.json({ error: 'This campaign is finished, so no one can be added.' }, 409);
+    const skipped: { leadId: string; reason: string }[] = [];
+    let enrolled = 0;
+    for (const leadId of [...new Set(p.data.leadIds)]) {
+      const [l] = await q<{ email: string | null; stage: string; suppressed: boolean }>(
+        c,
+        `select l.email, l.stage, exists (select 1 from suppression s where lower(s.value) = lower(l.email) or lower(s.value) = '@' || split_part(lower(l.email), '@', 2)) as suppressed
+           from leads l where l.id = $1`,
+        [leadId],
+      );
+      if (!l) skipped.push({ leadId, reason: 'no such lead' });
+      else if (!l.email) skipped.push({ leadId, reason: 'no email address' });
+      else if (l.stage === 'do_not_contact') skipped.push({ leadId, reason: 'marked do not contact' });
+      else if (l.suppressed) skipped.push({ leadId, reason: 'on the suppression list' });
+      else {
+        const ins = await q(c, 'insert into sequence_enrollments (workspace_id, campaign_id, lead_id) values ($1, $2, $3) on conflict do nothing returning id', [ws, id, leadId]);
+        if (ins.length) enrolled++;
+        else skipped.push({ leadId, reason: 'already enrolled' });
+      }
+    }
+    await audit(c, 'campaign.enrolled', id, { enrolled, skipped: skipped.length });
+    return c.json({ enrolled, skipped });
+  });
+
   r.post('/campaigns/:id/approve', (c) =>
     move(c, 'approve', ['draft'], 'approved', async (k) => {
       const steps = await q(c, 'select 1 from sequence_steps where campaign_id = $1', [k.id]);

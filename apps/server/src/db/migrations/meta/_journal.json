@@ -113,6 +113,20 @@
       "when": 1794505008005,
       "tag": "0015_campaigns_rls",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1794505433058,
+      "tag": "0016_threads_enrollments",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1794505434940,
+      "tag": "0017_threads_rls",
+      "breakpoints": true
     }
   ]
 }
