@@ -40,31 +40,31 @@ Work them in order. Tick each when its test passes.
   Embedded Postgres that starts with the server and keeps its files under `DATA_DIR`. Drizzle schema and migrations for the twelve slice 0 tables exactly as that block gives them. The server connects as a non-superuser role that does not own the tables, row-level security is enabled and forced, and each request sets `app.workspace_id` in its transaction. Do not create the vector extension. On first start, create one workspace in local mode.
   *Test:* a query made as workspace A cannot read a row that belongs to workspace B, and a query with no workspace set returns no rows.
 
-- [ ] **S0-3 Company folder loader.** SPEC 5 (role file), 7 (model aliases), 13.
+- [x] **S0-3 Company folder loader.** SPEC 5 (role file), 7 (model aliases), 13.
   Read `company/COMPANY.md`, `company/goals.yaml`, `company/departments.yaml` and every `company/departments/<dept>/agents/<id>/AGENT.md`. Validate with Zod. Sync departments, agents and goals to the database by `key`. The role file is the source of truth for its front matter. `config/models.ts` maps each alias to a model and the runtimes it works on.
-  *Test:* the starter `company/` folder loads eighteen departments and three ladder goals. A role file with an unknown `runtime` is rejected with a clear message, and so is one whose model alias does not list its runtime.
+  *Test:* the starter `company/` folder loads nineteen departments and three ladder goals. A role file with an unknown `runtime` is rejected with a clear message, and so is one whose model alias does not list its runtime.
 
-- [ ] **S0-4 Template renderer with two targets.** SPEC 5 (templates, default permissions, how grants reach a CLI, the portability rule).
+- [x] **S0-4 Template renderer with two targets.** SPEC 5 (templates, default permissions, how grants reach a CLI, the portability rule).
   Three templates in `templates/agents`: `lead`, `researcher`, `writer`. Each holds neutral sources only: `template.yaml`, `AGENT.md.hbs`, `RULES.md.hbs`, `permissions.yaml`, `connectors.yaml` and `skills/`. `render(template, params)` writes `AGENT.md` to `company/departments/<dept>/agents/<id>/`, and writes the working folder under `DATA_DIR` for the agent's runtime. The `claude-cli` target writes `CLAUDE.md`, `.claude/settings.json`, `.claude/skills` and `.mcp.json`. The `opencode` target writes `AGENTS.md`, an agent file in `.opencode/agents/`, `opencode.json` and the same `.claude/skills` folder. Check OpenCode's current docs for its config shape before writing that target. Default permissions give no shell and no network-writing tool on either target. Add `pnpm agent:new <template> --department <key>`, which renders and registers the agent as `active` at autonomy 0 (slice 0 has no approvals inbox yet).
   *Test:* a snapshot of the rendered `writer` for each target. A missing required parameter fails. The working folder is not inside the repo. Neither rendered folder grants a shell.
 
-- [ ] **S0-5 The `os` MCP server.** SPEC 6 ("How a CLI agent reaches these tools"), 8.
+- [x] **S0-5 The `os` MCP server.** SPEC 6 ("How a CLI agent reaches these tools"), 8.
   An HTTP MCP endpoint on the server, bound to 127.0.0.1, with `get_task`, `comment`, `complete_task`, `block_task` and `ask_founder`. Each call carries a per-run token that the server resolves to workspace, agent, run and task. The agent does not check tasks out; the run loop does (S0-8).
   *Test:* a call with no token is refused, and a call with another run's token cannot touch this run's task.
 
-- [ ] **S0-6 CLI runtime, two engines.** SPEC 5 (the runner, "Three things this runner must get right", "One trap per engine"), 7.
+- [x] **S0-6 CLI runtime, two engines.** SPEC 5 (the runner, "Three things this runner must get right", "One trap per engine"), 7.
   `runtimes/types.ts` and `runtimes/cli.ts` for `claude-cli` and `opencode`. Before each run, write the per-run token into the agent's connector config. Spawn the CLI headless in the agent's working folder with a clean environment. Turn its JSON lines into run events, store them, capture the session id, and classify a plan-limit or sign-in message as its own error kind. Run `claude --help` and `opencode run --help` first and use the real flags, not the ones in the spec sketch. Nothing outside `runtimes/` and the renderer targets may name a harness.
   *Test:* with a fake `claude` script that prints canned JSON lines, the events are stored in order and the run ends `succeeded`. A second fake that exits non-zero ends `failed`. A third that prints a plan-limit line ends `failed` with kind `limit`. The same three cases pass with a fake `opencode`. The child's environment holds no variable from `.env` except those in the model alias.
 
-- [ ] **S0-7 Runtime conformance tests.** SPEC 5 (the portability rule, rule 3).
+- [x] **S0-7 Runtime conformance tests.** SPEC 5 (the portability rule, rule 3).
   `runtimes/conformance.ts`: one test suite that takes any `Runtime` and checks the seven points in rule 3. Run it against `claude-cli` and `opencode` using the fake binaries. Later runtimes must pass the same suite before an agent may use them.
   *Test:* both runtimes pass. A deliberately broken runtime that leaks an environment variable fails with a message naming the variable.
 
-- [ ] **S0-8 Run loop and ticker.** SPEC 5 (the eight steps), 11 ("One event starts every run"), 14 (limits).
+- [x] **S0-8 Run loop and ticker.** SPEC 5 (the eight steps), 11 ("One event starts every run"), 14 (limits).
   An Inngest function `agent-run`, triggered by `agent/run.requested`, with the two concurrency limits in SPEC 14. It checks in plain code whether the agent has a task before any model call, then checks the task out with the atomic update. `POST /agents/:id/run` sends the event. A `ticker` function on a one-minute cron sends it for agents whose `heartbeat_cron` is due. The loop picks the runtime from the agent's role file and never names one itself.
   *Test:* a run for an agent with no tasks makes no CLI call. Two run requests at the same moment never check out the same task.
 
-- [ ] **S0-9 Plain task page.** SPEC 11 (API table), 12 (stack only).
+- [x] **S0-9 Plain task page.** SPEC 11 (API table), 12 (stack only).
   One web page: the task list, a form to create a task, and a live log of a run over a WebSocket, with its state, the runtime it ran on, and the cost estimate if the CLI reported one. No office canvas, no login (it only answers on 127.0.0.1).
   *Test:* a component test that a stored run's events render in order.
 

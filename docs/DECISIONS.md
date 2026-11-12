@@ -2,6 +2,31 @@
 
 Newest first. One entry per decision: what, why, and what it replaced.
 
+## 2026-11-12 (S0-3 to S0-9, built overnight by Claude in the cloud on top of S0-2)
+
+- **Built on this S0-2 as it stands.** The overnight session also wrote an S0-2 of its own while this one was still in progress. When this one landed, that copy was dropped and everything else was rebased onto it, because this one runs on Windows and fixes the Postgres shutdown.
+- **The request transaction covers `/api/*` only.** The `/mcp` endpoint, the `/events` socket and Inngest open their own short transactions, because a run or a socket can stay open for minutes and would hold a pooled connection the whole time. Work that must wait for the commit, like starting a run for a task that was just inserted, goes in `c.get('after')`. The two middleware tests moved to `/api/_probe` and `/api/_boom`. Inngest is served at `/inngest`. SPEC 11.
+- **The run token reaches the `os` server through an environment variable, never a file.** Claude Code expands `${CONCLAVE_RUN_TOKEN}` in `.mcp.json` and OpenCode expands `{env:CONCLAVE_RUN_TOKEN}` in `opencode.json`. Both were checked with the real binaries, and the token is redacted from every stored event. SPEC 6.
+- **Prompts never go on a command line.** Claude Code reads the task on stdin, and OpenCode gets it as an attached file with a fixed message. This also makes a `.cmd` shim on Windows safe to start through a shell.
+- **The agent environment is an allow-list:** `PATH`, `HOME`, `LANG`, plus the Windows profile variables `USERPROFILE`, `APPDATA`, `LOCALAPPDATA`, `SYSTEMROOT`, `TEMP`, `TMP`, `PATHEXT` and `COMSPEC`, so a CLI can find its own sign-in on Windows. No server secret reaches an agent, and conformance point 4 checks that.
+- **Claude Code file tools are scoped to the working folder:** `Read(./**)`, `Write(./**)`, `Edit(./**)`, with `Glob` and `Grep` denied and `--permission-mode dontAsk`. Why: a real run showed an agent globbing a folder in the home directory. After the change, a real run was refused `/etc/hostname` and allowed `ROLE.md`. OpenCode gets `external_directory: deny`. SPEC 5.
+- **The OpenCode target is written for opencode 1.19.5,** checked with `opencode debug config`, `debug agent` and `debug skill`: `mcp.<name>` and a `permission` map in `opencode.json`, agents in `.opencode/agents/`, skills in `.opencode/skills/`. The docs site describes a newer "V2" shape that this binary does not use. Agent runs set `OPENCODE_DISABLE_CLAUDE_CODE_SKILLS=1` and `OPENCODE_DISABLE_EXTERNAL_SKILLS=1`, because without them your personal `~/.claude/skills` loaded into a company agent (seen with the binary).
+- **Claude Code 2.1.322 has no `--max-turns`,** so the runner counts turns and stops the run itself.
+- **Workflows: Inngest when configured, else an in-process dispatcher with the same limits.** If `INNGEST_DEV`, `INNGEST_BASE_URL` or `INNGEST_EVENT_KEY` is set, `agent-run` (limit 2, one per agent) and `ticker` (every minute) run on Inngest. Otherwise the server runs the same limits in-process and ticks with a timer, so the OS works with nothing else installed. A failed run blocks its task with the reason and is not retried. SPEC 11, 14.
+- **Heartbeat crons use the machine's local time,** so `0 9 * * 1-5` means 9am where you are.
+- **Queries are raw SQL on `tx.client` for now.** The Drizzle schema from S0-2 is there for migrations and typed queries later.
+- **`COMPANY_DIR` can point the server at another company folder.** The default is the repo's `company/`. It is used by tests and by the end-to-end smoke run, and later by a second company.
+- **`@embedded-postgres/linux-x64` may run its install script** (the same symlink-only script as Windows). `protobufjs`, pulled in by Inngest, may not: its script only checks versions.
+- **The agent `os` tools are `get_task`, `comment`, `complete_task`, `block_task` and `ask_founder`, over a stateless Streamable HTTP MCP endpoint** with no SSE stream. Real Claude Code and OpenCode both connected to it.
+
+## 2026-11-12 (v6: client meetings and channels)
+
+- **Client meeting room with video, on LiveKit.** Apache 2.0, separate from the OS server. Clients join by a one-meeting guest link. The OS itself never becomes public. SPEC 10, 12.
+- **AI in client calls starts as note taker only.** A live AI speaker waits for a month of notes and passing mock-call evals, because nothing said live can be approved first. SPEC 10, 19.
+- **Recording needs consent per call.** SPEC 10.
+- **Slack, Jira, help desks, CRMs and calendars are connectors behind the approval gate.** One system of record per workspace, the OS by default. SPEC 10.
+- **Room 19, Meetings Desk, and slice 10.** Booking and briefs start in slice 2. SPEC 4, 18.
+
 ## 2026-11-12 (S0-2: tenancy keys and policy)
 
 - **Foreign keys cannot cross workspaces.** Every tenant table with an `id` gets `unique (workspace_id, id)`, and every foreign key between tenant tables is `(workspace_id, x_id) references t (workspace_id, id)`. Why: Postgres runs foreign key checks without row-level security, so a plain key lets a row in workspace A point at a row in workspace B. Cheap at schema birth, painful later. Goes beyond the original slice 0 block, so SPEC 11 was updated first. `members` has no `id`, so it keeps its plain key. `departments.lead_agent_id` gains a composite key too, added after `agents` exists. SPEC 11.
