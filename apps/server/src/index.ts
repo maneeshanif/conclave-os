@@ -16,6 +16,7 @@ import { DbOsStore } from './harness/db-os-store';
 import { stopEverything } from './harness/kill-switch';
 import { approvalHooks, createOutreach } from './outreach';
 import { cancelAllRuns, executeRun, isRunActive, reapStaleRuns, type LoopDeps } from './harness/loop';
+import { Breakers } from './harness/breakers';
 import { closeBudgetItems } from './harness/budget';
 import { liftExpiredPauses } from './harness/pauses';
 import { reapRuns } from './harness/reaper';
@@ -149,6 +150,8 @@ if (auth) {
   console.log('login is off: the server answers on this laptop only (loopback)');
 }
 
+const breakers = new Breakers({ pool: sys.app, workspaceId: sys.workspace.id });
+
 const shell = new Hono();
 const { injectWebSocket, upgradeWebSocket } = createNodeWebSocket({ app: shell });
 shell.route(
@@ -158,6 +161,7 @@ shell.route(
     workspaceId: sys.workspace.id,
     tokens,
     store,
+    breakers,
     bus,
     dispatcher,
     upgradeWebSocket,

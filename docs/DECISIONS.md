@@ -2,6 +2,14 @@
 
 Newest first. One entry per decision: what, why, and what it replaced.
 
+## 2026-11-13 (S3-6: circuit breakers)
+
+- **One breaker per os tool (`os:<tool>`), in the `circuit_breakers` table.** Three failures in a row open it for 5 minutes; calls are then refused at once, with a message the agent can act on ("temporarily unavailable ... carry on without it or block your task"), and the tool is not asked. A refused call is not counted. After the cooldown the first call goes through and the breaker closes; three fresh failures are needed to open it again. A success resets the count.
+- **A failure is a tool that broke, not a tool that said no.** An exception that is not a `ToolError` counts; a `ToolError` (bad input, "not in progress") means the tool worked and counts as a success. Otherwise an agent sending bad input three times would switch a tool off for everyone.
+- **Only real tool names get a breaker**, so an agent inventing names cannot fill the table.
+- **One action item per opening** (`breaker_open`, body starts `breaker: <key>`), closed when the breaker closes. A person can reset early with `POST /api/breakers/:key/reset` (404 if it is not open); `GET /api/breakers` lists all. Opening and closing are audited.
+- **Scope for now is the os tools.** Connectors (the outbox transport, lead sources) are not behind a breaker yet because none is live; each gets one with the same class when it is connected. The Health screen (S3-7) shows breakers and the reset.
+
 ## 2026-11-13 (S3-5: output checks, repair and escalation)
 
 - **A check is plain code that looks at a run's result and says pass or fail with reasons** (src/checks). It never calls a model. A role names one in `output_check`; after the run reports done the loop runs it. Two exist: `email-draft` (subject under 8 words, body under 170, not the word "agentic", and a "Subject:" line to find them by: the limits written in the outreach rep's checks README) and `non-empty`. The outreach-rep template now carries `output_check: email-draft`.

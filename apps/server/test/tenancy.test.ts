@@ -20,6 +20,7 @@ const TABLES = [
   'briefs',
   'campaigns',
   'channel_accounts',
+  'circuit_breakers',
   'contacts',
   'deal_stage_events',
   'deals',

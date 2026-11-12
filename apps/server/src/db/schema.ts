@@ -727,6 +727,23 @@ export const runtimePauses = pgTable(
   ],
 );
 
+/** One breaker per tool, such as os:add_lead. Three failures in a row open it for a cooldown (S3-6). */
+export const circuitBreakers = pgTable(
+  'circuit_breakers',
+  {
+    id: id(),
+    workspaceId: workspaceId(),
+    key: text('key').notNull(),
+    state: text('state').notNull().default('closed'), // closed | open
+    failures: integer('failures').notNull().default(0),
+    lastError: text('last_error'),
+    openedAt: timestamp('opened_at', { withTimezone: true }),
+    openUntil: timestamp('open_until', { withTimezone: true }),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [unique('circuit_breakers_ws_id_uq').on(t.workspaceId, t.id), unique('circuit_breakers_ws_key_uq').on(t.workspaceId, t.key), check('circuit_breakers_state_ck', sql`${t.state} in ('closed','open')`)],
+);
+
 /** Every message drafted or sent to a lead, one row per message. */
 export const outreachMessages = pgTable(
   'outreach_messages',

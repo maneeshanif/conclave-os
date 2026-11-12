@@ -259,7 +259,7 @@ Recorded 2026-11-13. Nothing here is built ahead of its slice (CLAUDE.md, Stack)
   A registry of named checks (the first: `email-draft`, the limits written in the outreach rep's checks README; and `document-figures` from S2-12). After a run reports done, the role's check runs. On failure: one repair attempt in the same session showing the error, then the stronger model alias, then the task is blocked for the founder with the failures.
   *Test:* a passing output ends the task; a failing one is repaired once; still failing escalates once; still failing blocks with the reasons; a role with no check is untouched; the check never calls a model.
 
-- [ ] **S3-6 Circuit breakers.** SPEC 14 (Tool or connector error).
+- [x] **S3-6 Circuit breakers.** SPEC 14 (Tool or connector error).
   Three failures in a row of a tool or connector open its breaker: further calls are refused at once with a clear message, one action item is raised, and the breaker closes after a cooldown or when a person resets it. A success resets the count.
   *Test:* three failures open it; calls are refused while open and not counted; it closes after the cooldown; a success in between resets; one breaker's state does not affect another's.
 

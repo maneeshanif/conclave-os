@@ -5,11 +5,13 @@ import type { Pool } from 'pg';
 import { HealthSchema } from '@conclave/shared';
 import type { Auth, SessionInfo } from './auth';
 import type { Bus } from './bus';
+import type { Breakers } from './harness/breakers';
 import { withWorkspace, type Tx } from './db/tenant';
 import type { OsStore } from './harness/os-tools';
 import type { RunTokens } from './harness/run-tokens';
 import { apiRoutes } from './routes/api';
 import type { ApprovalDecision } from './routes/approvals';
+import { breakerRoutes } from './routes/breakers';
 import { mcpRoutes } from './routes/mcp';
 import { ownerRoutes } from './routes/owner';
 import type { Dispatcher } from './workflows/dispatch';
@@ -45,6 +47,8 @@ export interface AppDeps {
   onKillSwitch?: (on: boolean) => Promise<void> | void;
   /** Sends the approved emails the kill switch or a cap was holding. Returns how many it tried. */
   onReleaseHeld?: () => Promise<number> | number;
+  /** Circuit breakers for the os tools (S3-6). */
+  breakers?: Breakers;
   /** Copies the company folder into the database again, on request. */
   onCompanyReload?: () => Promise<Record<string, number>>;
 }
@@ -112,10 +116,11 @@ export function createApp(deps?: AppDeps) {
   });
 
   if (deps.auth) app.route('/api/owner', ownerRoutes({ auth: deps.auth }));
+  if (deps.breakers) app.route('/api/breakers', breakerRoutes({ breakers: deps.breakers }));
   if (deps.bus && deps.dispatcher) {
     app.route('/api', apiRoutes({ workspaceId: deps.workspaceId, dispatcher: deps.dispatcher, bus: deps.bus, onApprovalDecided: deps.onApprovalDecided, onKillSwitch: deps.onKillSwitch, onReleaseHeld: deps.onReleaseHeld, ...(deps.onCompanyReload ? { onCompanyReload: deps.onCompanyReload } : {}) }));
   }
-  if (deps.tokens && deps.store) app.route('/mcp', mcpRoutes({ tokens: deps.tokens, store: deps.store }));
+  if (deps.tokens && deps.store) app.route('/mcp', mcpRoutes({ tokens: deps.tokens, store: deps.store, ...(deps.breakers ? { breakers: deps.breakers } : {}) }));
   if (deps.inngestHandler) app.on(['GET', 'POST', 'PUT'], '/inngest', deps.inngestHandler);
 
   if (deps.upgradeWebSocket && deps.bus) {
