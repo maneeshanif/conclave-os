@@ -3,6 +3,7 @@ import type { QueryResultRow } from 'pg';
 import { z } from 'zod';
 import type { AppEnv } from '../app';
 import type { Bus } from '../bus';
+import { sequencePass } from '../workflows/sequences';
 
 const ACTOR = 'founder';
 export const CHANNELS = ['email', 'x_dm', 'ig_dm', 'linkedin'] as const;
@@ -101,6 +102,14 @@ export function campaignRoutes(deps: { workspaceId: string; bus: Bus }) {
       ),
     ),
   );
+
+  // Asks the sequence runner now, instead of waiting for its next pass. It only decides who is due; drafting and approval are as usual.
+  r.post('/run-sequences', async (c) => {
+    const made: string[] = [];
+    const campaigns = await sequencePass(c.get('tx').client, ws, new Date(), made);
+    c.get('after').push(async () => made.forEach((taskId) => deps.bus.publish({ kind: 'task.changed', workspaceId: ws, taskId })));
+    return c.json({ created: made.length, campaigns });
+  });
 
   r.get('/campaigns/:id', async (c) => {
     const [k] = await q(c, 'select id, name, market, channel, audience, status, channel_account_id, approved_at, created_at from campaigns where id = $1', [c.req.param('id')]);

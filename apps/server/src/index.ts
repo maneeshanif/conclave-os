@@ -21,6 +21,7 @@ import { openSystem } from './system';
 import { LocalDispatcher, tick, type Dispatcher, type RunRequestEvent } from './workflows/dispatch';
 import { createInngestGate, gateOps, LocalApprovalGate, type ApprovalGate } from './workflows/approval-gate';
 import { createWorkflows } from './workflows/inngest';
+import { runSequences } from './workflows/sequences';
 
 const sys = await openSystem();
 
@@ -87,10 +88,18 @@ let ticker: NodeJS.Timeout | undefined;
 let gate: ApprovalGate;
 // When the ticker last asked each agent, so an idle agent is not asked again every minute (S0-13).
 const asked = new Map<string, Date>();
+// Each minute: wake agents whose heartbeat is due (S0-13), and let the sequence runner make tasks for people whose next
+// step is due (S2-5). The runner is idempotent, so running it every minute is cheap and safe.
+const everyMinute = async () => {
+  const woken = await tick(sys.app, sys.workspace.id, dispatcher, new Date(), asked);
+  const seq = await runSequences({ pool: sys.app, workspaceId: sys.workspace.id, bus });
+  if (seq.created) console.log(`sequences: made ${seq.created} step task(s)`);
+  return woken;
+};
 if (useInngest) {
   const wf = createWorkflows({
     execute,
-    tickAll: () => tick(sys.app, sys.workspace.id, dispatcher, new Date(), asked),
+    tickAll: everyMinute,
     approvals: gateOps({ pool: sys.app, workspaceId: sys.workspace.id, bus, executors }),
   });
   dispatcher = wf.dispatcher;
@@ -100,7 +109,7 @@ if (useInngest) {
   dispatcher = new LocalDispatcher(execute);
   gate = new LocalApprovalGate({ pool: sys.app, workspaceId: sys.workspace.id, bus, executors });
   ticker = setInterval(
-    () => void tick(sys.app, sys.workspace.id, dispatcher, new Date(), asked).catch((err) => console.error('ticker:', err)),
+    () => void everyMinute().catch((err) => console.error('ticker:', err)),
     60_000,
   );
 }

@@ -2,6 +2,15 @@
 
 Newest first. One entry per decision: what, why, and what it replaced.
 
+## 2026-11-12 (S2-5: the sequence runner)
+
+- **A plain-code job, not a model,** in src/workflows/sequences.ts. For each running campaign it finds who is due (active enrolment, has an address, not do-not-contact, not suppressed, the wait since the last send has passed) and makes one task per person for the outreach agent to draft that step. The draft still goes through propose_email and an approval, so nothing here sends anything.
+- **How many fit in the day:** the mailbox's cap for today (the smaller warm-up cap while warming up) less what it already sent today and what is already on its way (open step tasks plus emails waiting for approval or mid-send). Oldest enrolments go first. One mailbox's room is shared by all its campaigns in a pass. An unhealthy mailbox gets nothing. The mailbox cap at send time is still enforced by the executor, so this is only to stop the queue growing past what can go out.
+- **No duplicates, however it is run:** each enrolment remembers the step it last asked for (requested_step) and the task it made, the whole pass is one transaction under a workspace lock (three runs at once make four tasks for four people, not twelve), and it does nothing while the kill switch is on or a campaign is not running. It runs every minute in the existing ticker and on demand at POST /api/run-sequences (kept off /campaigns/... because the id guard there expects a uuid).
+- **When a step stops being asked for:** a founder rejection, an expiry or a failed send of step N pauses that person with a plain reason ("step 1 was rejected"), because asking again would meet the same refusal (the proposal key is one per lead and step). A cancelled step task, or one finished without any proposal, is asked for again. An enrolment that has had every step is marked done.
+- **Found while testing:** a test that sets a send time of exactly three days ago can fail by a millisecond on this laptop's clock; the tests now leave a minute of margin. The runner compares with the database's own times, so real use is unaffected.
+- Migration 0018 (requested_step and step_task_id on sequence_enrollments).
+
 ## 2026-11-12 (S2-4: threads, replies and triage)
 
 - **One thread per lead,** with every email sent landing in it (the executor writes it in the same transaction that marks the email sent, with the founder's edit if there was one) and every reply recorded against it. Contacts get the same thread when contacts carry the conversation (the column is there; leads are the path used now). Tables sequence_enrollments, threads and thread_messages (migrations 0016, 0017).

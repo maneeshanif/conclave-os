@@ -607,6 +607,8 @@ export const sequenceEnrollments = pgTable(
     leadId: uuid('lead_id').notNull(),
     stepsSent: smallint('steps_sent').notNull().default(0),
     lastSentAt: timestamp('last_sent_at', { withTimezone: true }),
+    requestedStep: smallint('requested_step').notNull().default(0), // the step the runner last made a task for
+    stepTaskId: uuid('step_task_id'),
     status: text('status').notNull().default('active'), // active | paused | done | unsubscribed
     pausedReason: text('paused_reason'),
     createdAt: createdAt(),
@@ -615,6 +617,7 @@ export const sequenceEnrollments = pgTable(
     unique('sequence_enrollments_ws_id_uq').on(t.workspaceId, t.id),
     unique('sequence_enrollments_campaign_lead_uq').on(t.workspaceId, t.campaignId, t.leadId),
     foreignKey({ name: 'sequence_enrollments_campaign_fk', columns: [t.workspaceId, t.campaignId], foreignColumns: [campaigns.workspaceId, campaigns.id] }),
+    foreignKey({ name: 'sequence_enrollments_task_fk', columns: [t.workspaceId, t.stepTaskId], foreignColumns: [tasks.workspaceId, tasks.id] }),
     foreignKey({ name: 'sequence_enrollments_lead_fk', columns: [t.workspaceId, t.leadId], foreignColumns: [leads.workspaceId, leads.id] }),
     check('sequence_enrollments_status_ck', sql`${t.status} in ('active','paused','done','unsubscribed')`),
     index('sequence_enrollments_lead_idx').on(t.workspaceId, t.leadId),
