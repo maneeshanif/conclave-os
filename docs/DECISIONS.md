@@ -2,6 +2,14 @@
 
 Newest first. One entry per decision: what, why, and what it replaced.
 
+## 2026-11-12 (S1-4: leads and the suppression list)
+
+- **One lead per address, however it is typed.** Addresses are trimmed and lowercased, and a unique index on `(workspace, lower(email))` (migration 0004) is the backstop; creating uses `on conflict do nothing`, so two creates for one address at the same moment give one lead and one 409 that names the existing lead. Leads without an address are unlimited.
+- **Do-not-contact is a fact about the address, not only a stage.** Marking a lead do-not-contact (or creating it that way, or changing the address of one that is) puts the address on the suppression list in the same transaction. The proposal handler and the executor both check the list, so the block holds even if someone later edits the stage. Moving a lead out of do-not-contact is refused (409) while its address or domain is still listed.
+- **Removing from the suppression list is never a side effect.** `DELETE /api/suppression/:id` needs a reason of at least three characters and writes who removed what, why, and the original reason to `audit_log`. Adding is idempotent (200 with the existing entry the second time) and logged too. Values are an email address or `@domain`, lowercased on the way in. Together with the S1-1 fix the list matches however an entry was typed.
+- **Search treats `%` and `_` as plain characters** (escaped), and lists are capped at 500 per page (default 200).
+- **Browser CORS now allows `DELETE`,** for the suppression list.
+
 ## 2026-11-12 (S1-3: the approval gate)
 
 - **One decision flow, two engines.** Wait up to three days for the decision; approved runs the executor once; rejected does nothing; no decision marks it expired. As an Inngest function it uses `step.waitForEvent` on `approval/decided`; in process it uses one timer per pending approval. The in-process gate is the default; Inngest is used only when configured, exactly like the run loop.

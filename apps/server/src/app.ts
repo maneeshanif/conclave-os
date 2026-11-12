@@ -71,7 +71,7 @@ export function createApp(deps?: AppDeps) {
     }
     await next();
   });
-  app.use('/api/*', cors({ origin: origins, allowMethods: ['GET', 'POST', 'PATCH'], allowHeaders: ['content-type'] }));
+  app.use('/api/*', cors({ origin: origins, allowMethods: ['GET', 'POST', 'PATCH', 'DELETE'], allowHeaders: ['content-type'] }));
   app.use('/api/*', async (c, next) => {
     const after: (() => Promise<void>)[] = [];
     c.set('after', after);

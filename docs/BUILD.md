@@ -116,7 +116,7 @@ Work them in order. Tick each when its test passes.
   `approval-gate` on Inngest and its in-process equivalent, with the same behaviour: wait for the decision (3 day timeout marks it `expired`), then run the executor once. On server start, request again every `pending` approval that has no live wait. The execute step never retries.
   *Test:* an approval decided after a simulated restart sends exactly once; two executors racing for one approval send once; a pending approval left over from before a restart is picked up; an expired approval never sends.
 
-- [ ] **S1-4 Leads and the suppression list.** SPEC 10, 15.
+- [x] **S1-4 Leads and the suppression list.** SPEC 10, 15.
   `POST/GET/PATCH /api/leads` (create, list, one lead, stage and do-not-contact) and `GET/POST/DELETE /api/suppression`. Addresses are normalised and matched case-insensitively. An unsubscribe adds to the list and nothing removes it silently.
   *Test:* a lead marked do-not-contact is refused by `propose_email`; adding an address to the list blocks proposals for it in any case; removing needs an explicit call and is logged in `audit_log`.
 

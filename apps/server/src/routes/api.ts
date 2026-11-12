@@ -5,6 +5,8 @@ import type { AppEnv } from '../app';
 import type { Bus } from '../bus';
 import type { Dispatcher } from '../workflows/dispatch';
 import { approvalRoutes, type ApprovalDecision } from './approvals';
+import { leadRoutes } from './leads';
+import { suppressionRoutes } from './suppression';
 
 /**
  * The slice 0 API (SPEC 11, API table): agents, tasks, runs. One local workspace, no login yet.
@@ -21,6 +23,8 @@ export function apiRoutes(deps: { workspaceId: string; dispatcher: Dispatcher; b
   r.use('/:kind/:id', async (c, next) => (z.uuid().safeParse(c.req.param('id')).success ? next() : c.json({ error: 'Not found' }, 404)));
 
   r.route('/approvals', approvalRoutes({ workspaceId: ws, bus: deps.bus, onDecided: deps.onApprovalDecided }));
+  r.route('/leads', leadRoutes({ workspaceId: ws, bus: deps.bus }));
+  r.route('/suppression', suppressionRoutes({ workspaceId: ws }));
 
   r.get('/agents', async (c) =>
     c.json(

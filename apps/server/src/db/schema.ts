@@ -24,6 +24,7 @@ import {
   text,
   timestamp,
   unique,
+  uniqueIndex,
   uuid,
 } from 'drizzle-orm/pg-core';
 
@@ -371,6 +372,10 @@ export const leads = pgTable(
   },
   (t) => [
     unique('leads_ws_id_uq').on(t.workspaceId, t.id),
+    // One lead per address, however it was typed. Many leads may have no address yet.
+    uniqueIndex('leads_ws_email_uq')
+      .on(t.workspaceId, sql`lower(${t.email})`)
+      .where(sql`${t.email} is not null`),
     foreignKey({ name: 'leads_owner_fk', columns: [t.workspaceId, t.ownerAgentId], foreignColumns: [agents.workspaceId, agents.id] }),
   ],
 );
@@ -389,7 +394,7 @@ export const outreachMessages = pgTable(
     subject: text('subject'),
     body: text('body'),
     approvalId: uuid('approval_id'),
-    status: text('status').notNull().default('draft'), // draft | queued | sent | failed | refused
+    status: text('status').notNull().default('draft'), // draft | queued | sent | failed | refused | rejected | expired
     sentAt: timestamp('sent_at', { withTimezone: true }),
     externalRef: text('external_ref'),
     createdAt: createdAt(),

@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX "leads_ws_email_uq" ON "leads" USING btree ("workspace_id",lower("email")) WHERE "leads"."email" is not null;
