@@ -1,0 +1,16 @@
+{
+  "name": "@conclave/server",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch --env-file-if-exists=../../.env src/index.ts",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@conclave/shared": "workspace:*",
+    "@hono/node-server": "2.1.6",
+    "hono": "4.13.17",
+    "zod": "^4.6.7"
+  }
+}

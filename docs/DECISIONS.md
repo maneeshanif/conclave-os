@@ -2,6 +2,15 @@
 
 Newest first. One entry per decision: what, why, and what it replaced.
 
+## 2026-11-12 (slice 0 setup)
+
+- **Developing on Node 24, supporting 22 and up.** `engines` is `>=22` and `.nvmrc` says 22. Why: Node 24 is installed on the dev machine and CLAUDE.md names Node 22. Before S0-2 we confirm embedded Postgres starts on Node 24; if it does not, switch to 22 then. Replaces "Node 22 only".
+- **TypeScript 6.0, not 7.** `typescript-eslint` 8.x declares `typescript <6.1.0`, so TypeScript 7 would break lint. Revisit when typescript-eslint supports 7.
+- **Hono and its Node adapter pinned one release back** (`hono` 4.13.17, `@hono/node-server` 2.1.6). The newest releases were under a day old and pnpm's minimum release age policy rejected them. The policy stays on; no exclusions. Move forward when the newer releases age in.
+- **Dependency install scripts are denied** (`allowBuilds: esbuild: false` in `pnpm-workspace.yaml`). esbuild ships its binary as a platform package, so its script is not needed.
+- **Server on port 3100, web on 3000, both on 127.0.0.1.** The server reads `PORT` and defaults to 3100, matching `.env.example`. SPEC 11, CLAUDE.md rule 9.
+- **Lint uses plain `typescript-eslint` for now.** `eslint-config-next` for `apps/web` is added in S0-9, when there is UI to lint.
+
 ## 2026-11-12 (v5: talent catalog and the office world)
 
 - **Hiring draws from a talent catalog.** Personas are imported from Agency Agents (MIT) and the Paperclip companies at a pinned commit, then framed with a template and the company rules. A hire is persona + frame + company. SPEC 9.

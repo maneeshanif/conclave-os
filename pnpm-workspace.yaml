@@ -1,0 +1,7 @@
+packages:
+  - "apps/*"
+  - "packages/*"
+
+# Do not run dependency install scripts. esbuild ships its binary as a platform package.
+allowBuilds:
+  esbuild: false

@@ -32,7 +32,7 @@ Tick the task in docs/BUILD.md, commit, and push.
 
 Work them in order. Tick each when its test passes.
 
-- [ ] **S0-1 Monorepo scaffold.** SPEC 13.
+- [x] **S0-1 Monorepo scaffold.** SPEC 13.
   pnpm workspace with `apps/server` (Hono), `apps/web` (Next.js), `packages/shared` (Zod schemas), `packages/cli`, TypeScript, ESLint and Vitest. Both apps listen on 127.0.0.1 only.
   *Test:* `pnpm test` passes a server health check, and `pnpm dev` starts the server and the web app.
 
