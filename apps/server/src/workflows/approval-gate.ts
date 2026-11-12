@@ -68,6 +68,8 @@ function isHeld(r: unknown): r is { status: 'held'; until: Date | string } {
 export interface GateExecutors {
   run(approvalId: string): Promise<unknown>;
   recover(): Promise<{ resumed: string[]; unknown: string[]; held?: { id: string; until: Date }[] }>;
+  /** Sends the approved emails that something was holding. Optional so a stand-in executor need not have it. */
+  release?(): Promise<{ released: string[]; held: { id: string; until: Date }[] }>;
 }
 
 export interface RecoverReport {
@@ -91,6 +93,8 @@ export interface ApprovalGate {
   decided(d: ApprovalDecision): Promise<void>;
   /** Run once when the server starts. */
   recover(): Promise<RecoverReport>;
+  /** On request: send the approved emails the kill switch or a cap was holding. Never touches one that is mid-send. */
+  release(): Promise<{ released: number; held: { id: string; until: Date }[] }>;
 }
 
 interface Deps {
@@ -223,6 +227,12 @@ export class LocalApprovalGate implements ApprovalGate {
     this.holds.set(approvalId, timer);
   }
 
+  async release(): Promise<{ released: number; held: { id: string; until: Date }[] }> {
+    const { released, held } = (await this.o.executors.release?.()) ?? { released: [], held: [] };
+    for (const h of held) this.hold(h.id, h.until);
+    return { released: released.length, held };
+  }
+
   async recover(): Promise<RecoverReport> {
     const waiting: string[] = [];
     const expired: string[] = [];
@@ -259,6 +269,12 @@ export function createInngestGate(o: InngestGateOptions): ApprovalGate {
     },
     async decided(d) {
       await o.send({ name: 'approval/decided', data: { approvalId: d.approvalId, workspaceId: d.workspaceId, approved: d.approved } });
+    },
+    async release() {
+      // No function is waiting on an approval that was already decided, so run the executor directly. One still over a
+      // cap stays approved until the next start.
+      const { released, held } = (await o.executors.release?.()) ?? { released: [], held: [] };
+      return { released: released.length, held };
     },
     async recover() {
       const waiting: string[] = [];

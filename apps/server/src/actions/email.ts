@@ -42,14 +42,20 @@ type Held = Extract<ExecResult, { status: 'held' }>;
  * Returns the hold, with when it opens, or null if there is room. Runs inside the claim's transaction, under the
  * workspace send lock.
  */
-async function capHold(c: pg.PoolClient, s: Settings, now: Date): Promise<Held | null> {
+export async function capHold(c: pg.PoolClient, s: Settings, now: Date): Promise<Held | null> {
   const windowMs = s.windowHours * 3_600_000;
-  const sentRows = await c.query<{ sent_at: Date }>(
-    "select sent_at from outreach_messages where channel = 'email' and status = 'sent' and sent_at >= $1 order by sent_at",
-    [new Date(now.getTime() - windowMs)],
+  // Everything is counted in ONE statement, so it is one snapshot. Counting "sent" and "in flight" in two statements
+  // lets an email that finishes between them be missed by both (no longer in flight, not yet sent), and the cap is
+  // overshot by one. This was caught by a burst test that sent 4 against a cap of 3.
+  const counts = await c.query<{ sent: Date[]; today: number; in_flight: number }>(
+    `select array(select sent_at from outreach_messages
+                    where channel = 'email' and status = 'sent' and sent_at >= $1 order by sent_at) as sent,
+            (select count(*)::int from outreach_messages
+              where channel = 'email' and status = 'sent' and sent_at >= $2) as today,
+            (select count(*)::int from approvals where kind = 'email.send' and status = 'executing') as in_flight`,
+    [new Date(now.getTime() - windowMs), startOfToday(now)],
   );
-  const sent = sentRows.rows.map((r) => r.sent_at);
-  const inFlight = (await c.query<{ n: number }>("select count(*)::int as n from approvals where kind = 'email.send' and status = 'executing'")).rows[0]!.n;
+  const { sent, today, in_flight: inFlight } = counts.rows[0]!;
 
   let hold: Held | null = null;
   const used = sent.length + inFlight;
@@ -60,8 +66,7 @@ async function capHold(c: pg.PoolClient, s: Settings, now: Date): Promise<Held |
     const until = idx < sent.length ? new Date(sent[idx]!.getTime() + windowMs) : new Date(now.getTime() + 60_000);
     hold = { status: 'held', reason: `the limit of ${s.windowCap} emails in ${s.windowHours} hours is reached`, until };
   }
-  const today = await c.query<{ n: number }>("select count(*)::int as n from outreach_messages where channel = 'email' and status = 'sent' and sent_at >= $1", [startOfToday(now)]);
-  if (today.rows[0]!.n + inFlight >= s.emailDailyCap) {
+  if (today + inFlight >= s.emailDailyCap) {
     const until = startOfTomorrow(now);
     if (!hold || until > hold.until) hold = { status: 'held', reason: `today's limit of ${s.emailDailyCap} emails is reached`, until };
   }
@@ -133,6 +138,9 @@ export async function executeEmail(deps: ExecutorDeps, approvalId: string): Prom
     return { status: 'refused', reason };
   };
 
+  // Nothing can be sent without a sender address, and none is invented: the person sets OUTREACH_FROM.
+  if (!deps.from.trim()) return refuse('OUTREACH_FROM is not set, so there is no sender address. Set it in .env (see .env.example), then approve a new copy.');
+
   const state = await withWorkspace(deps.pool, ws, async ({ client: c }) => {
     const lead = await c.query<{ email: string | null; stage: string }>('select email, stage from leads where id = $1', [p.leadId]);
     const supp = await c.query<{ value: string }>('select value from suppression');
@@ -199,4 +207,23 @@ export async function recoverApprovals(deps: ExecutorDeps): Promise<{ resumed: s
     if (r.status === 'held') held.push({ id, until: r.until });
   }
   return { resumed: approved, unknown: executing, held };
+}
+
+/**
+ * Sends the approved emails that something was holding (the kill switch, a send cap), in the order they were
+ * decided, on request. Unlike recovery it touches nothing that is mid-send, so it is safe to run while the server
+ * is working. Anything still over a cap is reported and stays approved.
+ */
+export async function releaseApproved(deps: ExecutorDeps): Promise<{ released: string[]; held: { id: string; until: Date }[] }> {
+  const ids = await withWorkspace(deps.pool, deps.workspaceId, ({ client: c }) =>
+    c.query<{ id: string }>("select id from approvals where kind = 'email.send' and status = 'approved' order by decided_at, id"),
+  );
+  const released: string[] = [];
+  const held: { id: string; until: Date }[] = [];
+  for (const { id } of ids.rows) {
+    const r = await executeEmail(deps, id);
+    if (r.status === 'executed') released.push(id);
+    else if (r.status === 'held') held.push({ id, until: r.until });
+  }
+  return { released, held };
 }

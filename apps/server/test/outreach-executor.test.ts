@@ -4,7 +4,8 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { createExecutors } from '../src/actions';
-import { executeEmail, recoverApprovals, type ExecutorDeps } from '../src/actions/email';
+import type pg from 'pg';
+import { capHold, executeEmail, recoverApprovals, type ExecutorDeps } from '../src/actions/email';
 import { OutboxTransport, type EmailTransport, type OutgoingEmail } from '../src/actions/transport';
 import { agentNew } from '../src/commands/agent-new';
 import { withWorkspace } from '../src/db/tenant';
@@ -295,6 +296,32 @@ describe('the email executor (SPEC 6)', () => {
       const stillApproved = (await sql("select count(*)::int as n from approvals where id = any($1) and status = 'approved'", [ids])).rows[0].n;
       expect(stillApproved).toBe(4);
     });
+
+    it('reads everything it counts in one statement, so a send finishing mid-count cannot be missed by both counts', async () => {
+      // Each statement sees its own snapshot. Counting "sent" and "in flight" in two statements lets an email that
+      // finishes between them fall into neither (no longer in flight, not yet sent), and the cap is overshot by one.
+      const queries: string[] = [];
+      const recording = {
+        query: async (text: string) => {
+          queries.push(text);
+          return { rows: [{ sent: [], today: 0, in_flight: 0 }] };
+        },
+      } as unknown as pg.PoolClient;
+      await capHold(recording, { killSwitch: false, killSwitchAt: null, windowHours: 5, windowCap: 2, emailDailyCap: 10 }, new Date());
+      expect(queries).toHaveLength(1);
+    });
+
+    it('never overshoots under repeated bursts, whatever order the sends finish in', async () => {
+      for (let round = 0; round < 8; round++) {
+        await clearSent();
+        await resetCaps(5, 3, 1000);
+        const t = new CountingTransport();
+        const ids = await Promise.all(Array.from({ length: 9 }, async () => newApproval(await newLead())));
+        const results = await Promise.all(ids.map((id) => executeEmail(deps(t), id)));
+        expect(results.filter((r) => r.status === 'executed'), `round ${round}`).toHaveLength(3);
+        expect(t.sent, `round ${round}`).toHaveLength(3);
+      }
+    }, 60_000);
 
     it('counts an email that is mid-send, so it cannot be overtaken', async () => {
       await clearSent();

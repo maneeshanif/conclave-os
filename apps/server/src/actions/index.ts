@@ -1,4 +1,4 @@
-import { executeEmail, recoverApprovals, type ExecResult, type ExecutorDeps } from './email';
+import { executeEmail, recoverApprovals, releaseApproved, type ExecResult, type ExecutorDeps } from './email';
 
 /**
  * The executors (SPEC 6): deterministic code that performs an approved action. The model is never
@@ -17,6 +17,7 @@ export function createExecutors(deps: ExecutorDeps) {
   return {
     run,
     recover: () => recoverApprovals(deps),
+    release: () => releaseApproved(deps),
   };
 }
 export type Executors = ReturnType<typeof createExecutors>;

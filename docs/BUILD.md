@@ -128,7 +128,7 @@ Work them in order. Tick each when its test passes.
   A neutral template for the first-touch writer: role file, rules, `permissions.yaml` (the `os` tools only, no shell, no network write), a procedure skill for the first email, and an output check. `outreach-kit` carries the skill and the connector entry.
   *Test:* a snapshot of the rendered folder for both engines; neither grants a shell or a network-writing tool; through the conformance suite's `forbidden` mode, an attempt to send by any route other than `propose_email` is refused and nothing is sent.
 
-- [ ] **S1-7 The email executor, wired.** SPEC 6, 14, 15.
+- [x] **S1-7 The email executor, wired.** SPEC 6, 14, 15.
   Register the executor with the gate in `index.ts`. Sending requires the footer address from `company/` and a transport; with no footer the approval ends `failed` with that reason and nothing is sent. The outbox is the default transport; Resend is selected only by an explicit setting. Every send records the outcome on `outreach_messages` and in `audit_log`.
   *Test:* an approved email lands in the outbox exactly once; with the footer unset the executor refuses and says why; a blocked claim added after approval is still refused at send time; the outbox is the transport unless the setting says otherwise.
 

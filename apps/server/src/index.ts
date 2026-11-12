@@ -10,11 +10,13 @@ import { renderAll, renderOne } from './commands/agent-new';
 import { HOST } from './config';
 import { DbOsStore } from './harness/db-os-store';
 import { stopEverything } from './harness/kill-switch';
+import { approvalHooks, createOutreach } from './outreach';
 import { cancelAllRuns, executeRun, reapStaleRuns, type LoopDeps } from './harness/loop';
 import { RunTokens } from './harness/run-tokens';
 import { createCliRuntime } from './runtimes/cli';
 import { openSystem } from './system';
 import { LocalDispatcher, tick, type Dispatcher, type RunRequestEvent } from './workflows/dispatch';
+import { createInngestGate, gateOps, LocalApprovalGate, type ApprovalGate } from './workflows/approval-gate';
 import { createWorkflows } from './workflows/inngest';
 
 const sys = await openSystem();
@@ -25,7 +27,26 @@ if (!sys.ownsDatabase) {
 }
 const bus = new Bus();
 const tokens = new RunTokens();
-const store = new DbOsStore(sys.app, (workspaceId, taskId) => bus.publish({ kind: 'task.changed', workspaceId, taskId }));
+// A proposal asks the approval gate to start waiting. The gate is built below, so this is bound late.
+let proposalQueued: (workspaceId: string, approvalId: string) => void = () => undefined;
+const store = new DbOsStore(
+  sys.app,
+  (workspaceId, taskId) => bus.publish({ kind: 'task.changed', workspaceId, taskId }),
+  sys.companyRoot,
+  (workspaceId, approvalId) => proposalQueued(workspaceId, approvalId),
+);
+
+// The email side: the transport (the outbox unless both real-sending settings are set) and the executors.
+const { transport, executors } = createOutreach({
+  pool: sys.app,
+  workspaceId: sys.workspace.id,
+  dataDir: sys.dataDir,
+  companyRoot: sys.companyRoot,
+  bus,
+  env: process.env,
+});
+console.log(`email transport: ${transport.name}${transport.name === 'outbox' ? ` (files in ${path.join(sys.dataDir, 'outbox')}, nothing leaves this machine)` : ''}`);
+if (!process.env.OUTREACH_FROM?.trim()) console.warn('OUTREACH_FROM is not set: approved emails will be refused until it is (see .env.example).');
 
 // Every agent's working folder must match its role file before anything runs.
 for (const r of await renderAll(sys)) console.log(`agent ${r.id}: ${r.runtime} folder ready`);
@@ -53,19 +74,29 @@ const useInngest = !!(process.env.INNGEST_DEV || process.env.INNGEST_BASE_URL ||
 let dispatcher: Dispatcher;
 let inngestHandler: ((c: Context) => Promise<Response>) | undefined;
 let ticker: NodeJS.Timeout | undefined;
+let gate: ApprovalGate;
 // When the ticker last asked each agent, so an idle agent is not asked again every minute (S0-13).
 const asked = new Map<string, Date>();
 if (useInngest) {
-  const wf = createWorkflows({ execute, tickAll: () => tick(sys.app, sys.workspace.id, dispatcher, new Date(), asked) });
+  const wf = createWorkflows({
+    execute,
+    tickAll: () => tick(sys.app, sys.workspace.id, dispatcher, new Date(), asked),
+    approvals: gateOps({ pool: sys.app, workspaceId: sys.workspace.id, bus, executors }),
+  });
   dispatcher = wf.dispatcher;
+  gate = createInngestGate({ send: (e) => wf.inngest.send(e), pool: sys.app, workspaceId: sys.workspace.id, bus, executors });
   inngestHandler = inngestServe({ client: wf.inngest, functions: wf.functions });
 } else {
   dispatcher = new LocalDispatcher(execute);
+  gate = new LocalApprovalGate({ pool: sys.app, workspaceId: sys.workspace.id, bus, executors });
   ticker = setInterval(
     () => void tick(sys.app, sys.workspace.id, dispatcher, new Date(), asked).catch((err) => console.error('ticker:', err)),
     60_000,
   );
 }
+
+const hooks = approvalHooks(gate);
+proposalQueued = hooks.onApprovalRequested;
 
 const shell = new Hono();
 const { injectWebSocket, upgradeWebSocket } = createNodeWebSocket({ app: shell });
@@ -80,6 +111,8 @@ shell.route(
     dispatcher,
     upgradeWebSocket,
     hosts: [`127.0.0.1:${sys.serverPort}`, `localhost:${sys.serverPort}`],
+    onApprovalDecided: hooks.onApprovalDecided,
+    onReleaseHeld: hooks.onReleaseHeld,
     // Turning the kill switch on stops what is running and drops what is queued (S1-5).
     onKillSwitch: async (on) => {
       if (!on) return;
@@ -89,6 +122,16 @@ shell.route(
     ...(inngestHandler ? { inngestHandler } : {}),
   }),
 );
+
+// What was decided while the server was down is sent now, once; what is still pending waits again (SPEC 6).
+{
+  const r = await gate.recover();
+  if (r.waiting.length || r.expired.length || r.resumed.length || r.unknown.length || r.held.length) {
+    console.log(
+      `approvals: ${r.waiting.length} waiting, ${r.expired.length} expired, ${r.resumed.length - r.held.length} sent, ${r.held.length} held for a send cap, ${r.unknown.length} left mid-send by the last run (not resent)`,
+    );
+  }
+}
 
 const server = serve({ fetch: shell.fetch, port: sys.serverPort, hostname: HOST }, (info) => {
   console.log(`conclave server listening on http://${HOST}:${info.port} (workflows: ${dispatcher.name})`);
@@ -103,6 +146,7 @@ async function shutdown() {
   if (stopping) return;
   stopping = true;
   if (ticker) clearInterval(ticker);
+  if (gate instanceof LocalApprovalGate) gate.stop();
   const n = await cancelAllRuns();
   if (n) console.log(`cancelled ${n} run(s)`);
   // Give the cancelled runs a moment to write their final state.
