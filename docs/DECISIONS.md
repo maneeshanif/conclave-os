@@ -2,6 +2,12 @@
 
 Newest first. One entry per decision: what, why, and what it replaced.
 
+## 2026-11-12 (S0-13: heartbeats and turns)
+
+- **The ticker remembers when it last asked each agent**, in memory for as long as the server runs. An agent with nothing to do leaves no run row, so the old rule ("due when the last scheduled time is after the last heartbeat run") kept finding it overdue and asked every minute. A restart forgets, which at worst asks once more.
+- **One waiting request per agent.** The dispatcher drops a request when one is already queued for that agent, whoever sent it, because the run takes whatever task is ready when it starts. A request that arrives while the agent is running is kept, so a task created mid-run still gets its run.
+- **A Claude turn is a message, counted once by `message.id`.** Claude Code streams one model message as one event per content block. An event with no id counts itself, so a stream that omits ids still reaches the limit.
+
 ## 2026-11-12 (S0-12: Windows process handling)
 
 - **An npm `.cmd` shim is read, not run through a shell.** The resolver parses the shim and starts the program it forwards to: either a native `.exe` (this laptop's `opencode.cmd` does that) or `node` plus a script. A shell is the last resort for a shim it cannot read. Why: a shell adds a process, quoting rules and a second thing to kill. `claude` here is already a native `.exe`. `health()` and `start()` now quote through one function.

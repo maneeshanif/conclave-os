@@ -57,13 +57,15 @@ if (flavor === 'claude') {
     }
     out({ type: 'result', subtype: 'success', is_error: false, result: 'finished', session_id: sid, total_cost_usd: 0, usage: {} });
   } else {
-    const turns = mode === 'turns' ? 50 : 1;
+    // 'split' is ONE model message (one message.id) that Claude Code streams as seven events: it is one turn.
+    const turns = mode === 'turns' ? 50 : mode === 'split' ? 6 : 1;
+    const messageId = mode === 'split' ? { id: 'msg_split' } : {};
     for (let i = 0; i < turns; i++) {
-      out({ type: 'assistant', message: { content: [{ type: 'tool_use', id: `t${i}`, name: 'mcp__os__get_task', input: {} }] } });
+      out({ type: 'assistant', message: { ...messageId, content: [{ type: 'tool_use', id: `t${i}`, name: 'mcp__os__get_task', input: {} }] } });
       out({ type: 'user', message: { content: [{ type: 'tool_result', tool_use_id: `t${i}`, content: 'task text', is_error: false }] } });
     }
     const text = mode === 'env' ? envReport() : mode === 'token' ? `token is ${process.env.CONCLAVE_RUN_TOKEN}` : 'All done.';
-    out({ type: 'assistant', message: { content: [{ type: 'text', text }] } });
+    out({ type: 'assistant', message: { ...messageId, content: [{ type: 'text', text }] } });
     if (mode === 'limit') {
       out({ type: 'result', subtype: 'success', is_error: true, result: 'Claude AI usage limit reached|1794500000', session_id: sid, total_cost_usd: 0, usage: {} });
     } else if (mode === 'auth') {

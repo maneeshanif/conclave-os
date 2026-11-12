@@ -84,7 +84,7 @@ Work them in order. Tick each when its test passes.
   Resolve an npm `.cmd` shim to `node` plus its script and spawn without a shell; quote `health()` arguments the same way. On win32, cancel with `taskkill /pid <pid> /T /F` so the child's own children die too.
   *Test:* unit tests for the shim resolver on a fake `.cmd` file and for the kill command chosen per platform; by hand on Windows, a cancelled run leaves no `claude` or `opencode` process.
 
-- [ ] **S0-13 Heartbeats and turn counting.** SPEC 5, 11 ("One event starts every run"), 14.
+- [x] **S0-13 Heartbeats and turn counting.** SPEC 5, 11 ("One event starts every run"), 14.
   Remember each agent's last heartbeat tick in memory so an idle agent is not requested every minute, and drop a run request when one is already queued for that agent. Count Claude turns by distinct `message.id`, not by event.
   *Test:* ten ticks in one minute queue at most one request per agent; a stream with one message split over three events counts one turn.
 

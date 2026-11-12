@@ -52,13 +52,18 @@ const useInngest = !!(process.env.INNGEST_DEV || process.env.INNGEST_BASE_URL ||
 let dispatcher: Dispatcher;
 let inngestHandler: ((c: Context) => Promise<Response>) | undefined;
 let ticker: NodeJS.Timeout | undefined;
+// When the ticker last asked each agent, so an idle agent is not asked again every minute (S0-13).
+const asked = new Map<string, Date>();
 if (useInngest) {
-  const wf = createWorkflows({ execute, tickAll: () => tick(sys.app, sys.workspace.id, dispatcher) });
+  const wf = createWorkflows({ execute, tickAll: () => tick(sys.app, sys.workspace.id, dispatcher, new Date(), asked) });
   dispatcher = wf.dispatcher;
   inngestHandler = inngestServe({ client: wf.inngest, functions: wf.functions });
 } else {
   dispatcher = new LocalDispatcher(execute);
-  ticker = setInterval(() => void tick(sys.app, sys.workspace.id, dispatcher).catch((err) => console.error('ticker:', err)), 60_000);
+  ticker = setInterval(
+    () => void tick(sys.app, sys.workspace.id, dispatcher, new Date(), asked).catch((err) => console.error('ticker:', err)),
+    60_000,
+  );
 }
 
 const shell = new Hono();

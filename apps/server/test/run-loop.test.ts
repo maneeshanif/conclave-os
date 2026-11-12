@@ -266,3 +266,66 @@ describe('dispatcher and ticker (S0-8)', () => {
     expect(sent).toEqual([lead]);
   });
 });
+
+describe('heartbeats and the dispatcher queue (S0-13)', () => {
+  it('ten ticks inside one minute request an idle agent once, not ten times', async () => {
+    const lead = await agentId('outreach-writer');
+    await withWorkspace(sys.app, ws(), ({ client: c }) => c.query("update agents set heartbeat_cron = '* * * * *' where id = $1", [lead]));
+    const sent: string[] = [];
+    const dispatcher = { name: 'local' as const, request: async (e: { agentId: string }) => void sent.push(e.agentId) };
+    const remembered = new Map<string, Date>();
+    const start = new Date(2026, 10, 16, 9, 0, 30);
+    // An idle agent leaves no run behind, so only the ticker's own memory can tell it was already asked.
+    for (let i = 0; i < 10; i++) await tick(sys.app, ws(), dispatcher, new Date(start.getTime() + i * 3000), remembered);
+    expect(sent).toEqual([lead]);
+
+    // The next minute is a new scheduled time, so it is due again, once.
+    await tick(sys.app, ws(), dispatcher, new Date(2026, 10, 16, 9, 1, 10), remembered);
+    await tick(sys.app, ws(), dispatcher, new Date(2026, 10, 16, 9, 1, 40), remembered);
+    expect(sent).toEqual([lead, lead]);
+  });
+
+  it('does not let one agent being asked stop another from being asked', async () => {
+    const lead = await agentId('outreach-writer');
+    const sent: string[] = [];
+    const dispatcher = { name: 'local' as const, request: async (e: { agentId: string }) => void sent.push(e.agentId) };
+    const remembered = new Map<string, Date>([['some-other-agent', new Date(2026, 10, 16, 9, 0, 40)]]);
+    await tick(sys.app, ws(), dispatcher, new Date(2026, 10, 16, 9, 0, 50), remembered);
+    expect(sent).toContain(lead);
+  });
+
+  it('queues at most one request per agent while it is busy', async () => {
+    let release!: () => void;
+    const gate = new Promise<void>((r) => (release = r));
+    const ran: string[] = [];
+    const d = new LocalDispatcher(async (e) => {
+      ran.push(e.agentId);
+      if (ran.length === 1) await gate;
+      return { status: 'no_task' };
+    });
+    await d.request({ workspaceId: 'w', agentId: 'a', trigger: 'heartbeat' }); // starts and blocks
+    for (let i = 0; i < 9; i++) await d.request({ workspaceId: 'w', agentId: 'a', trigger: 'heartbeat' });
+    await d.request({ workspaceId: 'w', agentId: 'b', trigger: 'heartbeat' }); // another agent is not affected
+    release();
+    await d.idle();
+    // a ran once, then once more for the one request kept in the queue; b ran once. Eight requests were dropped.
+    expect(ran.filter((x) => x === 'a')).toHaveLength(2);
+    expect(ran.filter((x) => x === 'b')).toHaveLength(1);
+  });
+
+  it('keeps a request that arrives while the agent runs, so a new task is not missed', async () => {
+    let release!: () => void;
+    const gate = new Promise<void>((r) => (release = r));
+    const ran: string[] = [];
+    const d = new LocalDispatcher(async (e) => {
+      ran.push(e.trigger);
+      if (ran.length === 1) await gate;
+      return { status: 'no_task' };
+    });
+    await d.request({ workspaceId: 'w', agentId: 'a', trigger: 'heartbeat' });
+    await d.request({ workspaceId: 'w', agentId: 'a', trigger: 'task_assigned' });
+    release();
+    await d.idle();
+    expect(ran).toEqual(['heartbeat', 'task_assigned']);
+  });
+});

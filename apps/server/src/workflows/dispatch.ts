@@ -34,6 +34,10 @@ export class LocalDispatcher implements Dispatcher {
   ) {}
 
   async request(e: RunRequestEvent): Promise<void> {
+    // One waiting request per agent is enough: when it starts, the run takes whatever task is ready, whoever
+    // asked. A request that arrives while the agent is running is kept (the queue is empty then), so a task
+    // created mid-run still gets its run afterwards.
+    if (this.queue.some((q) => q.workspaceId === e.workspaceId && q.agentId === e.agentId)) return;
     this.queue.push(e);
     this.pump();
   }
@@ -83,8 +87,20 @@ export function heartbeatDue(cron: string, lastHeartbeat: Date | null, now: Date
   return now.getTime() - prev.getTime() < 2 * 60_000;
 }
 
-/** Sends a run request for every active agent whose heartbeat is due (SPEC 11). */
-export async function tick(pool: pg.Pool, workspaceId: string, dispatcher: Dispatcher, now = new Date()): Promise<string[]> {
+/**
+ * Sends a run request for every active agent whose heartbeat is due (SPEC 11).
+ *
+ * `asked` is the ticker's memory of when it last asked each agent, kept for as long as the server runs. An
+ * agent with nothing to do leaves no run behind, so without this it would look overdue on every tick after its
+ * scheduled time and be asked every minute. Pass the same map each time; a fresh one remembers nothing.
+ */
+export async function tick(
+  pool: pg.Pool,
+  workspaceId: string,
+  dispatcher: Dispatcher,
+  now = new Date(),
+  asked: Map<string, Date> = new Map(),
+): Promise<string[]> {
   const agents = await withWorkspace(pool, workspaceId, ({ client: c }) =>
     c.query<{ id: string; heartbeat_cron: string; last: Date | null }>(
       `select a.id, a.heartbeat_cron,
@@ -92,7 +108,14 @@ export async function tick(pool: pg.Pool, workspaceId: string, dispatcher: Dispa
        from agents a where a.status = 'active' and a.heartbeat_cron is not null and a.heartbeat_cron <> ''`,
     ),
   );
-  const due = agents.rows.filter((a) => heartbeatDue(a.heartbeat_cron, a.last, now));
-  for (const a of due) await dispatcher.request({ workspaceId, agentId: a.id, trigger: 'heartbeat' });
+  const due = agents.rows.filter((a) => {
+    const askedAt = asked.get(a.id);
+    const last = askedAt && (!a.last || askedAt > a.last) ? askedAt : a.last;
+    return heartbeatDue(a.heartbeat_cron, last, now);
+  });
+  for (const a of due) {
+    asked.set(a.id, now);
+    await dispatcher.request({ workspaceId, agentId: a.id, trigger: 'heartbeat' });
+  }
   return due.map((a) => a.id);
 }
