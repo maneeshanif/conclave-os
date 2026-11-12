@@ -2,6 +2,13 @@
 
 Newest first. One entry per decision: what, why, and what it replaced.
 
+## 2026-11-13 (S3-7: the Health screen)
+
+- **One read-only endpoint, `GET /api/health/overview?hours=24`, and a Health page.** The endpoint counts from the tables: queue (todo, running, blocked), runs and failed runs per agent over the window (failed means failed or timed out; the rate is null with no runs, not 0%), spend this month against each agent's budget (over budget at or above it, only if a budget is set), open breakers, active runtime pauses, the kill switch, the last reaper pass and the database size. A window outside 1 to 720 whole hours is a 400.
+- **The page acts through the routes that already exist:** the kill switch (`PATCH /api/settings`, with a confirm to turn it on and none to turn it off, because stopping must be easy and starting again deliberate), breaker reset, lifting a pause. It refreshes every 15 seconds and says "Nothing needs attention" only when no breaker is open, no runtime is paused, no agent is over budget and the kill switch is off.
+- **The last reaper pass is held in memory** (`ReaperStatus`), so after a restart it reads "has not run since the server started" until the next minute. It is a display, nothing depends on it; storing it would add a table for a number that is a minute old.
+- **Slip caught and fixed:** my first health test overwrote the slice 0 `health.test.ts` (the `/health` check). I restored it from git and put the new tests in `health-overview.test.ts`.
+
 ## 2026-11-13 (S3-6: circuit breakers)
 
 - **One breaker per os tool (`os:<tool>`), in the `circuit_breakers` table.** Three failures in a row open it for 5 minutes; calls are then refused at once, with a message the agent can act on ("temporarily unavailable ... carry on without it or block your task"), and the tool is not asked. A refused call is not counted. After the cooldown the first call goes through and the breaker closes; three fresh failures are needed to open it again. A success resets the count.

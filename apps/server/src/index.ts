@@ -17,6 +17,7 @@ import { stopEverything } from './harness/kill-switch';
 import { approvalHooks, createOutreach } from './outreach';
 import { cancelAllRuns, executeRun, isRunActive, reapStaleRuns, type LoopDeps } from './harness/loop';
 import { Breakers } from './harness/breakers';
+import { ReaperStatus } from './health';
 import { closeBudgetItems } from './harness/budget';
 import { liftExpiredPauses } from './harness/pauses';
 import { reapRuns } from './harness/reaper';
@@ -105,6 +106,7 @@ const everyMinute = async () => {
   if (brief) console.log(`morning brief for ${brief.day} is ready`);
   // Runs whose process has gone quiet for good are failed and their tasks put back (S3-1). Nothing here needs a person.
   const reaped = await reapRuns({ pool: sys.app, workspaceId: sys.workspace.id, isActive: isRunActive });
+  reaperStatus.record(reaped);
   for (const t of reaped.requeued) void dispatcher.request({ workspaceId: sys.workspace.id, agentId: t.agentId, trigger: 'task_assigned' });
   if (reaped.reaped.length) console.log(`reaper: failed ${reaped.reaped.length} silent run(s); ${reaped.requeued.length} task(s) put back, ${reaped.blocked.length} blocked`);
   // A runtime whose plan limit has reset is let go, and the agents with work waiting are woken (S3-3).
@@ -150,6 +152,7 @@ if (auth) {
   console.log('login is off: the server answers on this laptop only (loopback)');
 }
 
+const reaperStatus = new ReaperStatus();
 const breakers = new Breakers({ pool: sys.app, workspaceId: sys.workspace.id });
 
 const shell = new Hono();
@@ -162,6 +165,7 @@ shell.route(
     tokens,
     store,
     breakers,
+    reaperStatus,
     bus,
     dispatcher,
     upgradeWebSocket,

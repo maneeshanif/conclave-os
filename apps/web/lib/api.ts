@@ -122,6 +122,18 @@ export interface GoalsData {
 }
 
 /** The morning brief (S2-10): counted from the tables; the narrative is the chief of staff agent's own paragraph. */
+export interface HealthOverview {
+  generatedAt: string;
+  windowHours: number;
+  killSwitch: { on: boolean; at: string | null };
+  queue: { todo: number; in_progress: number; blocked: number };
+  agents: { id: string; key: string; name: string; runs: number; failed: number; failureRate: number | null; spentThisMonth: number; budget: number; overBudget: boolean }[];
+  breakers: { key: string; failures: number; lastError: string | null; openedAt: string | null; openUntil: string | null }[];
+  pauses: { runtime: string; label: string; until: string; reason: string }[];
+  reaper: { at: string; reaped: number; requeued: number; blocked: number } | null;
+  database: { sizeBytes: number };
+}
+
 export interface Brief {
   day: string;
   quiet: boolean;
@@ -262,6 +274,16 @@ export const api = {
     }
   },
   rebuildBrief: () => call<Brief>('/api/brief/rebuild', { method: 'POST', body: '{}' }),
+  health: () => call<HealthOverview>('/api/health/overview'),
+  setKillSwitch: async (on: boolean) => {
+    await call('/api/settings', { method: 'PATCH', body: JSON.stringify({ killSwitch: on }) });
+  },
+  resetBreaker: async (key: string) => {
+    await call(`/api/breakers/${encodeURIComponent(key)}/reset`, { method: 'POST', body: '{}' });
+  },
+  liftPause: async (runtime: string) => {
+    await call(`/api/runtime-pauses/${encodeURIComponent(runtime)}/lift`, { method: 'POST', body: '{}' });
+  },
   actionItems: () => call<ActionItem[]>('/api/action-items'),
   resolve: (id: string, note?: string) => call<{ id: string; status: string }>(`/api/action-items/${id}/resolve`, { method: 'POST', body: JSON.stringify(note ? { note } : {}) }),
   decide: (id: string, body: DecisionBody) => call<{ id: string; status: string }>(`/api/approvals/${id}/decide`, { method: 'POST', body: JSON.stringify(body) }),

@@ -263,7 +263,7 @@ Recorded 2026-11-13. Nothing here is built ahead of its slice (CLAUDE.md, Stack)
   Three failures in a row of a tool or connector open its breaker: further calls are refused at once with a clear message, one action item is raised, and the breaker closes after a cooldown or when a person resets it. A success resets the count.
   *Test:* three failures open it; calls are refused while open and not counted; it closes after the cooldown; a success in between resets; one breaker's state does not affect another's.
 
-- [ ] **S3-7 The Health screen.** SPEC 12, 14.
+- [x] **S3-7 The Health screen.** SPEC 12, 14.
   `GET /api/health/overview` (queue depth, runs and failure rate by agent over a window, breakers, runtime pauses, spend against budget per agent, last reaper pass, database size) and a Health page with the kill switch on it.
   *Test:* a fixture gives exact numbers; a paused runtime, an open breaker and an over-budget agent each show up; the page renders each and the empty state.
 

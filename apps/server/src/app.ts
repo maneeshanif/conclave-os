@@ -6,6 +6,7 @@ import { HealthSchema } from '@conclave/shared';
 import type { Auth, SessionInfo } from './auth';
 import type { Bus } from './bus';
 import type { Breakers } from './harness/breakers';
+import type { ReaperStatus } from './health';
 import { withWorkspace, type Tx } from './db/tenant';
 import type { OsStore } from './harness/os-tools';
 import type { RunTokens } from './harness/run-tokens';
@@ -47,6 +48,8 @@ export interface AppDeps {
   onKillSwitch?: (on: boolean) => Promise<void> | void;
   /** Sends the approved emails the kill switch or a cap was holding. Returns how many it tried. */
   onReleaseHeld?: () => Promise<number> | number;
+  /** What the last reaper pass did, for the Health screen (S3-7). */
+  reaperStatus?: ReaperStatus;
   /** Circuit breakers for the os tools (S3-6). */
   breakers?: Breakers;
   /** Copies the company folder into the database again, on request. */
@@ -118,7 +121,7 @@ export function createApp(deps?: AppDeps) {
   if (deps.auth) app.route('/api/owner', ownerRoutes({ auth: deps.auth }));
   if (deps.breakers) app.route('/api/breakers', breakerRoutes({ breakers: deps.breakers }));
   if (deps.bus && deps.dispatcher) {
-    app.route('/api', apiRoutes({ workspaceId: deps.workspaceId, dispatcher: deps.dispatcher, bus: deps.bus, onApprovalDecided: deps.onApprovalDecided, onKillSwitch: deps.onKillSwitch, onReleaseHeld: deps.onReleaseHeld, ...(deps.onCompanyReload ? { onCompanyReload: deps.onCompanyReload } : {}) }));
+    app.route('/api', apiRoutes({ workspaceId: deps.workspaceId, dispatcher: deps.dispatcher, bus: deps.bus, onApprovalDecided: deps.onApprovalDecided, onKillSwitch: deps.onKillSwitch, onReleaseHeld: deps.onReleaseHeld, ...(deps.onCompanyReload ? { onCompanyReload: deps.onCompanyReload } : {}), ...(deps.reaperStatus ? { reaperStatus: deps.reaperStatus } : {}) }));
   }
   if (deps.tokens && deps.store) app.route('/mcp', mcpRoutes({ tokens: deps.tokens, store: deps.store, ...(deps.breakers ? { breakers: deps.breakers } : {}) }));
   if (deps.inngestHandler) app.on(['GET', 'POST', 'PUT'], '/inngest', deps.inngestHandler);

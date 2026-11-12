@@ -143,6 +143,9 @@ export default function Home() {
           <Link href="/goals" className="text-sm font-medium underline">
             Goals
           </Link>
+          <Link href="/health" className="text-sm font-medium underline">
+            Health
+          </Link>
           <span className={`text-xs ${live ? 'text-green-700' : 'text-neutral-400'}`}>{live ? '● live' : '○ offline'}</span>
         </div>
       </header>
