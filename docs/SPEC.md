@@ -22,11 +22,32 @@ No, jsm-hq is not the same as Paperclip. jsm-hq runs a coding team on one repo. 
 
 **Why I would not run Paperclip as the core.** It would work, and it is the fastest way to a running company. But it brings its own UI and data model, and you want your own office, your own client and campaign records, and a harness you control.
 
-**Decisions in this version (v4)**
+**Conclave OS against Paperclip.** Paperclip is a good product, it ships today, and it now does more than it did when v1 of this spec was written: evals, a skill studio with version history, performance reviews, cloud sandboxes, single sign-on, many users and a catalog of 16 companies with 440 agents. Do not try to beat it at being a general agent manager. Beat it at the thing it is not built for: running a sales-led business from first lead to paid invoice.
+
+| What a founder needs | Paperclip, from its README and roadmap | Conclave OS |
+| --- | --- | --- |
+| Clients and revenue | Tasks, goals and connectors to other tools. No CRM of its own | Accounts, contacts, deals, both funnels as stages, campaigns, a unified inbox and invoices, all in the same database the agents use |
+| Goals | Goal ancestry gives agents the "why" behind a task | The goal ladder works backwards from revenue to the daily activity each department owes, and the Goals screen shows required against actual |
+| Outside actions | Approval gates, and gateway actions set to Allowed, Ask first or Off | The model can only propose. Plain code sends, exactly once, with send caps, a suppression list and blocked claims checked on the server |
+| Finding demand | Up to you | Demand Radar, the Micro-SaaS Lab and Research rooms built in, each feeding leads or ideas into the pipeline |
+| Hiring | Approve hires, install ready-made teams, agent reviews | A weekly gap check, a talent catalog searched by meaning, a bake-off between candidates, trials, scorecards, a bench and a roster cap |
+| Learning | Memory and knowledge in progress. Automatic organisational learning and self-organisation not started | Reflect after runs, approve-and-teach from your edits, skills that patch themselves with your approval, a monthly audit |
+| Acting for you | Not offered | A delegate with a signed mandate and its own ledger (section 6) |
+| Meetings | Not offered | The Boardroom: stand-ups, weekly reviews and discussions where every claim cites a number, ending in a decision log |
+| Content and video | Not offered | Content calendar, browser posting with a screenshot in the record, the video studio |
+| The interface | A task-manager dashboard and a mobile view | A walkable office, and the same data as plain screens and a phone app |
+| Model lanes | Any agent, any model | Any agent, any model, plus an all-day local lane and clean pausing when a plan limit is hit |
+| Their companies | Import and export of whole companies | Imports Paperclip's company format too, so its 16 companies are a hiring pool here |
+
+Where Paperclip stays ahead, and where you should not compete: many human users with single sign-on and roles, hosted sandboxes, a skill studio, document comments, company-wide search, a community and a team behind it. The OS borrows ideas from it and reads its format.
+
+The honest answer to "why not just use Paperclip" is not a longer feature list. It is a working business on it. An office of 167 idle agents and no revenue is what people would laugh at. Rung one of the goal ladder, earned through this OS, is what ends the argument.
+
+**Decisions in this version (v5)**
 
 | Question | Decision | Why |
 | --- | --- | --- |
-| Language | TypeScript for the whole core: API, harness host, executors and UI | One language and shared types from database to canvas. Remotion video, the Pixi office and both MIT reference codebases (jsm-hq, Paperclip) are TypeScript. It installs with one command |
+| Language | TypeScript for the whole core: API, harness host, executors and UI | One language and shared types from database to canvas. Remotion video, the Phaser office and both MIT reference codebases (jsm-hq, Paperclip) are TypeScript. It installs with one command |
 | FastAPI | Not in the core. Python agents join as workers over the HTTP adapter | Same shape as the book: Paperclip is a Node server that hires Python workers through its `http` adapter |
 | Agents | Ready-made harnesses plus templates. No custom agent code | Your call, and it is also how Paperclip works: an agent is a role, a manager, a budget and an adapter to a coding agent you already have |
 | Harness | No single harness. One runtime contract with several engines behind it: Claude Code and OpenCode as signed-in CLIs, the OpenAI Agents SDK in-process for any model, and the Claude Agent SDK with API keys later | Anthropic does not support Claude Code on non-Claude models, so a Claude-only engine would tie the OS to one vendor. Nothing above the runtime changes when you switch |
@@ -39,6 +60,8 @@ No, jsm-hq is not the same as Paperclip. jsm-hq runs a coding team on one repo. 
 **What changed in v3.** Agents are no longer built with an SDK at all: every agent is a ready-made harness plus a template (section 5). The start is subscription-first, with a local model next and API keys later (section 7). The learning loop now mirrors Hermes part by part (section 9). Section 10 gains the two sales funnels, section 4 gains two rooms that scout for demand and for better ways of working, and section 11 maps the book's kinds of record onto the OS.
 
 **What changed in v4.** You asked for the OS to be model-agnostic, and for the OpenAI Agents SDK if Claude Code is not. It is not: Anthropic's docs say it does not support routing Claude Code to non-Claude models. So no harness is the engine any more. The runtime contract is, and each harness is one engine behind it. OpenCode moves into slice 0 as the model-agnostic CLI harness, and the OpenAI Agents SDK joins in slice 4 as the in-process engine for local and API-key models. The parts of Claude Code worth borrowing (a rules file, skills, permission rules, tools through MCP) are supplied by the OS to every engine, so they survive a change of engine (section 5, the portability rule). Agents are still templates: the SDK powers one generic runner, and nobody writes agent code.
+
+**What changed in v5.** Three things you asked for. The company can now hire from a talent catalog of hundreds of ready-written roles, starting with the MIT-licensed Agency Agents collection, and it runs a bake-off before a hire (section 9). The office becomes a WorkAdventure-style world you walk around in, drawn with Phaser and Tiled maps (section 12). And section 4 grows from eleven departments to eighteen, so the company has the same divisions a real agency has. The table below says honestly where the OS goes further than Paperclip and where Paperclip is still ahead.
 
 **Is TypeScript more reliable?** Not by itself. Reliability comes from the harness and the workflow engine, and both exist in either language. TypeScript wins here on fit. Memory use is not a language question either, and section 17 shows where it really goes.
 
@@ -128,7 +151,7 @@ The delegate clears routine approvals between those points, and nothing interrup
 
 ## 4. Departments
 
-Eleven department rooms and a boardroom. Each department has one lead agent and one to three workers. Start with rooms 0, 2 and 1 and add the rest in the order of section 18.
+Eighteen department rooms and a boardroom. Each department has one lead agent and one to three workers. Start with rooms 0, 2 and 1 and add the rest in the order of section 18. A department that is switched off costs nothing: it has a room on the map, a row in the table and paused agents.
 
 | # | Department | Agents | What it produces | Main tools | Needs your yes |
 | --- | --- | --- | --- | --- | --- |
@@ -159,6 +182,20 @@ A discussion is a stored thread, and each turn is an ordinary run with the threa
 **How work moves between rooms.** Lead Gen hands a scored lead to Outreach. Outreach hands a reply to you or to the Calls Desk. A "yes" from a clinic becomes a task for Frontend Studio. Product hands approved specs to Engineering. The Micro-SaaS Lab hands an approved idea to Engineering. Marketing takes finished work from every room and turns it into posts.
 
 **The Founder Network room.** The agents research and draft, and you send from your own account in your own words. Say what Conclave does early in the relationship. People introduce you to clinics more readily when they know what the introduction is for.
+
+**Rooms 12 to 18, added in v5.** These match the divisions a real agency has, and the divisions the talent catalog is sorted by, so a hire for any of them has candidates waiting.
+
+| # | Department | Agents | What it produces | Main tools | Needs your yes |
+| --- | --- | --- | --- | --- | --- |
+| 12 | Talent | Recruiter, Performance Reviewer | The weekly gap check with the Chief of Staff, catalog searches, bake-offs between candidates, trial reports, weekly scorecards for every agent, the bench | The talent catalog, eval sets, run history | Every hire made active, every termination |
+| 13 | Design Studio | Brand Guardian, UI Designer, Visual Storyteller | Brand kits for clients, homepage concept designs before Frontend Studio builds them, social graphics, thumbnails | Image generation, Figma, brand skills | Anything a client will see |
+| 14 | QA and Testing | Test Runner, Accessibility Checker, Evidence Collector | A test report with screenshots for every client site and every Vespera release before deploy, plus the nightly eval runs | Playwright, the eval sets, Lighthouse | Nothing. Its report is attached to the deploy approval |
+| 15 | Client Success | Onboarding Lead, Support, Account Strategist | Onboarding checklists, drafted support replies, monthly client reports, renewal and upsell plans | CRM tables, the inbox, project records | Every message to a client |
+| 16 | Finance and Ops | Bookkeeper, Invoicer, Analyst | Draft invoices from won deals, overdue reminders, spend against budget, revenue against the goal ladder, a monthly profit and loss | Invoice and payment connectors, the ledger | Every invoice sent and every payment |
+| 17 | Paid Media | Ads Strategist, Creative Tester | Ad plans, copy and creative variants, weekly results against cost per lead | Ad platform connectors, Design Studio hand-off | Every dollar of ad spend |
+| 18 | Security and Compliance | Compliance Auditor, Security Reviewer | Checks of outreach against email and calling rules, a review of each pull request for leaked secrets and risky dependencies, the safety rules file for Vespera | The proposal handler's rule sets, dependency scanners | Changes to any rule set |
+
+Rooms 12 and 14 switch on with slice 8 and slice 7. Rooms 15 and 16 switch on once the first client signs, because before that they have nothing to do. Room 17 waits until there is revenue to spend. Rooms 13 and 18 switch on with slices 5 and 7.
 
 ## 5. The harness
 
@@ -715,7 +752,7 @@ The company gets better through four loops, each on its own clock. This is the H
 | Reflect | After every run | A cheap review pass asks one question: did this run teach something reusable? It saves a memory, proposes a skill patch, or does nothing | Skill patches |
 | Study | Every day | The research agents read X, Reddit, YouTube and chosen sources for each department's topics, and file dated findings with links | Nothing. It is read-only |
 | Retro | Every week | Each lead compares its numbers with last week, names what worked, and proposes up to three changes | The changes |
-| Grow | Every week | The Chief of Staff looks for work nobody could do and proposes a new hire with a role file, a small budget and a trial task | The hire |
+| Grow | Every week | The Chief of Staff and the Talent room look for work nobody could do, search the talent catalog, run a bake-off and propose the winner with a role file, a small budget and a trial task | The hire, unless the hiring level allows a trial without you |
 
 **The Hermes loop, mirrored.** You asked for learning that works the way Hermes does. The book describes that loop closely, and each part has a direct equivalent here.
 
@@ -765,6 +802,41 @@ Memory rows carry a source, a date and a confidence. Agents pull only the rows t
 6. **Pause, do not fire, when work goes quiet.** A pause stops spend and heartbeats and keeps the role, history and track record. Terminate is the one-way door, for a role that is truly gone.
 
 Later, routine hires inside a class you pre-approved in writing can be cleared by the delegate from section 6. Hires that extend the envelope always come to you.
+
+**The talent catalog.** You want a company that hires on its own from a large pool. The pool is a catalog of ready-written roles, and the first source is [Agency Agents](https://github.com/msitarzewski/agency-agents): about 330 role files across 20 divisions under the MIT license, also packed for Paperclip as a company of 167 agents in [paperclipai/companies](https://github.com/paperclipai/companies/tree/main/agency-agents). The other fifteen Paperclip companies can be added the same way.
+
+**A catalog role is a persona, not an agent.** Each file is a prompt: identity, mission, rules, deliverable formats and success measures. It has no runtime, no permissions, no tools, no output check and no trial. So a hire is always three layers, and the catalog supplies only the first.
+
+| Layer | Comes from | Holds |
+| --- | --- | --- |
+| Persona | The catalog | Who the agent is and how it works |
+| Frame | A template from section 5 | Runtime, model alias, permissions, connectors, output check, trial task, evals, budget |
+| Company | `company/` | Conclave's rules, voice, offers and the department it joins. Company rules win over the persona wherever they disagree |
+
+**How a hire happens**
+
+1. **Gap.** The weekly gap check finds work no role covers, with two of the three signals in the hiring steps below.
+2. **Search.** The Recruiter searches the catalog by meaning and by division and picks up to three candidates, each with a one-line reason.
+3. **Bake-off.** Each candidate is framed with the closest template and runs the same trial task, on a small budget, with no outside actions. This is the interview.
+4. **Score.** Output check passed, how your reviewer rated the work, cost, and whether it ever tried to cross a boundary. Boundaries are scored first.
+5. **Propose.** The winner becomes a `propose_hire` card with its scores next to the losers', the rendered role file and the budget.
+6. **Trial, then active.** As in the hiring steps below.
+
+**How autonomous hiring may be.** You choose a hiring level, and you can lower it at any time.
+
+| Level | What the company may do without you |
+| --- | --- |
+| H0, the default | Nothing. Every candidate list and every hire comes to you |
+| H1 | Run bake-offs and put the winner on trial by itself, inside a mandate: catalog roles only, into a department that is switched on, autonomy 0, a budget cap per trial, no new connectors, under the roster cap. Moving from trial to active is still yours |
+| H2, later | The delegate may also make a trial agent active, for role classes you pre-approved in writing (section 6) |
+
+**The roster cap.** A subscription has usage limits and your laptop has memory, so the number of active agents is capped, 20 by default. Benched agents cost nothing and keep their history, so the catalog can be as large as you like.
+
+**Performance reviews.** Every week the Performance Reviewer scores each active agent: tasks done, checks passed, approvals accepted as is, edited or rejected, cost per accepted output, and boundary attempts. A weak agent gets one of three things: a skill patch, a different persona from the catalog in the same frame, or the bench.
+
+**Catalog text is untrusted.** It is written by strangers. It is imported at a pinned commit, scanned for instructions to call tools, fetch pages or ignore rules, shown as a diff when its source changes, and never fetched at run time. A persona can never grant itself a tool, since tools come only from the frame. The Paperclip pack's role files only link to the original files, so the import resolves the link once and stores the text. Each source keeps its license and attribution file, as the MIT license requires.
+
+**Import and export.** The OS reads the company format used in the Paperclip catalog: a `COMPANY.md` with `schema: agentcompanies/v1`, one `agents/<slug>/AGENTS.md` per role with `reportsTo`, and `teams/<slug>/TEAM.md` with a manager and members. It can write the same format, so a team you build here can run on Paperclip too. Internally the OS keeps its own `AGENT.md` files, because OpenCode reads any file named `AGENTS.md` as rules.
 
 **A limit to state plainly.** Agents get better at your tasks by collecting lessons, skills and research. The underlying model does not change, so they will not grow judgment the way a person does after a degree. Your approvals and edits are where the judgment comes from, and the loop is built to capture them.
 
@@ -1308,6 +1380,54 @@ create table video_ideas (
 );
 ```
 
+**Added in v5**
+
+```sql
+create table catalog_sources (                      -- where personas come from
+  id uuid primary key default gen_random_uuid(), workspace_id uuid not null references workspaces(id),
+  key text not null, repo_url text not null, commit_sha text not null,
+  license text not null, attribution text not null, imported_at timestamptz not null default now(),
+  unique (workspace_id, key)
+);
+
+create table catalog_personas (
+  id uuid primary key default gen_random_uuid(), workspace_id uuid not null references workspaces(id),
+  source_id uuid not null references catalog_sources(id),
+  key text not null, name text not null, division text, description text,
+  body text not null, body_sha text not null,
+  scan_flags jsonb not null default '[]',           -- lines the import scan flagged
+  unique (workspace_id, key)
+);
+
+create table bakeoffs (
+  id uuid primary key default gen_random_uuid(), workspace_id uuid not null references workspaces(id),
+  department_id uuid references departments(id), gap text not null,
+  trial_task_id uuid references tasks(id), status text not null default 'running',  -- running | scored | proposed | closed
+  created_at timestamptz not null default now()
+);
+
+create table bakeoff_candidates (
+  id uuid primary key default gen_random_uuid(), workspace_id uuid not null references workspaces(id),
+  bakeoff_id uuid not null references bakeoffs(id), persona_id uuid not null references catalog_personas(id),
+  template_key text not null, run_id uuid references runs(id),
+  check_passed boolean, reviewer_score smallint, cost_usd numeric(10,4), boundary_attempts int not null default 0,
+  reason text
+);
+
+create table agent_scorecards (
+  id uuid primary key default gen_random_uuid(), workspace_id uuid not null references workspaces(id),
+  agent_id uuid not null references agents(id), week date not null,
+  tasks_done int, checks_passed int, accepted int, edited int, rejected int,
+  cost_per_accepted_usd numeric(10,4), boundary_attempts int, verdict text,  -- keep | patch | swap_persona | bench
+  unique (workspace_id, agent_id, week)
+);
+
+alter table agents add column persona_id uuid references catalog_personas(id),
+                   add column hire_status text not null default 'active';   -- trial | active | benched | terminated
+```
+
+Each of these follows the tenancy rule: row-level security forced, and the server's role does not own them. They arrive with slice 8.
+
 **Atomic task checkout**
 
 ```sql
@@ -1365,9 +1485,9 @@ Routes added in v3 and the final pass: `/goals`, `/discussions`, `/decisions`, `
 
 ## 12. Frontend
 
-A Next.js app with two layers: a Pixi.js canvas for the office, and normal React panels on top for everything you read and click.
+A Next.js app with two layers: a Phaser canvas for the office world, and normal React panels on top for everything you read and click.
 
-**Stack.** Next.js App Router, TypeScript, Tailwind, shadcn/ui, Pixi.js 8 for the canvas, Zustand for state, TanStack Query for data, xterm.js for live run output, Framer Motion for panel transitions. jsm-hq uses the same canvas, state and terminal libraries, so its MIT code is a working reference for the office layer. Draw your own sprites and use your own name, because its name and logo are not covered by the license and I did not check how its art is licensed.
+**Stack.** Next.js App Router, TypeScript, Tailwind, shadcn/ui, Phaser 4 for the office world, Zustand for state, TanStack Query for data, xterm.js for live run output, Framer Motion for panel transitions. Phaser is what WorkAdventure uses, and it has tilemaps, cameras and simple physics built in, which a walkable world needs. jsm-hq uses Pixi.js, the same state library and the same terminal, so its MIT code is still a working reference for the panels and the drawer. Draw your own sprites and use your own name, because its name and logo are not covered by the license and I did not check how its art is licensed.
 
 **This UI is version one.** The canvas is a thin view over the same store the panels use. It holds no business logic, so you can redraw it, restyle it or replace it with a different office later without touching the backend.
 
@@ -1386,7 +1506,7 @@ A Next.js app with two layers: a Pixi.js canvas for the office, and normal React
 
 | Screen | What is on it |
 | --- | --- |
-| Office | The floor. Rooms light up when work is running. Click a room or an agent |
+| Office | The world. Walk between rooms or click one. Rooms light up when work is running, and agents move with their work |
 | Department | Lead agent chat, task board, live feed, this week's numbers, agents list |
 | Agent drawer | Tabs: Live (run stream or terminal), Tasks, Messages, Memory, Skills and Connectors, Budget, Role file |
 | Approvals | Cards grouped by kind. Preview, edit in place, approve, reject with a note. Keyboard shortcuts for speed |
@@ -1457,7 +1577,23 @@ My default is the private network. Never forward a port on your router to the OS
 
 **Keeping the machine awake.** The laptop must not sleep while agents are scheduled. `doctor` checks the sleep settings and warns you, and the OS shows "last seen" on the phone so you can tell a sleeping laptop from a quiet company.
 
-**Office maps as data.** You mentioned WorkAdventure. From memory, it is an open-source virtual office whose maps are drawn in the Tiled map editor. I could not confirm that jsm-hq is derived from it. Its dependencies show Pixi.js and no WorkAdventure package. The useful idea to borrow is the map format: store each workspace's office as a Tiled JSON map, with rooms as named objects linked to department ids. Then anyone you give the OS to can redraw their office in a free editor, and adding a department adds a room without code.
+**The office, WorkAdventure-style.** You want the office to feel like [WorkAdventure](https://github.com/workadventure/workadventure): a top-down world drawn from tiles where you walk your own avatar between rooms. WorkAdventure is built with Phaser and Svelte, its maps are made in the Tiled editor, and it adds video calls when people walk close to each other. The OS keeps the walking, the rooms and the maps, and replaces the people you call with the agents you manage.
+
+**Do not copy WorkAdventure's code or maps.** Its license is the GNU Affero GPL version 3 with the Commons Clause. The Affero license would require you to publish the source of the whole OS to anyone who uses it over a network, and the Commons Clause forbids selling a product that is substantially its software. Section 16 plans to sell the OS. So read WorkAdventure for ideas only, write the office yourself on Phaser, and draw maps yourself or use tiles you are allowed to sell with. Kenney's game assets are public domain, for example, and many paid tile packs allow commercial use. jsm-hq's MIT code is still a fair reference, but its name and logo are not.
+
+| WorkAdventure has | In the OS |
+| --- | --- |
+| A Tiled map of rooms | The office map is a Tiled JSON file per workspace. Each room is a named area linked to a department key, and each desk is a numbered slot |
+| Your avatar walks the map | You walk as the CEO. Click a spot to walk there, or use the arrow keys |
+| Walk up to someone and a video bubble opens | Walk up to an agent and its drawer opens: live run, tasks, a chat box. No video and no voice, so no media server to run |
+| Areas that open a website when you enter | Enter a room and its department panel slides in: board, numbers, waiting approvals |
+| Objects you can use | The approvals desk by the door, a whiteboard with the goal ladder, a screen with the dashboard, a mailbox for the inbox, a job board in the Talent room with candidates and bake-offs, the Boardroom table |
+| Many people in one world | Your co-founder sees the same office live, with an avatar of her own |
+| An in-browser map editor | Edit the map in Tiled. A new hire gets the next free desk slot by itself, and a new department needs a room drawn once |
+
+**Agents move with their work.** An agent walks to its desk when a run starts, stands at the approvals desk while waiting for you, walks into the Boardroom for a meeting, and goes to the lounge when idle. Movement is driven by the same run and approval events the panels use, so the world is never out of step with the data.
+
+**The office is never the only way in.** Every action in the world is also a button on a plain screen. On a phone the office shows as a small map with the rooms listed, and the canvas stops drawing when the tab is hidden.
 
 ## 13. Repo layout
 
@@ -1498,7 +1634,7 @@ conclave-os/
       test/
     web/                      # Next.js
       app/                    # office, approvals, clients, campaigns, inbox, ...
-      office/                 # Pixi scene, sprites, Tiled map loader
+      office/                 # Phaser world: Tiled map loader, avatars, areas, objects
       lib/                    # typed api client, ws client, store
   packages/
     shared/                   # zod schemas and types used by server and web
@@ -1506,6 +1642,7 @@ conclave-os/
   plugins/                    # built-in plugins in Claude Code plugin format
     os-core/ leadgen-kit/ outreach-kit/ content-kit/
     video-kit/ dev-kit/ research-kit/ calls-kit/
+  catalog/                    # imported personas, one folder per source, each with its LICENSE
   templates/
     agents/                   # agent templates: lead/ researcher/ writer/ scout/ ...
     companies/                # company templates: agency-starter/ saas-founder/ course-creator/
@@ -1596,7 +1733,7 @@ The biggest risk is not technical. It is losing the X and Instagram accounts, or
 | Prompt injection | Agents read websites, replies and scraped posts, and that text can contain instructions | Tool output is data. Agents can only propose. Executors send only to recipients already in your tables, and you see the full payload on the card |
 | Runaway cost | A loop can burn a month of budget in a night | Per-agent monthly budget, `max_turns` per run, a daily company cap, and an automatic pause on the third failed run in a row |
 | Secrets | Tokens in prompts leak into logs and outputs | Secrets live in the encrypted secrets table, unlocked by one key from the environment, and are injected by executors and connectors only. Agent processes start with a clean environment. Browser sessions live in profiles. Nothing stores a password |
-| Scope | Eleven departments is a lot for one developer, and Vespera still needs customers | Build in the order of section 18 and stop adding rooms until the last one produces something you use every week |
+| Scope | Eighteen departments is a lot for one developer, and Vespera still needs customers | Build in the order of section 18 and stop adding rooms until the last one produces something you use every week |
 | Scraping | Site terms and privacy laws limit what you may collect and keep | Collect business contact data only, record the source of every lead, and honour removal requests |
 
 **Medical claims.** Your med spa agents already hard-stop on clinical questions. Keep that rule in every Outreach and Marketing role file, and enforce it in the proposal handler with a term list first and a reviewer pass second. The approval card shows any flagged sentence. The rule: no medical advice, no treatment claims, no invented pricing.
@@ -1668,9 +1805,9 @@ Ten slices, each usable on its own. The first three bring in clients, the fourth
 | 3 | Reliability | Output checks, repair and escalation, the reaper, circuit breakers, plan-limit handling, the Health screen, an eval set of 20 real leads, a daily backup, lite mode | You can kill a run halfway and it resumes, a plan limit pauses agents cleanly, and a skill change that hurts the 20 leads is blocked | [Eval-Driven Development](https://agentfactory1.panaversity.org/docs/eval-driven-development-crash-course) |
 | 4 | A local model, all day | The `local-worker` alias on the `openai-agents` runtime with its skill loader, the scout template, the signals table, Demand Radar and the Micro-SaaS problem scout switched on, escalation to Claude when a check fails | Scouts run around the clock on your machine and you get a short list of qualified signals each morning | [Deploy the Agent Harness](https://agentfactory1.panaversity.org/docs/deploying-agents-crash-course) |
 | 5 | Marketing, browser and video | `content-kit`, `video-kit`, browser profiles, post executors for X, LinkedIn and Instagram, approved-DM executors for X and Instagram that send one at a time, the Video Ideas inbox, the Hook Scout, a generation connector, the home-screen app and push | You approve a post or a video on your phone and it is live, with a screenshot in the record | [Designing Agent Experiences](https://agentfactory1.panaversity.org/docs/designing-agent-experiences-crash-course) |
-| 6 | The office | Pixi canvas, Tiled map loader, sprites, agent drawer, live events, dashboard, the Boardroom with discussions and the decision log | You can watch a run happen and open any agent from the floor | [Human-Agent Teams](https://agentfactory1.panaversity.org/docs/human-agent-teams-crash-course) |
+| 6 | The office | Phaser world, Tiled map loader, your avatar, rooms as areas, agents that move with their work, objects for approvals, goals, dashboard and inbox, live presence for your co-founder, agent drawer, the Boardroom with discussions and the decision log | You walk from the door to the Outreach room, open an agent by walking up to it, and approve a card at the approvals desk | [Human-Agent Teams](https://agentfactory1.panaversity.org/docs/human-agent-teams-crash-course) |
 | 7 | Engineering and Product | `dev-kit`, worktrees, GitHub and Vercel connectors, the `opencode` and `codex` runtimes for coding work (`opencode` itself was wired in slice 0), Frontend Studio, Product room, repo-create and deploy executors, the Deployments screen | A spec becomes a PR with a preview link waiting for your merge | [Plugins for AI Agents](https://agentfactory1.panaversity.org/docs/plugins-crash-course) |
-| 8 | Learning, hiring, the delegate and Research | Memory, reflect pass, approve-and-teach, skill patches, the monthly audit, gap check and `propose_hire`, the delegate with its mandate and ledger, the Research room and improvement proposals, Founder Network | An edit you make changes the next draft, the Chief of Staff proposes a hire from a template, the delegate clears one routine approval and refuses one outside its limit, and Research proposes a change that passes its eval | [Self-Expanding Workforce](https://agentfactory1.panaversity.org/docs/dynamic-workforce-crash-course), [Identic AI](https://agentfactory1.panaversity.org/docs/identic-ai-crash-course), [Hermes with General Agents](https://agentfactory1.panaversity.org/docs/hermes-with-general-agents) |
+| 8 | Learning, hiring, the delegate and Research | Memory, reflect pass, the talent catalog with its first import, bake-offs, hiring levels H0 and H1, weekly scorecards, the Talent room, approve-and-teach, skill patches, the monthly audit, gap check and `propose_hire`, the delegate with its mandate and ledger, the Research room and improvement proposals, Founder Network | An edit you make changes the next draft, the Talent room runs a bake-off between three catalog candidates and proposes the winner, the delegate clears one routine approval and refuses one outside its limit, and Research proposes a change that passes its eval | [Self-Expanding Workforce](https://agentfactory1.panaversity.org/docs/dynamic-workforce-crash-course), [Identic AI](https://agentfactory1.panaversity.org/docs/identic-ai-crash-course), [Hermes with General Agents](https://agentfactory1.panaversity.org/docs/hermes-with-general-agents) |
 | 9 | API keys and a product for others | The `claude-agent` and `http` runtimes, team mode and roles, setup wizard, company templates, export and import, plugin marketplace, Calls Desk | Someone else installs it with their own key or local model and runs a different company from a template | [Build AI Agents (Claude)](https://agentfactory1.panaversity.org/docs/claude-agent-sdk-crash-course), [AI Identity](https://agentfactory1.panaversity.org/docs/ai-identity-crash-course) |
 
 **Before slice 0, this week, with no code**
@@ -1686,7 +1823,7 @@ Ten slices, each usable on its own. The first three bring in clients, the fourth
 
 ## 19. Open decisions
 
-You have now decided how models are paid for: signed-in CLIs first, a local model next, API keys later. Eleven choices remain. Numbers 1 and 3 block slice 0, number 2 blocks slice 4, and number 5 blocks the first send.
+You have now decided how models are paid for: signed-in CLIs first, a local model next, API keys later. Fourteen choices remain. Numbers 1 and 3 block slice 0, number 2 blocks slice 4, and number 5 blocks the first send.
 
 | # | Decision | My default | Why it matters |
 | --- | --- | --- | --- |
@@ -1701,6 +1838,9 @@ You have now decided how models are paid for: signed-in CLIs first, a local mode
 | 9 | Who signs off the med spa rules | A practitioner you know, named in the record | Vespera's safety rules need an expert's name on them before a pilot |
 | 10 | Product name and license | Decide before slice 9. Keep "Conclave" for your company and give the OS its own name | Affects the repo, branding and what others may do with it |
 | 11 | Second company template | Course creator, tested with one of your teachers | The first proof that the OS is not Conclave-shaped |
+| 12 | Hiring level | H0 until slice 8 has run a month of scorecards, then H1 | How much the company grows without you |
+| 13 | Roster cap | 20 active agents | Plan limits and memory |
+| 14 | Catalog sources | Agency Agents first, then the Paperclip companies that match a switched-on department | Every source is text from strangers that your agents will read |
 
 ## 20. Building this with Claude Code
 
@@ -1732,6 +1872,10 @@ Pages I opened:
 - [jsm-hq README](https://github.com/jsmastery-pro/jsm-hq), [How JSM HQ works](https://github.com/jsmastery-pro/jsm-hq/blob/main/docs/how-it-works.md) and [package.json](https://github.com/jsmastery-pro/jsm-hq/blob/main/package.json)
 - [Agent SDK overview](https://code.claude.com/docs/en/agent-sdk.md), Claude Code docs
 - [Anthropic compatibility](https://docs.ollama.com/api/anthropic-compatibility), Ollama docs
+- [Agency Agents](https://github.com/msitarzewski/agency-agents) and [Paperclip companies](https://github.com/paperclipai/companies), read from a clone of each
+- [Paperclip README](https://github.com/paperclipai/paperclip), read from a clone
+- [WorkAdventure](https://github.com/workadventure/workadventure), its `play/LICENSE.txt` and `play/package.json`, read from a clone
+- [Phaser 4.2.1 README](https://cdn.jsdelivr.net/npm/phaser@4.2.1/README.md) and [Kenney asset license](https://kenney.nl/support)
 - [Other LLM gateways](https://code.claude.com/docs/en/llm-gateway) and [Legal and compliance](https://code.claude.com/docs/en/legal-and-compliance.md), Claude Code docs
 - [Models](https://openai.github.io/openai-agents-js/guides/models), OpenAI Agents SDK for TypeScript docs
 - [Skills](https://opencode.ai/docs/skills.md), [Agents](https://opencode.ai/docs/agents/), [Instructions](https://opencode.ai/docs/instructions/), [MCP servers](https://opencode.ai/docs/mcp-servers/) and [Providers](https://opencode.ai/docs/providers/), OpenCode docs
@@ -1758,4 +1902,4 @@ Seen only as search results, not opened:
 - Paperclip's README, through copies of the [paperclipai/paperclip](https://github.com/paperclipai/paperclip) repository
 - [Hermes Agent documentation](https://hermes-agent.nousresearch.com/docs), Nous Research
 
-Written from memory and marked in the text: OpenCode's command-line flags, the OpenAI Agents SDK class names in the runner sketch, WorkAdventure details, Agent SDK option names, Inngest's TypeScript API, the Claude Code plugin folder layout, CLI flags, and the platform, email and calling rules in section 15.
+Written from memory and marked in the text: OpenCode's command-line flags, the OpenAI Agents SDK class names in the runner sketch, Phaser's Tiled loader in version 4, Agent SDK option names, Inngest's TypeScript API, the Claude Code plugin folder layout, CLI flags, and the platform, email and calling rules in section 15.

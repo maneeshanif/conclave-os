@@ -3,7 +3,7 @@
 Four steps to start building.
 
 1. **Add the spec.** Open the "Conclave AI OS: Full Build Spec" doc, click its name, choose Export, then Markdown. Save the file here as `docs/SPEC.md`.
-2. **Fill in the company.** Open `company/COMPANY.md` and `company/goals.yaml` and replace each `TODO`. `company/departments.yaml` lists the eleven departments and which are switched on.
+2. **Fill in the company.** Open `company/COMPANY.md` and `company/goals.yaml` and replace each `TODO`. `company/departments.yaml` lists the eighteen departments and which are switched on.
 3. **Check your CLIs.** In a terminal, make sure `claude` runs and is signed in to the account with a paid plan. Install `opencode` as well if you can, and either sign it in with a ChatGPT or GitHub Copilot plan or point it at a local model. Slice 0 tests the second engine with a stand-in when it is missing.
 4. **Start.** Run `git init`, open Claude Code in this folder, and paste the kickoff prompt from `docs/BUILD.md`.
 

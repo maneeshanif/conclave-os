@@ -1,5 +1,7 @@
 # Department keys used across the company folder, goals.yaml and the database.
 # Rooms 9 and 10 are configured now and switched on later (SPEC 4).
+# Rooms 12 to 18 were added in v5 and are switched off until their slice (SPEC 4).
+# `division` is the talent catalog division a hire for this department is searched in (SPEC 9).
 # The Boardroom is a room, not a department, so it is not listed here.
 
 departments:
@@ -14,3 +16,10 @@ departments:
   - { key: calls-desk,      name: Calls Desk,            room: 8,  active: false }
   - { key: demand-radar,    name: Demand Radar,          room: 9,  active: false }
   - { key: research,        name: Research,              room: 10, active: true }
+  - { key: talent,          name: Talent,                room: 12, active: false, division: specialized }
+  - { key: design-studio,   name: Design Studio,         room: 13, active: false, division: design }
+  - { key: qa,              name: QA and Testing,        room: 14, active: false, division: testing }
+  - { key: client-success,  name: Client Success,        room: 15, active: false, division: support }
+  - { key: finance-ops,     name: Finance and Ops,       room: 16, active: false, division: finance }
+  - { key: paid-media,      name: Paid Media,            room: 17, active: false, division: paid-media }
+  - { key: security,        name: Security and Compliance, room: 18, active: false, division: security }
