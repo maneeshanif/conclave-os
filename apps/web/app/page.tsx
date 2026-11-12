@@ -95,13 +95,14 @@ export default function Home() {
   }, [refresh, loadTask]);
   async function onCreate(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    const f = new FormData(e.currentTarget);
+    const form = e.currentTarget; // React clears currentTarget after the first await
+    const f = new FormData(form);
     const title = String(f.get('title') ?? '').trim();
     if (!title) return;
     try {
       const assigneeId = String(f.get('assignee') ?? '');
       const { id } = await api.createTask({ title, body: String(f.get('body') ?? '') || undefined, ...(assigneeId ? { assigneeId } : {}) });
-      e.currentTarget.reset();
+      form.reset();
       await refresh();
       setSelected(id);
     } catch (err) {
