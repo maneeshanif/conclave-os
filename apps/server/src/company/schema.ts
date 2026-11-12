@@ -31,6 +31,25 @@ export const GoalsFileSchema = z.object({
 });
 export type GoalsFile = z.infer<typeof GoalsFileSchema>;
 
+/** What a deal must have before it may move past a stage. */
+export const STAGE_REQUIREMENTS = ['decision_maker', 'due'] as const;
+export const FunnelStageSchema = z.object({
+  key,
+  name: z.string().min(1),
+  owner: z.string().min(1).optional(),
+  exit: z.string().min(1).optional(),
+  requires: z.array(z.enum(STAGE_REQUIREMENTS, { error: (i) => `unknown requirement "${String(i.input)}". Use one of: ${STAGE_REQUIREMENTS.join(', ')}` })).default([]),
+  won: z.boolean().default(false),
+});
+export const FunnelSchema = z.object({
+  key,
+  name: z.string().min(1),
+  market: z.string().min(1).optional(),
+  stages: z.array(FunnelStageSchema).min(2),
+});
+export const FunnelsFileSchema = z.object({ funnels: z.array(FunnelSchema).min(1) });
+export type Funnel = z.infer<typeof FunnelSchema>;
+
 /** Front matter of a role file (SPEC 5). The role file is the source of truth for these fields. */
 export const RoleFileSchema = z
   .object({

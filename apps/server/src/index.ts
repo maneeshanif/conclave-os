@@ -8,6 +8,8 @@ import { createApp } from './app';
 import { Bus } from './bus';
 import { renderAll, renderOne } from './commands/agent-new';
 import { createAuth, resolveAuthSecret } from './auth';
+import { loadCompany } from './company/loader';
+import { syncCompany } from './company/sync';
 import { resolveAuthConfig } from './config';
 import { DbOsStore } from './harness/db-os-store';
 import { stopEverything } from './harness/kill-switch';
@@ -21,6 +23,13 @@ import { createInngestGate, gateOps, LocalApprovalGate, type ApprovalGate } from
 import { createWorkflows } from './workflows/inngest';
 
 const sys = await openSystem();
+
+// The company folder is the source of truth for departments, goals, funnels and agents (SPEC 5): copy it into the
+// database at start. A mistake in a file stops the server with the file and the reason, rather than running on stale rows.
+{
+  const synced = await syncCompany(sys.app, sys.workspace.id, await loadCompany(sys.companyRoot));
+  console.log(`company synced: ${synced.departments} departments, ${synced.agents} agents, ${synced.funnels} funnels, ${synced.goals} goals`);
+}
 if (!sys.ownsDatabase) {
   console.error('Another Conclave server is already running on this DATA_DIR. Stop it first.');
   await sys.close();

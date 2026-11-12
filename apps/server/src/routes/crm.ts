@@ -49,14 +49,19 @@ const NewContact = z.object({
   linkedin: Text(300).optional(),
 });
 
-const NewDeal = z.object({ accountId: uuid, offer: Text(300).optional(), value: Money.optional(), nextStep: Text(500).optional(), due: Day.optional() });
+const NewDeal = z.object({ accountId: uuid, funnel: Text(60).optional(), offer: Text(300).optional(), value: Money.optional(), nextStep: Text(500).optional(), due: Day.optional(), decisionMaker: Text(200).optional() });
+const MoveDeal = z.object({ stage: Text(60), note: z.string().trim().max(500).optional() });
+const LoseDeal = z.object({ reason: Text(500) });
 const PatchDeal = z
-  .object({ offer: Text(300).nullable(), value: Money.nullable(), nextStep: Text(500).nullable(), due: Day.nullable() })
+  .object({ offer: Text(300).nullable(), value: Money.nullable(), nextStep: Text(500).nullable(), due: Day.nullable(), decisionMaker: Text(200).nullable() })
   .partial()
   .refine((v) => Object.values(v).some((x) => x !== undefined), { message: 'Nothing to change.' });
 
 const ACCOUNT_COLUMNS: Record<string, string> = { name: 'name', website: 'website', market: 'market', stage: 'stage', health: 'health', notes: 'notes' };
-const DEAL_COLUMNS: Record<string, string> = { offer: 'offer', value: 'value', nextStep: 'next_step', due: 'due' };
+const DEAL_COLUMNS: Record<string, string> = { offer: 'offer', value: 'value', nextStep: 'next_step', due: 'due', decisionMaker: 'decision_maker' };
+
+const REQUIREMENT_LABEL: Record<string, string> = { decision_maker: 'a named decision-maker', due: 'a date (due)' };
+const DEAL_FIELD: Record<string, string> = { decision_maker: 'decision_maker', due: 'due' };
 
 /**
  * Accounts, contacts and deals (SPEC 10): the business as a system of record. Promoting a lead is the one way a
@@ -138,12 +143,19 @@ export function crmRoutes(deps: { workspaceId: string; bus: Bus }) {
   });
 
   // ---- deals
-  r.get('/deals', async (c) =>
-    c.json(await q(c, 'select id, account_id, offer, value, stage, next_step, due from deals order by created_at desc, id desc limit 500')),
-  );
+  const DEAL_SELECT = `select d.id, d.account_id, d.offer, d.value, d.stage, d.status, d.decision_maker, d.next_step, d.due, d.stage_changed_at, d.lost_reason, f.key as funnel
+                        from deals d left join funnels f on f.id = d.funnel_id`;
+
+  r.get('/funnels', async (c) => {
+    const funnels = await q<{ id: string; key: string; name: string; market: string | null }>(c, 'select id, key, name, market from funnels order by key');
+    const stages = await q<{ funnel_id: string }>(c, 'select funnel_id, key, name, position, owner, exit_rule, exit_requires, won from funnel_stages where not retired order by funnel_id, position');
+    return c.json(funnels.map((f) => ({ key: f.key, name: f.name, market: f.market, stages: stages.filter((s) => s.funnel_id === f.id).map((s) => ({ ...s, funnel_id: undefined })) })));
+  });
+
+  r.get('/deals', async (c) => c.json(await q(c, `${DEAL_SELECT} order by d.created_at desc, d.id desc limit 500`)));
 
   r.get('/deals/:id', async (c) => {
-    const [row] = await q(c, 'select id, account_id, offer, value, stage, next_step, due from deals where id = $1', [c.req.param('id')]);
+    const [row] = await q(c, `${DEAL_SELECT} where d.id = $1`, [c.req.param('id')]);
     return row ? c.json(row) : c.json({ error: 'Not found' }, 404);
   });
 
@@ -152,14 +164,14 @@ export function crmRoutes(deps: { workspaceId: string; bus: Bus }) {
     if (!p.success) return bad(c, p.error);
     const d = p.data;
     if (!(await accountExists(c, d.accountId))) return c.json({ error: 'No such account.' }, 404);
-    const [row] = await q<{ id: string }>(c, 'insert into deals (workspace_id, account_id, offer, value, next_step, due) values ($1, $2, $3, $4, $5, $6) returning id', [
-      ws,
-      d.accountId,
-      d.offer ?? null,
-      d.value ?? null,
-      d.nextStep ?? null,
-      d.due ?? null,
-    ]);
+    const [acct] = await q<{ market: string | null }>(c, 'select market from accounts where id = $1', [d.accountId]);
+    const start = await startingStage(c, d.funnel, acct?.market ?? null);
+    if (d.funnel && !start) return c.json({ error: `No such funnel "${d.funnel}".` }, 400);
+    const [row] = await q<{ id: string }>(
+      c,
+      'insert into deals (workspace_id, account_id, offer, value, next_step, due, decision_maker, funnel_id, stage) values ($1, $2, $3, $4, $5, $6, $7, $8, coalesce($9, \'open\')) returning id',
+      [ws, d.accountId, d.offer ?? null, d.value ?? null, d.nextStep ?? null, d.due ?? null, d.decisionMaker ?? null, start?.funnelId ?? null, start?.stage ?? null],
+    );
     return c.json({ id: row!.id }, 201);
   });
 
@@ -169,6 +181,92 @@ export function crmRoutes(deps: { workspaceId: string; bus: Bus }) {
     const { sets, params } = setClause(p.data, DEAL_COLUMNS, 2);
     const rows = await q(c, `update deals set ${sets} where id = $1 returning id`, [c.req.param('id'), ...params]);
     return rows[0] ? c.json({ id: c.req.param('id') }) : c.json({ error: 'Not found' }, 404);
+  });
+
+  /** The funnel to start a deal in and its first stage: the one asked for, else the one for the market, else the first. */
+  async function startingStage(c: Context<AppEnv>, funnelKey: string | undefined, market: string | null): Promise<{ funnelId: string; stage: string } | null> {
+    let f: { id: string } | undefined;
+    if (funnelKey) [f] = await q<{ id: string }>(c, 'select id from funnels where key = $1', [funnelKey]);
+    else [f] = await q<{ id: string }>(c, 'select id from funnels order by (market is not distinct from $1) desc, key limit 1', [market]);
+    if (!f) return null;
+    const [s] = await q<{ key: string }>(c, 'select key from funnel_stages where funnel_id = $1 and not retired order by position limit 1', [f.id]);
+    return s ? { funnelId: f.id, stage: s.key } : null;
+  }
+
+  r.post('/deals/:id/stage', async (c) => {
+    const p = MoveDeal.safeParse(await body(c));
+    if (!p.success) return bad(c, p.error);
+    const id = c.req.param('id');
+    // Locked, so two moves of one deal take turns.
+    const [deal] = await q<{ id: string; account_id: string; stage: string; status: string; funnel_id: string | null; decision_maker: string | null; due: string | null; offer: string | null }>(
+      c,
+      'select id, account_id, stage, status, funnel_id, decision_maker, due, offer from deals where id = $1 for update',
+      [id],
+    );
+    if (!deal) return c.json({ error: 'Not found' }, 404);
+    if (deal.status === 'lost') return c.json({ error: 'This deal was marked lost, so it cannot be moved.' }, 409);
+    if (!deal.funnel_id) return c.json({ error: 'This deal is not in a funnel.' }, 409);
+    const stages = await q<{ key: string; name: string; position: number; exit_requires: string[]; won: boolean }>(
+      c,
+      'select key, name, position, exit_requires, won from funnel_stages where funnel_id = $1 and not retired order by position',
+      [deal.funnel_id],
+    );
+    const to = stages.find((s) => s.key === p.data.stage);
+    if (!to) return c.json({ error: `"${p.data.stage}" is not a stage of this deal's funnel. Stages: ${stages.map((s) => s.key).join(', ')}.` }, 400);
+    if (to.key === deal.stage) return c.json({ error: `The deal is already in "${to.key}".` }, 409);
+    const from = stages.find((s) => s.key === deal.stage);
+
+    // Moving forward past a stage needs what that stage asks for, including stages skipped on the way.
+    if (from && to.position > from.position) {
+      const missing = new Set<string>();
+      for (const s of stages.filter((x) => x.position >= from.position && x.position < to.position)) {
+        for (const need of s.exit_requires) {
+          const value = (deal as unknown as Record<string, string | null>)[DEAL_FIELD[need]!];
+          if (!value || !String(value).trim()) missing.add(need);
+        }
+      }
+      if (missing.size) {
+        return c.json({ error: `This deal cannot move past "${from.name}" without ${[...missing].map((m) => REQUIREMENT_LABEL[m]).join(' and ')}. Set it on the deal first.`, missing: [...missing] }, 409);
+      }
+    }
+
+    await q(c, 'update deals set stage = $2, stage_changed_at = now() where id = $1', [id, to.key]);
+    await q(c, 'insert into deal_stage_events (workspace_id, deal_id, from_stage, to_stage, actor, note) values ($1, $2, $3, $4, $5, $6)', [ws, id, deal.stage, to.key, ACTOR, p.data.note ?? null]);
+    await q(c, "insert into audit_log (workspace_id, actor, action, subject, data) values ($1, $2, 'deal.stage_changed', $3, $4)", [ws, ACTOR, id, JSON.stringify({ from: deal.stage, to: to.key })]);
+
+    // A stage marked won wins the deal once: the client project and its first tasks.
+    let won = false;
+    if (to.won && deal.status !== 'won') {
+      won = true;
+      await q(c, "update deals set status = 'won' where id = $1", [id]);
+      const [account] = await q<{ name: string }>(c, 'select name from accounts where id = $1', [deal.account_id]);
+      const name = `${account?.name ?? 'Client'}: ${deal.offer ?? 'first build'}`;
+      const [project] = await q<{ id: string }>(
+        c,
+        "insert into projects (workspace_id, account_id, deal_id, name) values ($1, $2, $3, $4) on conflict (workspace_id, deal_id) where deal_id is not null do nothing returning id",
+        [ws, deal.account_id, id, name],
+      );
+      if (project) {
+        for (const title of [`Kick off ${name}`, `Confirm scope and the baseline number for ${name}`]) {
+          await q(c, "insert into tasks (workspace_id, title, kind, subject_type, subject_id, created_by) values ($1, $2, 'project', 'project', $3, 'system')", [ws, title, project.id]);
+        }
+        await q(c, "update accounts set stage = 'client' where id = $1 and stage = 'prospect'", [deal.account_id]);
+        await q(c, "insert into audit_log (workspace_id, actor, action, subject, data) values ($1, 'system', 'deal.won', $2, $3)", [ws, id, JSON.stringify({ projectId: project.id })]);
+      }
+    }
+    return c.json({ id, from: deal.stage, to: to.key, status: won ? 'won' : deal.status });
+  });
+
+  r.post('/deals/:id/lose', async (c) => {
+    const p = LoseDeal.safeParse(await body(c));
+    if (!p.success) return bad(c, p.error);
+    const id = c.req.param('id');
+    const [deal] = await q<{ status: string }>(c, 'select status from deals where id = $1 for update', [id]);
+    if (!deal) return c.json({ error: 'Not found' }, 404);
+    if (deal.status !== 'open') return c.json({ error: `This deal is already ${deal.status}.` }, 409);
+    await q(c, "update deals set status = 'lost', lost_reason = $2 where id = $1", [id, p.data.reason]);
+    await q(c, "insert into audit_log (workspace_id, actor, action, subject, data) values ($1, $2, 'deal.lost', $3, $4)", [ws, ACTOR, id, JSON.stringify({ reason: p.data.reason })]);
+    return c.json({ id, status: 'lost' });
   });
 
   // ---- promoting a lead
@@ -204,7 +302,8 @@ export function crmRoutes(deps: { workspaceId: string; bus: Bus }) {
       lead.notes,
     ]);
     const [contact] = await q<{ id: string }>(c, 'insert into contacts (workspace_id, account_id, name, email) values ($1, $2, $3, $4) returning id', [ws, account!.id, lead.contact_name, lead.email]);
-    const [deal] = await q<{ id: string }>(c, 'insert into deals (workspace_id, account_id, offer) values ($1, $2, $3) returning id', [ws, account!.id, `First offer to ${name}`]);
+    const start = await startingStage(c, undefined, lead.market);
+    const [deal] = await q<{ id: string }>(c, "insert into deals (workspace_id, account_id, offer, funnel_id, stage) values ($1, $2, $3, $4, coalesce($5, 'open')) returning id", [ws, account!.id, `First offer to ${name}`, start?.funnelId ?? null, start?.stage ?? null]);
     await q(c, 'update leads set account_id = $2 where id = $1', [leadId, account!.id]);
     await q(c, "insert into audit_log (workspace_id, actor, action, subject, data) values ($1, $2, 'lead.promoted', $3, $4)", [
       ws,

@@ -10,6 +10,7 @@
 import { sql } from 'drizzle-orm';
 import {
   bigserial,
+  boolean,
   check,
   date,
   foreignKey,
@@ -382,6 +383,83 @@ export const leads = pgTable(
   ],
 );
 
+/** A sales funnel, loaded from company/funnels.yaml (S2-2). */
+export const funnels = pgTable(
+  'funnels',
+  {
+    id: id(),
+    workspaceId: workspaceId(),
+    key: text('key').notNull(),
+    name: text('name').notNull(),
+    market: text('market'),
+    createdAt: createdAt(),
+  },
+  (t) => [unique('funnels_ws_id_uq').on(t.workspaceId, t.id), unique('funnels_ws_key_uq').on(t.workspaceId, t.key)],
+);
+
+/** One stage of a funnel. `exit_requires` lists what a deal needs before it may move past; `won` marks the winning stage. */
+export const funnelStages = pgTable(
+  'funnel_stages',
+  {
+    id: id(),
+    workspaceId: workspaceId(),
+    funnelId: uuid('funnel_id').notNull(),
+    key: text('key').notNull(),
+    position: integer('position').notNull(),
+    name: text('name').notNull(),
+    owner: text('owner'),
+    exitRule: text('exit_rule'),
+    exitRequires: text('exit_requires').array().notNull().default(sql`'{}'::text[]`),
+    won: boolean('won').notNull().default(false),
+    retired: boolean('retired').notNull().default(false),
+  },
+  (t) => [
+    unique('funnel_stages_ws_id_uq').on(t.workspaceId, t.id),
+    unique('funnel_stages_funnel_key_uq').on(t.workspaceId, t.funnelId, t.key),
+    foreignKey({ name: 'funnel_stages_funnel_fk', columns: [t.workspaceId, t.funnelId], foreignColumns: [funnels.workspaceId, funnels.id] }),
+  ],
+);
+
+/** Every move of a deal between stages: the source of days-in-stage and conversion (S2-6). */
+export const dealStageEvents = pgTable(
+  'deal_stage_events',
+  {
+    id: bigserial('id', { mode: 'number' }).primaryKey(),
+    workspaceId: workspaceId(),
+    dealId: uuid('deal_id').notNull(),
+    fromStage: text('from_stage'),
+    toStage: text('to_stage').notNull(),
+    actor: text('actor').notNull(),
+    note: text('note'),
+    at: timestamp('at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    unique('deal_stage_events_ws_id_uq').on(t.workspaceId, t.id),
+    foreignKey({ name: 'deal_stage_events_deal_fk', columns: [t.workspaceId, t.dealId], foreignColumns: [deals.workspaceId, deals.id] }),
+    index('deal_stage_events_deal_idx').on(t.workspaceId, t.dealId, t.at),
+  ],
+);
+
+/** Delivery work for a won client (SPEC 10). One per won deal. */
+export const projects = pgTable(
+  'projects',
+  {
+    id: id(),
+    workspaceId: workspaceId(),
+    accountId: uuid('account_id').notNull(),
+    dealId: uuid('deal_id'),
+    name: text('name').notNull(),
+    status: text('status').notNull().default('active'), // active | done | paused
+    createdAt: createdAt(),
+  },
+  (t) => [
+    unique('projects_ws_id_uq').on(t.workspaceId, t.id),
+    uniqueIndex('projects_ws_deal_uq').on(t.workspaceId, t.dealId).where(sql`${t.dealId} is not null`),
+    foreignKey({ name: 'projects_account_fk', columns: [t.workspaceId, t.accountId], foreignColumns: [accounts.workspaceId, accounts.id] }),
+    foreignKey({ name: 'projects_deal_fk', columns: [t.workspaceId, t.dealId], foreignColumns: [deals.workspaceId, deals.id] }),
+  ],
+);
+
 /** A business: a client or a prospect that has become more than a lead (SPEC 10). */
 export const accounts = pgTable(
   'accounts',
@@ -436,13 +514,20 @@ export const deals = pgTable(
     accountId: uuid('account_id').notNull(),
     offer: text('offer'),
     value: numeric('value'),
-    stage: text('stage').notNull().default('open'),
+    funnelId: uuid('funnel_id'),
+    stage: text('stage').notNull().default('open'), // a stage key of its funnel
+    status: text('status').notNull().default('open'), // open | won | lost
+    decisionMaker: text('decision_maker'),
+    lostReason: text('lost_reason'),
+    stageChangedAt: timestamp('stage_changed_at', { withTimezone: true }).notNull().defaultNow(),
     nextStep: text('next_step'),
     due: date('due'),
     createdAt: createdAt(),
   },
   (t) => [
     unique('deals_ws_id_uq').on(t.workspaceId, t.id),
+    foreignKey({ name: 'deals_funnel_fk', columns: [t.workspaceId, t.funnelId], foreignColumns: [funnels.workspaceId, funnels.id] }),
+    check('deals_status_ck', sql`${t.status} in ('open','won','lost')`),
     foreignKey({ name: 'deals_account_fk', columns: [t.workspaceId, t.accountId], foreignColumns: [accounts.workspaceId, accounts.id] }),
     check('deals_value_ck', sql`${t.value} is null or ${t.value} >= 0`),
     index('deals_account_idx').on(t.workspaceId, t.accountId),

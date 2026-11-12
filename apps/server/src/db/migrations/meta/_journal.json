@@ -85,6 +85,20 @@
       "when": 1794503748478,
       "tag": "0011_crm_rls",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1794504338608,
+      "tag": "0012_funnels_projects",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1794504340320,
+      "tag": "0013_funnels_rls",
+      "breakpoints": true
     }
   ]
 }

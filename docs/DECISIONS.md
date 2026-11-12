@@ -2,6 +2,16 @@
 
 Newest first. One entry per decision: what, why, and what it replaced.
 
+## 2026-11-12 (S2-2: funnels as stage rows, and the stage rules)
+
+- **Both funnels are in company/funnels.yaml** (nine services stages, eight product stages, owner and exit rule in words, from SPEC 10), loaded by the company loader and copied to the funnels and funnel_stages tables by syncCompany, which the server now runs at start (it stops with the file and the reason if a company file is wrong). Nothing about the funnels is in apps/ (rule 8). Taking a stage out of the file marks it retired instead of deleting it, so no deal is left pointing at nothing, and a deal keeps its stage key through renames.
+- **The rule is data too.** A stage lists what a deal needs before it may move past it (`requires: [decision_maker, due]`); the first priced outcome stage has both, which is the SPEC rule "no named decision-maker and no date means a conversation, not a deal". It applies to stages skipped on the way as well. Moving backwards is always allowed. A blank decision-maker counts as not named. An unknown requirement name in the file is a load error.
+- **Moves are events.** Every move writes a deal_stage_events row (from, to, who, when, note) and an audit line; the table is what days-in-stage and conversion will read in S2-6. Stage changes are by POST /api/deals/:id/stage; a deal can be marked lost with a reason (POST /lose), after which it cannot move.
+- **Winning is a stage flag, done once.** Entering a stage marked won (deliver in services, paid-pilot in product) sets the deal to won, creates the client project (one per deal, enforced by a unique index) and two first tasks created by "system", and moves a prospect account to client. Moving on, back and forward again creates nothing more.
+- **A new deal starts at stage 1 of a funnel:** the one named, else the one matching the account's market, else the first. Without any funnel rows it stays "open" as in S2-1. A promoted lead's deal goes in the lead's market funnel.
+- Migrations 0012 (funnels, funnel_stages, deal_stage_events, projects and new deal columns) and 0013 (RLS, grants, the sequence grant). The tenancy test lists the four new tables.
+- **No page yet:** the pipeline screen is S2-11.
+
 ## 2026-11-12 (S2-1: accounts, contacts and deals)
 
 - **Three tenant tables** (accounts, contacts, deals) with forced row-level security, composite foreign keys and the usual grants (migrations 0010 and 0011); the tenancy test lists them. A contact or deal needs an account that exists in this workspace (404 otherwise), and the database refuses a row carrying another workspace's id.

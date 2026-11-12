@@ -5,7 +5,9 @@ import { z } from 'zod';
 import { aliasWorksOn } from '../config/models';
 import {
   DepartmentsFileSchema,
+  FunnelsFileSchema,
   GoalsFileSchema,
+  type Funnel,
   RoleFileSchema,
   type Department,
   type GoalsFile,
@@ -25,6 +27,8 @@ export interface Company {
   companyMd: string;
   departments: Department[];
   goals: GoalsFile;
+  /** From funnels.yaml. Empty when the company has no such file. */
+  funnels: Funnel[];
   agents: LoadedAgent[];
 }
 
@@ -117,6 +121,21 @@ export async function loadCompany(root: string): Promise<Company> {
     if (!rungIds.has(g.serves)) throw new CompanyLoadError('goals.yaml', `department_goals.${dept} serves unknown rung "${g.serves}"`);
   }
 
+  let funnels: Funnel[] = [];
+  if (await exists(path.join(root, 'funnels.yaml'))) {
+    funnels = parseWith(FunnelsFileSchema, await readYaml(root, 'funnels.yaml'), 'funnels.yaml').funnels;
+    const seen = new Set<string>();
+    for (const f of funnels) {
+      if (seen.has(f.key)) throw new CompanyLoadError('funnels.yaml', `funnel "${f.key}" is listed twice`);
+      seen.add(f.key);
+      const stageKeys = new Set<string>();
+      for (const st of f.stages) {
+        if (stageKeys.has(st.key)) throw new CompanyLoadError('funnels.yaml', `funnel "${f.key}" lists stage "${st.key}" twice`);
+        stageKeys.add(st.key);
+      }
+    }
+  }
+
   const agents: LoadedAgent[] = [];
   const deptRoot = path.join(root, 'departments');
   if (await exists(deptRoot)) {
@@ -144,5 +163,5 @@ export async function loadCompany(root: string): Promise<Company> {
     }
   }
 
-  return { root, companyMd, departments, goals, agents };
+  return { root, companyMd, departments, goals, funnels, agents };
 }

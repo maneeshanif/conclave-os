@@ -5,6 +5,7 @@ import type { Company } from './loader';
 export interface SyncResult {
   departments: number;
   goals: number;
+  funnels: number;
   agents: number;
   retired: string[];
 }
@@ -52,6 +53,29 @@ export async function syncCompany(pool: pg.Pool, workspaceId: string, company: C
       deptGoals++;
     }
 
+    // Funnels and their stages, by key. A deal keeps the stage key it has, so a rename here changes only what is shown;
+    // a stage taken out of the file stays in the table, marked retired, so no deal is left pointing at nothing.
+    for (const f of company.funnels) {
+      const fr = await c.query<{ id: string }>(
+        `insert into funnels (workspace_id, key, name, market) values ($1, $2, $3, $4)
+         on conflict (workspace_id, key) do update set name = excluded.name, market = excluded.market
+         returning id`,
+        [workspaceId, f.key, f.name, f.market ?? null],
+      );
+      const funnelId = fr.rows[0]!.id;
+      for (const [i, st] of f.stages.entries()) {
+        await c.query(
+          `insert into funnel_stages (workspace_id, funnel_id, key, position, name, owner, exit_rule, exit_requires, won, retired)
+           values ($1, $2, $3, $4, $5, $6, $7, $8, $9, false)
+           on conflict (workspace_id, funnel_id, key) do update set position = excluded.position, name = excluded.name,
+             owner = excluded.owner, exit_rule = excluded.exit_rule, exit_requires = excluded.exit_requires,
+             won = excluded.won, retired = false`,
+          [workspaceId, funnelId, st.key, i + 1, st.name, st.owner ?? null, st.exit ?? null, st.requires, st.won],
+        );
+      }
+      await c.query('update funnel_stages set retired = true where funnel_id = $1 and not (key = any($2::text[]))', [funnelId, f.stages.map((s) => s.key)]);
+    }
+
     const agentIds = new Map<string, string>();
     for (const a of company.agents) {
       const r = a.role;
@@ -92,6 +116,7 @@ export async function syncCompany(pool: pg.Pool, workspaceId: string, company: C
     return {
       departments: deptIds.size,
       goals: rungIds.size + deptGoals,
+      funnels: company.funnels.length,
       agents: agentIds.size,
       retired: retired.rows.map((x) => x.key),
     };

@@ -171,7 +171,7 @@ Work them in order. Tick each when its test passes.
   Tables `accounts`, `contacts`, `deals` (tenant tables, forced RLS, composite keys). API to list, create and edit them, and `POST /api/leads/:id/promote` that makes the account, the contact and a deal from a lead in one step, once.
   *Test:* promoting twice makes nothing new; a contact cannot point at another workspace's account; the tenancy test lists the new tables.
 
-- [ ] **S2-2 Funnels as stage rows, and the stage rules.** SPEC 10.
+- [x] **S2-2 Funnels as stage rows, and the stage rules.** SPEC 10.
   `funnels` and `funnel_stages` loaded from `company/funnels.yaml` (both funnels from SPEC 10, owners and exit rules as text). A deal moves by `POST /api/deals/:id/stage`; each move is logged with time and who. A deal cannot pass the "first priced outcome" stage without a named decision-maker and a date. Moving a deal to won creates a project and its first tasks.
   *Test:* the rule refuses a move without both fields and allows it with them; won creates exactly one project, even if the move is repeated; every move is in the audit log.
 
