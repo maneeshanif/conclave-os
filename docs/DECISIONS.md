@@ -2,6 +2,11 @@
 
 Newest first. One entry per decision: what, why, and what it replaced.
 
+## 2026-11-12 (e2e on the Windows laptop)
+
+- **S0-11 on Windows: Claude Code passes, OpenCode is blocked by an expired OpenCode key.** `pnpm run e2e` ran the researcher on `claude-cli`: task done, answer in the thread with line references, run log free of this repo's CLAUDE.md. On `opencode` (alias `any-model`, which means OpenCode's own default model) the run failed before it started with an expired-key message from OpenCode, so the task was blocked with that reason and nothing was sent. The build does not create or replace keys; the step is in NEEDS-YOU. Per S0-11, the box stays as it was until OpenCode has a working provider, and this entry is the record.
+- **The e2e hires its researcher into the repo's `company/`** when it is missing, which leaves `company/departments/research/...` untracked after a run. Left uncommitted on purpose: a hire is a company decision, not a test artifact. Worth changing so the test uses its own company folder (`COMPANY_DIR` exists for that); logged in BUILD.md.
+
 ## 2026-11-12 (pnpm dev on Windows)
 
 - **`pnpm dev` no longer uses `pnpm -r --parallel`.** On Windows that mode gives each child a stdin pipe that nobody writes to or closes, and the server then sits silent at no CPU and never listens. Measured on the laptop: with `-r --parallel` the server stalled 7 of 7 starts (5 of 5 with only the server in it); started on its own with stdin closed or inherited it started every time (17 to 19 s); with a stdin pipe held open it stalled 3 of 3. It is not Next, not Postgres and not initdb. `scripts/dev.mjs` starts the server and web app with stdin closed, prefixes their output, and stops both when one exits or on Ctrl+C. Checked: 8 real `pnpm dev` starts, all up in 18 to 22 s. The earlier watchdog is still worth having: one stall was traced into initdb, but it was a rare second problem, not the common one. Replaces `pnpm -r --parallel --if-present dev`.

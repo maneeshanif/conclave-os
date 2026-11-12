@@ -92,6 +92,10 @@ Work them in order. Tick each when its test passes.
   `comment`, `complete_task`, `block_task` and `ask_founder` act only when the task is `in_progress` and `locked_by` is the calling agent. `PATCH /api/tasks/:id` clears `locked_by` when it moves a task out of `in_progress`. Add a test that `createWorkflows` registers both functions with the two concurrency limits.
   *Test:* a token for a run whose task was moved back to `todo` cannot complete it; the Inngest config test passes.
 
+- [ ] **S0-15 The e2e leaves the repo alone.** SPEC 13.
+  `pnpm run e2e` hires its researcher into the repo's `company/` when none exists, so every run leaves `company/departments/research/...` untracked. Point it at its own company folder (`COMPANY_DIR` already exists for that) and remove the folder when it ends. Also retry the OpenCode half once Anees has replaced the expired OpenCode key (NEEDS-YOU).
+  *Test:* after `pnpm run e2e`, `git status` shows no new files in the repo.
+
 ## Opening the next slice
 
 When slice 0 is in daily use, paste this:
