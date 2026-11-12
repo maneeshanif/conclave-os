@@ -239,7 +239,7 @@ Recorded 2026-11-13. Nothing here is built ahead of its slice (CLAUDE.md, Stack)
 - Output checks are plain code with names (the role file's `output_check` picks one). A check passes or fails with a reason; it never calls a model.
 - Pausing for a plan limit is per runtime, not per agent, and lifts itself at the reset time the runtime reported (or after a default wait if it gave none).
 
-- [ ] **S3-1 The reaper.** SPEC 14 (Run process dies).
+- [x] **S3-1 The reaper.** SPEC 14 (Run process dies).
   A job that finds runs whose `heartbeat_at` has gone stale, marks them failed, releases the task lock and puts the task back to todo with its session id, so the next run resumes. A task whose third run in a row has failed is blocked with the reasons. Runs the server itself is still executing are never reaped.
   *Test:* a run that stops heartbeating is reaped once and its task requeued with the session id; a live run is left alone; the third failure blocks the task; reaping twice changes nothing; the kill switch does not stop the reaper.
 

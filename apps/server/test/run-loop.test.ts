@@ -231,7 +231,7 @@ describe('run loop (S0-8)', () => {
     expect(await readFile(path.join(work, 'notes.md'), 'utf8')).toBe('keep me');
   });
 
-  it('on restart, runs left running are failed and their tasks blocked (finding 3)', async () => {
+  it('on restart, runs left running are failed and their tasks put back to be resumed (finding 3, S3-1)', async () => {
     const writer = await agentId('outreach-writer');
     const t = await addTask(writer, 'Orphaned');
     const orphan = await addTask(writer, 'In progress without a run');
@@ -240,8 +240,7 @@ describe('run loop (S0-8)', () => {
       await c.query("insert into runs (workspace_id, agent_id, task_id, trigger, runtime, model, status, started_at) values ($1, $2, $3, 'manual', 'claude-cli', 'writer', 'running', now())", [ws(), writer, t]);
     });
     expect(await reapStaleRuns(sys.app, ws())).toBe(1);
-    expect(await task(t)).toMatchObject({ status: 'blocked' });
-    expect((await task(t)).blocked_reason).toMatch(/server stopped/);
+    expect(await task(t)).toMatchObject({ status: 'todo' }); // its first failure: put back, not blocked
     expect(await task(orphan)).toMatchObject({ status: 'blocked' });
     const run = await withWorkspace(sys.app, ws(), ({ client: c }) => c.query('select status, error from runs where task_id = $1', [t]));
     expect(run.rows[0]).toMatchObject({ status: 'failed' });

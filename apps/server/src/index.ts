@@ -15,7 +15,8 @@ import { ensureDailyBrief } from './brief/build';
 import { DbOsStore } from './harness/db-os-store';
 import { stopEverything } from './harness/kill-switch';
 import { approvalHooks, createOutreach } from './outreach';
-import { cancelAllRuns, executeRun, reapStaleRuns, type LoopDeps } from './harness/loop';
+import { cancelAllRuns, executeRun, isRunActive, reapStaleRuns, type LoopDeps } from './harness/loop';
+import { reapRuns } from './harness/reaper';
 import { RunTokens } from './harness/run-tokens';
 import { createCliRuntime } from './runtimes/cli';
 import { openSystem } from './system';
@@ -97,6 +98,10 @@ const everyMinute = async () => {
   const briefTime = process.env.BRIEF_TIME?.trim() || '06:30'; // HH:MM in the company's time zone
   const brief = await ensureDailyBrief({ pool: sys.app, workspaceId: sys.workspace.id, tz, after: briefTime });
   if (brief) console.log(`morning brief for ${brief.day} is ready`);
+  // Runs whose process has gone quiet for good are failed and their tasks put back (S3-1). Nothing here needs a person.
+  const reaped = await reapRuns({ pool: sys.app, workspaceId: sys.workspace.id, isActive: isRunActive });
+  for (const t of reaped.requeued) void dispatcher.request({ workspaceId: sys.workspace.id, agentId: t.agentId, trigger: 'task_assigned' });
+  if (reaped.reaped.length) console.log(`reaper: failed ${reaped.reaped.length} silent run(s); ${reaped.requeued.length} task(s) put back, ${reaped.blocked.length} blocked`);
   const seq = await runSequences({ pool: sys.app, workspaceId: sys.workspace.id, bus });
   if (seq.created) console.log(`sequences: made ${seq.created} step task(s)`);
   return woken;

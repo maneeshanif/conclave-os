@@ -1,6 +1,7 @@
 import type pg from 'pg';
 import type { Bus } from '../bus';
 import { withWorkspace } from '../db/tenant';
+import { reapRuns } from './reaper';
 import { claudeToolLists } from './permissions';
 import { cleanWorkFolder, loadTemplate } from './render';
 import type { RunTokens } from './run-tokens';
@@ -97,6 +98,9 @@ async function audit(pool: pg.Pool, ws: string, action: string, subject: string,
 /** Runs in progress in this process, so shutdown and the kill switch can stop them. */
 const active = new Map<string, Runtime>();
 
+/** Whether this process is still running that run, so the reaper does not mistake a quiet one for a dead one. */
+export const isRunActive = (runId: string) => active.has(runId);
+
 /** Cancels every run in progress in this process. */
 export async function cancelAllRuns(): Promise<number> {
   const runs = [...active.entries()];
@@ -105,29 +109,18 @@ export async function cancelAllRuns(): Promise<number> {
 }
 
 /**
- * On server start: a run still marked running or queued belongs to a process that is gone. Mark it
- * failed and block its task with the reason, so nothing waits forever and a person sees it.
+ * On server start: a run still marked running or queued belongs to a process that is gone. The reaper (S3-1) fails it and
+ * puts its task back with the session kept, so the next run resumes, or blocks the task on its third failure in a row. A
+ * task stuck in progress with no run at all is blocked, because nothing says how far it got.
  */
 export async function reapStaleRuns(pool: pg.Pool, workspaceId: string): Promise<number> {
-  return withWorkspace(pool, workspaceId, async ({ client: c }) => {
-    const runs = await c.query<{ id: string; task_id: string | null }>(
-      "update runs set status = 'failed', ended_at = now(), error = 'runtime: the server stopped during this run' where status in ('running', 'queued') returning id, task_id",
-    );
-    for (const r of runs.rows) {
-      if (r.task_id) {
-        await c.query(
-          "update tasks set status = 'blocked', locked_by = null, blocked_reason = 'The server stopped while this task was running. Move it back to todo to run it again.' where id = $1 and status = 'in_progress'",
-          [r.task_id],
-        );
-      }
-      await c.query("insert into audit_log (workspace_id, actor, action, subject, data) values ($1, 'system', 'run.failed', $2, '{\"reason\":\"server restarted\"}')", [workspaceId, r.id]);
-    }
-    // A task can also be stuck in progress without a run row, if the server died between the two writes.
+  const r = await reapRuns({ pool, workspaceId, staleAfterMs: 0 });
+  await withWorkspace(pool, workspaceId, async ({ client: c }) => {
     await c.query(
       "update tasks set status = 'blocked', locked_by = null, blocked_reason = 'The server stopped before this task''s run began. Move it back to todo to run it again.' where status = 'in_progress' and not exists (select 1 from runs r where r.task_id = tasks.id and r.status = 'running')",
     );
-    return runs.rowCount ?? 0;
   });
+  return r.reaped.length;
 }
 
 /**
@@ -217,7 +210,12 @@ export async function executeRun(deps: LoopDeps, workspaceId: string, agentId: s
         tin += e.tokensIn;
         tout += e.tokensOut;
       }
-      if (e.type === 'session') sessionId = e.sessionId;
+      if (e.type === 'session') {
+        sessionId = e.sessionId;
+        await withWorkspace(deps.pool, workspaceId, ({ client: c }) =>
+          Promise.all([c.query('update tasks set session_id = $2 where id = $1', [task.id, e.sessionId]), c.query('update runs set session_id = $2 where id = $1', [runId, e.sessionId])]),
+        ).catch((err) => console.error(`run ${runId}: could not save the session:`, (err as Error).message));
+      }
       if (e.type === 'done' || e.type === 'error') final = e;
       try {
         await withWorkspace(deps.pool, workspaceId, ({ client: c }) =>
