@@ -2,6 +2,7 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { Socket } from 'node:net';
 import os, { networkInterfaces } from 'node:os';
 import path from 'node:path';
+import { freeBytes, GB, MIN_FREE_BYTES, WARN_FREE_BYTES } from '../disk';
 import { HOST, resolveDataDir, resolveLite, resolvePgPort, resolvePort } from '../config';
 import { cleanEnv } from '../runtimes/cli';
 import { killTree, resolveCommand, spawnResolved } from '../runtimes/win-process';
@@ -106,7 +107,7 @@ function readPid(file: string): number | null {
 }
 
 /** Every check doctor makes (S0-10, SPEC 17). Pure apart from reading the machine; easy to test. */
-export async function runChecks(env: Env = process.env): Promise<Check[]> {
+export async function runChecks(env: Env = process.env, opts: { freeBytes?: (p: string) => number } = {}): Promise<Check[]> {
   const checks: Check[] = [];
   const add = (name: string, level: Level, detail: string) => checks.push({ name, level, detail });
 
@@ -183,6 +184,18 @@ export async function runChecks(env: Env = process.env): Promise<Check[]> {
     add('inngest', 'ok', 'not configured: workflows run in-process with the same limits');
   }
 
+  // Disk space (S3-12): the database, backups and every working folder live under the data folder.
+  if (dataDir) {
+    try {
+      const free = (opts.freeBytes ?? freeBytes)(dataDir);
+      const detail = `${(free / GB).toFixed(1)} GB free on the drive that holds ${dataDir}`;
+      if (free < MIN_FREE_BYTES) add('disk', 'fail', `${detail}. Almost nothing is left: free some space now.`);
+      else if (free < WARN_FREE_BYTES) add('disk', 'warn', `${detail}. Under 5 GB: free some space soon.`);
+      else add('disk', 'ok', detail);
+    } catch (err) {
+      add('disk', 'warn', `could not read free space: ${(err as Error).message}`);
+    }
+  }
   // Mode (SPEC 17, S3-10): lite is for a machine with little memory.
   const gb = (os.totalmem() / 1024 ** 3).toFixed(1);
   add('mode', 'ok', resolveLite(env) ? `lite (LITE=1): one run at a time, one scheduled task at a time; this machine has ${gb} GB` : `normal: up to two runs at a time; this machine has ${gb} GB. Set LITE=1 if it struggles`);

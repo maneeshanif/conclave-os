@@ -3,6 +3,8 @@ import { defineConfig } from 'vitest/config';
 export default defineConfig({
   esbuild: { jsx: 'automatic' },
   test: {
+    // Clears stale conclave-* temp folders and stops early with a clear message if the disk is nearly full (S3-12).
+    globalSetup: ['./vitest.global-setup.ts'],
     include: ['apps/*/test/**/*.test.{ts,tsx}', 'packages/*/test/**/*.test.ts'],
     passWithNoTests: true,
     // Database tests start a real embedded Postgres, so the first start is slow.

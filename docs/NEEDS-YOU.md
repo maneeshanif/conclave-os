@@ -35,7 +35,8 @@ Things the build parked for you. Each says what to do.
 - [ ] The 20 leads in `eval/outreach/leads.json` are made up. When you have real leads in the pipeline, replace them (keep the same fields; the draft must mention the words in `mustMention`), then run `pnpm run eval:baseline --drafts <file>` with drafts from the outreach rep.
 - [ ] Say when it is fine to spend plan usage on a real-agent eval run (20 short drafts). Until then the gate runs on stored drafts or the reference drafter, which costs nothing.
 
-## Disk is full (found 2026-11-13, blocks the test suite)
+## Disk was full (fixed 2026-11-13)
 
-- [ ] **C: has about 100 MB free.** About 7,600 leftover folders named `conclave-*` sit in your Windows temp folder (`%TEMP%`, `C:UsersHPAppDataLocalTemp`). Each test run used to leave a throwaway database (about 50 MB) behind. The tests cannot start a database until space is free. I am not allowed to bulk-delete in the shared temp folder, so please run this in PowerShell (it only touches folders whose names start with `conclave-`, and nothing is running): `Get-ChildItem $env:TEMP -Directory -Filter "conclave-*" | Remove-Item -Recurse -Force`. The cause is fixed in the test helper (it now removes its folders on close), so it will not fill again. After that I will rerun the full suite and tag slice 3.
+- [x] Cleared by Anees's go-ahead; the cause is fixed and guarded (S3-12). Nothing to do.
+
 
