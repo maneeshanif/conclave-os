@@ -18,6 +18,8 @@
     "agent:render": "tsx --env-file-if-exists=.env packages/cli/src/index.ts agent:render",
     "eval:gate": "tsx --env-file-if-exists=.env packages/cli/src/index.ts eval:gate",
     "eval:baseline": "tsx --env-file-if-exists=.env packages/cli/src/index.ts eval:baseline",
+    "backup": "tsx --env-file-if-exists=.env packages/cli/src/index.ts backup",
+    "backup:restore": "tsx --env-file-if-exists=.env packages/cli/src/index.ts backup:restore",
     "e2e": "tsx --env-file-if-exists=.env packages/cli/src/index.ts e2e",
     "e2e:mobile": "pnpm --filter @conclave/web build && vitest run --config vitest.e2e.config.ts"
   },

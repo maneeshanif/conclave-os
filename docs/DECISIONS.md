@@ -2,6 +2,15 @@
 
 Newest first. One entry per decision: what, why, and what it replaced.
 
+## 2026-11-13 (S3-9: the daily backup)
+
+- **The dump is our own format, because the embedded Postgres ships without `pg_dump`** (checked: its bin folder has initdb, pg_ctl and postgres only). A backup is one gzip file of JSON lines in `DATA_DIR/backups/`, `backup-<day>-<time>.jsonl.gz`: a header (format, time, each table with its row count and columns), the rows in batches, and an end line with a SHA-256 of everything before it. It reads every table in `public` and `auth` in one read-only repeatable-read transaction, as the owner role (which bypasses row-level security, so it sees every workspace; the request role cannot). That is a snapshot, so the dump is consistent while the server runs.
+- **A failed dump cannot hurt the old ones:** it is written to `.tmp`, checked by reading it back, and renamed into place only then. Only after a good one are the older files pruned to the newest 14.
+- **Restore only fills an empty database.** It checks the file first (unpacks, checksum, row counts) before it opens the database; then refuses if any table holds a row, except the single bootstrap workspace a new database starts with, which it replaces with the backup's own. "The OS never deletes a database that holds data" holds: the only thing it removes is that empty bootstrap row. Columns must match the backup's, so restore into the same version. Foreign keys form loops (tasks and runs point at each other), so tables load in dependency order and, where a loop cannot be ordered, an optional link is left empty on the first pass and filled in on the second. Sequences are set to the highest loaded value. Tested by restoring a real dump into a second, fresh database and comparing.
+- **The failure item is raised once:** a `backup_failed` action item, its text updated on each further failure and closed by the next good backup. After a failure the daily job waits an hour, not a minute, before trying again.
+- **The company commit** (`git add` then `git commit -- <company folder>`) commits only that folder and only when `git status` shows a change there, so other staged work stays staged. It never pushes. It is skipped for a folder outside any git repository, uses a placeholder identity only if git has none, and `COMPANY_BACKUP_COMMIT=0` turns it off. Heads-up: in this repo `company/` is tracked on `dev`, so a running server will commit changes to it on whatever branch is checked out.
+- **Commands:** `pnpm run backup` (now) and `pnpm run backup:restore <file>` (with DATA_DIR pointing at a new folder). Schedule: after `BACKUP_TIME` (default 02:30, company time zone), once a day, started from the minute ticker; a backup already made today (before a restart) counts.
+
 ## 2026-11-13 (S3-8: the eval set and the gate)
 
 - **The eval lives in `eval/<set>/` at the repo root, not in `company/`:** `leads.json` (20 made-up sample leads, flagged as samples in a `note`, no email addresses, nothing about a real business) and `baseline.json`. The code is `apps/server/src/eval`. A lead carries the one observation a good draft is built on and the words the draft must mention.

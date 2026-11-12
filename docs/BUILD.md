@@ -271,7 +271,7 @@ Recorded 2026-11-13. Nothing here is built ahead of its slice (CLAUDE.md, Stack)
   An eval set of 20 sample leads with the checks each draft must pass, a runner that has an agent draft for each lead and scores the drafts by the output checks, a stored baseline, and `pnpm run eval:gate` that fails if a change scores worse than the baseline. Replacing the samples with real leads is a NEEDS-YOU item.
   *Test:* with a scripted drafter the good skill scores at baseline and passes; a skill change that produces over-long drafts scores lower and the gate fails with which leads got worse; an unchanged skill is stable.
 
-- [ ] **S3-9 The daily backup.** SPEC 14 (Data loss).
+- [x] **S3-9 The daily backup.** SPEC 14 (Data loss).
   A scheduled job: a database dump into the data folder (keeping the last 14), and a git commit of the company folder. A restore command that checks the dump first. The OS never deletes a database that holds data.
   *Test:* a backup is written and is restorable into an empty database; old ones beyond 14 are pruned; a failed dump leaves the old ones alone and raises an item; the company folder commit happens only when something changed.
 

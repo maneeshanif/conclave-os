@@ -10,7 +10,8 @@ import { renderAll, renderOne } from './commands/agent-new';
 import { createAuth, resolveAuthSecret } from './auth';
 import { loadCompany } from './company/loader';
 import { syncCompany } from './company/sync';
-import { resolveAuthConfig } from './config';
+import { resolveAuthConfig, resolvePgPort } from './config';
+import { ensureDailyBackup, type DailyState } from './backup';
 import { ensureDailyBrief } from './brief/build';
 import { DbOsStore } from './harness/db-os-store';
 import { stopEverything } from './harness/kill-switch';
@@ -23,7 +24,7 @@ import { liftExpiredPauses } from './harness/pauses';
 import { reapRuns } from './harness/reaper';
 import { RunTokens } from './harness/run-tokens';
 import { createCliRuntime } from './runtimes/cli';
-import { openSystem } from './system';
+import { openSystem, ownerAccess } from './system';
 import { LocalDispatcher, tick, type Dispatcher, type RunRequestEvent } from './workflows/dispatch';
 import { createInngestGate, gateOps, LocalApprovalGate, type ApprovalGate } from './workflows/approval-gate';
 import { createWorkflows } from './workflows/inngest';
@@ -104,6 +105,19 @@ const everyMinute = async () => {
   const briefTime = process.env.BRIEF_TIME?.trim() || '06:30'; // HH:MM in the company's time zone
   const brief = await ensureDailyBrief({ pool: sys.app, workspaceId: sys.workspace.id, tz, after: briefTime });
   if (brief) console.log(`morning brief for ${brief.day} is ready`);
+  // The daily backup: a database dump beside the data, the last 14 kept, and a commit of the company folder (S3-9).
+  const backed = await ensureDailyBackup({
+    withOwner: ownerAccess(sys.dataDir, resolvePgPort()),
+    pool: sys.app,
+    workspaceId: sys.workspace.id,
+    dataDir: sys.dataDir,
+    companyRoot: sys.companyRoot,
+    tz,
+    after: process.env.BACKUP_TIME?.trim() || '02:30',
+    state: backupState,
+  });
+  if (backed?.ok) console.log(`backup: wrote ${backed.file} (${backed.rows} rows)${backed.committed ? '; company folder committed' : ''}`);
+  else if (backed) console.error(`backup failed: ${backed.error}`);
   // Runs whose process has gone quiet for good are failed and their tasks put back (S3-1). Nothing here needs a person.
   const reaped = await reapRuns({ pool: sys.app, workspaceId: sys.workspace.id, isActive: isRunActive });
   reaperStatus.record(reaped);
@@ -153,6 +167,7 @@ if (auth) {
 }
 
 const reaperStatus = new ReaperStatus();
+const backupState: DailyState = {};
 const breakers = new Breakers({ pool: sys.app, workspaceId: sys.workspace.id });
 
 const shell = new Hono();

@@ -10,6 +10,8 @@ const usage = `Usage:
   pnpm run doctor           (plain 'pnpm doctor' runs pnpm's own doctor)
   pnpm run eval:gate -- --drafts <file.json> | --reference   score drafts against the stored baseline; fails if worse
   pnpm run eval:baseline -- --drafts <file.json> | --reference   store a new baseline
+  pnpm run backup           make a backup now (the server makes one each night)
+  pnpm run backup:restore <file>   fill an EMPTY database from a backup; never touches one that holds data
   pnpm run e2e              slice 0 end to end on both engines, against a running server`;
 
 async function main(argv: string[]): Promise<number> {
@@ -77,6 +79,14 @@ async function main(argv: string[]): Promise<number> {
     case 'eval:baseline': {
       const { evalCommand } = await import('@conclave/server/commands/eval');
       return evalCommand(command === 'eval:gate' ? 'gate' : 'baseline', rest);
+    }
+    case 'backup': {
+      const { backupNow } = await import('@conclave/server/commands/backup');
+      return backupNow();
+    }
+    case 'backup:restore': {
+      const { restoreFromFile } = await import('@conclave/server/commands/backup');
+      return restoreFromFile(rest.find((a) => a !== '--'));
     }
     case 'doctor': {
       const { doctor } = await import('@conclave/server/commands/doctor');
