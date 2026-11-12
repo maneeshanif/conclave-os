@@ -215,7 +215,7 @@ Work them in order. Tick each when its test passes.
   Templates and skills for the bounded free offer, the contract of success and outcome note, and the monthly proof report. They draft documents as task comments; nothing leaves the building. Case text may only quote numbers from the tables.
   *Test:* rendered on both engines, conformance passes; the outcome-note skill refuses to state a number not in the tables (checked by a fixture).
 
-- [ ] **S2-13 Slice 2 end to end.** SPEC 18, row 2.
+- [x] **S2-13 Slice 2 end to end.** SPEC 18, row 2.
   One test: a morning heartbeat adds scored leads; a campaign (approved by the founder) makes tasks; drafts are approved and sent to the outbox; a reply pauses the sequence and makes one triage task; the pipeline shows conversion by stage. Tag `slice-2-done`.
   *Test:* all three "Done when" checks in one run.
 

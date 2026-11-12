@@ -2,6 +2,13 @@
 
 Newest first. One entry per decision: what, why, and what it replaced.
 
+## 2026-11-13 (S2-13: slice 2 end to end)
+
+- **One test runs the three "Done when" checks** (apps/server/test/slice2-e2e.test.ts), on the outbox, with the real run loop, os server, API, approval gate, email executor, sequence runner, ticker and report queries. Only the model is a stand-in (the fake claude process, now with a prospector mode that adds and scores three leads, and a rep that follows the campaign and step the runner names). (1) At 07:00 the prospector is woken once, given its standing task, and three leads arrive verified with their sources and scores of 90, 75 and 55; a restarted ticker later that morning makes no second run. The founder approves a campaign (starting it before approval is refused), enrols the two qualified leads, the runner makes two step tasks and none the second time, the rep proposes two emails, approving them puts exactly two files in the outbox. (2) A reply pauses that lead's sequence and makes exactly one triage task however many replies follow; three days later the other lead is due for step 2 and the one who replied gets nothing. (3) After the leads become deals and one moves to the reply stage, the pipeline shows reached and conversion by stage (one of two got past the first stage), and the campaign shows enrolled 2, sent 2, replied 1, positive 1, reply rate 50%. The brief and the Goals screen agree with each other on the same numbers.
+- **What "new scored leads arrive every morning" means here:** the prospector both finds and scores, as its skills allow (leadgen-kit has both). A separate scorer agent exists too but has no schedule; the choice between one agent or two is left to the founder.
+- **Slice 2 is tagged slice-2-done** with 640 tests passing on the Windows laptop, typecheck and lint clean. Real versus tested only in jsdom: the inbox, pipeline, campaigns, brief and Goals pages (the inbox is also in the Android browser check) have not been looked at in a real browser by a person.
+- **Still not real, by design:** lead sources that need accounts, reading a real mailbox for replies (replies are recorded by hand), and any real sending transport. Nothing can leave this machine.
+
 ## 2026-11-13 (S2-12: deal-desk and client-success templates)
 
 - **Two templates, two plugins.** deal-desk (plugin dealdesk-kit: free-offer, contract-of-success) and client-success (plugin clientsuccess-kit: outcome-note, proof-report). Both autonomy 1, os connector only, no web, no shell, no heartbeat. They draft; they have no way to send.
