@@ -40,7 +40,7 @@ export interface Database {
 }
 
 function removeDir(dir: string) {
-  rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 300 });
+  rmSync(dir, { recursive: true, force: true, maxRetries: 30, retryDelay: 500 });
 }
 
 /** The saved logins, or undefined when the file is missing, not JSON, or the wrong shape. Never throws. */

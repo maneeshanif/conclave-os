@@ -62,6 +62,7 @@ skills:
 connectors:
   - os
 max_turns: 25
+output_check: email-draft
 ---
 
 # Role

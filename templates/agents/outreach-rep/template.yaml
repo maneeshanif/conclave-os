@@ -17,6 +17,8 @@ defaults:
   autonomy: 0
   monthly_budget_usd: 10
   max_turns: 25
+  # What the rep reports is checked against the limits in checks/README.md (S3-5). A rep that proposes its email is let through.
+  output_check: email-draft
   # no heartbeat: runs when given a task (one task = one lead)
 skills: []
 plugins: [outreach-kit]

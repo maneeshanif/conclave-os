@@ -255,7 +255,7 @@ Recorded 2026-11-13. Nothing here is built ahead of its slice (CLAUDE.md, Stack)
   A ledger of what each agent's runs cost this month, checked before every run: over its monthly budget, the agent is paused and one action item is raised. A person raising the budget or unpausing lifts it.
   *Test:* a run that would start over budget does not start; the agent is paused with an item; the item appears once; a new month starts a new total; raising the budget resumes.
 
-- [ ] **S3-5 Output checks, repair and escalation.** SPEC 14 (Wrong or malformed output), SPEC 5.
+- [x] **S3-5 Output checks, repair and escalation.** SPEC 14 (Wrong or malformed output), SPEC 5.
   A registry of named checks (the first: `email-draft`, the limits written in the outreach rep's checks README; and `document-figures` from S2-12). After a run reports done, the role's check runs. On failure: one repair attempt in the same session showing the error, then the stronger model alias, then the task is blocked for the founder with the failures.
   *Test:* a passing output ends the task; a failing one is repaired once; still failing escalates once; still failing blocks with the reasons; a role with no check is untouched; the check never calls a model.
 

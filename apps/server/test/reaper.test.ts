@@ -131,6 +131,8 @@ describe('a run that is killed halfway can resume (S3-1)', () => {
     canResume = true;
     requests: RunRequest[] = [];
     private resolvers = new Map<string, () => void>();
+    // A cancel can arrive before the run has reached its wait (the loop is still saving the session), so it is remembered.
+    private cancelled = new Set<string>();
     async *start(req: RunRequest): AsyncIterable<RunEvent> {
       this.requests.push(req);
       yield { type: 'session', sessionId: req.sessionId ?? 'ses_first' };
@@ -138,10 +140,11 @@ describe('a run that is killed halfway can resume (S3-1)', () => {
         yield { type: 'done', output: 'finished after resuming' };
         return;
       }
-      await new Promise<void>((r) => this.resolvers.set(req.runId, r));
+      if (!this.cancelled.has(req.runId)) await new Promise<void>((r) => this.resolvers.set(req.runId, r));
       yield { type: 'error', kind: 'cancelled', message: 'killed' };
     }
     async cancel(runId: string) {
+      this.cancelled.add(runId);
       this.resolvers.get(runId)?.();
     }
     async health() {

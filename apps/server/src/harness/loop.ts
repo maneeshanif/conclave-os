@@ -1,6 +1,7 @@
 import type pg from 'pg';
 import type { Bus } from '../bus';
 import { withWorkspace } from '../db/tenant';
+import { runCheck } from '../checks';
 import { checkBudget } from './budget';
 import { failureClass } from './failure';
 import { activePause, pauseRuntime, parseResetTime, RUNTIME_LABEL } from './pauses';
@@ -51,6 +52,7 @@ interface AgentRow {
   runtime: RuntimeName;
   model_alias: string;
   fallback_alias: string | null;
+  output_check: string | null;
   monthly_budget_usd: string;
   max_turns: number;
   template_key: string | null;
@@ -142,7 +144,7 @@ export async function reapStaleRuns(pool: pg.Pool, workspaceId: string): Promise
 export async function executeRun(deps: LoopDeps, workspaceId: string, agentId: string, trigger: string): Promise<RunOutcome> {
   const agent = await withWorkspace(deps.pool, workspaceId, async ({ client: c }) => {
     const r = await c.query<AgentRow>(
-      `select a.id, a.key, a.name, a.status, a.runtime, a.model_alias, a.fallback_alias, a.monthly_budget_usd, a.max_turns, t.key as template_key, d.name as department
+      `select a.id, a.key, a.name, a.status, a.runtime, a.model_alias, a.fallback_alias, a.output_check, a.monthly_budget_usd, a.max_turns, t.key as template_key, d.name as department
        from agents a left join agent_templates t on t.id = a.template_id left join departments d on d.id = a.department_id
        where a.id = $1`,
       [agentId],
@@ -194,6 +196,9 @@ export async function executeRun(deps: LoopDeps, workspaceId: string, agentId: s
   let attempts = 0;
   let planStep = 0;
   let onFallback = false;
+  // Output check (S3-5): the result is checked once the run reports done; a failure gets one repair, then the stronger model.
+  let stage: 'main' | 'repair' | 'escalated' = 'main';
+  let input: string;
   const plan = deps.retry ? [...deps.retry.delaysMs.map((wait) => ({ alias: agent.model_alias, wait, fallback: false })), ...(agent.fallback_alias ? [{ alias: agent.fallback_alias, wait: 0, fallback: true }] : [])] : [];
   active.set(runId, runtime);
   try {
@@ -208,6 +213,7 @@ export async function executeRun(deps: LoopDeps, workspaceId: string, agentId: s
 
     const token = deps.tokens.issue({ workspaceId, agentId, runId, taskId: task.id });
     const { instructions, taskInput } = buildContext(agent, task);
+    input = taskInput;
     let tools: { allow: string[]; deny: string[] } = { allow: [], deny: [] };
     if (agent.template_key) tools = claudeToolLists((await loadTemplate(deps.templatesRoot, agent.template_key)).permissions);
 
@@ -221,7 +227,7 @@ export async function executeRun(deps: LoopDeps, workspaceId: string, agentId: s
       agentKey: agent.key,
       taskId: task.id,
       instructions,
-      taskInput,
+      taskInput: input,
       workspaceDir,
       modelAlias: alias,
       maxTurns: agent.max_turns,
@@ -268,6 +274,28 @@ export async function executeRun(deps: LoopDeps, workspaceId: string, agentId: s
       alias = next.alias;
       onFallback = next.fallback;
       continue;
+    }
+    if (final?.type === 'done' && agent.output_check) {
+      const output = final.output;
+      const check = agent.output_check;
+      const verdict = await withWorkspace(deps.pool, workspaceId, ({ client: c }) => runCheck(c, check, { output, runId }));
+      if (!verdict.ok) {
+        const move: "repair" | "escalate" | null = verdict.fatal ? null : stage === 'main' ? 'repair' : stage === 'repair' && agent.fallback_alias ? 'escalate' : null;
+        if (move) {
+          await withWorkspace(deps.pool, workspaceId, ({ client: c }) =>
+            c.query('insert into run_events (workspace_id, run_id, type, data) values ($1, $2, $3, $4)', [workspaceId, runId, 'repair', JSON.stringify({ stage: move, check, reasons: verdict.reasons })]),
+          ).catch(() => undefined);
+          input = `Your result failed the ${check} check:\n${verdict.reasons.map((r) => `- ${r}`).join('\n')}\nFix exactly these problems and finish the task again with a corrected result. Do not start over and do not do anything else.`;
+          if (move === 'escalate') {
+            alias = agent.fallback_alias!;
+            onFallback = true;
+          }
+          stage = move === 'repair' ? 'repair' : 'escalated';
+          continue;
+        }
+        const tried = stage === 'main' ? '' : stage === 'repair' ? ' after one repair attempt' : ' after one repair attempt and a try on the stronger model';
+        final = { type: 'error', kind: 'output_check', message: `The result failed the ${check} check${tried}: ${verdict.reasons.join(' ')}` };
+      }
     }
     break;
     }

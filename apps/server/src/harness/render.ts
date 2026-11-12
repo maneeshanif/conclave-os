@@ -30,6 +30,7 @@ const TemplateFileSchema = z.object({
     max_turns: z.number().int().positive(),
     heartbeat: z.string().optional(),
     heartbeat_task: z.string().min(1).max(2000).optional(),
+    output_check: z.string().min(1).optional(),
   }),
   skills: z.array(z.string()).default([]),
   /** Plugins from plugins/ this kind of agent is granted: their skills and connectors come with it (SPEC 8). */
@@ -124,6 +125,7 @@ export function renderRoleFile(t: Template, params: RoleParams): string {
     model: params.model ?? t.file.defaults.model,
     ...(t.file.defaults.heartbeat ? { heartbeat: t.file.defaults.heartbeat } : {}),
     ...(t.file.defaults.heartbeat_task ? { heartbeat_task: t.file.defaults.heartbeat_task } : {}),
+    ...(t.file.defaults.output_check ? { output_check: t.file.defaults.output_check } : {}),
     monthly_budget_usd: t.file.defaults.monthly_budget_usd,
     autonomy: params.autonomy ?? t.file.defaults.autonomy,
     template: t.key,

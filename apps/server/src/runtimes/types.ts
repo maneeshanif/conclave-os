@@ -1,7 +1,7 @@
 import type { RuntimeName } from './names';
 
 /** Why a run failed. `limit` and `auth` are their own kinds so the loop can pause instead of retrying (SPEC 7, 14). */
-export type ErrorKind = 'runtime' | 'limit' | 'auth' | 'timeout' | 'max_turns' | 'cancelled' | 'config';
+export type ErrorKind = 'runtime' | 'limit' | 'auth' | 'timeout' | 'max_turns' | 'cancelled' | 'config' | 'output_check';
 
 /** Everything a runtime needs for one run (SPEC 7). No secrets except the run's own token. */
 export interface RunRequest {

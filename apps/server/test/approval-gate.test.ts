@@ -230,7 +230,7 @@ describe('a held email waits for room, then goes (S1-5)', () => {
   it('retries by itself when the window opens, and sends once', async () => {
     await sql("delete from outreach_messages where status = 'sent'");
     await setCaps(1, 1); // one email per hour
-    await sentRowAgo(3600_000 - 1500); // sent 1h minus 1.5s ago: the window opens in about 1.5 seconds
+    await sentRowAgo(3600_000 - 4000); // sent 1h minus 4s ago: the window opens in about 4 seconds (room to assert "held" first, even on a loaded machine)
     const a = await newApproval({ status: 'approved' });
     const p = process_();
     await p.gate.decided({ workspaceId: ws(), approvalId: a.id, approved: true });

@@ -2,6 +2,16 @@
 
 Newest first. One entry per decision: what, why, and what it replaced.
 
+## 2026-11-13 (S3-5: output checks, repair and escalation)
+
+- **A check is plain code that looks at a run's result and says pass or fail with reasons** (src/checks). It never calls a model. A role names one in `output_check`; after the run reports done the loop runs it. Two exist: `email-draft` (subject under 8 words, body under 170, not the word "agentic", and a "Subject:" line to find them by: the limits written in the outreach rep's checks README) and `non-empty`. The outreach-rep template now carries `output_check: email-draft`.
+- **The ladder is the one in SPEC 14.** A failure gets exactly one repair attempt: the same run, the same session, shown the reasons and told to fix only those. If that fails too, one attempt on the agent's fallback model (the stronger one). If that fails, or there is no fallback model, the run fails and the task is blocked for the founder with the check, the reasons and what was tried. Each step is a `repair` event on the run, so the log shows it.
+- **"Stronger model" is the fallback alias.** The spec says stronger; the role file has one second model (fallback_model), used for outages in S3-2 and for escalation here. If they should ever differ, that is a new field.
+- **An agent that proposed its email passes the draft check.** The proposal handler (propose_email) already refuses an over-long or blocked draft in code before it exists, so the check is for the agent that has to write its draft as its result, such as one on trial. A run that made an email proposal reports a one-liner that is not a draft, and that is fine.
+- **A check that does not exist is a failure, never a pass.** A role naming `made-up-check` blocks its task saying so; the unknown name is not repaired or escalated, because the output is not at fault.
+- **document-figures is not a separate check:** save_draft (S2-12) already refuses a draft with a figure outside the tables, in code, at the moment it is saved. A second check on the result text would only repeat it. The table in SPEC 14 is satisfied by that tool.
+- **Test stability work found on the way, because a slice about reliability should not have flaky tests:** (1) the full suite had started 56 embedded databases at once on 12 cores and the database start-up tests missed their time limits; vitest now runs at most 5 files at once (maxWorkers), and the whole suite takes under 5 minutes and passes repeatedly. (2) Removing a half-made database folder on Windows could fail for a few seconds on a file lock; the server now retries for about 15 seconds before giving up. (3) A gate test left only 1.5 seconds of margin and now leaves 4; a test runtime in the reaper tests could lose an early cancel and now remembers it. None of these changed behaviour.
+
 ## 2026-11-13 (S3-4: budgets)
 
 - **The ledger is the runs table.** Before every run, what the agent's runs have cost this calendar month (this machine's month) is compared with its monthly_budget_usd. At or over it, the agent starts nothing and no task is taken, and the tasks stay queued. Nothing is killed mid-run: a run that crosses the line finishes and the next one is refused, because the cost of a run is not known before it starts. A budget of zero means nothing is allowed.
