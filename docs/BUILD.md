@@ -120,7 +120,7 @@ Work them in order. Tick each when its test passes.
   `POST/GET/PATCH /api/leads` (create, list, one lead, stage and do-not-contact) and `GET/POST/DELETE /api/suppression`. Addresses are normalised and matched case-insensitively. An unsubscribe adds to the list and nothing removes it silently.
   *Test:* a lead marked do-not-contact is refused by `propose_email`; adding an address to the list blocks proposals for it in any case; removing needs an explicit call and is logged in `audit_log`.
 
-- [ ] **S1-5 Settings, the kill switch and the send caps.** SPEC 6, 14, 15; QUESTIONS 9.
+- [x] **S1-5 Settings, the kill switch and the send caps.** SPEC 6, 14, 15; QUESTIONS 9.
   `workspace_settings` holds the kill switch and the caps: `window_hours` = 5 and `window_cap` = 30 (a rolling window), plus a per-day cap. Follow-ups count in the same window. `GET/PATCH /api/settings`. With the kill switch on: no new run starts, running runs are cancelled, queued requests are dropped, and no executor sends, including approvals already approved.
   *Test:* the 31st email inside five hours is held and the 31st after the window moves is allowed; the kill switch stops a running fake run, empties the queue and blocks an executor on an already-approved email; turning it off does not resurrect dropped work.
 

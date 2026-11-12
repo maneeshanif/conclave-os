@@ -6,25 +6,33 @@ import type { Bus } from '../bus';
 import type { Dispatcher } from '../workflows/dispatch';
 import { approvalRoutes, type ApprovalDecision } from './approvals';
 import { leadRoutes } from './leads';
+import { settingsRoutes } from './settings';
 import { suppressionRoutes } from './suppression';
 
 /**
  * The slice 0 API (SPEC 11, API table): agents, tasks, runs. One local workspace, no login yet.
  * Every handler runs in the request transaction from app.ts. Starting a run waits until it commits.
  */
-export function apiRoutes(deps: { workspaceId: string; dispatcher: Dispatcher; bus: Bus; onApprovalDecided?: (d: ApprovalDecision) => Promise<void> | void }) {
+export function apiRoutes(deps: { workspaceId: string; dispatcher: Dispatcher; bus: Bus; onApprovalDecided?: (d: ApprovalDecision) => Promise<void> | void;
+  onKillSwitch?: (on: boolean) => Promise<void> | void;
+  onReleaseHeld?: () => Promise<number> | number;
+}) {
   const r = new Hono<AppEnv>();
   const ws = deps.workspaceId;
   const q = async <T extends QueryResultRow>(c: Context<AppEnv>, sql: string, params: unknown[] = []) =>
     (await c.get('tx').client.query<T>(sql, params)).rows;
   const afterCommit = (c: Context<AppEnv>, fn: () => Promise<void>) => c.get('after').push(fn);
   // A malformed id is a 404, not a database error.
-  r.use('/:kind/:id/*', async (c, next) => (z.uuid().safeParse(c.req.param('id')).success ? next() : c.json({ error: 'Not found' }, 404)));
-  r.use('/:kind/:id', async (c, next) => (z.uuid().safeParse(c.req.param('id')).success ? next() : c.json({ error: 'Not found' }, 404)));
+  // Settings is a single record with actions (/settings/release-held), not a collection of ids.
+  const idGuard = async (c: Context<AppEnv>, next: () => Promise<void>) =>
+    c.req.param('kind') === 'settings' || z.uuid().safeParse(c.req.param('id')).success ? next() : c.json({ error: 'Not found' }, 404);
+  r.use('/:kind/:id/*', idGuard);
+  r.use('/:kind/:id', idGuard);
 
   r.route('/approvals', approvalRoutes({ workspaceId: ws, bus: deps.bus, onDecided: deps.onApprovalDecided }));
   r.route('/leads', leadRoutes({ workspaceId: ws, bus: deps.bus }));
   r.route('/suppression', suppressionRoutes({ workspaceId: ws }));
+  r.route('/settings', settingsRoutes({ workspaceId: ws, bus: deps.bus, onKillSwitch: deps.onKillSwitch, onReleaseHeld: deps.onReleaseHeld }));
 
   r.get('/agents', async (c) =>
     c.json(

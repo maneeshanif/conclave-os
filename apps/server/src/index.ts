@@ -9,6 +9,7 @@ import { Bus } from './bus';
 import { renderAll, renderOne } from './commands/agent-new';
 import { HOST } from './config';
 import { DbOsStore } from './harness/db-os-store';
+import { stopEverything } from './harness/kill-switch';
 import { cancelAllRuns, executeRun, reapStaleRuns, type LoopDeps } from './harness/loop';
 import { RunTokens } from './harness/run-tokens';
 import { createCliRuntime } from './runtimes/cli';
@@ -79,6 +80,12 @@ shell.route(
     dispatcher,
     upgradeWebSocket,
     hosts: [`127.0.0.1:${sys.serverPort}`, `localhost:${sys.serverPort}`],
+    // Turning the kill switch on stops what is running and drops what is queued (S1-5).
+    onKillSwitch: async (on) => {
+      if (!on) return;
+      const { dropped, cancelled } = await stopEverything(dispatcher);
+      console.log(`kill switch on: cancelled ${cancelled} run(s), dropped ${dropped} queued request(s)`);
+    },
     ...(inngestHandler ? { inngestHandler } : {}),
   }),
 );

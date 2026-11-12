@@ -34,6 +34,10 @@ export interface AppDeps {
   hosts?: string[];
   /** Called after an approval decision has committed. The gate (S1-3) starts the executor from here. */
   onApprovalDecided?: (d: ApprovalDecision) => Promise<void> | void;
+  /** Called after the kill switch changes. On means stop what is running and drop what is queued. */
+  onKillSwitch?: (on: boolean) => Promise<void> | void;
+  /** Sends the approved emails the kill switch or a cap was holding. Returns how many it tried. */
+  onReleaseHeld?: () => Promise<number> | number;
 }
 
 /**
@@ -86,7 +90,7 @@ export function createApp(deps?: AppDeps) {
   });
 
   if (deps.bus && deps.dispatcher) {
-    app.route('/api', apiRoutes({ workspaceId: deps.workspaceId, dispatcher: deps.dispatcher, bus: deps.bus, onApprovalDecided: deps.onApprovalDecided }));
+    app.route('/api', apiRoutes({ workspaceId: deps.workspaceId, dispatcher: deps.dispatcher, bus: deps.bus, onApprovalDecided: deps.onApprovalDecided, onKillSwitch: deps.onKillSwitch, onReleaseHeld: deps.onReleaseHeld }));
   }
   if (deps.tokens && deps.store) app.route('/mcp', mcpRoutes({ tokens: deps.tokens, store: deps.store }));
   if (deps.inngestHandler) app.on(['GET', 'POST', 'PUT'], '/inngest', deps.inngestHandler);

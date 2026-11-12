@@ -3,6 +3,7 @@ import path from 'node:path';
 import { serve } from '@hono/node-server';
 import { Hono } from 'hono';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { createApp } from '../src/app';
 import { Bus } from '../src/bus';
 import { agentNew } from '../src/commands/agent-new';
 import { withWorkspace } from '../src/db/tenant';
@@ -10,7 +11,8 @@ import { DbOsStore } from '../src/harness/db-os-store';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { agentWorkDir } from '../src/paths';
 import { checkoutTask, executeRun, reapStaleRuns, type LoopDeps } from '../src/harness/loop';
-import type { OsStore, ProposedEmail } from '../src/harness/os-tools';
+import { stopEverything } from '../src/harness/kill-switch';
+import { MemoryOsStore, type OsStore, type ProposedEmail } from '../src/harness/os-tools';
 import { RunTokens, type RunScope } from '../src/harness/run-tokens';
 import { mcpRoutes } from '../src/routes/mcp';
 import { createCliRuntime } from '../src/runtimes/cli';
@@ -30,14 +32,18 @@ let starts = 0;
 function countingRuntime(): Runtime {
   const inner = () =>
     createCliRuntime('claude-cli', { command: { command: process.execPath, prefixArgs: [fake, 'claude', mode] }, baseEnv: { ...process.env, RESEND_API_KEY: 'secret' } });
+  // Each run gets its own runtime, so cancelling a run must go to the same one that started it.
+  const live = new Map<string, Runtime>();
   return {
     name: 'claude-cli',
     canResume: true,
     start(req: RunRequest): AsyncIterable<RunEvent> {
       starts++;
-      return inner().start(req);
+      const rt = inner();
+      live.set(req.runId, rt);
+      return rt.start(req);
     },
-    cancel: async () => undefined,
+    cancel: async (runId: string) => live.get(runId)?.cancel(runId),
     health: async () => ({ ok: true }),
   };
 }
@@ -362,6 +368,62 @@ describe('the kill switch in the run loop (S1-1)', () => {
     expect(out.status, JSON.stringify(out)).toBe('succeeded');
     expect(await task(t)).toMatchObject({ status: 'done' });
   });
+});
+
+describe('turning the kill switch on stops everything (S1-5)', () => {
+  const json = { 'content-type': 'application/json' };
+  const setSwitch = (app: ReturnType<typeof createApp>, on: boolean) => app.request('/api/settings', { method: 'PATCH', headers: json, body: JSON.stringify({ killSwitch: on }) });
+  const runStatus = async (taskId: string) => (await withWorkspace(sys.app, ws(), ({ client: c }) => c.query('select status from runs where task_id = $1', [taskId]))).rows.map((r) => r.status as string);
+
+  it('cancels the run in progress, drops the queued requests, starts nothing while it is on, and brings none of it back when it is off', async () => {
+    mode = 'hang';
+    try {
+      const researcher = await agentId('research-researcher');
+      const writer = await agentId('outreach-writer');
+      const running = await addTask(researcher, 'Hangs until stopped');
+      const queued = await addTask(writer, 'Waits behind it');
+      const dispatcher = new LocalDispatcher((e) => executeRun(deps, e.workspaceId, e.agentId, e.trigger), 1); // one at a time, so the second must queue
+      const app = createApp({
+        pool: sys.app,
+        workspaceId: ws(),
+        tokens,
+        store: new MemoryOsStore(),
+        bus,
+        dispatcher,
+        onKillSwitch: async (on) => {
+          if (on) await stopEverything(dispatcher);
+        },
+      });
+
+      starts = 0;
+      await dispatcher.request({ workspaceId: ws(), agentId: researcher, trigger: 'manual' });
+      await dispatcher.request({ workspaceId: ws(), agentId: writer, trigger: 'manual' });
+      for (let i = 0; i < 40 && starts < 1; i++) await new Promise((r) => setTimeout(r, 100));
+      expect(starts).toBe(1); // the first is running (hung); the second is queued behind it
+
+      expect((await setSwitch(app, true)).status).toBe(200);
+      await dispatcher.idle();
+      expect(await runStatus(running)).toEqual(['cancelled']);
+      expect(starts).toBe(1); // the queued request was dropped, not started
+      expect(await runStatus(queued)).toEqual([]);
+
+      // While it is on, a new request starts nothing.
+      await dispatcher.request({ workspaceId: ws(), agentId: writer, trigger: 'manual' });
+      await dispatcher.idle();
+      expect(starts).toBe(1);
+
+      // Off again: nothing that was stopped or dropped comes back by itself.
+      expect((await setSwitch(app, false)).status).toBe(200);
+      await new Promise((r) => setTimeout(r, 600));
+      await dispatcher.idle();
+      expect(starts).toBe(1);
+      expect(await runStatus(queued)).toEqual([]);
+      expect((await task(queued)).status).toBe('todo');
+    } finally {
+      mode = 'mcp';
+      await withWorkspace(sys.app, ws(), ({ client: c }) => c.query('update workspace_settings set kill_switch = 0'));
+    }
+  }, 60_000);
 });
 
 describe('heartbeats and the dispatcher queue (S0-13)', () => {

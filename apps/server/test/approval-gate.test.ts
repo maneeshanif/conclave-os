@@ -45,7 +45,7 @@ afterAll(async () => {
 });
 beforeEach(async () => {
   transport = new CountingTransport();
-  await sql('insert into workspace_settings (workspace_id) values ($1) on conflict (workspace_id) do update set kill_switch = 0, email_daily_cap = 1000', [ws()]);
+  await sql('insert into workspace_settings (workspace_id) values ($1) on conflict (workspace_id) do update set kill_switch = 0, email_daily_cap = 1000, window_hours = 5, window_cap = 100000', [ws()]);
 });
 
 /** One "server process": its own executors and gate, over the same database. */
@@ -220,9 +220,69 @@ describe('the approval gate, in process (S1-3)', () => {
   });
 });
 
+describe('a held email waits for room, then goes (S1-5)', () => {
+  const setCaps = (hours: number, cap: number) => sql('update workspace_settings set window_hours = $1, window_cap = $2', [hours, cap]);
+  const sentRowAgo = async (ms: number) => {
+    const lead = (await sql('insert into leads (workspace_id, email) values ($1, $2) returning id', [ws(), `s-${randomUUID().slice(0, 8)}@x.test`])).rows[0].id;
+    await sql("insert into outreach_messages (workspace_id, lead_id, status, sent_at) values ($1, $2, 'sent', now() - ($3 || ' milliseconds')::interval)", [ws(), lead, String(ms)]);
+  };
+
+  it('retries by itself when the window opens, and sends once', async () => {
+    await sql("delete from outreach_messages where status = 'sent'");
+    await setCaps(1, 1); // one email per hour
+    await sentRowAgo(3600_000 - 1500); // sent 1h minus 1.5s ago: the window opens in about 1.5 seconds
+    const a = await newApproval({ status: 'approved' });
+    const p = process_();
+    await p.gate.decided({ workspaceId: ws(), approvalId: a.id, approved: true });
+    expect(sentFor(a.id)).toBe(0);
+    expect(await statusOf(a.id)).toBe('approved'); // held, not failed
+    expect(p.gate.holding()).toContain(a.id);
+
+    for (let i = 0; i < 40 && !sentFor(a.id); i++) await tick(250);
+    expect(sentFor(a.id)).toBe(1);
+    expect(await statusOf(a.id)).toBe('executed');
+    expect(p.gate.holding()).not.toContain(a.id);
+    await tick(600);
+    expect(sentFor(a.id)).toBe(1); // and only once
+  }, 30_000);
+
+  it('holds once however often it is asked, and a restart finds the held email again', async () => {
+    await sql("delete from outreach_messages where status = 'sent'");
+    await setCaps(1, 1);
+    await sentRowAgo(60_000); // the window will not open for nearly an hour
+    const a = await newApproval({ status: 'approved' });
+    const first = process_();
+    const d = { workspaceId: ws(), approvalId: a.id, approved: true };
+    await first.gate.decided(d);
+    await first.gate.decided(d);
+    expect(first.gate.holding().filter((id) => id === a.id)).toHaveLength(1);
+    first.gate.stop(); // the process dies; the timer is gone
+
+    const second = process_();
+    const report = await second.gate.recover();
+    expect(report.held.map((h) => h.id)).toContain(a.id);
+    expect(second.gate.holding()).toContain(a.id);
+    expect(sentFor(a.id)).toBe(0);
+    await setCaps(5, 100000);
+  });
+
+  it('a held email whose approval is rejected or expired in the meantime is never sent', async () => {
+    await sql("delete from outreach_messages where status = 'sent'");
+    await setCaps(1, 1);
+    await sentRowAgo(3600_000 - 1500);
+    const a = await newApproval({ status: 'approved' });
+    const p = process_();
+    await p.gate.decided({ workspaceId: ws(), approvalId: a.id, approved: true });
+    await sql("update approvals set status = 'failed' where id = $1", [a.id]); // something else ended it
+    await tick(2500);
+    expect(sentFor(a.id)).toBe(0);
+    await setCaps(5, 100000);
+  }, 30_000);
+});
+
 /** A stand-in for Inngest's `step`, recording what the function asked for. */
 function fakeStep(decision: { data: { approved: boolean } } | null) {
-  const calls: { kind: 'wait' | 'run'; id: string; opts?: unknown }[] = [];
+  const calls: { kind: 'wait' | 'run' | 'sleep'; id: string; opts?: unknown }[] = [];
   const step: GateStep = {
     async waitForEvent(id, opts) {
       calls.push({ kind: 'wait', id, opts });
@@ -231,6 +291,9 @@ function fakeStep(decision: { data: { approved: boolean } } | null) {
     async run(id, fn) {
       calls.push({ kind: 'run', id });
       return fn();
+    },
+    async sleepUntil(id, until) {
+      calls.push({ kind: 'sleep', id, opts: until });
     },
   };
   return { step, calls };
@@ -308,6 +371,42 @@ describe('the approval gate on Inngest (S1-3)', () => {
       { name: 'approval/requested', id: `approval-requested:${a.id}`, data: { approvalId: a.id, workspaceId: ws() } },
       { name: 'approval/decided', data: { approvalId: a.id, workspaceId: ws(), approved: true } },
     ]);
+  });
+
+  it('held for room: sleeps until then and executes again, as its own durable steps', async () => {
+    const log: string[] = [];
+    const until = new Date(Date.now() + 3 * 3600_000);
+    const results = [{ status: 'held', until }, { status: 'held', until }, { status: 'executed' }];
+    const ops: GateOps = {
+      execute: async (id) => {
+        log.push(`execute:${id}`);
+        return results.shift();
+      },
+      expire: async () => undefined,
+    };
+    const { step, calls } = fakeStep({ data: { approved: true } });
+    expect(await approvalGateHandler(ops)({ event, step })).toEqual({ status: 'executed' });
+    expect(log).toEqual(['execute:appr-1', 'execute:appr-1', 'execute:appr-1']);
+    expect(calls.filter((c) => c.kind !== 'wait').map((c) => `${c.kind}:${c.id}`)).toEqual([
+      'run:execute', 'sleep:wait-for-room-1', 'run:execute-1', 'sleep:wait-for-room-2', 'run:execute-2',
+    ]);
+    expect(calls.find((c) => c.id === 'wait-for-room-1')!.opts).toEqual(until);
+  });
+
+  it('held for room: accepts the time back as text, because Inngest hands step results back as JSON', async () => {
+    const until = new Date(Date.now() + 3600_000);
+    const results = [{ status: 'held', until: until.toISOString() }, { status: 'executed' }];
+    const ops: GateOps = { execute: async () => results.shift(), expire: async () => undefined };
+    const { step, calls } = fakeStep({ data: { approved: true } });
+    await approvalGateHandler(ops)({ event, step });
+    expect(calls.find((c) => c.kind === 'sleep')!.opts).toEqual(until);
+  });
+
+  it('held for room: gives up waiting after a bounded number of tries instead of looping forever', async () => {
+    const ops: GateOps = { execute: async () => ({ status: 'held', until: new Date(Date.now() + 1000) }), expire: async () => undefined };
+    const { step, calls } = fakeStep({ data: { approved: true } });
+    expect(await approvalGateHandler(ops)({ event, step })).toEqual({ status: 'held' });
+    expect(calls.filter((c) => c.kind === 'sleep').length).toBeLessThanOrEqual(100);
   });
 
   it('on start, asks again for every pending approval, expires the old ones, and recovers approved emails', async () => {

@@ -36,6 +36,20 @@
       "when": 1794497482808,
       "tag": "0004_leads_email_unique",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1794498180161,
+      "tag": "0005_send_window",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1794498196763,
+      "tag": "0006_send_window_limits",
+      "breakpoints": true
     }
   ]
 }

@@ -13,6 +13,8 @@ import type { ApprovalDecision } from '../routes/approvals';
  * anything: the executor does, after claiming the approval once.
  */
 export const DECISION_TIMEOUT_MS = 3 * 24 * 60 * 60 * 1000;
+/** setTimeout cannot wait longer than this (about 24.8 days). */
+const MAX_TIMER_MS = 2 ** 31 - 1;
 
 /** What a gate does to an approval, whichever engine drives it. */
 export interface GateOps {
@@ -26,6 +28,7 @@ export interface GateOps {
 export interface GateStep {
   waitForEvent(id: string, opts: { event: string; timeout: string | number; match: string }): Promise<{ data: { approved: boolean } } | null>;
   run<T>(id: string, fn: () => Promise<T>): Promise<T>;
+  sleepUntil(id: string, until: Date): Promise<void>;
 }
 
 /**
@@ -42,14 +45,29 @@ export function approvalGateHandler(ops: GateOps) {
       return { status: 'expired' as const };
     }
     if (!decision.data.approved) return { status: 'rejected' as const };
-    await step.run('execute', () => ops.execute(approvalId));
-    return { status: 'executed' as const };
+    // The executor says "held" when a send cap is reached: the email stays approved and is tried again when there
+    // is room. Each try and each sleep is its own durable step, so none repeats on a replay.
+    for (let n = 0; n <= MAX_HOLD_RETRIES; n++) {
+      const result = await step.run(n === 0 ? 'execute' : `execute-${n}`, () => ops.execute(approvalId));
+      if (!isHeld(result)) return { status: 'executed' as const };
+      if (n === MAX_HOLD_RETRIES) break;
+      await step.sleepUntil(`wait-for-room-${n + 1}`, new Date(result.until));
+    }
+    return { status: 'held' as const };
   };
+}
+
+/** How many times one approval waits for room before the function gives up and leaves it approved for recovery. */
+const MAX_HOLD_RETRIES = 100;
+
+/** The executor's answer when a send cap is reached. `until` is a Date here and text after Inngest stores a step result. */
+function isHeld(r: unknown): r is { status: 'held'; until: Date | string } {
+  return typeof r === 'object' && r !== null && (r as { status?: unknown }).status === 'held' && (r as { until?: unknown }).until !== undefined;
 }
 
 export interface GateExecutors {
   run(approvalId: string): Promise<unknown>;
-  recover(): Promise<{ resumed: string[]; unknown: string[] }>;
+  recover(): Promise<{ resumed: string[]; unknown: string[]; held?: { id: string; until: Date }[] }>;
 }
 
 export interface RecoverReport {
@@ -61,6 +79,8 @@ export interface RecoverReport {
   resumed: string[];
   /** Emails left mid-send by the last process: marked failed, never resent. */
   unknown: string[];
+  /** Approved emails over a send cap: still approved, tried again when there is room. */
+  held: { id: string; until: Date }[];
 }
 
 export interface ApprovalGate {
@@ -110,6 +130,8 @@ export interface LocalGateOptions extends Deps {
 export class LocalApprovalGate implements ApprovalGate {
   readonly name = 'local' as const;
   private readonly waits = new Map<string, { timer: NodeJS.Timeout; deadline: number }>();
+  /** One timer per approved email that is over a cap, to try it again when there is room. */
+  private readonly holds = new Map<string, NodeJS.Timeout>();
   private readonly timeoutMs: number;
   private readonly onError: (err: unknown) => void;
 
@@ -122,6 +144,11 @@ export class LocalApprovalGate implements ApprovalGate {
     return [...this.waits.keys()];
   }
 
+  /** Approved emails waiting for room under a send cap. */
+  holding(): string[] {
+    return [...this.holds.keys()];
+  }
+
   remainingMs(approvalId: string): number {
     const w = this.waits.get(approvalId);
     return w ? Math.max(0, w.deadline - Date.now()) : 0;
@@ -130,6 +157,8 @@ export class LocalApprovalGate implements ApprovalGate {
   stop(): void {
     for (const w of this.waits.values()) clearTimeout(w.timer);
     this.waits.clear();
+    for (const t of this.holds.values()) clearTimeout(t);
+    this.holds.clear();
   }
 
   private startWait(approvalId: string, ms: number): void {
@@ -170,11 +199,28 @@ export class LocalApprovalGate implements ApprovalGate {
   async decided(d: ApprovalDecision): Promise<void> {
     this.clear(d.approvalId);
     if (!d.approved) return;
+    await this.execute(d.approvalId);
+  }
+
+  /** Runs the executor once. If a send cap holds the email, tries again when there is room. Never throws. */
+  private async execute(approvalId: string): Promise<void> {
     try {
-      await this.o.executors.run(d.approvalId);
+      const result = await this.o.executors.run(approvalId);
+      if (isHeld(result)) this.hold(approvalId, new Date(result.until));
     } catch (err) {
       this.onError(err);
     }
+  }
+
+  private hold(approvalId: string, until: Date): void {
+    if (this.holds.has(approvalId)) return; // one timer per email, however often it is held
+    const ms = Math.min(Math.max(1000, until.getTime() - Date.now()), MAX_TIMER_MS);
+    const timer = setTimeout(() => {
+      this.holds.delete(approvalId);
+      void this.execute(approvalId);
+    }, ms);
+    timer.unref();
+    this.holds.set(approvalId, timer);
   }
 
   async recover(): Promise<RecoverReport> {
@@ -190,8 +236,9 @@ export class LocalApprovalGate implements ApprovalGate {
         waiting.push(row.id);
       }
     }
-    const { resumed, unknown } = await this.o.executors.recover();
-    return { waiting, expired, resumed, unknown };
+    const { resumed, unknown, held = [] } = await this.o.executors.recover();
+    for (const h of held) this.hold(h.id, h.until);
+    return { waiting, expired, resumed, unknown, held };
   }
 }
 
@@ -224,8 +271,8 @@ export function createInngestGate(o: InngestGateOptions): ApprovalGate {
           waiting.push(row.id);
         }
       }
-      const { resumed, unknown } = await o.executors.recover();
-      return { waiting, expired, resumed, unknown };
+      const { resumed, unknown, held = [] } = await o.executors.recover();
+      return { waiting, expired, resumed, unknown, held };
     },
   };
   return gate;

@@ -2,6 +2,7 @@ import type pg from 'pg';
 import { z } from 'zod';
 import type { Bus } from '../bus';
 import { withWorkspace } from '../db/tenant';
+import { readSettings, startOfToday, startOfTomorrow, type Settings } from '../settings';
 import { checkClaims, companyMarkdown, emailFooter, isSuppressed } from './policy';
 import type { EmailTransport } from './transport';
 
@@ -28,12 +29,43 @@ export type ExecResult =
   | { status: 'executed'; ref: string }
   | { status: 'already_claimed' }
   | { status: 'kill_switch' }
+  /** Over a send cap. Not claimed and not failed: still approved, and it goes when there is room (`until`). */
+  | { status: 'held'; reason: string; until: Date }
   | { status: 'refused'; reason: string }
   | { status: 'failed'; reason: string };
 
-async function killSwitchOn(c: pg.PoolClient): Promise<boolean> {
-  const r = await c.query<{ kill_switch: number }>('select kill_switch from workspace_settings');
-  return (r.rows[0]?.kill_switch ?? 0) === 1;
+type Held = Extract<ExecResult, { status: 'held' }>;
+
+/**
+ * Is there room to send one more? Two caps, both settings: a rolling window (follow-ups count like first
+ * emails) and a per-day cap. Emails mid-send count too, so a burst cannot all see room that only one can use.
+ * Returns the hold, with when it opens, or null if there is room. Runs inside the claim's transaction, under the
+ * workspace send lock.
+ */
+async function capHold(c: pg.PoolClient, s: Settings, now: Date): Promise<Held | null> {
+  const windowMs = s.windowHours * 3_600_000;
+  const sentRows = await c.query<{ sent_at: Date }>(
+    "select sent_at from outreach_messages where channel = 'email' and status = 'sent' and sent_at >= $1 order by sent_at",
+    [new Date(now.getTime() - windowMs)],
+  );
+  const sent = sentRows.rows.map((r) => r.sent_at);
+  const inFlight = (await c.query<{ n: number }>("select count(*)::int as n from approvals where kind = 'email.send' and status = 'executing'")).rows[0]!.n;
+
+  let hold: Held | null = null;
+  const used = sent.length + inFlight;
+  if (used >= s.windowCap) {
+    // The send that must leave the window for there to be room is the (used - cap + 1)th oldest. If it is one
+    // that is still mid-send there is no time to give yet, so look again soon.
+    const idx = used - s.windowCap;
+    const until = idx < sent.length ? new Date(sent[idx]!.getTime() + windowMs) : new Date(now.getTime() + 60_000);
+    hold = { status: 'held', reason: `the limit of ${s.windowCap} emails in ${s.windowHours} hours is reached`, until };
+  }
+  const today = await c.query<{ n: number }>("select count(*)::int as n from outreach_messages where channel = 'email' and status = 'sent' and sent_at >= $1", [startOfToday(now)]);
+  if (today.rows[0]!.n + inFlight >= s.emailDailyCap) {
+    const until = startOfTomorrow(now);
+    if (!hold || until > hold.until) hold = { status: 'held', reason: `today's limit of ${s.emailDailyCap} emails is reached`, until };
+  }
+  return hold;
 }
 
 /**
@@ -46,17 +78,27 @@ export async function executeEmail(deps: ExecutorDeps, approvalId: string): Prom
   const ws = deps.workspaceId;
   const now = deps.now ?? (() => new Date());
 
-  // 1. Claim, unless the kill switch is on. Both in one transaction.
-  const claimed = await withWorkspace(deps.pool, ws, async ({ client: c }) => {
-    if (await killSwitchOn(c)) return 'kill_switch' as const;
+  // 1. Claim, unless the kill switch is on or a cap is reached. All in one transaction.
+  const outcome = await withWorkspace(deps.pool, ws, async ({ client: c }) => {
+    const settings = await readSettings(c, ws);
+    if (settings.killSwitch) return { kind: 'kill_switch' as const };
+    // Only an approval that is approved is ours to send, and a cap is no reason to touch one that is not.
+    const mine = await c.query("select id from approvals where id = $1 and status = 'approved' and kind = 'email.send' for update", [approvalId]);
+    if (!mine.rows[0]) return { kind: 'none' as const };
+    // One lock per workspace around "count what has gone out, then claim", so parallel sends cannot overshoot.
+    await c.query('select pg_advisory_xact_lock(hashtext($1))', [`email-send:${ws}`]);
+    const hold = await capHold(c, settings, now());
+    if (hold) return { kind: 'held' as const, hold };
     const r = await c.query<{ payload: unknown; edited_payload: unknown }>(
       "update approvals set status = 'executing' where id = $1 and status = 'approved' and kind = 'email.send' returning payload, edited_payload",
       [approvalId],
     );
-    return r.rows[0] ?? null;
+    return r.rows[0] ? { kind: 'claimed' as const, row: r.rows[0] } : { kind: 'none' as const };
   });
-  if (claimed === 'kill_switch') return { status: 'kill_switch' };
-  if (!claimed) return { status: 'already_claimed' };
+  if (outcome.kind === 'kill_switch') return { status: 'kill_switch' };
+  if (outcome.kind === 'held') return outcome.hold;
+  if (outcome.kind === 'none') return { status: 'already_claimed' };
+  const claimed = outcome.row;
 
   const finish = async (status: 'executed' | 'failed', result: Record<string, unknown>, outreach: 'sent' | 'refused' | 'failed', item?: { kind: string; title: string; body: string }) => {
     await withWorkspace(deps.pool, ws, async ({ client: c }) => {
@@ -94,11 +136,7 @@ export async function executeEmail(deps: ExecutorDeps, approvalId: string): Prom
   const state = await withWorkspace(deps.pool, ws, async ({ client: c }) => {
     const lead = await c.query<{ email: string | null; stage: string }>('select email, stage from leads where id = $1', [p.leadId]);
     const supp = await c.query<{ value: string }>('select value from suppression');
-    const settings = await c.query<{ email_daily_cap: number }>('select email_daily_cap from workspace_settings');
-    const today = new Date(now());
-    today.setHours(0, 0, 0, 0);
-    const sent = await c.query<{ n: number }>("select count(*)::int as n from outreach_messages where channel = 'email' and status = 'sent' and sent_at >= $1", [today]);
-    return { lead: lead.rows[0], suppressed: supp.rows.map((r) => r.value), cap: settings.rows[0]?.email_daily_cap ?? 20, sentToday: sent.rows[0]?.n ?? 0 };
+    return { lead: lead.rows[0], suppressed: supp.rows.map((r) => r.value) };
   });
 
   // Executors send only to recipients already in your tables (SPEC 15, prompt injection).
@@ -106,7 +144,6 @@ export async function executeEmail(deps: ExecutorDeps, approvalId: string): Prom
   if (!state.lead.email || state.lead.email.toLowerCase() !== p.to.toLowerCase()) return refuse('the address does not match the lead on record');
   if (state.lead.stage === 'do_not_contact') return refuse('the lead is marked do not contact');
   if (isSuppressed(p.to, state.suppressed)) return refuse('the address is on the suppression list');
-  if (state.sentToday >= state.cap) return refuse(`today's email cap of ${state.cap} is reached; approve it again tomorrow`);
   const claims = checkClaims(`${p.subject}\n${p.body}`, await companyMarkdown(deps.companyRoot));
   if (!claims.ok) return refuse(`blocked claims: ${claims.reasons.join('; ')}`);
   const footer = await emailFooter(deps.companyRoot);
@@ -141,7 +178,7 @@ export async function executeEmail(deps: ExecutorDeps, approvalId: string): Prom
  * ran are executed now. An email left `executing` may or may not have gone out, so it is never
  * resent: it is marked failed and raised to a person.
  */
-export async function recoverApprovals(deps: ExecutorDeps): Promise<{ resumed: string[]; unknown: string[] }> {
+export async function recoverApprovals(deps: ExecutorDeps): Promise<{ resumed: string[]; unknown: string[]; held: { id: string; until: Date }[] }> {
   const ws = deps.workspaceId;
   const { approved, executing } = await withWorkspace(deps.pool, ws, async ({ client: c }) => {
     const a = await c.query<{ id: string }>("select id from approvals where kind = 'email.send' and status = 'approved' order by decided_at");
@@ -155,6 +192,11 @@ export async function recoverApprovals(deps: ExecutorDeps): Promise<{ resumed: s
       await c.query("insert into action_items (workspace_id, kind, title, body, approval_id) values ($1, 'send_unknown', 'An email may or may not have been sent', 'The server stopped while this email was being sent. It was not resent. Check the provider before approving a new copy.', $2)", [ws, id]);
     });
   }
-  for (const id of approved) await executeEmail(deps, id);
-  return { resumed: approved, unknown: executing };
+  // In the order they were decided. One that is over a cap stays approved and is reported, so the gate can try again when there is room.
+  const held: { id: string; until: Date }[] = [];
+  for (const id of approved) {
+    const r = await executeEmail(deps, id);
+    if (r.status === 'held') held.push({ id, until: r.until });
+  }
+  return { resumed: approved, unknown: executing, held };
 }

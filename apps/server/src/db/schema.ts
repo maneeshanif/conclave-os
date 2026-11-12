@@ -425,9 +425,17 @@ export const workspaceSettings = pgTable('workspace_settings', {
   workspaceId: uuid('workspace_id').primaryKey().references(() => workspaces.id),
   killSwitch: smallint('kill_switch').notNull().default(0), // 1 = everything stopped
   killSwitchAt: timestamp('kill_switch_at', { withTimezone: true }),
-  emailDailyCap: integer('email_daily_cap').notNull().default(20),
+  // Sends are capped two ways, both settings. A rolling window (default 30 in 5 hours; follow-ups count) and a per-day cap.
+  // An email over a cap is held, not failed, and goes out when there is room.
+  windowHours: integer('window_hours').notNull().default(5),
+  windowCap: integer('window_cap').notNull().default(30),
+  emailDailyCap: integer('email_daily_cap').notNull().default(100),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
-});
+},
+(t) => [
+  // Sanity limits, the same ones the API enforces: a cap of zero or a window of a year is a mistake, not a setting.
+  check('workspace_settings_limits_ck', sql`${t.windowHours} between 1 and 168 and ${t.windowCap} between 1 and 100000 and ${t.emailDailyCap} between 1 and 100000`),
+]);
 
 /** Things that need a person: a failed executor, a send of unknown outcome, an agent's question. */
 export const actionItems = pgTable(

@@ -2,6 +2,16 @@
 
 Newest first. One entry per decision: what, why, and what it replaced.
 
+## 2026-11-12 (S1-5: settings, the kill switch and the send caps)
+
+- **Two caps, both settings.** A rolling window, 30 emails in 5 hours by default (window_hours, window_cap), where follow-ups count like first emails; and a per-day cap, which I set to 100 by default because the answers fix the window at 30 per 5 hours but give no daily figure (a day holds a bit under five windows). Anees can change all three at any time with PATCH /api/settings. Database checks keep them sane: 1 to 168 hours, 1 to 100000 emails.
+- **Over a cap an email is held, not failed.** It is not claimed, stays approved, creates no action item, and goes out when there is room: the executor says when (the moment the oldest send leaves the window, or the next local midnight for the daily cap, whichever is later). The in-process gate keeps one timer per held email; the Inngest function sleeps until then and tries again as its own durable steps, up to 100 times. Recovery reports what it held. Replaces the earlier rule that a daily cap fails the approval with "approve it again tomorrow", which a terminal state could never allow.
+- **Checking the cap and claiming the email are one step.** Under a workspace-wide lock, inside the claim transaction, so a burst of parallel sends cannot all see the same free slot; emails mid-send count against the cap. Six parallel sends against a cap of two sent exactly two.
+- **The kill switch has four effects and a boundary.** On: the run loop refuses new runs (already so), the executor claims nothing, and, after the commit, running runs are cancelled and queued requests dropped (harness/kill-switch.ts, wired into index.ts). It also tells the inbox and writes the audit log with before and after. Off: it only clears the switch. Work that was stopped or dropped does not come back, and approved emails it was holding are NOT sent as a side effect; POST /api/settings/release-held sends them on request, and not while the switch is on. Otherwise a stale decision could leave the building the moment someone said all clear.
+- **The settings row is created on first read,** by the API; before that, every reader uses the defaults. Nothing created it before, so the executor had been running on a hard-coded fallback.
+- **A routing fix:** the "malformed id is a 404" guard treated /settings/release-held as an id and rejected it. Settings is exempt.
+- **Not wired yet:** onReleaseHeld in index.ts (with the gate and the executor, in S1-7).
+
 ## 2026-11-12 (S1-4: leads and the suppression list)
 
 - **One lead per address, however it is typed.** Addresses are trimmed and lowercased, and a unique index on `(workspace, lower(email))` (migration 0004) is the backstop; creating uses `on conflict do nothing`, so two creates for one address at the same moment give one lead and one 409 that names the existing lead. Leads without an address are unlimited.

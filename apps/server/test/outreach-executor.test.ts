@@ -53,7 +53,7 @@ beforeAll(async () => {
 afterAll(async () => sys?.close());
 
 beforeEach(async () => {
-  await sql('insert into workspace_settings (workspace_id) values ($1) on conflict (workspace_id) do update set kill_switch = 0, email_daily_cap = 20', [ws()]);
+  await sql('insert into workspace_settings (workspace_id) values ($1) on conflict (workspace_id) do update set kill_switch = 0, email_daily_cap = 1000, window_hours = 5, window_cap = 100000', [ws()]);
   await writeFile(path.join(companyRoot, 'COMPANY.md'), COMPANY_MD);
 });
 
@@ -206,18 +206,135 @@ describe('the email executor (SPEC 6)', () => {
       expect(t.sent).toHaveLength(0);
     });
 
-    it("refuses when today's cap is reached", async () => {
-      const sentToday = (await sql("select count(*)::int as n from outreach_messages where status = 'sent' and sent_at >= date_trunc('day', now())")).rows[0].n as number;
-      await sql('update workspace_settings set email_daily_cap = $1', [Math.max(sentToday, 1)]);
-      if (sentToday === 0) {
-        const lead = await newLead();
-        const first = await newApproval(lead);
-        await executeEmail(deps(new CountingTransport()), first);
+  });
+
+  describe('the send caps hold an email, they do not fail it (S1-5)', () => {
+    const resetCaps = async (windowHours = 5, windowCap = 1000, daily = 1000) => {
+      // An email left mid-send by an earlier test would count against the cap, as it should; start clean.
+      await sql("update approvals set status = 'failed' where kind = 'email.send' and status = 'executing'");
+      await sql('update workspace_settings set window_hours = $1, window_cap = $2, email_daily_cap = $3, kill_switch = 0', [windowHours, windowCap, daily]);
+    };
+    /** Records n emails as already sent, `hoursAgo` hours back, for follow-ups too (step > 1). */
+    async function alreadySent(n: number, hoursAgo: number, step = 1) {
+      const lead = await newLead();
+      for (let i = 0; i < n; i++) {
+        await sql("insert into outreach_messages (workspace_id, lead_id, channel, step, status, sent_at) values ($1, $2, 'email', $3, 'sent', now() - ($4 || ' minutes')::interval)", [ws(), lead, step, String(Math.round(hoursAgo * 60))]);
       }
+    }
+    const clearSent = () => sql("delete from outreach_messages where status = 'sent'");
+
+    it('holds the 31st email inside five hours, leaves it approved and unclaimed, and sends it once the window has moved', async () => {
+      await clearSent();
+      await resetCaps(5, 30, 1000);
+      await alreadySent(30, 1);
+      const t = new CountingTransport();
+      const id = await newApproval(await newLead());
+      const held = await executeEmail(deps(t), id);
+      expect(held).toMatchObject({ status: 'held', reason: expect.stringMatching(/30 emails in 5 hours/) });
+      expect(t.sent).toHaveLength(0);
+      expect((await approval(id)).status).toBe('approved'); // not claimed, not failed
+      expect(await items(id)).toEqual([]); // nothing for a person to do: it will go by itself
+      // It opens when the oldest of the 30 leaves the five-hour window, 4 hours from now.
+      const until = (held as { until: Date }).until.getTime();
+      expect(until - Date.now()).toBeGreaterThan(3.9 * 3600_000);
+      expect(until - Date.now()).toBeLessThan(4.1 * 3600_000);
+
+      // The window moves: the 30 were sent six hours ago instead.
+      await sql("update outreach_messages set sent_at = now() - interval '6 hours' where status = 'sent'");
+      expect((await executeEmail(deps(t), id)).status).toBe('executed');
+      expect(t.sent).toHaveLength(1);
+    });
+
+    it('counts follow-ups in the same window as first emails', async () => {
+      await clearSent();
+      await resetCaps(5, 3, 1000);
+      await alreadySent(2, 1, 1);
+      await alreadySent(1, 1, 3); // a third follow-up
+      const t = new CountingTransport();
+      expect((await executeEmail(deps(t), await newApproval(await newLead()))).status).toBe('held');
+      expect(t.sent).toHaveLength(0);
+    });
+
+    it('does not count what failed or was refused', async () => {
+      await clearSent();
+      await resetCaps(5, 2, 1000);
+      const lead = await newLead();
+      await sql("insert into outreach_messages (workspace_id, lead_id, status, sent_at) values ($1, $2, 'failed', now()), ($1, $2, 'refused', now()), ($1, $2, 'queued', now())", [ws(), lead]);
+      const t = new CountingTransport();
+      expect((await executeEmail(deps(t), await newApproval(await newLead()))).status).toBe('executed');
+    });
+
+    it("holds until tomorrow when today's limit is reached, whatever the window says", async () => {
+      await clearSent();
+      await resetCaps(5, 1000, 2);
+      await alreadySent(2, 8); // sent this morning, long before the five hours
+      const midnight = new Date();
+      midnight.setHours(24, 0, 0, 0);
+      const t = new CountingTransport();
+      const out = await executeEmail(deps(t, { now: () => new Date(Date.now()) }), await newApproval(await newLead()));
+      // "Eight hours ago" may fall on yesterday if it is early in the day; the cap only bites for today's sends.
+      if (out.status === 'held') {
+        expect((out as { reason: string }).reason).toMatch(/today's limit of 2/);
+        expect((out as { until: Date }).until.getTime()).toBe(midnight.getTime());
+        expect(t.sent).toHaveLength(0);
+      } else {
+        expect(new Date().getHours()).toBeLessThan(8);
+      }
+    });
+
+    it('lets a burst of parallel sends through only as far as the cap, because the check and the claim are one step', async () => {
+      await clearSent();
+      await resetCaps(5, 2, 1000);
+      const t = new CountingTransport();
+      const ids = await Promise.all(Array.from({ length: 6 }, async () => newApproval(await newLead())));
+      const results = await Promise.all(ids.map((id) => executeEmail(deps(t), id)));
+      expect(results.filter((r) => r.status === 'executed')).toHaveLength(2);
+      expect(results.filter((r) => r.status === 'held')).toHaveLength(4);
+      expect(t.sent).toHaveLength(2);
+      // The four held ones are still approved, in the order they were decided, ready to go when there is room.
+      const stillApproved = (await sql("select count(*)::int as n from approvals where id = any($1) and status = 'approved'", [ids])).rows[0].n;
+      expect(stillApproved).toBe(4);
+    });
+
+    it('counts an email that is mid-send, so it cannot be overtaken', async () => {
+      await clearSent();
+      await resetCaps(5, 1, 1000);
+      await newApproval(await newLead(), { status: 'executing' });
       const t = new CountingTransport();
       const out = await executeEmail(deps(t), await newApproval(await newLead()));
-      expect(out).toMatchObject({ status: 'refused', reason: expect.stringMatching(/cap of \d+ is reached/) });
+      expect(out.status).toBe('held');
       expect(t.sent).toHaveLength(0);
+    });
+
+    it('puts the kill switch ahead of the caps: it is stopped, not held', async () => {
+      await clearSent();
+      await resetCaps(5, 1, 1000);
+      await alreadySent(1, 1);
+      await sql('update workspace_settings set kill_switch = 1');
+      const out = await executeEmail(deps(new CountingTransport()), await newApproval(await newLead()));
+      expect(out).toEqual({ status: 'kill_switch' });
+    });
+
+    it('does not hold an approval that is not approved: a cap is no reason to touch it', async () => {
+      await clearSent();
+      await resetCaps(5, 1, 1000);
+      await alreadySent(1, 1);
+      const id = await newApproval(await newLead(), { status: 'rejected' });
+      expect(await executeEmail(deps(new CountingTransport()), id)).toEqual({ status: 'already_claimed' });
+    });
+
+    it('recovery reports what it had to hold, and sends the rest', async () => {
+      await clearSent();
+      await resetCaps(5, 2, 1000);
+      // Emails that earlier tests left held are still approved, and recovery rightly sends the oldest decisions
+      // first, so they would take the room. Start from none.
+      await sql("update approvals set status = 'failed' where kind = 'email.send' and status = 'approved'");
+      const t = new CountingTransport();
+      const ids = [await newApproval(await newLead(), { status: 'approved' }), await newApproval(await newLead(), { status: 'approved' }), await newApproval(await newLead(), { status: 'approved' })];
+      const out = await recoverApprovals(deps(t));
+      expect(t.sent.filter((m) => ids.includes(m.id))).toHaveLength(2);
+      expect(out.held.filter((h) => ids.includes(h.id))).toHaveLength(1);
+      expect(out.held[0]!.until).toBeInstanceOf(Date);
     });
   });
 
