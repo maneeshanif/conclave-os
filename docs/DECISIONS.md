@@ -2,6 +2,15 @@
 
 Newest first. One entry per decision: what, why, and what it replaced.
 
+## 2026-11-12 (v5: talent catalog and the office world)
+
+- **Hiring draws from a talent catalog.** Personas are imported from Agency Agents (MIT) and the Paperclip companies at a pinned commit, then framed with a template and the company rules. A hire is persona + frame + company. SPEC 9.
+- **Bake-off before every hire.** Up to three candidates run the same trial task and are scored, boundaries first. SPEC 9.
+- **Hiring levels H0, H1, H2 and a roster cap.** H0 until a month of scorecards exists. 20 active agents by default. SPEC 9, 19.
+- **Eighteen departments.** Rooms 12 to 18 added: Talent, Design Studio, QA and Testing, Client Success, Finance and Ops, Paid Media, Security and Compliance. All off until their slice. SPEC 4.
+- **The office is a WorkAdventure-style world on Phaser 4.** Replaces Pixi.js. Phaser has tilemaps, cameras and physics built in. No WorkAdventure code or maps: its license is AGPL-3.0 with the Commons Clause, and the OS may be sold. SPEC 12.
+- **Reads and writes Paperclip's company format.** Internally the OS keeps `AGENT.md`, because OpenCode treats any `AGENTS.md` as rules. SPEC 9.
+
 ## 2026-11-12 (v4: model-agnostic)
 
 - **No engine is load-bearing.** The runtime contract is the engine, and each harness is one runtime behind it. Why: Anthropic's docs say Claude Code is not supported on non-Claude models, so a Claude-only engine would tie the OS to one vendor. Replaces "Claude Code is the harness". SPEC 5 (the portability rule), 7.
