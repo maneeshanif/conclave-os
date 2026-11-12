@@ -19,5 +19,11 @@ Things the build parked for you. Each says what to do.
 - Offers and prices for the sales and finance agents (Q12).
 - Meaning of "five-hour limit and follow-ups" for the email cap (Q9).
 - Q38: a conversation about who signs off the med spa safety rules, before any Vespera pilot.
-- On the phone: install Tailscale and Chrome, open the PWA, final check (Q11).
+- **Phone access (Q11), your steps.** The server and the installable app are ready; the phone itself is yours. In order:
+  1. Install Tailscale on the laptop and on the phone and sign in to both with the same account (the build never creates accounts or enters keys).
+  2. On the laptop, turn on HTTPS for your tailnet in the Tailscale admin page, then run `tailscale serve --https=443 http://127.0.0.1:3000` and `tailscale serve --https=3100 http://127.0.0.1:3100` (the web app and the API). Do NOT use `tailscale funnel`: that puts it on the public internet.
+  3. In `.env` set `LOGIN=on` and `PUBLIC_WEB_ORIGIN=https://<your-laptop>.<your-tailnet>.ts.net`. Leave `BIND_HOST` empty: Tailscale reaches the servers on loopback, so nothing needs to listen on another interface. (If you ever set `BIND_HOST`, the server will refuse to start without login and an https origin.)
+  4. Run `pnpm dev`. The server writes a one-time setup code to `owner-setup-code.txt` in your data folder (`~/.conclave-os`). Open the https address on the laptop, go to /login, enter the code and save a passkey. Then on the phone open the same address in Chrome, make a code from the laptop (Devices) for the phone, enter it, and save a passkey there.
+  5. In Chrome on the phone choose "Add to Home screen" / "Install app". Check that /approvals opens and that an approval shows which device decided it. The laptop must stay awake for the phone to work.
+  The layout on an Android profile is already checked by `pnpm run e2e:mobile`; this step is the real-phone check only you can do. Before you switch on remote access, also set Inngest's signing key (see DECISIONS, S1-10): `/inngest` is not behind the login wall.
 - Vercel: log in yourself with the Vercel CLI on the laptop when slice 7 needs it (Q24).

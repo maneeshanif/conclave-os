@@ -23,6 +23,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "jsdom": "^26.1.0",
+    "playwright-core": "^1.65.0",
     "tailwindcss": "^4.3.5"
   }
 }

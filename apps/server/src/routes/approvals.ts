@@ -87,20 +87,23 @@ export function approvalRoutes(deps: { workspaceId: string; bus: Bus; onDecided?
       edited = merged.data;
     }
 
+    // With login on, say which device this came from (SPEC 12). The browser's own description, cut to a sane length.
+    const device = c.get('owner') ? `${(c.req.header('user-agent') ?? 'unknown device').slice(0, 200)} (session ${c.get('owner')!.sessionId.slice(0, 8)})` : null;
     const status = approved ? 'approved' : 'rejected';
-    await q(c, 'update approvals set status = $2, decided_by = $3, decided_at = now(), decision_note = $4, edited_payload = $5 where id = $1', [
+    await q(c, 'update approvals set status = $2, decided_by = $3, decided_at = now(), decision_note = $4, edited_payload = $5, decided_device = $6 where id = $1', [
       id,
       status,
       DECIDER,
       note ?? null,
       edited ? JSON.stringify(edited) : null,
+      device,
     ]);
     if (!approved) await q(c, "update outreach_messages set status = 'rejected' where approval_id = $1 and status = 'queued'", [id]);
     await q(c, "insert into audit_log (workspace_id, actor, action, subject, data) values ($1, $2, 'approval.decided', $3, $4)", [
       ws,
       DECIDER,
       id,
-      JSON.stringify({ kind: a.kind, approved, edited: edited !== null }),
+      JSON.stringify({ kind: a.kind, approved, edited: edited !== null, ...(device ? { device } : {}) }),
     ]);
 
     afterCommit(c, async () => {

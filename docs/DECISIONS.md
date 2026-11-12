@@ -2,6 +2,14 @@
 
 Newest first. One entry per decision: what, why, and what it replaced.
 
+## 2026-11-12 (S1-11: phone access and the installable app)
+
+- **No ACCESS_MODE setting.** The BUILD text named one, but S1-10 already put the rule in one place: BIND_HOST (default loopback) plus LOGIN. The server refuses to start on a non-loopback interface with login off (tested in S1-10). The recommended way to reach the phone is Tailscale Serve in front of the loopback servers, so nothing listens beyond loopback at all and the wall is a second lock. Not a funnel, never a port forward (rule 9).
+- **Installable app:** a manifest (opens on /approvals, standalone, three real PNG icons including a maskable one, drawn by apps/web/scripts/make-icons.mjs with no image library), a theme colour and phone viewport, an offline page, and a service worker for the shell only. The worker never touches the API, the login routes, the event socket, another origin or anything that is not a GET: approvals and sessions are live data. Pages go network-first so nothing is stale; built assets are cache-first (their names are hashed). It registers in a production build only.
+- **Every approval records the device it came from** (SPEC 12): with login on, decided_device holds the browser description and the first 8 characters of the session id, and the audit line carries the same. Null with login off. The column already existed; this fills it.
+- **A browser check on an Android profile** (Pixel 7 size, touch, mobile user agent) against the real production build, with the API faked: no sideways scroll with very long names, Approve and Reject inside the screen and at least 36 px tall, the manifest linked, the worker active, a tap approves, and with the network off the app opens its offline page. Run with `pnpm run e2e:mobile` (it builds the web app first). It is not part of `pnpm test` because it needs a build and a browser; it uses playwright-core with the Chromium already on the laptop.
+- **What only a person can check:** the real phone over Tailscale (steps in NEEDS-YOU). Push notifications are not built; the spec puts them later.
+
 ## 2026-11-12 (S1-10: owner login)
 
 - **Better Auth 1.7 with the passkey plugin,** checked against its current docs and installed types, not the spec sketch. Login is OFF by default and nothing changes locally. LOGIN=on turns on the wall: every /api route and the event socket need a session; only /api/auth/*, /health, the agents' run-token endpoint (/mcp) and Inngest stay open.

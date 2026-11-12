@@ -257,3 +257,23 @@ describe('passkeys (S1-10)', () => {
     expect(((await res.json()) as { rp: { id: string } }).rp.id).toBe('localhost');
   });
 });
+
+describe('which device decided (S1-11)', () => {
+  it('records the device an approval was decided from, on the approval and in the audit log', async () => {
+    const cookie = cookieOf(await enrol(await auth.issueEnrolCode()));
+    const ap = (await sql("insert into approvals (workspace_id, kind, status, payload, dedupe_key) values ($1, 'post.publish', 'pending', '{}', $2) returning id", [ws(), `dev:${Date.now()}`])).rows[0].id as string;
+    const res = await app.request(`/api/approvals/${ap}/decide`, { method: 'POST', headers: { ...json, cookie, 'user-agent': 'Mozilla/5.0 (Linux; Android 14; Pixel 8) Chrome/126' }, body: '{"approved":false}' });
+    expect(res.status).toBe(200);
+    const row = (await sql('select decided_device from approvals where id = $1', [ap])).rows[0];
+    expect(row.decided_device).toContain('Pixel 8');
+    const audit = (await sql("select data from audit_log where subject = $1 and action = 'approval.decided'", [ap])).rows[0].data;
+    expect(audit.device).toContain('Pixel 8');
+  });
+
+  it('records no device when login is off', async () => {
+    const open = createApp({ pool: sys.app, workspaceId: ws(), bus: new Bus(), dispatcher: new LocalDispatcher(async () => ({ status: 'no_task' })) });
+    const ap = (await sql("insert into approvals (workspace_id, kind, status, payload, dedupe_key) values ($1, 'post.publish', 'pending', '{}', $2) returning id", [ws(), `dev2:${Date.now()}`])).rows[0].id as string;
+    expect((await open.request(`/api/approvals/${ap}/decide`, { method: 'POST', headers: json, body: '{"approved":false}' })).status).toBe(200);
+    expect((await sql('select decided_device from approvals where id = $1', [ap])).rows[0].decided_device).toBeNull();
+  });
+});

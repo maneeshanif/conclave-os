@@ -16,7 +16,8 @@
     "agent:new": "tsx --env-file-if-exists=.env packages/cli/src/index.ts agent:new",
     "doctor": "tsx --env-file-if-exists=.env packages/cli/src/index.ts doctor",
     "agent:render": "tsx --env-file-if-exists=.env packages/cli/src/index.ts agent:render",
-    "e2e": "tsx --env-file-if-exists=.env packages/cli/src/index.ts e2e"
+    "e2e": "tsx --env-file-if-exists=.env packages/cli/src/index.ts e2e",
+    "e2e:mobile": "pnpm --filter @conclave/web build && vitest run --config vitest.e2e.config.ts"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

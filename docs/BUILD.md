@@ -144,7 +144,7 @@ Work them in order. Tick each when its test passes.
   Better Auth with passkeys, one owner (Q10), sessions and devices tables. In local mode on 127.0.0.1 nothing changes. A login wall is required before anything listens on another interface (CLAUDE.md rule 9). Check the Better Auth docs for the current API before using it.
   *Test:* with login on, an API call without a session is 401 and with one is 200; the wall cannot be switched off while a non-loopback interface is configured; a session cookie is HttpOnly, Secure when not on loopback, and SameSite.
 
-- [ ] **S1-11 Phone access and the installable app.** SPEC 12; QUESTIONS 11.
+- [x] **S1-11 Phone access and the installable app.** SPEC 12; QUESTIONS 11.
   `ACCESS_MODE` lets the server also answer on a Tailscale address, and only if S1-10's login is on. The web app becomes an installable PWA (manifest, icons, service worker for the shell). Tailscale itself is Anees's step (NEEDS-YOU).
   *Test:* the server refuses to bind a non-loopback address with login off; the manifest and service worker validate; the approvals page lays out on an Android Chrome device profile in Playwright. The real phone check is in NEEDS-YOU.
 
