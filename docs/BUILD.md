@@ -132,7 +132,7 @@ Work them in order. Tick each when its test passes.
   Register the executor with the gate in `index.ts`. Sending requires the footer address from `company/` and a transport; with no footer the approval ends `failed` with that reason and nothing is sent. The outbox is the default transport; Resend is selected only by an explicit setting. Every send records the outcome on `outreach_messages` and in `audit_log`.
   *Test:* an approved email lands in the outbox exactly once; with the footer unset the executor refuses and says why; a blocked claim added after approval is still refused at send time; the outbox is the transport unless the setting says otherwise.
 
-- [ ] **S1-8 The approvals inbox page.** SPEC 12.
+- [x] **S1-8 The approvals inbox page.** SPEC 12.
   A web page listing pending cards: for an email, the recipient, the full message, the findings it rests on, with approve, reject and edit. Updates arrive over the existing socket. No login yet (S1-10).
   *Test:* a component test that a pending email card shows recipient, subject, body and findings; approving calls the API with the edited text; a decided card leaves the list.
 

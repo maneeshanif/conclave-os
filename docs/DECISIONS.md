@@ -2,6 +2,14 @@
 
 Newest first. One entry per decision: what, why, and what it replaced.
 
+## 2026-11-12 (S1-8: the approvals inbox page)
+
+- **/approvals lists what is pending, one card each.** An email card shows who it goes to, the lead and site it rests on, the findings recorded for the lead, who proposed it, and the full subject and message as editable fields. Approve and Reject sit under it, with an optional note. Any other kind of approval shows its payload as plain text with the same two buttons and nothing to edit.
+- **The page never sends anything.** It posts a decision to the server; the executor acts on it. An edit is sent only if the text really differs from the proposal (changing it and putting it back sends none), and only the subject and message can be edited, matching what the server accepts.
+- **Safe against double clicks and races.** A card ignores a second click while a decision is in flight. If someone else already decided it, the server's message is shown above the list and the list refreshes. A refused edit keeps the card so it can be fixed and retried.
+- **Live.** The list refetches on the server's approval.changed event and ignores other events. The socket code moved to lib/live.ts; the component takes its client and event source as props, so the tests use no network.
+- **Not yet looked at in a browser.** The component is tested with 14 jsdom tests and the web app typechecks, but I have not rendered the page in a browser. S1-12 does a full browser check; reading the real page is the first thing to do when you check back.
+
 ## 2026-11-12 (S1-7: the email executor, wired into the server)
 
 - **A real race in the send cap, found by a stress test and fixed.** The cap counted what was sent and what was mid-send in two separate statements, and each statement sees its own snapshot. An email that finished between them was in neither count, so a third email slipped past a cap of two. It showed once in three full test runs and not at all when the file ran alone; a burst test of nine parallel sends against a cap of three then sent four in its first round. Everything the cap counts is now read in one statement. Two tests keep it honest: one asserts the counting is a single query, the other runs eight bursts and requires exactly the cap each time. The executor is the last line before an email leaves, so an intermittent failure there was investigated, not rerun until green.

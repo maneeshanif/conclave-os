@@ -60,6 +60,31 @@ export interface TaskDetail {
   runs: Run[];
 }
 
+/** One thing waiting for a decision (SPEC 6). `lead` comes with an email so the card can show what it rests on. */
+export interface Approval {
+  id: string;
+  kind: string;
+  status: string;
+  agent_id: string | null;
+  agent_key: string | null;
+  task_id: string | null;
+  payload: Record<string, unknown>;
+  edited_payload: Record<string, unknown> | null;
+  decided_by: string | null;
+  decided_at: string | null;
+  decision_note: string | null;
+  result: unknown;
+  created_at: string;
+  lead?: { id: string; business_name: string | null; website: string | null; email: string | null; stage: string; notes: string | null } | null;
+}
+
+/** What the person decided. An edit carries only the text that may change on an email: the subject and the message. */
+export interface DecisionBody {
+  approved: boolean;
+  note?: string;
+  editedPayload?: { subject: string; body: string };
+}
+
 async function call<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${API}${path}`, { ...init, headers: { 'content-type': 'application/json', ...(init?.headers ?? {}) } });
   const body = (await res.json().catch(() => ({}))) as T & { error?: string };
@@ -75,4 +100,6 @@ export const api = {
   createTask: (t: { title: string; body?: string; assigneeId?: string }) => call<{ id: string }>('/api/tasks', { method: 'POST', body: JSON.stringify(t) }),
   retry: (id: string) => call<{ ok: true }>(`/api/tasks/${id}`, { method: 'PATCH', body: JSON.stringify({ status: 'todo' }) }),
   runAgent: (id: string) => call<{ requested: true }>(`/api/agents/${id}/run`, { method: 'POST' }),
+  approvals: (status?: string) => call<Approval[]>(`/api/approvals${status ? `?status=${encodeURIComponent(status)}` : ''}`),
+  decide: (id: string, body: DecisionBody) => call<{ id: string; status: string }>(`/api/approvals/${id}/decide`, { method: 'POST', body: JSON.stringify(body) }),
 };

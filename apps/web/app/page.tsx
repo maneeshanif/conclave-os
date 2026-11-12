@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
 import { RunLog } from '../components/RunLog';
 import { Badge } from '../components/ui/badge';
@@ -120,7 +121,12 @@ export default function Home() {
           <h1 className="text-xl font-semibold">Conclave OS</h1>
           <p className="text-sm text-neutral-500">Slice 0: tasks and runs. The office comes in slice 6.</p>
         </div>
-        <span className={`text-xs ${live ? 'text-green-700' : 'text-neutral-400'}`}>{live ? '● live' : '○ offline'}</span>
+        <div className="flex items-center gap-4">
+          <Link href="/approvals" className="text-sm font-medium underline">
+            Approvals
+          </Link>
+          <span className={`text-xs ${live ? 'text-green-700' : 'text-neutral-400'}`}>{live ? '● live' : '○ offline'}</span>
+        </div>
       </header>
       {error && <p className="mb-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-800">{error}</p>}
 
