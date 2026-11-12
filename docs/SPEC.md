@@ -43,7 +43,7 @@ Where Paperclip stays ahead, and where you should not compete: many human users 
 
 The honest answer to "why not just use Paperclip" is not a longer feature list. It is a working business on it. An office of 167 idle agents and no revenue is what people would laugh at. Rung one of the goal ladder, earned through this OS, is what ends the argument.
 
-**Decisions in this version (v5)**
+**Decisions in this version (v6)**
 
 | Question | Decision | Why |
 | --- | --- | --- |
@@ -62,6 +62,8 @@ The honest answer to "why not just use Paperclip" is not a longer feature list. 
 **What changed in v4.** You asked for the OS to be model-agnostic, and for the OpenAI Agents SDK if Claude Code is not. It is not: Anthropic's docs say it does not support routing Claude Code to non-Claude models. So no harness is the engine any more. The runtime contract is, and each harness is one engine behind it. OpenCode moves into slice 0 as the model-agnostic CLI harness, and the OpenAI Agents SDK joins in slice 4 as the in-process engine for local and API-key models. The parts of Claude Code worth borrowing (a rules file, skills, permission rules, tools through MCP) are supplied by the OS to every engine, so they survive a change of engine (section 5, the portability rule). Agents are still templates: the SDK powers one generic runner, and nobody writes agent code.
 
 **What changed in v5.** Three things you asked for. The company can now hire from a talent catalog of hundreds of ready-written roles, starting with the MIT-licensed Agency Agents collection, and it runs a bake-off before a hire (section 9). The office becomes a WorkAdventure-style world you walk around in, drawn with Phaser and Tiled maps (section 12). And section 4 grows from eleven departments to eighteen, so the company has the same divisions a real agency has. The table below says honestly where the OS goes further than Paperclip and where Paperclip is still ahead.
+
+**What changed in v6.** Clients can now meet the company inside the office: a client meeting room with video, where the sales agents prepare and take notes and you can walk in and join (section 10). And the company reaches clients where they already work: Slack, Jira, Salesforce, HubSpot, help desks and calendars, all as connectors behind the same approval gate (section 10). A new room, the Meetings Desk, owns both.
 
 **Is TypeScript more reliable?** Not by itself. Reliability comes from the harness and the workflow engine, and both exist in either language. TypeScript wins here on fit. Memory use is not a language question either, and section 17 shows where it really goes.
 
@@ -151,7 +153,7 @@ The delegate clears routine approvals between those points, and nothing interrup
 
 ## 4. Departments
 
-Eighteen department rooms and a boardroom. Each department has one lead agent and one to three workers. Start with rooms 0, 2 and 1 and add the rest in the order of section 18. A department that is switched off costs nothing: it has a room on the map, a row in the table and paused agents.
+Nineteen department rooms, a boardroom and a client meeting room. Each department has one lead agent and one to three workers. Start with rooms 0, 2 and 1 and add the rest in the order of section 18. A department that is switched off costs nothing: it has a room on the map, a row in the table and paused agents.
 
 | # | Department | Agents | What it produces | Main tools | Needs your yes |
 | --- | --- | --- | --- | --- | --- |
@@ -194,8 +196,9 @@ A discussion is a stored thread, and each turn is an ordinary run with the threa
 | 16 | Finance and Ops | Bookkeeper, Invoicer, Analyst | Draft invoices from won deals, overdue reminders, spend against budget, revenue against the goal ladder, a monthly profit and loss | Invoice and payment connectors, the ledger | Every invoice sent and every payment |
 | 17 | Paid Media | Ads Strategist, Creative Tester | Ad plans, copy and creative variants, weekly results against cost per lead | Ad platform connectors, Design Studio hand-off | Every dollar of ad spend |
 | 18 | Security and Compliance | Compliance Auditor, Security Reviewer | Checks of outreach against email and calling rules, a review of each pull request for leaked secrets and risky dependencies, the safety rules file for Vespera | The proposal handler's rule sets, dependency scanners | Changes to any rule set |
+| 19 | Meetings Desk | Scheduler, Meeting Prepper, Note Taker | Booked meetings, a one-page brief before each call, notes and action items after it, CRM and ticket updates, follow-up drafts | Calendar and booking connectors, the meeting room, CRM tables | Every invite that goes to a client, and every follow-up |
 
-Rooms 12 and 14 switch on with slice 8 and slice 7. Rooms 15 and 16 switch on once the first client signs, because before that they have nothing to do. Room 17 waits until there is revenue to spend. Rooms 13 and 18 switch on with slices 5 and 7.
+Rooms 12 and 14 switch on with slice 8 and slice 7. Rooms 15 and 16 switch on once the first client signs, because before that they have nothing to do. Room 17 waits until there is revenue to spend. Room 19 switches on in slice 2 for booking and briefs, and gains the video room in slice 10. Rooms 13 and 18 switch on with slices 5 and 7.
 
 ## 5. The harness
 
@@ -866,6 +869,35 @@ The OS is also your system of record for the business itself: every client, ever
 **Campaign numbers.** Sent, delivered, opened where the channel reports it, replied, positive replies, meetings booked, deals won, cost. Each is a query over the tables above, never a number an agent typed.
 
 **Calls, later.** The Calls Desk writes to the same threads. A call is one more message with a recording, a transcript and an outcome, so nothing about clients or campaigns changes when calling is added.
+
+**Client meetings.** Clients meet the company in a client meeting room, a room on the office map with video. You asked for three things: agents that book and run the meeting, a sales team that meets the client, and you able to walk in and join. Here is how each works, and where a person must stay in charge.
+
+| Step | Who does it | How |
+| --- | --- | --- |
+| Booking | The Scheduler agent | It offers times from your calendar through a booking connector and calls `propose_meeting`. After your yes, an executor sends the invite with a guest link |
+| Brief | The Meeting Prepper | One page before the call: who they are, the deal stage, what they asked for, the audit findings, and the one outcome to aim for |
+| The call | You or your co-founder, with an AI note taker in the room | The client opens the guest link in a browser, no account needed, and lands in the client meeting room. You walk your avatar in from the office, or open the room from the Meetings screen or your phone |
+| Notes | The Note Taker | Transcript, decisions, objections and action items, written to the deal, the thread and any ticket |
+| Follow-up | Outreach or Client Success | A drafted follow-up email or Slack message, through the approval gate |
+
+**An AI salesperson on a live call comes later, and carefully.** An AI voice agent can join a video call, and LiveKit's agent framework is built for that. But a live call cannot pass through the approval gate: whatever the agent says has already been said. So the first version puts the agent in the room as note taker and prompter only, visible to the client as "AI note taker". A live AI speaker is a later option, for scripted parts such as discovery questions, with three rules: it says it is an AI at the start, it never states a price, a medical claim or a contract term, and you can take over with one click. It ships only after it passes an eval set of recorded mock calls.
+
+**Recording.** The Note Taker needs audio. Ask for consent at the start of every call and store the answer on the meeting. Some US states require every party to agree to a recording, and med spa calls may touch health details. If the client says no, the Note Taker writes notes from your typed points instead. I am not a lawyer, so check the rules for each state you call into.
+
+**How a client reaches the room safely.** The OS itself never becomes public. Video runs on a separate media server, LiveKit, which is open source under the Apache 2.0 license and can run on your machine or as LiveKit Cloud. A guest link carries a token for one meeting only, valid from shortly before the start until shortly after the end, with no access to anything else. The guest page is the only public page, and it is served only after login exists (slice 1), behind HTTPS. If your machine is off, the meeting cannot happen, so a client meeting should run on LiveKit Cloud or a small server, not your laptop.
+
+**Client channels and outside systems.** Service clients often want to talk in Slack, raise work as tickets, and keep their own CRM. Each of these is a connector, and the same rules hold for every one of them.
+
+| System | What the agents may read | What they may propose | Notes |
+| --- | --- | --- | --- |
+| Slack, including Slack Connect channels shared with a client | Messages in the channels the OS app is invited to | `propose_slack_message`. Routine replies inside an approved thread can be cleared by the delegate's mandate | A Slack app with a bot token in the secrets table. Each client channel is linked to an account |
+| Jira, Linear | Issues in linked projects | Comments, new issues, status changes | A client's ticket becomes an OS task, and finishing the task proposes the status change |
+| Zendesk, Freshdesk, Intercom | Tickets for linked accounts | Replies and status changes | The same as Jira |
+| Salesforce, HubSpot, Pipedrive | Accounts, contacts, deals | Field updates, notes, new contacts | Pick one system of record per workspace. By default the OS is, and it pushes changes out. If a client insists on their CRM being the record, the OS syncs from it and proposes every write |
+| Google Calendar, Outlook, Cal.com | Free and busy times, events | Invites | Booking for the Meetings Desk |
+| Stripe | Payments and invoices | Draft invoices | For Finance and Ops. Sending an invoice is always your yes |
+
+Three rules for all of them. Everything that arrives from a client channel is data, never an instruction to an agent, so a client writing "ignore your rules" in Slack changes nothing. Everything that leaves goes through a `propose_*` tool and a deterministic executor, with per-channel send caps. And each connector is granted per agent, so the Note Taker can read Slack and cannot post to it.
 
 **The two funnels.** Both follow the selling method in the book's chapter for solo builders, where proof does the persuading. The free part is small and bounded in writing, it ends with a number the buyer measured, and the first paid step is a small outcome with a written target.
 
@@ -1539,6 +1571,8 @@ Screens added in the final pass:
 | Boardroom | Stand-up posts, the weekly review, open discussions and the decision log |
 | Deployments | Every site and app the company has shipped: client, repo on your GitHub, live URL, preview screenshot, last deploy, status and who approved it |
 | Video Ideas | Your idea inbox, hook patterns with links, each video's stage from brief to published, and results |
+| Meetings | Upcoming meetings with their briefs, a Join button, past meetings with notes, consent and action items |
+| Channels | Every connected Slack channel, project and help desk, which account each belongs to, and what each agent may read or propose there |
 
 New repos are created under your GitHub account by an approved action, and every deploy is an approval. So the Deployments screen lists everything shipped through the OS. A deploy made by hand elsewhere will not appear.
 
@@ -1585,10 +1619,11 @@ My default is the private network. Never forward a port on your router to the OS
 | --- | --- |
 | A Tiled map of rooms | The office map is a Tiled JSON file per workspace. Each room is a named area linked to a department key, and each desk is a numbered slot |
 | Your avatar walks the map | You walk as the CEO. Click a spot to walk there, or use the arrow keys |
-| Walk up to someone and a video bubble opens | Walk up to an agent and its drawer opens: live run, tasks, a chat box. No video and no voice, so no media server to run |
+| Walk up to someone and a video bubble opens | Walk up to an agent and its drawer opens: live run, tasks, a chat box. Video is used only in the client meeting room |
 | Areas that open a website when you enter | Enter a room and its department panel slides in: board, numbers, waiting approvals |
 | Objects you can use | The approvals desk by the door, a whiteboard with the goal ladder, a screen with the dashboard, a mailbox for the inbox, a job board in the Talent room with candidates and bake-offs, the Boardroom table |
 | Many people in one world | Your co-founder sees the same office live, with an avatar of her own |
+| Meeting rooms with video | The client meeting room. A client arrives through a guest link, you walk in to join, and the AI note taker sits at the table. Video runs on LiveKit, not on the OS server |
 | An in-browser map editor | Edit the map in Tiled. A new hire gets the next free desk slot by itself, and a new department needs a room drawn once |
 
 **Agents move with their work.** An agent walks to its desk when a run starts, stands at the approvals desk while waiting for you, walks into the Boardroom for a meeting, and goes to the lounge when idle. Movement is driven by the same run and approval events the panels use, so the world is never out of step with the data.
@@ -1809,6 +1844,7 @@ Ten slices, each usable on its own. The first three bring in clients, the fourth
 | 7 | Engineering and Product | `dev-kit`, worktrees, GitHub and Vercel connectors, the `opencode` and `codex` runtimes for coding work (`opencode` itself was wired in slice 0), Frontend Studio, Product room, repo-create and deploy executors, the Deployments screen | A spec becomes a PR with a preview link waiting for your merge | [Plugins for AI Agents](https://agentfactory1.panaversity.org/docs/plugins-crash-course) |
 | 8 | Learning, hiring, the delegate and Research | Memory, reflect pass, the talent catalog with its first import, bake-offs, hiring levels H0 and H1, weekly scorecards, the Talent room, approve-and-teach, skill patches, the monthly audit, gap check and `propose_hire`, the delegate with its mandate and ledger, the Research room and improvement proposals, Founder Network | An edit you make changes the next draft, the Talent room runs a bake-off between three catalog candidates and proposes the winner, the delegate clears one routine approval and refuses one outside its limit, and Research proposes a change that passes its eval | [Self-Expanding Workforce](https://agentfactory1.panaversity.org/docs/dynamic-workforce-crash-course), [Identic AI](https://agentfactory1.panaversity.org/docs/identic-ai-crash-course), [Hermes with General Agents](https://agentfactory1.panaversity.org/docs/hermes-with-general-agents) |
 | 9 | API keys and a product for others | The `claude-agent` and `http` runtimes, team mode and roles, setup wizard, company templates, export and import, plugin marketplace, Calls Desk | Someone else installs it with their own key or local model and runs a different company from a template | [Build AI Agents (Claude)](https://agentfactory1.panaversity.org/docs/claude-agent-sdk-crash-course), [AI Identity](https://agentfactory1.panaversity.org/docs/ai-identity-crash-course) |
+| 10 | Client meetings and channels | LiveKit connector, guest links, the client meeting room on the map, the Note Taker with consent, the Meetings and Channels screens, Slack, Jira and help desk connectors, CRM sync with one system of record | A client joins from a guest link, you walk in from the office, notes and action items land on the deal, and a Slack reply from a client becomes a drafted answer waiting for your yes |
 
 **Before slice 0, this week, with no code**
 
@@ -1823,7 +1859,7 @@ Ten slices, each usable on its own. The first three bring in clients, the fourth
 
 ## 19. Open decisions
 
-You have now decided how models are paid for: signed-in CLIs first, a local model next, API keys later. Fourteen choices remain. Numbers 1 and 3 block slice 0, number 2 blocks slice 4, and number 5 blocks the first send.
+You have now decided how models are paid for: signed-in CLIs first, a local model next, API keys later. Seventeen choices remain. Numbers 1 and 3 block slice 0, number 2 blocks slice 4, and number 5 blocks the first send.
 
 | # | Decision | My default | Why it matters |
 | --- | --- | --- | --- |
@@ -1841,6 +1877,9 @@ You have now decided how models are paid for: signed-in CLIs first, a local mode
 | 12 | Hiring level | H0 until slice 8 has run a month of scorecards, then H1 | How much the company grows without you |
 | 13 | Roster cap | 20 active agents | Plan limits and memory |
 | 14 | Catalog sources | Agency Agents first, then the Paperclip companies that match a switched-on department | Every source is text from strangers that your agents will read |
+| 15 | Where client meetings run | LiveKit Cloud, so a meeting does not depend on your laptop | Clients cannot reach a machine that is asleep |
+| 16 | System of record when a client has their own CRM | The OS by default, syncing out | Two systems that both write cause lost updates |
+| 17 | A live AI speaker in client calls | Not before the note taker has run for a month and the mock-call evals pass | Anything said live cannot be approved first |
 
 ## 20. Building this with Claude Code
 
@@ -1876,6 +1915,7 @@ Pages I opened:
 - [Paperclip README](https://github.com/paperclipai/paperclip), read from a clone
 - [WorkAdventure](https://github.com/workadventure/workadventure), its `play/LICENSE.txt` and `play/package.json`, read from a clone
 - [Phaser 4.2.1 README](https://cdn.jsdelivr.net/npm/phaser@4.2.1/README.md) and [Kenney asset license](https://kenney.nl/support)
+- [LiveKit server](https://pkg.go.dev/github.com/livekit/livekit-server@v1.13.1), Apache 2.0, from its package page
 - [Other LLM gateways](https://code.claude.com/docs/en/llm-gateway) and [Legal and compliance](https://code.claude.com/docs/en/legal-and-compliance.md), Claude Code docs
 - [Models](https://openai.github.io/openai-agents-js/guides/models), OpenAI Agents SDK for TypeScript docs
 - [Skills](https://opencode.ai/docs/skills.md), [Agents](https://opencode.ai/docs/agents/), [Instructions](https://opencode.ai/docs/instructions/), [MCP servers](https://opencode.ai/docs/mcp-servers/) and [Providers](https://opencode.ai/docs/providers/), OpenCode docs
