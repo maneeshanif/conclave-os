@@ -104,7 +104,7 @@ Work them in order. Tick each when its test passes.
 
 **Already on `dev`, not reviewed:** tables and RLS migrations 0002/0003, `actions/policy.ts` (claim checks, footer, suppression), `actions/transport.ts` (outbox by default, Resend untested), `actions/email.ts` (claim-once executor, restart recovery), the `propose_email` and `get_lead` os tools, the kill-switch check in the run loop. S1-1 gives them tests before anything is built on them.
 
-- [ ] **S1-1 Test what is already there.** SPEC 6 (rules around the gate), 14, 15.
+- [x] **S1-1 Test what is already there.** SPEC 6 (rules around the gate), 14, 15.
   Write the missing tests for `policy.ts`, `transport.ts`, `email.ts`, the two os tools and the kill-switch check, and fix what they find. Read the slice 1 migrations against the tenancy rule: every table has `workspace_id`, composite keys and forced RLS, and the existing tenancy test must cover them.
   *Test:* the claim checks block medical, legal and pricing claims; a suppressed or do-not-contact address is refused by `propose_email`; the outbox transport writes one file per approval; the executor claims `approved` to `executing` once and a second claim does nothing; the table-driven RLS test lists every slice 1 table.
 

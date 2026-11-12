@@ -22,7 +22,8 @@ export async function testSystem(osUrl = 'http://127.0.0.1:3100/mcp'): Promise<{
   const dataDir = await mkdtemp(path.join(tmpdir(), 'conclave-db-'));
   const db = await startDatabase({ dataDir, port: await freePort() });
   const companyRoot = await mkdtemp(path.join(tmpdir(), 'conclave-co-'));
-  await cp(path.join(REPO_ROOT, 'company'), companyRoot, { recursive: true });
+  // Without the agents under company/departments: a hire made locally (by the e2e, say) must not change what a test starts from.
+  await cp(path.join(REPO_ROOT, 'company'), companyRoot, { recursive: true, filter: (src) => !/[\\/]departments[\\/]/.test(src) });
   const sys: System = {
     dataDir,
     companyRoot,

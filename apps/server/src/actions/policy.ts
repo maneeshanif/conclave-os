@@ -42,8 +42,16 @@ export function checkClaims(text: string, companyMd: string): ClaimCheck {
 /** The cold email footer, from the "## Cold email footer" section of COMPANY.md. */
 export async function emailFooter(companyRoot: string): Promise<{ text: string; placeholder: boolean }> {
   const md = await readFile(path.join(companyRoot, 'COMPANY.md'), 'utf8').catch(() => '');
-  const m = /^##\s+Cold email footer\s*\n([\s\S]*?)(?=\n##\s|$)/im.exec(md);
-  const text = (m?.[1] ?? '').trim();
+  // Line by line, not one regex: with the `m` flag `$` matches at the end of every line, which cut a two-line
+  // address after its first line and made an empty section capture the next heading as its text.
+  const lines = md.split(/\r?\n/);
+  const start = lines.findIndex((l) => /^##\s+Cold email footer\s*$/i.test(l));
+  let text = '';
+  if (start >= 0) {
+    const rest = lines.slice(start + 1);
+    const next = rest.findIndex((l) => /^#{1,6}\s/.test(l));
+    text = (next < 0 ? rest : rest.slice(0, next)).join('\n').trim();
+  }
   // A footer without a real postal address fails the pre-send check (SPEC 15, cold email rules).
   const placeholder = !text || /\bTODO\b/.test(text) || /\[(business )?address\]/i.test(text);
   return { text, placeholder };
@@ -53,9 +61,17 @@ export async function companyMarkdown(companyRoot: string): Promise<string> {
   return readFile(path.join(companyRoot, 'COMPANY.md'), 'utf8').catch(() => '');
 }
 
-/** True when an address or its domain is on the suppression list. */
+/**
+ * True when an address or its domain is on the suppression list. Both sides are normalised: a list entry typed
+ * as OWNER@CLINIC.COM must still stop mail to owner@clinic.com. Comparing the stored value as it was typed let
+ * exactly that email go out to a suppressed address.
+ */
 export function isSuppressed(email: string, values: string[]): boolean {
   const e = email.trim().toLowerCase();
-  const domain = e.slice(e.indexOf('@'));
-  return values.some((v) => v === e || v === domain);
+  const at = e.indexOf('@');
+  const domain = at >= 0 ? e.slice(at) : '';
+  return values.some((raw) => {
+    const v = raw.trim().toLowerCase();
+    return v !== '' && (v === e || v === domain);
+  });
 }

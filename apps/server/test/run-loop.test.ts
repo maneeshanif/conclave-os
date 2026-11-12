@@ -129,7 +129,7 @@ describe('run loop (S0-8)', () => {
     const off = bus.subscribe((m) => m.kind === 'run.event' && seen.push(m.event.type));
     const out = await executeRun(deps, ws(), researcher, 'manual');
     off();
-    expect(out.status).toBe('succeeded');
+    expect(out.status, JSON.stringify(out)).toBe('succeeded');
     expect(await task(t)).toMatchObject({ status: 'done' });
     const run = await withWorkspace(sys.app, ws(), ({ client: c }) => c.query('select status, session_id, trigger from runs where task_id = $1', [t]));
     expect(run.rows[0]).toMatchObject({ status: 'succeeded', trigger: 'manual' });
@@ -334,6 +334,33 @@ describe('task ownership in the os tools (S0-14)', () => {
     await sql("update tasks set status = 'in_progress', locked_by = null where id = $1", [t]);
     await expect(store().completeTask(scopeFor(writer, t), 'x')).rejects.toThrow(/held by another agent|not held/);
     expect(await task(t)).toMatchObject({ status: 'in_progress' });
+  });
+});
+
+describe('the kill switch in the run loop (S1-1)', () => {
+  const setSwitch = (on: 0 | 1) =>
+    withWorkspace(sys.app, ws(), ({ client: c }) =>
+      c.query('insert into workspace_settings (workspace_id, kill_switch) values ($1, $2) on conflict (workspace_id) do update set kill_switch = $2', [ws(), on]),
+    );
+
+  it('starts no run while it is on: no CLI call, and the task is left waiting', async () => {
+    mode = 'mcp';
+    const researcher = await agentId('research-researcher');
+    const t = await addTask(researcher, 'Held by the kill switch');
+    await setSwitch(1);
+    try {
+      starts = 0;
+      const out = await executeRun(deps, ws(), researcher, 'manual');
+      expect(out).toEqual({ status: 'not_runnable', reason: 'the kill switch is on' });
+      expect(starts).toBe(0);
+      expect(await task(t)).toMatchObject({ status: 'todo' });
+    } finally {
+      await setSwitch(0);
+    }
+    // Turned off, the same task runs and finishes: the switch held it, it did not lose it.
+    const out = await executeRun(deps, ws(), researcher, 'manual');
+    expect(out.status, JSON.stringify(out)).toBe('succeeded');
+    expect(await task(t)).toMatchObject({ status: 'done' });
   });
 });
 

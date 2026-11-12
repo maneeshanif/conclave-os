@@ -2,6 +2,17 @@
 
 Newest first. One entry per decision: what, why, and what it replaced.
 
+## 2026-11-12 (S1-1: two real bugs found by testing the slice 1 code)
+
+- **A suppressed address was still sent to when its list entry had capitals.** `isSuppressed` lowercased the recipient but compared it to the list as it was stored, so an entry typed as OWNER@CLINIC.COM never matched owner@clinic.com. The executor sent. Both sides are now trimmed and lowercased, and an empty entry matches nothing. S1-4 also normalises on insert.
+- **The cold email footer was cut after its first line, and an empty footer section read as the next heading.** The regex used the `m` flag, so `# Decisions
+
+Newest first. One entry per decision: what, why, and what it replaced.
+
+ matched at the end of every line. A two-line address kept only its first line, so the check passed on a footer with no address in it, and a cold email could have gone out without a postal address (SPEC 15). The section is now read line by line up to the next heading of any level; Windows line endings are handled.
+- **Tests no longer depend on what is in the repo's `company/departments/`.** The e2e hires a researcher into the repo's company folder, and the test helper copied it, so a leftover hire made agentNew skip rendering the agent's folder and broke an unrelated test. The helper now copies the company folder without any hired agents. S0-15 (the e2e using its own folder) is still open.
+- **The kill switch is covered at the loop and the executor:** with it on, no run starts and no CLI is called, an approved email is not claimed and not sent, and it goes out unchanged once the switch is off.
+
 ## 2026-11-12 (local model check on the laptop)
 
 - **The machine.** 15.7 GB of RAM, about 3.2 GB free with Chrome, VS Code and Claude Code open. GPU: an NVIDIA MX550 with 2 GB of VRAM (and Intel Iris Xe), which cannot hold a 7B model, so a local model runs on the CPU and in RAM.
