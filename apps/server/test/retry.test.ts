@@ -70,6 +70,7 @@ beforeAll(async () => {
 }, 180_000);
 afterAll(async () => sys?.close());
 beforeEach(async () => {
+  await sql('delete from runtime_pauses');
   await sql('insert into workspace_settings (workspace_id) values ($1) on conflict (workspace_id) do update set kill_switch = 0', [ws()]);
   await sql('delete from run_events');
   await sql('delete from runs');
@@ -132,7 +133,6 @@ describe('retry and backoff (S3-2)', () => {
     ['an auth error', 'auth' as const, 'Invalid API key'],
     ['a crash', 'runtime' as const, 'boom: something broke'],
     ['a bad config', 'config' as const, 'bad model alias'],
-    ['a plan limit', 'limit' as const, 'Claude AI usage limit reached|1794500000'],
     ['running out of turns', 'max_turns' as const, 'ran out of turns'],
   ])('does not retry %s: it fails at once', async (_n, kind, message) => {
     const rt = new Scripted([fail(kind, message)]);
@@ -142,6 +142,15 @@ describe('retry and backoff (S3-2)', () => {
     expect(rt.requests).toHaveLength(1);
     expect((await taskRow(t)).status).toBe('blocked');
     expect((await taskRow(t)).blocked_reason).not.toMatch(/attempts/);
+  });
+
+  it('does not retry a plan limit either: the task waits in the queue and the runtime is paused (S3-3)', async () => {
+    const rt = new Scripted([fail('limit', 'Claude AI usage limit reached|1794500000')]);
+    const t = await newTask();
+    const out = await executeRun(deps(rt, { delaysMs: [0, 0], sleep: async () => undefined }), ws(), agentId, 'manual');
+    expect(out.status).toBe('failed');
+    expect(rt.requests).toHaveLength(1);
+    expect((await taskRow(t)).status).toBe('todo');
   });
 
   it('stops retrying the moment the kill switch goes on', async () => {

@@ -708,6 +708,25 @@ export const briefs = pgTable(
   (t) => [unique('briefs_ws_id_uq').on(t.workspaceId, t.id), unique('briefs_ws_day_uq').on(t.workspaceId, t.day)],
 );
 
+/** A runtime that has hit its plan limit: its agents start no runs until `until` (S3-3). One active pause per runtime. */
+export const runtimePauses = pgTable(
+  'runtime_pauses',
+  {
+    id: id(),
+    workspaceId: workspaceId(),
+    runtime: text('runtime').notNull(),
+    until: timestamp('until', { withTimezone: true }).notNull(),
+    reason: text('reason').notNull(),
+    createdAt: createdAt(),
+    liftedAt: timestamp('lifted_at', { withTimezone: true }),
+    liftedBy: text('lifted_by'), // system at the reset, or the person who lifted it early
+  },
+  (t) => [
+    unique('runtime_pauses_ws_id_uq').on(t.workspaceId, t.id),
+    uniqueIndex('runtime_pauses_active_uq').on(t.workspaceId, t.runtime).where(sql`${t.liftedAt} is null`),
+  ],
+);
+
 /** Every message drafted or sent to a lead, one row per message. */
 export const outreachMessages = pgTable(
   'outreach_messages',

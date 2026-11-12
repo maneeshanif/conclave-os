@@ -2,6 +2,7 @@ import type pg from 'pg';
 import type { Bus } from '../bus';
 import { withWorkspace } from '../db/tenant';
 import { failureClass } from './failure';
+import { activePause, pauseRuntime, parseResetTime, RUNTIME_LABEL } from './pauses';
 import { reapRuns } from './reaper';
 import { claudeToolLists } from './permissions';
 import { cleanWorkFolder, loadTemplate } from './render';
@@ -25,6 +26,8 @@ export interface LoopDeps {
    * fallback model once. Without it a run makes a single attempt.
    */
   retry?: { delaysMs: number[]; sleep?: (ms: number) => Promise<void> };
+  /** The clock, for tests. */
+  now?: () => Date;
   /** Renders the agent's folder again from its role file. Called before every run. */
   prepare?: (agentKey: string) => Promise<void>;
 }
@@ -149,6 +152,9 @@ export async function executeRun(deps: LoopDeps, workspaceId: string, agentId: s
   if (agent.status !== 'active') return { status: 'not_runnable', reason: `agent is ${agent.status}` };
   const runtime = deps.runtimes[agent.runtime];
   if (!runtime) return { status: 'not_runnable', reason: `runtime ${agent.runtime} is not available` };
+  // A runtime that has hit its plan limit starts nothing, and no task is taken, until the reset (S3-3).
+  const paused = await activePause(deps.pool, workspaceId, agent.runtime, (deps.now ?? (() => new Date()))());
+  if (paused) return { status: 'not_runnable', reason: `${RUNTIME_LABEL[agent.runtime] ?? agent.runtime} is paused until ${paused.until.toISOString()} (a plan limit was reached)` };
 
   // Wake and check out, in plain code, before any model call.
   const task = await checkoutTask(deps.pool, workspaceId, agentId);
@@ -274,6 +280,8 @@ export async function executeRun(deps: LoopDeps, workspaceId: string, agentId: s
   const error = final?.type === 'error' ? { kind: final.kind, message: final.message } : ok ? undefined : { kind: 'runtime' as ErrorKind, message: 'the run ended without a result' };
   const status = ok ? 'succeeded' : error?.kind === 'cancelled' ? 'cancelled' : error?.kind === 'timeout' ? 'timed_out' : 'failed';
 
+  const planLimit = final?.type === 'error' && failureClass(final) === 'plan_limit';
+
   // Report: if the agent did not close its task itself, the run's result closes it.
   await withWorkspace(deps.pool, workspaceId, async ({ client: c }) => {
     await c.query(
@@ -287,6 +295,9 @@ export async function executeRun(deps: LoopDeps, workspaceId: string, agentId: s
         const out = (final as Extract<RunEvent, { type: 'done' }>).output.trim();
         if (out) await c.query('insert into messages (workspace_id, task_id, from_id, body) values ($1, $2, $3, $4)', [workspaceId, task.id, `agent:${agent.key}`, out]);
         await c.query("update tasks set status = 'done', done_at = now(), locked_by = null where id = $1", [task.id]);
+      } else if (planLimit) {
+        // Not the task's fault and not worth a person's time: it waits in the queue and carries on after the reset.
+        await c.query("update tasks set status = 'todo', locked_by = null where id = $1", [task.id]);
       } else {
         await c.query("update tasks set status = 'blocked', blocked_reason = $2, locked_by = null where id = $1", [
           task.id,
@@ -301,6 +312,9 @@ export async function executeRun(deps: LoopDeps, workspaceId: string, agentId: s
       JSON.stringify({ agent: agent.key, task: task.id, ...(error ? { error } : {}) }),
     ]);
   });
+  if (planLimit && error) {
+    await withWorkspace(deps.pool, workspaceId, ({ client: c }) => pauseRuntime(c, workspaceId, agent.runtime, parseResetTime(error.message, (deps.now ?? (() => new Date()))()), error.message)).catch((err) => console.error('could not pause the runtime:', (err as Error).message));
+  }
   deps.bus.publish({ kind: 'run.state', workspaceId, runId, taskId: task.id, status, ...(error ? { error: `${error.kind}: ${error.message}` } : {}) });
   deps.bus.publish({ kind: 'task.changed', workspaceId, taskId: task.id });
   return ok ? { status: 'succeeded', runId, taskId: task.id } : { status: 'failed', runId, taskId: task.id, ...(error ? { error } : {}) };

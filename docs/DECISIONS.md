@@ -2,6 +2,15 @@
 
 Newest first. One entry per decision: what, why, and what it replaced.
 
+## 2026-11-13 (S3-3: plan-limit handling)
+
+- **A plan limit pauses the runtime, not the work.** When a run ends on a usage limit, the runtime it ran on (Claude Code, OpenCode...) is paused: no agent on it starts a run or takes a task until the reset, agents on other runtimes carry on, and the task that hit the limit goes back to todo with its session kept instead of being blocked (it is not the task's fault, so no person need look at it). One pause per runtime at a time, in a runtime_pauses table (migrations 0024, 0025); a second limit while paused only keeps the later reset.
+- **One action item, closed by itself.** The first limit raises a single item ("Claude Code is paused: its plan limit was reached") however many agents hit it; it closes when the pause lifts, whether at the reset, early by a person, or by the system.
+- **The reset time comes from the runtime's own message** when it gives one (Claude Code writes it as a Unix time after a bar). With none, or one already past, or more than a day away, the pause is five hours, the length of a plan window. That default is my choice and is logged here.
+- **It lifts itself.** The ticker lifts every pause whose time has come, closes the item and wakes the agents that have tasks waiting. A pause whose time has passed is also ignored when a run starts, so a late ticker never keeps agents waiting. A person can lift one early with POST /api/runtime-pauses/:runtime/lift (for example after upgrading the plan), and GET /api/runtime-pauses lists the active ones for the Health screen.
+- **Told apart from a rate limit.** A message with usage-limit or quota wording is a plan limit; "too many requests" and similar are transient and are retried by S3-2 without pausing anything (tested both ways).
+- **Tests changed on purpose:** the old S0-8 test that used a limit to show a failed run blocking its task now uses an ordinary crash, and the S3-2 table no longer lists a plan limit among the "blocked at once" cases, because a limit now queues the task.
+
 ## 2026-11-13 (S3-2: retry, backoff and the fallback model)
 
 - **Failures are sorted into four classes** (src/harness/failure.ts): transient (rate limit, overload, a 5xx, a network error), plan limit (a usage limit or quota), auth, and permanent (a crash, a bad config, too many turns, a timeout, a cancel). Only transient is retried. A plan limit and an auth error end the run at once, the first for S3-3 to pause the runtime and the second because only a person can fix a sign-in.

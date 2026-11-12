@@ -124,6 +124,10 @@ beforeAll(async () => {
   await agentNew(sys, { template: 'writer', department: 'outreach' });
   deps = { pool: sys.app, tokens, bus, runtimes: { 'claude-cli': countingRuntime() }, dataDir: sys.dataDir, workspaceSlug: sys.workspace.slug, templatesRoot: sys.templatesRoot, timeoutMs: 20_000 };
 }, 180_000);
+// A test that hits a plan limit pauses its runtime (S3-3); each test starts with none.
+beforeEach(async () => {
+  await withWorkspace(sys.app, ws(), ({ client: c }) => c.query('delete from runtime_pauses'));
+});
 afterAll(async () => {
   server?.close();
   await sys?.close();
@@ -168,13 +172,14 @@ describe('run loop (S0-8)', () => {
   });
 
   it('a failed run blocks its task with the reason and ends failed', async () => {
-    mode = 'limit';
+    mode = 'fail';
     const researcher = await agentId('research-researcher');
     const t = await addTask(researcher, 'Another task');
     const out = await executeRun(deps, ws(), researcher, 'manual');
-    expect(out).toMatchObject({ status: 'failed', error: { kind: 'limit' } });
+    expect(out).toMatchObject({ status: 'failed', error: { kind: 'runtime' } });
     expect((await task(t)).status).toBe('blocked');
-    expect((await task(t)).blocked_reason).toMatch(/limit/);
+    expect((await task(t)).blocked_reason).toMatch(/Run failed/);
+    mode = 'mcp';
   });
 
   it('a paused agent does not run', async () => {

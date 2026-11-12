@@ -247,7 +247,7 @@ Recorded 2026-11-13. Nothing here is built ahead of its slice (CLAUDE.md, Stack)
   A transient runtime error (rate limit, overload, network) retries the step with growing waits; then the agent's `fallback_model` alias; then the task is blocked with the reason. A non-transient error (auth, bad input) does not retry.
   *Test:* with a scripted runtime that fails N times: retries are spaced, the fallback is used after the retries, the task is blocked with the reason after that; an auth error blocks at once; each attempt is a row in the run's events.
 
-- [ ] **S3-3 Plan-limit handling.** SPEC 7 (Plan limits are part of the design), SPEC 14.
+- [x] **S3-3 Plan-limit handling.** SPEC 7 (Plan limits are part of the design), SPEC 14.
   A limit error pauses every agent on that runtime until the reset time (or a default wait), leaves their tasks queued, raises one action item, and lifts the pause by itself at the reset. Nothing is retried in the meantime.
   *Test:* one limit error pauses all agents on that runtime and none on another; queued tasks stay todo; exactly one action item however many agents hit it; at the reset time runs start again; a person can lift the pause early.
 

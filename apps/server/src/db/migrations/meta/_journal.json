@@ -169,6 +169,20 @@
       "when": 1794515503293,
       "tag": "0023_deal_figures",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1794518073176,
+      "tag": "0024_runtime_pauses",
+      "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1794518075955,
+      "tag": "0025_runtime_pauses_rls",
+      "breakpoints": true
     }
   ]
 }

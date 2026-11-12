@@ -16,6 +16,7 @@ import { DbOsStore } from './harness/db-os-store';
 import { stopEverything } from './harness/kill-switch';
 import { approvalHooks, createOutreach } from './outreach';
 import { cancelAllRuns, executeRun, isRunActive, reapStaleRuns, type LoopDeps } from './harness/loop';
+import { liftExpiredPauses } from './harness/pauses';
 import { reapRuns } from './harness/reaper';
 import { RunTokens } from './harness/run-tokens';
 import { createCliRuntime } from './runtimes/cli';
@@ -104,6 +105,10 @@ const everyMinute = async () => {
   const reaped = await reapRuns({ pool: sys.app, workspaceId: sys.workspace.id, isActive: isRunActive });
   for (const t of reaped.requeued) void dispatcher.request({ workspaceId: sys.workspace.id, agentId: t.agentId, trigger: 'task_assigned' });
   if (reaped.reaped.length) console.log(`reaper: failed ${reaped.reaped.length} silent run(s); ${reaped.requeued.length} task(s) put back, ${reaped.blocked.length} blocked`);
+  // A runtime whose plan limit has reset is let go, and the agents with work waiting are woken (S3-3).
+  const lifted = await liftExpiredPauses({ pool: sys.app, workspaceId: sys.workspace.id });
+  for (const agentId of lifted.agentsWithWork) void dispatcher.request({ workspaceId: sys.workspace.id, agentId, trigger: 'task_assigned' });
+  if (lifted.lifted.length) console.log(`plan limit reset: ${lifted.lifted.join(', ')} can run again`);
   const seq = await runSequences({ pool: sys.app, workspaceId: sys.workspace.id, bus });
   if (seq.created) console.log(`sequences: made ${seq.created} step task(s)`);
   return woken;

@@ -34,6 +34,7 @@ const TABLES = [
   'projects',
   'run_events',
   'runs',
+  'runtime_pauses',
   'sequence_enrollments',
   'sequence_steps',
   'suppression',
