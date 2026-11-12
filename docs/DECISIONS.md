@@ -2,6 +2,15 @@
 
 Newest first. One entry per decision: what, why, and what it replaced.
 
+## 2026-11-12 (S1-6: the outreach-rep template and outreach-kit)
+
+- **plugins/outreach-kit is the first real plugin.** A folder with a strict manifest (plugin.yaml: name, version, description, skills, connectors, tools), skills in the open Agent Skills format, and a README. The loader refuses a manifest that lies: a name that is not its folder, a listed skill with no SKILL.md, a tool that is not a real os tool (so the list cannot drift from the server), a connector that is not built yet (only os exists), or any unknown key. A plugin name is a folder name and nothing else, so no name can reach outside plugins/.
+- **A role that names a plugin gets what it carries.** The renderer writes the plugin skills into the same folder as the template skills, for both engines, byte for byte, and the role file lists the plugin, its skills and its connectors. A skill name that two sources both claim is an error, never a silent overwrite. plugins/ sits beside templates/ (SPEC 13).
+- **outreach-rep starts at autonomy 0, like every new hire (SPEC 5).** At 0 the propose_email tool is not offered, so a new rep drafts in comments as its trial and is promoted by the founder. agent:new gained --autonomy so that is one flag at hire time instead of a hand edit; the CLI now reports the level it really set.
+- **The rep has no web access and no shell on either engine.** The audit that finds the facts is another agent job, so the rep reads its lead through get_lead and writes. Rendered folders for both engines are snapshot-tested, and the test checks the allow list is only the work folder plus the os tools.
+- **The output check is written down, not yet machine-run.** SPEC 18 puts output checks, repair and escalation in slice 3. Until then the limits (subject under 8 words, body under 170, one call to action, two verified findings) live in checks/README.md and the skill, and what must always hold is enforced in code by propose_email and the executor, as before.
+- **Checked: told to send by any other route, the rep cannot.** The rendered outreach-rep on both engines, run through the real os server against a CLI that tries send_email, gets "Unknown tool", and the run leaves no approval, no message, no audit entry and no outbox. This tests the door, not a real model: whether a real model follows the skill is judged in the slice 1 end to end and in the trial.
+
 ## 2026-11-12 (S1-5: settings, the kill switch and the send caps)
 
 - **Two caps, both settings.** A rolling window, 30 emails in 5 hours by default (window_hours, window_cap), where follow-ups count like first emails; and a per-day cap, which I set to 100 by default because the answers fix the window at 30 per 5 hours but give no daily figure (a day holds a bit under five windows). Anees can change all three at any time with PATCH /api/settings. Database checks keep them sane: 1 to 168 hours, 1 to 100000 emails.

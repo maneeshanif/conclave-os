@@ -124,7 +124,7 @@ Work them in order. Tick each when its test passes.
   `workspace_settings` holds the kill switch and the caps: `window_hours` = 5 and `window_cap` = 30 (a rolling window), plus a per-day cap. Follow-ups count in the same window. `GET/PATCH /api/settings`. With the kill switch on: no new run starts, running runs are cancelled, queued requests are dropped, and no executor sends, including approvals already approved.
   *Test:* the 31st email inside five hours is held and the 31st after the window moves is allowed; the kill switch stops a running fake run, empties the queue and blocks an executor on an already-approved email; turning it off does not resurrect dropped work.
 
-- [ ] **S1-6 The `outreach-rep` template and `outreach-kit`.** SPEC 5 (templates, default permissions), 8, 10.
+- [x] **S1-6 The `outreach-rep` template and `outreach-kit`.** SPEC 5 (templates, default permissions), 8, 10.
   A neutral template for the first-touch writer: role file, rules, `permissions.yaml` (the `os` tools only, no shell, no network write), a procedure skill for the first email, and an output check. `outreach-kit` carries the skill and the connector entry.
   *Test:* a snapshot of the rendered folder for both engines; neither grants a shell or a network-writing tool; through the conformance suite's `forbidden` mode, an attempt to send by any route other than `propose_email` is refused and nothing is sent.
 

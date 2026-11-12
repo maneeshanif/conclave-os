@@ -1,0 +1,22 @@
+# Agent template: outreach-rep. Neutral sources only; the renderer writes each harness's own format (SPEC 5).
+key: outreach-rep
+version: 1
+description: "Writes the first email to one lead and proposes it for a person to approve. It cannot send."
+params:
+  - { name: id, required: true }
+  - { name: name, required: true }
+  - { name: department, required: true }
+  - { name: department_name, required: true }
+  - { name: company_name, required: true }
+  - { name: reports_to, required: false }
+defaults:
+  runtime: claude-cli
+  model: writer
+  # Every new hire starts on trial at 0 (SPEC 5). At 0 the propose_email tool is not offered, so the rep drafts in
+  # comments. Promote it with `--autonomy 2` at hire time, or by editing autonomy in its role file (SPEC 6).
+  autonomy: 0
+  monthly_budget_usd: 10
+  max_turns: 25
+  # no heartbeat: runs when given a task (one task = one lead)
+skills: []
+plugins: [outreach-kit]

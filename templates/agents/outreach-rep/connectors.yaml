@@ -1,0 +1,2 @@
+# Connectors this kind of agent needs. `os` is always granted. outreach-kit adds nothing else.
+connectors: [os]

@@ -14,6 +14,8 @@ export interface AgentNewOptions {
   name?: string;
   runtime?: RuntimeName;
   model?: string;
+  /** Starting level, 0 to 3. Without it the template's level (0: on trial) applies. */
+  autonomy?: number;
   reportsTo?: string;
 }
 
@@ -22,6 +24,7 @@ export interface AgentNewResult {
   rolePath: string;
   workDir: string;
   runtime: RuntimeName;
+  autonomy: number;
 }
 
 const title = (s: string) => s.replace(/(^|-)([a-z])/g, (_, sep: string, ch: string) => (sep ? ' ' : '') + ch.toUpperCase());
@@ -47,6 +50,7 @@ export async function agentNew(sys: System, opts: AgentNewOptions): Promise<Agen
     ...(opts.reportsTo ? { reports_to: opts.reportsTo } : {}),
     ...(opts.runtime ? { runtime: opts.runtime } : {}),
     ...(opts.model ? { model: opts.model } : {}),
+    ...(opts.autonomy !== undefined ? { autonomy: opts.autonomy } : {}),
   });
   const rel = ['departments', dept.key, 'agents', id, 'AGENT.md'].join('/');
   const file = path.join(sys.companyRoot, rel);
@@ -66,7 +70,7 @@ export async function agentNew(sys: System, opts: AgentNewOptions): Promise<Agen
     osUrl: sys.osUrl,
     templatesRoot: sys.templatesRoot,
   });
-  return { id, rolePath: rel, workDir: out.dir, runtime: out.runtime };
+  return { id, rolePath: rel, workDir: out.dir, runtime: out.runtime, autonomy: agent.role.autonomy };
 }
 
 /** Renders every agent's working folder again, for the runtime its role file names now. */
@@ -87,7 +91,7 @@ export async function renderAll(sys: System): Promise<AgentNewResult[]> {
       osUrl: sys.osUrl,
       templatesRoot: sys.templatesRoot,
     });
-    out.push({ id: a.role.id, rolePath: a.rolePath, workDir: r.dir, runtime: r.runtime });
+    out.push({ id: a.role.id, rolePath: a.rolePath, workDir: r.dir, runtime: r.runtime, autonomy: a.role.autonomy });
   }
   return out;
 }

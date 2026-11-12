@@ -9,6 +9,7 @@ import { RUNTIMES, type RuntimeName } from '../runtimes/names';
 import { agentWorkDir } from '../paths';
 import { fill } from './fill';
 import { PermissionsSchema, SHELL_TEMPLATES, claudeToolLists, opencodePermission, type Permissions } from './permissions';
+import { loadPlugin, type LoadedPlugin } from './plugins';
 
 /**
  * The run token reaches the `os` server through an environment variable that the runner sets
@@ -30,6 +31,8 @@ const TemplateFileSchema = z.object({
     heartbeat: z.string().optional(),
   }),
   skills: z.array(z.string()).default([]),
+  /** Plugins from plugins/ this kind of agent is granted: their skills and connectors come with it (SPEC 8). */
+  plugins: z.array(z.string()).default([]),
 });
 
 const ConnectorsFileSchema = z.object({ connectors: z.array(z.string()).default(['os']) });
@@ -42,10 +45,15 @@ export interface Template {
   agentBody: string;
   rules: string;
   permissions: Permissions;
+  /** The template's own connectors plus whatever its plugins need. `os` is always first. */
   connectors: string[];
+  plugins: LoadedPlugin[];
 }
 
-export async function loadTemplate(templatesRoot: string, key: string): Promise<Template> {
+/** plugins/ sits beside templates/ in the repo (SPEC 13). */
+export const defaultPluginsRoot = (templatesRoot: string) => path.join(templatesRoot, '..', 'plugins');
+
+export async function loadTemplate(templatesRoot: string, key: string, pluginsRoot = defaultPluginsRoot(templatesRoot)): Promise<Template> {
   const dir = path.join(templatesRoot, 'agents', key);
   const read = (f: string) => readFile(path.join(dir, f), 'utf8');
   let raw: string;
@@ -60,6 +68,16 @@ export async function loadTemplate(templatesRoot: string, key: string): Promise<
     throw new Error(`Template "${key}" allows a shell. Only ${[...SHELL_TEMPLATES].join(' and ')} may (CLAUDE.md rule 10).`);
   }
   const { connectors } = ConnectorsFileSchema.parse(parseYaml(await read('connectors.yaml')) ?? {});
+  const plugins: LoadedPlugin[] = [];
+  for (const name of file.plugins) plugins.push(await loadPlugin(pluginsRoot, name));
+  // A skill name belongs to one source. Two sources with the same name would silently overwrite each other.
+  const seen = new Map<string, string>();
+  for (const [skill, source] of [...file.skills.map((n) => [n, `template "${key}"`] as const), ...plugins.flatMap((p) => p.skills.map((n) => [n, `plugin "${p.name}"`] as const))]) {
+    const first = seen.get(skill);
+    if (first) throw new Error(`Template "${key}": skill "${skill}" comes from both ${first} and ${source}`);
+    seen.set(skill, source);
+  }
+  for (const c of plugins.flatMap((p) => p.connectors)) if (!connectors.includes(c)) connectors.push(c);
   if (!connectors.includes('os')) connectors.unshift('os');
   return {
     key,
@@ -70,6 +88,7 @@ export async function loadTemplate(templatesRoot: string, key: string): Promise<
     rules: await read('RULES.md.hbs'),
     permissions,
     connectors,
+    plugins,
   };
 }
 
@@ -82,11 +101,14 @@ export interface RoleParams {
   reports_to?: string;
   runtime?: RuntimeName;
   model?: string;
+  /** Overrides the template's starting level. New hires start at the template's level (0), and are promoted later. */
+  autonomy?: number;
 }
 
 /** Renders a template into a role file: front matter plus body (SPEC 5). Returns the file text. */
 export function renderRoleFile(t: Template, params: RoleParams): string {
-  const values: Record<string, string | undefined> = { ...params };
+  // Placeholders in the role text take text; the starting level is not one of them.
+  const values: Record<string, string | undefined> = Object.fromEntries(Object.entries(params).filter(([, v]) => v === undefined || typeof v === 'string'));
   for (const p of t.file.params) {
     if (p.required && (values[p.name] === undefined || values[p.name] === '')) {
       throw new Error(`Template "${t.key}" needs parameter "${p.name}"`);
@@ -101,10 +123,11 @@ export function renderRoleFile(t: Template, params: RoleParams): string {
     model: params.model ?? t.file.defaults.model,
     ...(t.file.defaults.heartbeat ? { heartbeat: t.file.defaults.heartbeat } : {}),
     monthly_budget_usd: t.file.defaults.monthly_budget_usd,
-    autonomy: t.file.defaults.autonomy,
+    autonomy: params.autonomy ?? t.file.defaults.autonomy,
     template: t.key,
     template_version: t.version,
-    skills: t.file.skills,
+    plugins: t.plugins.map((p) => p.name),
+    skills: [...t.file.skills, ...t.plugins.flatMap((p) => p.skills)],
     connectors: t.connectors,
     max_turns: t.file.defaults.max_turns,
   });
@@ -137,18 +160,21 @@ async function writeFiles(dir: string, files: Record<string, string>): Promise<s
   return Object.keys(files).sort();
 }
 
+/** The skills an agent gets: the template's own, then each plugin's. Both targets read the same open skill format. */
 async function skillFiles(t: Template, base: string): Promise<Record<string, string>> {
   const out: Record<string, string> = {};
-  const root = path.join(t.dir, 'skills');
-  const names = await readdir(root).catch(() => [] as string[]);
-  for (const name of names) {
-    const file = path.join(root, name, 'SKILL.md');
-    try {
-      await stat(file);
-    } catch {
-      continue;
+  for (const dir of [t.dir, ...t.plugins.map((p) => p.dir)]) {
+    const root = path.join(dir, 'skills');
+    const names = await readdir(root).catch(() => [] as string[]);
+    for (const name of names) {
+      const file = path.join(root, name, 'SKILL.md');
+      try {
+        await stat(file);
+      } catch {
+        continue;
+      }
+      out[`${base}/${name}/SKILL.md`] = await readFile(file, 'utf8');
     }
-    out[`${base}/${name}/SKILL.md`] = await readFile(file, 'utf8');
   }
   return out;
 }
