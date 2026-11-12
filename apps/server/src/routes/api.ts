@@ -9,6 +9,7 @@ import { leadRoutes } from './leads';
 import { actionItemRoutes } from './action-items';
 import { campaignRoutes } from './campaigns';
 import { crmRoutes } from './crm';
+import { reportRoutes } from './reports';
 import { settingsRoutes } from './settings';
 import { threadRoutes } from './threads';
 import { suppressionRoutes } from './suppression';
@@ -37,6 +38,7 @@ export function apiRoutes(deps: { workspaceId: string; dispatcher: Dispatcher; b
   r.route('/leads', leadRoutes({ workspaceId: ws, bus: deps.bus }));
   r.route('/', crmRoutes({ workspaceId: ws, bus: deps.bus }));
   r.route('/', campaignRoutes({ workspaceId: ws, bus: deps.bus }));
+  r.route('/', reportRoutes());
   r.route('/', threadRoutes({ workspaceId: ws, bus: deps.bus }));
   r.route('/action-items', actionItemRoutes({ workspaceId: ws, bus: deps.bus }));
   r.route('/suppression', suppressionRoutes({ workspaceId: ws }));

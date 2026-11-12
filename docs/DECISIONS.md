@@ -2,6 +2,15 @@
 
 Newest first. One entry per decision: what, why, and what it replaced.
 
+## 2026-11-12 (S2-6: campaign and pipeline numbers)
+
+- **Every figure is a query,** never typed by an agent (SPEC 10): GET /api/campaigns/:id/results and GET /api/pipeline. No new tables.
+- **Campaign results:** enrolled and their state (active, paused, unsubscribed, done), sent, replied, positive replies, reply rate, deals won, and what the step tasks cost to run (the runs behind them). A reply counts for a campaign only if it came after the first thing that campaign sent that person, so an old conversation is not credited to it. Positive replies are counted by person, not by message: two positive messages from one lead are one. Won counts distinct won deals of leads enrolled in the campaign.
+- **What the tables cannot know is null, not zero:** delivered, opened and meetings booked. Nothing records an email arriving or being opened (the outbox has no such report) or a meeting; a zero there would read as a result. Meetings arrive with the meetings slice (10). The reply rate is replied over people contacted, null when no one was.
+- **Pipeline by funnel:** per stage, how many deals are in it now (not counting lost ones), how many reached it or got further (so a deal that skipped a stage still counts as having passed it, and one that went back is counted once), conversion to the next stage (reached the next over reached this one), and average and median days in the stage, from the recorded moves; a deal still in a stage counts the days so far, and the last stretch of a lost deal is left out because its end is not recorded. Totals are open, won and lost.
+- **Stuck deals:** open deals in a stage longer than a threshold (14 days; ?stuckDays= changes it, 0 to 3650), with the days and the fields the stage still asks for (decision-maker, date), so the list says what it is waiting for. Won and lost deals are never listed. With no funnel named the endpoint returns every funnel.
+- **The numbers change when the facts do** (moving a deal moves the counts), tested against fixtures with exact expected values.
+
 ## 2026-11-12 (S2-5: the sequence runner)
 
 - **A plain-code job, not a model,** in src/workflows/sequences.ts. For each running campaign it finds who is due (active enrolment, has an address, not do-not-contact, not suppressed, the wait since the last send has passed) and makes one task per person for the outreach agent to draft that step. The draft still goes through propose_email and an approval, so nothing here sends anything.

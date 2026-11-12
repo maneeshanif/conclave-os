@@ -187,7 +187,7 @@ Work them in order. Tick each when its test passes.
   A deterministic job (not a model) that, once a day per running campaign, finds contacts whose next step is due, not paused, not suppressed, inside the mailbox's cap, and creates a task for the outreach agent to draft that step. Drafts still go through `propose_email` and approval.
   *Test:* due steps become tasks up to the cap and no more; a replied contact gets nothing; running it twice in a day makes no duplicates; a restart mid-run does not double-create.
 
-- [ ] **S2-6 Campaign and pipeline numbers.** SPEC 10, 12.
+- [x] **S2-6 Campaign and pipeline numbers.** SPEC 10, 12.
   `GET /api/campaigns/:id/results` and `GET /api/pipeline` as queries over the tables: sent, replied, positive replies, meetings, won; conversion and days in stage per funnel stage; stuck deals. No number is typed by an agent.
   *Test:* a seeded fixture gives exact counts; moving a deal changes the numbers; a reply marked positive counts once.
 
