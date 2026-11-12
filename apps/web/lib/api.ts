@@ -1,0 +1,78 @@
+/** The server answers on 127.0.0.1:3100 by default (CLAUDE.md rule 9). */
+export const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://127.0.0.1:3100';
+
+export interface Agent {
+  id: string;
+  key: string;
+  name: string;
+  status: string;
+  runtime: string;
+  model_alias: string;
+  department: string | null;
+  last_run_status: string | null;
+}
+
+export interface Task {
+  id: string;
+  title: string;
+  body: string | null;
+  status: string;
+  blocked_reason: string | null;
+  assignee_key: string | null;
+  assignee_name: string | null;
+  last_run_id: string | null;
+  created_at: string;
+}
+
+export type RunEvent =
+  | { type: 'session'; sessionId: string }
+  | { type: 'thinking' | 'message'; text: string }
+  | { type: 'tool_call'; tool: string; input: unknown }
+  | { type: 'tool_result'; tool: string; ok: boolean; summary: string }
+  | { type: 'cost'; usd: number; tokensIn: number; tokensOut: number }
+  | { type: 'done'; output: string; sessionId?: string }
+  | { type: 'error'; kind: string; message: string };
+
+export interface StoredEvent {
+  id: number | string;
+  at?: string;
+  type: string;
+  data: RunEvent;
+}
+
+export interface Run {
+  id: string;
+  status: string;
+  runtime: string;
+  model: string | null;
+  trigger: string;
+  cost_usd: string | number | null;
+  tokens_in: number | null;
+  tokens_out: number | null;
+  error: string | null;
+  started_at: string | null;
+  ended_at: string | null;
+}
+
+export interface TaskDetail {
+  task: Task;
+  thread: { id: string; from_id: string; to_id: string | null; body: string; created_at: string }[];
+  runs: Run[];
+}
+
+async function call<T>(path: string, init?: RequestInit): Promise<T> {
+  const res = await fetch(`${API}${path}`, { ...init, headers: { 'content-type': 'application/json', ...(init?.headers ?? {}) } });
+  const body = (await res.json().catch(() => ({}))) as T & { error?: string };
+  if (!res.ok) throw new Error(body.error ?? `HTTP ${res.status}`);
+  return body;
+}
+
+export const api = {
+  agents: () => call<Agent[]>('/api/agents'),
+  tasks: () => call<Task[]>('/api/tasks'),
+  task: (id: string) => call<TaskDetail>(`/api/tasks/${id}`),
+  run: (id: string) => call<{ run: Run; events: StoredEvent[] }>(`/api/runs/${id}`),
+  createTask: (t: { title: string; body?: string; assigneeId?: string }) => call<{ id: string }>('/api/tasks', { method: 'POST', body: JSON.stringify(t) }),
+  retry: (id: string) => call<{ ok: true }>(`/api/tasks/${id}`, { method: 'PATCH', body: JSON.stringify({ status: 'todo' }) }),
+  runAgent: (id: string) => call<{ requested: true }>(`/api/agents/${id}/run`, { method: 'POST' }),
+};

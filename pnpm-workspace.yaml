@@ -1,0 +1,10 @@
+packages:
+  - "apps/*"
+  - "packages/*"
+
+# Dependency install scripts are denied by default. Allow a package only after reading its script.
+allowBuilds:
+  esbuild: false # ships its binary as a platform package
+  "@embedded-postgres/windows-x64": true # postinstall only recreates symlinks inside its own folder
+  "@embedded-postgres/linux-x64": true # same symlink-only postinstall as windows-x64
+  protobufjs: false # postinstall only checks versions; not needed

@@ -1,0 +1,2 @@
+# Connectors this kind of agent needs. `os` is always granted.
+connectors: [os]

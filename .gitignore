@@ -18,3 +18,7 @@ coverage/
 # OS and editor
 .DS_Store
 Thumbs.db
+
+# next.js
+next-env.d.ts
+apps/web/AGENTS.md

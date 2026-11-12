@@ -5,6 +5,7 @@ The full spec is `docs/SPEC.md`. It is long. Do not read all of it.
 
 ## How to work
 
+- **Autopilot is on** (2026-11-12). Read `docs/AUTOPILOT.md` and `docs/PROGRESS.md` first. Where they differ from the rules below (waiting for an OK, one task per session, stopping when spec and code disagree, the SPEC 18 stop rule), follow AUTOPILOT. Every hard rule still holds.
 - Read `docs/BUILD.md` first. It names the current slice and the current task.
 - Read only the SPEC sections the task lists. Section numbers are stable.
 - One branch per slice. One task per session. Write a plan first, wait for my OK, then code.
@@ -54,7 +55,8 @@ The full spec is `docs/SPEC.md`. It is long. Do not read all of it.
 - `pnpm test`: all tests
 - `pnpm db:migrate`: run migrations
 - `pnpm agent:new <template> --department <key>`: render and register an agent
-- `pnpm doctor`: check the install and print memory use
+- `pnpm run doctor`: check the install and print memory use. Plain `pnpm doctor` runs pnpm's own doctor instead.
+- `pnpm run e2e`: the slice 0 end-to-end check on both engines, against a running server
 
 ## Definition of done for any task
 
