@@ -175,7 +175,7 @@ Work them in order. Tick each when its test passes.
   `funnels` and `funnel_stages` loaded from `company/funnels.yaml` (both funnels from SPEC 10, owners and exit rules as text). A deal moves by `POST /api/deals/:id/stage`; each move is logged with time and who. A deal cannot pass the "first priced outcome" stage without a named decision-maker and a date. Moving a deal to won creates a project and its first tasks.
   *Test:* the rule refuses a move without both fields and allows it with them; won creates exactly one project, even if the move is repeated; every move is in the audit log.
 
-- [ ] **S2-3 Channel accounts, campaigns and sequences.** SPEC 10, 14, 15.
+- [x] **S2-3 Channel accounts, campaigns and sequences.** SPEC 10, 14, 15.
   `channel_accounts` (handle, daily cap, warm-up date, health), `campaigns` (market, audience rule, channel account, status draft/approved/running/paused/done) and `sequence_steps` (wait days, skill, template). Caps live on the channel account and the email executor reads them in addition to the workspace caps. A campaign must be approved by the founder before it runs.
   *Test:* a mailbox in warm-up sends at most its warm-up cap; a paused or unapproved campaign proposes nothing; the executor refuses over the channel cap.
 

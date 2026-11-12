@@ -2,6 +2,15 @@
 
 Newest first. One entry per decision: what, why, and what it replaced.
 
+## 2026-11-12 (S2-3: channel accounts, campaigns and sequences)
+
+- **Caps live on the channel account** (daily cap, a smaller warm-up cap used until a warm-up date, a health of ok, paused or blocked), and the email executor enforces them in the same claim transaction, under the same workspace send lock, as the workspace caps. An email over its mailbox cap is held, not failed: it stays approved and goes the next day. Mid-send emails count, so parallel sends cannot pass the cap (tested with eight at once against a cap of three). Two mailboxes are counted apart. The workspace caps from S1-5 still apply on top; when both hold, the later release time wins.
+- **A campaign must be approved by the founder before it runs,** and the sequence is frozen from that moment: steps can be set only while it is a draft, so what was approved is what runs. Lifecycle is draft, approved, running, paused, done, every move in the audit log. Approving needs at least one step, a first step with no wait, and a healthy mailbox of the campaign's channel.
+- **Only a running campaign can have anything proposed for it.** propose_email takes an optional campaignId; the proposal handler refuses a campaign that is draft, approved-but-not-started, paused or done, or that is not for email. The campaign and mailbox are recorded on the outreach message. An email with no campaign works as in slice 1.
+- **The executor checks again at send time.** If the campaign was paused or finished, or the mailbox went paused or blocked, between approval and sending, the email is refused with that reason and an action item, not held for ever: a founder decision about a campaign that no longer runs should not linger.
+- Migrations 0014 and 0015. Tenancy test lists channel_accounts, campaigns and sequence_steps. Dedupe is still one proposal per lead and step.
+- **No page yet:** the campaigns screen is S2-11.
+
 ## 2026-11-12 (S2-2: funnels as stage rows, and the stage rules)
 
 - **Both funnels are in company/funnels.yaml** (nine services stages, eight product stages, owner and exit rule in words, from SPEC 10), loaded by the company loader and copied to the funnels and funnel_stages tables by syncCompany, which the server now runs at start (it stops with the file and the reason if a company file is wrong). Nothing about the funnels is in apps/ (rule 8). Taking a stage out of the file marks it retired instead of deleting it, so no deal is left pointing at nothing, and a deal keeps its stage key through renames.

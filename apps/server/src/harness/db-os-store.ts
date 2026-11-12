@@ -49,7 +49,18 @@ export class DbOsStore implements OsStore {
       if (l.stage === 'do_not_contact') throw new ToolError('This lead is marked do not contact.');
       const supp = await c.query<{ value: string }>('select value from suppression');
       if (isSuppressed(l.email, supp.rows.map((r) => r.value))) throw new ToolError('This address is on the suppression list. Do not contact it.');
-      const payload = { leadId: p.leadId, to: l.email, subject: p.subject, body: p.body, step: p.step };
+      // An email can belong to a campaign, but only one that is running: draft, approved-but-not-started, paused and
+      // finished campaigns propose nothing. The executor checks again at send time.
+      let campaign: { id: string; channel_account_id: string | null } | undefined;
+      if (p.campaignId) {
+        const cp = await c.query<{ id: string; name: string; status: string; channel: string; channel_account_id: string | null }>('select id, name, status, channel, channel_account_id from campaigns where id = $1', [p.campaignId]);
+        campaign = cp.rows[0];
+        if (!campaign) throw new ToolError('No such campaign.');
+        const row = cp.rows[0]!;
+        if (row.status !== 'running') throw new ToolError(`The campaign "${row.name}" is ${row.status}, not running, so nothing can be proposed for it.`);
+        if (row.channel !== 'email') throw new ToolError(`The campaign "${row.name}" is for ${row.channel}, not email.`);
+      }
+      const payload = { leadId: p.leadId, to: l.email, subject: p.subject, body: p.body, step: p.step, ...(p.campaignId ? { campaignId: p.campaignId } : {}) };
       const ins = await c.query<{ id: string }>(
         `insert into approvals (workspace_id, kind, dedupe_key, agent_id, run_id, task_id, payload)
          values ($1, 'email.send', $2, $3, $4, $5, $6)
@@ -61,8 +72,8 @@ export class DbOsStore implements OsStore {
         return { approvalId: existing.rows[0]!.id, existed: true };
       }
       await c.query(
-        "insert into outreach_messages (workspace_id, lead_id, channel, step, to_address, subject, body, approval_id, status) values ($1, $2, 'email', $3, $4, $5, $6, $7, 'queued')",
-        [scope.workspaceId, p.leadId, p.step, l.email, p.subject, p.body, ins.rows[0].id],
+        "insert into outreach_messages (workspace_id, lead_id, channel, step, to_address, subject, body, approval_id, status, campaign_id, channel_account_id) values ($1, $2, 'email', $3, $4, $5, $6, $7, 'queued', $8, $9)",
+        [scope.workspaceId, p.leadId, p.step, l.email, p.subject, p.body, ins.rows[0].id, p.campaignId ?? null, campaign?.channel_account_id ?? null],
       );
       return { approvalId: ins.rows[0].id, existed: false };
     });

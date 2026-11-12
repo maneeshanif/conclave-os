@@ -99,6 +99,20 @@
       "when": 1794504340320,
       "tag": "0013_funnels_rls",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1794505006238,
+      "tag": "0014_campaigns_channels",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1794505008005,
+      "tag": "0015_campaigns_rls",
+      "breakpoints": true
     }
   ]
 }

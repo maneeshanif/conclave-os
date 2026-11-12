@@ -534,6 +534,69 @@ export const deals = pgTable(
   ],
 );
 
+/** A mailbox or social account the OS sends from. The caps live here, not in a prompt (SPEC 10, 15). */
+export const channelAccounts = pgTable(
+  'channel_accounts',
+  {
+    id: id(),
+    workspaceId: workspaceId(),
+    channel: text('channel').notNull(), // email | x_dm | ig_dm | linkedin
+    handle: text('handle').notNull(),
+    dailyCap: integer('daily_cap').notNull().default(10),
+    warmupUntil: date('warmup_until'),
+    warmupCap: integer('warmup_cap').notNull().default(5),
+    health: text('health').notNull().default('ok'), // ok | paused | blocked
+    createdAt: createdAt(),
+  },
+  (t) => [
+    unique('channel_accounts_ws_id_uq').on(t.workspaceId, t.id),
+    uniqueIndex('channel_accounts_handle_uq').on(t.workspaceId, t.channel, sql`lower(${t.handle})`),
+    check('channel_accounts_caps_ck', sql`${t.dailyCap} between 1 and 1000 and ${t.warmupCap} between 1 and 1000`),
+    check('channel_accounts_health_ck', sql`${t.health} in ('ok','paused','blocked')`),
+  ],
+);
+
+/** One push: a market, an audience, a channel, a sequence, a status. A founder approves it before it runs. */
+export const campaigns = pgTable(
+  'campaigns',
+  {
+    id: id(),
+    workspaceId: workspaceId(),
+    name: text('name').notNull(),
+    market: text('market'),
+    channel: text('channel').notNull().default('email'),
+    audience: jsonb('audience').notNull().default(sql`'{}'::jsonb`),
+    channelAccountId: uuid('channel_account_id'),
+    status: text('status').notNull().default('draft'), // draft | approved | running | paused | done
+    approvedAt: timestamp('approved_at', { withTimezone: true }),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    unique('campaigns_ws_id_uq').on(t.workspaceId, t.id),
+    foreignKey({ name: 'campaigns_channel_fk', columns: [t.workspaceId, t.channelAccountId], foreignColumns: [channelAccounts.workspaceId, channelAccounts.id] }),
+    check('campaigns_status_ck', sql`${t.status} in ('draft','approved','running','paused','done')`),
+  ],
+);
+
+/** The ordered messages of a campaign, with the wait before each. Step 1 goes out at once. */
+export const sequenceSteps = pgTable(
+  'sequence_steps',
+  {
+    id: id(),
+    workspaceId: workspaceId(),
+    campaignId: uuid('campaign_id').notNull(),
+    step: smallint('step').notNull(),
+    waitDays: smallint('wait_days').notNull().default(0),
+    skill: text('skill'),
+    template: text('template'),
+  },
+  (t) => [
+    unique('sequence_steps_ws_id_uq').on(t.workspaceId, t.id),
+    unique('sequence_steps_campaign_step_uq').on(t.workspaceId, t.campaignId, t.step),
+    foreignKey({ name: 'sequence_steps_campaign_fk', columns: [t.workspaceId, t.campaignId], foreignColumns: [campaigns.workspaceId, campaigns.id] }),
+  ],
+);
+
 /** Every message drafted or sent to a lead, one row per message. */
 export const outreachMessages = pgTable(
   'outreach_messages',
@@ -548,6 +611,8 @@ export const outreachMessages = pgTable(
     subject: text('subject'),
     body: text('body'),
     approvalId: uuid('approval_id'),
+    campaignId: uuid('campaign_id'),
+    channelAccountId: uuid('channel_account_id'),
     status: text('status').notNull().default('draft'), // draft | queued | sent | failed | refused | rejected | expired
     sentAt: timestamp('sent_at', { withTimezone: true }),
     externalRef: text('external_ref'),
@@ -558,6 +623,9 @@ export const outreachMessages = pgTable(
     index('outreach_ws_sent_idx').on(t.workspaceId, t.channel, t.sentAt),
     foreignKey({ name: 'outreach_lead_fk', columns: [t.workspaceId, t.leadId], foreignColumns: [leads.workspaceId, leads.id] }),
     foreignKey({ name: 'outreach_approval_fk', columns: [t.workspaceId, t.approvalId], foreignColumns: [approvals.workspaceId, approvals.id] }),
+    foreignKey({ name: 'outreach_campaign_fk', columns: [t.workspaceId, t.campaignId], foreignColumns: [campaigns.workspaceId, campaigns.id] }),
+    foreignKey({ name: 'outreach_channel_fk', columns: [t.workspaceId, t.channelAccountId], foreignColumns: [channelAccounts.workspaceId, channelAccounts.id] }),
+    index('outreach_channel_sent_idx').on(t.workspaceId, t.channelAccountId, t.sentAt),
   ],
 );
 

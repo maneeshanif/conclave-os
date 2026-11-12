@@ -12,6 +12,8 @@ export const EmailPayload = z.object({
   subject: z.string().trim().min(1).max(200),
   body: z.string().trim().min(1).max(5000),
   step: z.number().int().min(1).max(10).default(1),
+  /** The campaign this email belongs to, when it belongs to one. Its mailbox's caps then apply. */
+  campaignId: z.uuid().optional(),
 });
 export type EmailPayload = z.infer<typeof EmailPayload>;
 
@@ -74,6 +76,38 @@ export async function capHold(c: pg.PoolClient, s: Settings, now: Date): Promise
 }
 
 /**
+ * What the campaign and its mailbox say about sending one more email now (S2-3): a reason to refuse it (the campaign
+ * is not running, the mailbox is paused or blocked), or a hold (the mailbox's cap for today, which is the smaller
+ * warm-up cap while the mailbox warms up). Counts what went out today through that mailbox plus what is mid-send.
+ * Runs inside the claim's transaction, under the workspace send lock.
+ */
+async function channelCheck(c: pg.PoolClient, campaignId: string | undefined, now: Date): Promise<{ refusal?: string; hold?: Held }> {
+  if (!campaignId) return {};
+  const r = await c.query<{ name: string; status: string; channel_account_id: string | null; handle: string | null; health: string | null; daily_cap: number | null; warmup_until: Date | null; warmup_cap: number | null }>(
+    `select cp.name, cp.status, cp.channel_account_id, ca.handle, ca.health, ca.daily_cap, ca.warmup_until, ca.warmup_cap
+       from campaigns cp left join channel_accounts ca on ca.id = cp.channel_account_id where cp.id = $1`,
+    [campaignId],
+  );
+  const cp = r.rows[0];
+  if (!cp) return { refusal: 'the campaign this email belongs to no longer exists' };
+  if (cp.status !== 'running') return { refusal: `the campaign "${cp.name}" is ${cp.status}, not running` };
+  if (!cp.channel_account_id || cp.health === null) return { refusal: `the campaign "${cp.name}" has no mailbox` };
+  if (cp.health !== 'ok') return { refusal: `the mailbox ${cp.handle} is ${cp.health}` };
+  const warming = cp.warmup_until !== null && cp.warmup_until >= startOfToday(now);
+  const cap = warming ? Math.min(cp.warmup_cap!, cp.daily_cap!) : cp.daily_cap!;
+  const used = await c.query<{ n: number }>(
+    `select (select count(*)::int from outreach_messages where channel_account_id = $1 and status = 'sent' and sent_at >= $2)
+          + (select count(*)::int from approvals a join campaigns k on k.id::text = a.payload ->> 'campaignId'
+              where a.kind = 'email.send' and a.status = 'executing' and k.channel_account_id = $1) as n`,
+    [cp.channel_account_id, startOfToday(now)],
+  );
+  if (used.rows[0]!.n >= cap) {
+    return { hold: { status: 'held', reason: `${cp.handle}'s daily limit of ${cap} emails is reached${warming ? ' (it is still warming up)' : ''}`, until: startOfTomorrow(now) } };
+  }
+  return {};
+}
+
+/**
  * The email executor (SPEC 6). Plain code, no model. It claims the approval once, moving it from
  * `approved` to `executing`; a second call finds nothing to claim and returns without sending.
  * Every pre-send check runs again here, because the world can change between proposal and approval.
@@ -84,16 +118,25 @@ export async function executeEmail(deps: ExecutorDeps, approvalId: string): Prom
   const now = deps.now ?? (() => new Date());
 
   // 1. Claim, unless the kill switch is on or a cap is reached. All in one transaction.
+  let refusal: string | undefined;
   const outcome = await withWorkspace(deps.pool, ws, async ({ client: c }) => {
     const settings = await readSettings(c, ws);
     if (settings.killSwitch) return { kind: 'kill_switch' as const };
     // Only an approval that is approved is ours to send, and a cap is no reason to touch one that is not.
-    const mine = await c.query("select id from approvals where id = $1 and status = 'approved' and kind = 'email.send' for update", [approvalId]);
+    const mine = await c.query<{ payload: { campaignId?: string } }>("select id, payload from approvals where id = $1 and status = 'approved' and kind = 'email.send' for update", [approvalId]);
     if (!mine.rows[0]) return { kind: 'none' as const };
     // One lock per workspace around "count what has gone out, then claim", so parallel sends cannot overshoot.
     await c.query('select pg_advisory_xact_lock(hashtext($1))', [`email-send:${ws}`]);
-    const hold = await capHold(c, settings, now());
-    if (hold) return { kind: 'held' as const, hold };
+    // An email of a campaign that is no longer running, or from a mailbox that is not healthy, is claimed and refused
+    // below with the reason, rather than held for ever. Otherwise the mailbox's own cap applies as well as the workspace's.
+    const channel = await channelCheck(c, mine.rows[0].payload?.campaignId, now());
+    if (!channel.refusal) {
+      const hold = await capHold(c, settings, now());
+      const own = channel.hold;
+      const later = hold && own ? (own.until > hold.until ? own : hold) : (hold ?? own);
+      if (later) return { kind: 'held' as const, hold: later };
+    }
+    refusal = channel.refusal;
     const r = await c.query<{ payload: unknown; edited_payload: unknown }>(
       "update approvals set status = 'executing' where id = $1 and status = 'approved' and kind = 'email.send' returning payload, edited_payload",
       [approvalId],
@@ -137,6 +180,8 @@ export async function executeEmail(deps: ExecutorDeps, approvalId: string): Prom
     await finish('failed', { reason }, 'refused', { kind: 'executor_failed', title: `Email to ${p.to} not sent`, body: reason });
     return { status: 'refused', reason };
   };
+
+  if (refusal) return refuse(refusal);
 
   // Nothing can be sent without a sender address, and none is invented: the person sets OUTREACH_FROM.
   if (!deps.from.trim()) return refuse('OUTREACH_FROM is not set, so there is no sender address. Set it in .env (see .env.example), then approve a new copy.');

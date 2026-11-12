@@ -38,6 +38,7 @@ export interface ProposedEmail {
   subject: string;
   body: string;
   step: number;
+  campaignId?: string | undefined;
 }
 
 export class ToolError extends Error {}
@@ -50,6 +51,8 @@ const EmailInput = z
     subject: z.string().trim().min(1).max(200),
     body: z.string().trim().min(1).max(5000),
     step: z.number().int().min(1).max(10).default(1),
+    /** The running campaign this email is part of. Optional: a one-off email has none. */
+    campaignId: z.uuid().optional(),
   })
   .strict();
 const Text = (name: string, max: number) => z.object({ [name]: z.string().min(1).max(max) }).strict();
