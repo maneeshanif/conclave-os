@@ -10,8 +10,11 @@ import { agentWorkDir } from '../paths';
 import { fill } from './fill';
 import { PermissionsSchema, SHELL_TEMPLATES, claudeToolLists, opencodePermission, type Permissions } from './permissions';
 
-/** Placeholder the runner replaces with a per-run token just before each run (S0-6). */
-export const RUN_TOKEN_PLACEHOLDER = 'RUN_TOKEN_NOT_SET';
+/**
+ * The run token reaches the `os` server through an environment variable that the runner sets
+ * for each run, so no token is ever written to disk. Each harness has its own expansion syntax.
+ */
+const TOKEN_REF = { claude: '${CONCLAVE_RUN_TOKEN}', opencode: '{env:CONCLAVE_RUN_TOKEN}' } as const;
 
 const TemplateFileSchema = z.object({
   key: z.string(),
@@ -150,8 +153,8 @@ async function skillFiles(t: Template, base: string): Promise<Record<string, str
   return out;
 }
 
-function osServer(url: string) {
-  return { url, headers: { Authorization: `Bearer ${RUN_TOKEN_PLACEHOLDER}` } };
+function osServer(url: string, harness: keyof typeof TOKEN_REF) {
+  return { url, headers: { Authorization: `Bearer ${TOKEN_REF[harness]}` } };
 }
 
 /** Files for the Claude Code target. */
@@ -161,7 +164,7 @@ async function claudeTarget(agent: LoadedAgent, t: Template, rules: string, ctx:
     'CLAUDE.md': rules,
     'ROLE.md': agent.body + '\n',
     '.claude/settings.json': JSON.stringify({ permissions: { allow: tools.allow, deny: tools.deny } }, null, 2) + '\n',
-    '.mcp.json': JSON.stringify({ mcpServers: { os: { type: 'http', ...osServer(ctx.osUrl) } } }, null, 2) + '\n',
+    '.mcp.json': JSON.stringify({ mcpServers: { os: { type: 'http', ...osServer(ctx.osUrl, 'claude') } } }, null, 2) + '\n',
     ...(await skillFiles(t, '.claude/skills')),
   };
 }
@@ -181,7 +184,7 @@ async function opencodeTarget(agent: LoadedAgent, t: Template, rules: string, ct
     default_agent: agent.role.id,
     share: 'disabled',
     autoupdate: false,
-    mcp: { os: { type: 'remote', ...osServer(ctx.osUrl), enabled: true } },
+    mcp: { os: { type: 'remote', ...osServer(ctx.osUrl, 'opencode'), enabled: true } },
     permission,
   };
   return {
