@@ -11,7 +11,7 @@ Newest first. One entry per decision: what, why, and what it replaced.
 - **Meetings, channels, CRM and tickets sit behind adapters** (several providers each), so a new one is a connector and not a change to the core.
 - **Email cap is a rolling window:** 30 per 5 hours by default, plus a per-day cap, both settings.
 - **Resume after a limit:** laptop `/loop` first, cloud scheduled task as backup, with claims in `PROGRESS.md`.
-- **Meeting consent comes first:** the notice is read at the start of the call, before recording. A "no" stops recording and notifies Anees.
+- **Meeting consent comes first:** the agent asks at the start, in chat and aloud, before recording. A "no" or no answer means nothing is recorded, Anees is notified and joins the call with the agent.
 - **The course-creator company template is a deliverable of slice 9,** documented so another teacher can install it.
 
 ## 2026-11-12 (S0-3 to S0-9, built overnight by Claude in the cloud on top of S0-2)
