@@ -123,6 +123,8 @@ const builders: Record<'claude-cli' | 'opencode', (req: RunRequest, files: { sys
     return {
       args: [
         'run',
+        // The message comes first: `--file` takes several values and would swallow it.
+        'Do the task in the attached task.md, using the context in context.md.',
         '--format',
         'json',
         '--agent',
@@ -133,7 +135,6 @@ const builders: Record<'claude-cli' | 'opencode', (req: RunRequest, files: { sys
         files.system,
         '--file',
         files.prompt,
-        'Do the task in the attached task.md, using the context in context.md.',
       ],
       extraEnv: {
         // Keep the person's own skills out of company agents (checked with opencode 1.19.5).
