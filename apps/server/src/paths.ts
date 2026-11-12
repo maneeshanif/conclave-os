@@ -26,3 +26,23 @@ export function agentWorkDir(dataDir: string, workspaceSlug: string, agentKey: s
   }
   return dir;
 }
+
+/** DATA_DIR from the environment, default `~/.conclave-os`. Refused when it is inside the repo. */
+export function resolveDataDir(env: Record<string, string | undefined> = process.env): string {
+  const raw = env.DATA_DIR && env.DATA_DIR.trim() !== '' ? env.DATA_DIR : '~/.conclave-os';
+  const dir = path.resolve(expandHome(raw));
+  if (isInside(dir, REPO_ROOT)) {
+    throw new Error(`DATA_DIR ${dir} is inside the repo (${REPO_ROOT}). Agent folders must never be inside it. Set DATA_DIR elsewhere.`);
+  }
+  return dir;
+}
+
+export const DEFAULT_PG_PORT = 54329;
+
+export function resolvePgPort(env: Record<string, string | undefined> = process.env): number {
+  const raw = env.PG_PORT;
+  if (!raw) return DEFAULT_PG_PORT;
+  const n = Number(raw);
+  if (!Number.isInteger(n) || n < 1 || n > 65535) throw new Error(`PG_PORT "${raw}" is not a port number`);
+  return n;
+}

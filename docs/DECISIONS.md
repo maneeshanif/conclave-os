@@ -2,6 +2,18 @@
 
 Newest first. One entry per decision: what, why, and what it replaced.
 
+## 2026-11-12 (overnight build, Claude in the cloud)
+
+- **The overnight session built S0-2 on its own branch, `work/overnight`.** The VS Code session wrote the S0-2 spec commit and then stopped pushing, most likely waiting for a permission answer. So this branch implements S0-2 from that spec and keeps going. Compare with any S0-2 the VS Code session pushes later before merging.
+- **`conclave_owner` has BYPASSRLS.** Bootstrap must see whether a workspace already exists, and FORCE row-level security applies to the owner too. The owner is still used only for migrations and bootstrap. `conclave_app` has no BYPASSRLS, which a test checks. SPEC 11.
+- **Migrations are SQL files, applied in order by a small migrator into `_migrations`.** The first file is the SPEC 11 slice 0 block as written, plus the forced policies and grants. Queries use `pg` directly for now. Drizzle is installed but its typed table definitions are not written yet. Decide whether to keep Drizzle for queries before slice 1. SPEC 11.
+- **The run token reaches the `os` server through an environment variable, never a file.** Claude Code expands `${CONCLAVE_RUN_TOKEN}` in `.mcp.json` and OpenCode expands `{env:CONCLAVE_RUN_TOKEN}`. The OpenCode form is tested with the real binary. The Claude form is not yet, because the `claude` here is not signed in for agent runs. S0-11 checks it on your machine. SPEC 6.
+- **Prompts never go on a command line.** Claude Code reads the task on stdin, and OpenCode gets it as an attached file. This also makes `.cmd` shims on Windows safe to start through a shell.
+- **The agent environment allow-list includes the Windows profile variables** (`USERPROFILE`, `APPDATA`, `LOCALAPPDATA`, `SYSTEMROOT`, `TEMP`, `TMP`, `PATHEXT`, `COMSPEC`), so a CLI can find its own sign-in on Windows. Still no server secret reaches an agent, which a test checks.
+- **OpenCode target is written for opencode 1.19.5:** `mcp.<name>` and a `permission` map in `opencode.json`, agents in `.opencode/agents/`, skills in `.opencode/skills/`. The docs site describes a different "V2" shape that the installed binary does not use. Agent runs set `OPENCODE_DISABLE_CLAUDE_CODE_SKILLS=1` and `OPENCODE_DISABLE_EXTERNAL_SKILLS=1`, because without them your personal `~/.claude/skills` load into company agents (checked with the binary).
+- **Claude Code has no `--max-turns` flag in 2.1.322,** so the runner counts turns and stops the run itself.
+- **`@embedded-postgres/linux-x64` may run its install script.** Read first: it only recreates symlinks inside its own package, like the Windows one.
+
 ## 2026-11-12 (S0-2: tenancy keys and policy)
 
 - **Foreign keys cannot cross workspaces.** Every tenant table with an `id` gets `unique (workspace_id, id)`, and every foreign key between tenant tables is `(workspace_id, x_id) references t (workspace_id, id)`. Why: Postgres runs foreign key checks without row-level security, so a plain key lets a row in workspace A point at a row in workspace B. Cheap at schema birth, painful later. Goes beyond the original slice 0 block, so SPEC 11 was updated first. `members` has no `id`, so it keeps its plain key. `departments.lead_agent_id` gains a composite key too, added after `agents` exists. SPEC 11.

@@ -10,8 +10,15 @@
   "dependencies": {
     "@conclave/shared": "workspace:*",
     "@hono/node-server": "2.1.6",
+    "drizzle-orm": "0.45.4",
+    "embedded-postgres": "18.6.0-beta.19",
     "hono": "4.13.17",
+    "pg": "^8.23.1",
     "yaml": "^2.9.1",
     "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@types/pg": "^8.23.1",
+    "drizzle-kit": "0.31.11"
   }
 }

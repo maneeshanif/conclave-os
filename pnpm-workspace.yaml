@@ -4,4 +4,7 @@ packages:
 
 # Do not run dependency install scripts. esbuild ships its binary as a platform package.
 allowBuilds:
+  # Read before allowing: it only recreates symlinks inside its own package folder.
+  '@embedded-postgres/linux-x64': true
+  '@embedded-postgres/windows-x64': true
   esbuild: false
