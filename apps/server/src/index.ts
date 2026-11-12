@@ -25,6 +25,7 @@ import { liftExpiredPauses } from './harness/pauses';
 import { reapRuns } from './harness/reaper';
 import { RunTokens } from './harness/run-tokens';
 import { createCliRuntime } from './runtimes/cli';
+import { createOpenAIAgentsRuntime } from './runtimes/openai-agents';
 import { openSystem, ownerAccess } from './system';
 import { LocalDispatcher, tick, type Dispatcher, type RunRequestEvent } from './workflows/dispatch';
 import { createInngestGate, gateOps, LocalApprovalGate, type ApprovalGate } from './workflows/approval-gate';
@@ -77,7 +78,7 @@ const loop: LoopDeps = {
   pool: sys.app,
   tokens,
   bus,
-  runtimes: { 'claude-cli': createCliRuntime('claude-cli'), opencode: createCliRuntime('opencode') },
+  runtimes: { 'claude-cli': createCliRuntime('claude-cli'), opencode: createCliRuntime('opencode'), 'openai-agents': createOpenAIAgentsRuntime({ osUrl: sys.osUrl }) },
   dataDir: sys.dataDir,
   workspaceSlug: sys.workspace.slug,
   templatesRoot: sys.templatesRoot,
