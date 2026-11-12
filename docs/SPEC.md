@@ -1125,6 +1125,9 @@ Set the embedding size to match the embedding model you choose.
 - Every tenant table has `workspace_id`, including child and join tables.
 - Every row has a uuid `id`. A human-readable id from a file, such as a department or agent id or a skill, plugin or template name, is a `key` column that is unique per workspace. Two workspaces can both have a department called `outreach`.
 - The server connects as a role that is not a superuser and does not own the tables. Every tenant table has row-level security enabled and forced. Each request runs in a transaction that starts with `set local app.workspace_id`. A query with no workspace set returns no rows.
+- Three roles, one job each. The Postgres superuser made by `initdb` is used once, at first start, to create the other two, and never again. `conclave_owner` owns the tables and is used only for migrations and bootstrap, never on a request path. `conclave_app` is the request role: select, insert, update and delete, no DDL, no `bypassrls`.
+- Write the policy as `nullif(current_setting('app.workspace_id', true), '')::uuid`, never as a bare cast. After a pooled connection has run `set_config(..., true)` once, the setting reads as an empty string, not null, and `''::uuid` raises an error instead of returning no rows. `workspaces` has no `workspace_id`, so its policy is `id = nullif(current_setting('app.workspace_id', true), '')::uuid`.
+- Foreign keys cannot cross workspaces. Every tenant table that has an `id` also has `unique (workspace_id, id)`, and every foreign key between tenant tables is composite: `foreign key (workspace_id, x_id) references t (workspace_id, id)`. This holds for every table in every block below, whatever shape the block shows. A foreign key check bypasses row-level security, so a plain key would let a row in workspace A point at a row in workspace B. `members` has no `id`, so it keeps its primary key and a plain key to `workspaces`.
 - `suppression` is unique on workspace and value. `deals` uses `stage_position` only. `outreach_messages` gains `thread_id` and `campaign_id`.
 - Names: the tables shown as `mcp_servers` and `agent_mcp` are built as `connectors` and `agent_connectors`, the route is `/connectors`, and the run request field is `connectors`.
 
@@ -1145,80 +1148,114 @@ create table members (
 create table departments (
   id uuid primary key default gen_random_uuid(), workspace_id uuid not null references workspaces(id),
   key text not null, name text not null, lead_agent_id uuid, room jsonb not null default '{}',
-  unique (workspace_id, key)
+  unique (workspace_id, key), unique (workspace_id, id)
+  -- foreign key (workspace_id, lead_agent_id) references agents (workspace_id, id): added after agents exists
 );
 create table agent_templates (
   id uuid primary key default gen_random_uuid(), workspace_id uuid not null references workspaces(id),
   key text not null, version int not null default 1, path text not null,
-  unique (workspace_id, key)
+  unique (workspace_id, key), unique (workspace_id, id)
 );
 create table agents (
   id uuid primary key default gen_random_uuid(), workspace_id uuid not null references workspaces(id),
   key text not null, name text not null,
-  department_id uuid not null references departments(id), reports_to uuid references agents(id),
-  template_id uuid references agent_templates(id), template_version int,
+  department_id uuid not null, reports_to uuid,
+  template_id uuid, template_version int,
   runtime text not null check (runtime in ('claude-cli','opencode','openai-agents','codex','http','claude-agent')),
   model_alias text not null, fallback_alias text, heartbeat_cron text,
   autonomy smallint not null default 0, max_turns int not null default 25, output_check text,
   monthly_budget_usd numeric(10,2) not null default 5,
   status text not null default 'pending_approval', -- pending_approval | active | paused | retired
   role_path text not null, created_at timestamptz not null default now(),
-  unique (workspace_id, key)
+  unique (workspace_id, key), unique (workspace_id, id),
+  foreign key (workspace_id, department_id) references departments (workspace_id, id),
+  foreign key (workspace_id, reports_to)    references agents (workspace_id, id),
+  foreign key (workspace_id, template_id)   references agent_templates (workspace_id, id)
 );
+alter table departments
+  add foreign key (workspace_id, lead_agent_id) references agents (workspace_id, id);
 create table goals (
   id uuid primary key default gen_random_uuid(), workspace_id uuid not null references workspaces(id),
   key text not null, kind text not null,           -- rung | department
-  parent_id uuid references goals(id), department_id uuid references departments(id),
+  parent_id uuid, department_id uuid,
   title text, metric text, target numeric, source text, due date,
   status text not null default 'active',
-  unique (workspace_id, key)
+  unique (workspace_id, key), unique (workspace_id, id),
+  foreign key (workspace_id, parent_id)     references goals (workspace_id, id),
+  foreign key (workspace_id, department_id) references departments (workspace_id, id)
 );
 create table tasks (
   id uuid primary key default gen_random_uuid(), workspace_id uuid not null references workspaces(id),
-  goal_id uuid references goals(id), parent_id uuid references tasks(id),
-  department_id uuid references departments(id), assignee_id uuid references agents(id),
+  goal_id uuid, parent_id uuid, department_id uuid, assignee_id uuid,
   title text not null, body text, kind text not null default 'general',
   status text not null default 'todo',  -- todo | in_progress | waiting_approval | blocked | done | cancelled
   priority smallint not null default 3, blocked_reason text,
   locked_by uuid, locked_at timestamptz, session_id text,
   subject_type text, subject_id uuid,
-  created_by text not null, created_at timestamptz not null default now(), done_at timestamptz
+  created_by text not null, created_at timestamptz not null default now(), done_at timestamptz,
+  unique (workspace_id, id),
+  foreign key (workspace_id, goal_id)       references goals (workspace_id, id),
+  foreign key (workspace_id, parent_id)     references tasks (workspace_id, id),
+  foreign key (workspace_id, department_id) references departments (workspace_id, id),
+  foreign key (workspace_id, assignee_id)   references agents (workspace_id, id)
 );
 create index on tasks (workspace_id, assignee_id, status, priority, created_at);
 create table runs (
   id uuid primary key default gen_random_uuid(), workspace_id uuid not null references workspaces(id),
-  agent_id uuid not null references agents(id), task_id uuid references tasks(id),
+  agent_id uuid not null, task_id uuid,
   trigger text not null, runtime text not null, model text, session_id text,
   status text not null default 'queued', -- queued | running | waiting_approval | succeeded | failed | cancelled | timed_out
   attempt smallint not null default 1, heartbeat_at timestamptz,
   started_at timestamptz, ended_at timestamptz,
-  tokens_in int default 0, tokens_out int default 0, cost_usd numeric(10,4) default 0, error text
+  tokens_in int default 0, tokens_out int default 0, cost_usd numeric(10,4) default 0, error text,
+  unique (workspace_id, id),
+  foreign key (workspace_id, agent_id) references agents (workspace_id, id),
+  foreign key (workspace_id, task_id)  references tasks (workspace_id, id)
 );
 create table run_events (
   id bigserial primary key, workspace_id uuid not null references workspaces(id),
-  run_id uuid not null references runs(id),
-  at timestamptz not null default now(), type text not null, data jsonb not null
+  run_id uuid not null,
+  at timestamptz not null default now(), type text not null, data jsonb not null,
+  unique (workspace_id, id),
+  foreign key (workspace_id, run_id) references runs (workspace_id, id)
 );
 create table approvals (
   id uuid primary key default gen_random_uuid(), workspace_id uuid not null references workspaces(id),
   kind text not null, dedupe_key text not null,
-  agent_id uuid references agents(id), run_id uuid references runs(id), task_id uuid references tasks(id),
+  agent_id uuid, run_id uuid, task_id uuid,
   payload jsonb not null, edited_payload jsonb,
   status text not null default 'pending', -- pending | approved | executing | executed | rejected | expired | failed
   decided_by text, decided_at timestamptz, decided_device text, decision_note text,
   result jsonb, created_at timestamptz not null default now(),
-  unique (workspace_id, kind, dedupe_key)
+  unique (workspace_id, kind, dedupe_key), unique (workspace_id, id),
+  foreign key (workspace_id, agent_id) references agents (workspace_id, id),
+  foreign key (workspace_id, run_id)   references runs (workspace_id, id),
+  foreign key (workspace_id, task_id)  references tasks (workspace_id, id)
 );
 create table messages (
   id uuid primary key default gen_random_uuid(), workspace_id uuid not null references workspaces(id),
-  task_id uuid references tasks(id), from_id text not null, to_id text,
-  body text not null, created_at timestamptz not null default now()
+  task_id uuid, from_id text not null, to_id text,
+  body text not null, created_at timestamptz not null default now(),
+  unique (workspace_id, id),
+  foreign key (workspace_id, task_id) references tasks (workspace_id, id)
 );
 create table audit_log (
   id bigserial primary key, workspace_id uuid not null references workspaces(id),
   at timestamptz not null default now(), actor text not null, action text not null,
-  subject text, data jsonb not null default '{}'
+  subject text, data jsonb not null default '{}',
+  unique (workspace_id, id)
 );
+
+-- Row-level security on the eleven tables with workspace_id, after the tables exist:
+--   alter table <t> enable row level security;
+--   alter table <t> force row level security;
+--   create policy tenant_isolation on <t>
+--     using      (workspace_id = nullif(current_setting('app.workspace_id', true), '')::uuid)
+--     with check (workspace_id = nullif(current_setting('app.workspace_id', true), '')::uuid);
+-- and the same on workspaces, which has no workspace_id, keyed on its own id:
+--   create policy tenant_isolation on workspaces
+--     using      (id = nullif(current_setting('app.workspace_id', true), '')::uuid)
+--     with check (id = nullif(current_setting('app.workspace_id', true), '')::uuid);
 ```
 
 **Tables the prose relies on, added in their own slice by the same rule.** Slice 1: `action_items`, `workspace_settings` (the kill switch and the daily cap), `devices` and sessions. Slice 2: `sequences`. Slice 3: `evals`, `eval_runs` and `trials`. The v2, v3 and final-pass blocks below show the columns for the rest.
@@ -1235,9 +1272,8 @@ create table members (
   role text not null check (role in ('owner','admin','member','viewer')),
   primary key (workspace_id, user_id)
 );
--- on every tenant table:
---   alter table <t> enable row level security;
---   create policy ws on <t> using (workspace_id = current_setting('app.workspace_id')::uuid);
+-- on every tenant table: see "The tenancy rule" above (enable and force row-level security,
+-- the nullif policy, composite foreign keys). The bare cast form is not used.
 
 create table accounts (
   id uuid primary key default gen_random_uuid(), workspace_id uuid not null references workspaces(id),

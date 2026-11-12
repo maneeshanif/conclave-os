@@ -2,6 +2,14 @@
 
 Newest first. One entry per decision: what, why, and what it replaced.
 
+## 2026-11-12 (S0-2: tenancy keys and policy)
+
+- **Foreign keys cannot cross workspaces.** Every tenant table with an `id` gets `unique (workspace_id, id)`, and every foreign key between tenant tables is `(workspace_id, x_id) references t (workspace_id, id)`. Why: Postgres runs foreign key checks without row-level security, so a plain key lets a row in workspace A point at a row in workspace B. Cheap at schema birth, painful later. Goes beyond the original slice 0 block, so SPEC 11 was updated first. `members` has no `id`, so it keeps its plain key. `departments.lead_agent_id` gains a composite key too, added after `agents` exists. SPEC 11.
+- **Policies use `nullif(current_setting('app.workspace_id', true), '')::uuid`.** On a pooled connection that has run `set_config(..., true)`, the setting reads as an empty string, not null, and a bare `''::uuid` raises an error instead of returning no rows. A test covers a one-connection pool. `workspaces` has no `workspace_id`, so its policy is on `id`. SPEC 11.
+- **Three database roles.** The `initdb` superuser is used once at first start to create `conclave_owner` and `conclave_app`, then never again, and its password is not stored. The owner owns the tables and is used only for migrations and bootstrap. The app role serves requests with select, insert, update and delete only. If first start is interrupted before the credentials file exists, the half-made cluster holds no data and is wiped and made again. SPEC 11.
+- **Embedded Postgres is `embedded-postgres` 18.6.0-beta.19.** Spiked on Node 24.13 and Windows x64: it initialises, starts, runs PostgreSQL 18.6, and listens on 127.0.0.1 only. Port 54329, read from `PG_PORT`. Role passwords live in `DATA_DIR/secrets/db.json`, outside the repo.
+- **One install script is allowed:** `@embedded-postgres/windows-x64`. I read it first: it only recreates symlinks inside its own package folder. esbuild stays denied. The policy stays on for everything else.
+
 ## 2026-11-12 (slice 0 setup)
 
 - **Developing on Node 24, supporting 22 and up.** `engines` is `>=22` and `.nvmrc` says 22. Why: Node 24 is installed on the dev machine and CLAUDE.md names Node 22. Before S0-2 we confirm embedded Postgres starts on Node 24; if it does not, switch to 22 then. Replaces "Node 22 only".
