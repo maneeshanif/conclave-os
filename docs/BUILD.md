@@ -10,6 +10,10 @@ The spec is `docs/SPEC.md`. Section 18 lists ten slices. Only one slice is open 
 
 **Why two engines in slice 0:** the OS must not depend on one harness or one model (SPEC 5, the portability rule). Two runtimes passing the same conformance tests prove that before anything is built on top.
 
+## Autopilot
+
+Autopilot is on: see `docs/AUTOPILOT.md`, `docs/QUESTIONS.md` and `docs/PROGRESS.md`.
+
 ## Kickoff prompt (paste this into Claude Code once)
 
 ```text
@@ -75,6 +79,18 @@ Work them in order. Tick each when its test passes.
 - [x] **S0-11 End to end, on both engines.** Now one command: start `pnpm dev`, then `pnpm run e2e`. Passed in the cloud on Linux with real Claude Code and real OpenCode (on a stand-in model). Run it once on your Windows machine before opening slice 1.
   Run `pnpm agent:new researcher --department research`. Give it the task "List five facts from the company file, each with the line it came from", with `company/COMPANY.md` passed in the task context. Fire a run. Then change the role file's `runtime` to `opencode` and its `model` to an alias that lists `opencode`, render again, and fire the same task.
   *Test, by hand:* both runs end `done`, each answer is in its task thread, every step is visible on the task page, and neither run log contains text from this repo's `CLAUDE.md`. If OpenCode is not installed or has no provider yet, record that in `docs/DECISIONS.md` and leave this box unticked until it is.
+
+- [ ] **S0-12 Windows process handling.** SPEC 5 (the runner), 14.
+  Resolve an npm `.cmd` shim to `node` plus its script and spawn without a shell; quote `health()` arguments the same way. On win32, cancel with `taskkill /pid <pid> /T /F` so the child's own children die too.
+  *Test:* unit tests for the shim resolver on a fake `.cmd` file and for the kill command chosen per platform; by hand on Windows, a cancelled run leaves no `claude` or `opencode` process.
+
+- [ ] **S0-13 Heartbeats and turn counting.** SPEC 5, 11 ("One event starts every run"), 14.
+  Remember each agent's last heartbeat tick in memory so an idle agent is not requested every minute, and drop a run request when one is already queued for that agent. Count Claude turns by distinct `message.id`, not by event.
+  *Test:* ten ticks in one minute queue at most one request per agent; a stream with one message split over three events counts one turn.
+
+- [ ] **S0-14 Task ownership in the os tools.** SPEC 6, 11.
+  `comment`, `complete_task`, `block_task` and `ask_founder` act only when the task is `in_progress` and `locked_by` is the calling agent. `PATCH /api/tasks/:id` clears `locked_by` when it moves a task out of `in_progress`. Add a test that `createWorkflows` registers both functions with the two concurrency limits.
+  *Test:* a token for a run whose task was moved back to `todo` cannot complete it; the Inngest config test passes.
 
 ## Opening the next slice
 
