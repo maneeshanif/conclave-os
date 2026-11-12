@@ -2,6 +2,13 @@
 
 Newest first. One entry per decision: what, why, and what it replaced.
 
+## 2026-11-12 (initdb watchdog, data safety, local model)
+
+- **initdb runs under a watchdog on Windows.** On the laptop initdb stalled about one run in ten (the `postgres --check` bootstrap child sat idle), even on a fresh directory with nothing else running, and the library waits forever, so the server never started. Found with traces: `before initialise` printed and `after initialise` never did. Now: 60 s per attempt, the whole process tree killed, the half-made directory cleared, up to three attempts; a real failure (non-zero exit) is reported at once and never retried. Other platforms keep the library's `initialise()`.
+- **Nothing in the OS ever deletes a database that holds data.** `runInitdb` refuses a target that has `PG_VERSION` or any file it did not create, and on a retry removes only what its own attempt made; an empty directory it was given stays. `startDatabase` wipes a cluster only when this server began creating it and never finished: a marker file (`first-start.marker`, in `DATA_DIR`) is written before initdb and removed after the credentials are written. A cluster with `PG_VERSION` and credentials that are missing, corrupt or the wrong shape is refused with instructions, never wiped; put the credentials file back and it starts with its data intact. This replaces the earlier S0-2 rule that wiped any cluster without a credentials file, which would have destroyed a real database if that file was lost.
+- **`local-worker` is chosen only after the model passes the runtime conformance tests with tool calling.** No model is named for it before that, and the placeholder in `config/models.ts` is not a recommendation. A model that cannot call the `os` tools through its runtime does not qualify, however well it chats.
+- **`gpt-oss:120b-cloud` is an outside cloud model, not a local one.** Ollama lists it, but it runs on Ollama's servers, so a prompt sent to it leaves the laptop. It is never used for `local-worker`. If it is ever used for anything, that use is logged here first, with what is sent to it.
+
 ## 2026-11-12 (S0-14: task ownership)
 
 - **A run acts on a task only while it holds it.** `comment`, `complete_task`, `block_task` and `ask_founder` need the task to be `in_progress` and `locked_by` the calling agent. The check and the write share one transaction with the task row locked (`for update`), so a person moving the task cannot slip in between. Before, only `done` and `cancelled` were refused, so a run still going after its task was reset could finish it. A task already blocked by `ask_founder` refuses a second tool call in the same run.

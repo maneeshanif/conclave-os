@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:net';
 import { homedir, tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -7,7 +7,7 @@ import { Pool } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createApp } from '../src/app';
 import { REPO_ROOT, resolveDataDir, resolvePgPort } from '../src/config';
-import { startDatabase, type Database } from '../src/db';
+import { FIRST_START_MARKER, startDatabase, type Database } from '../src/db';
 import { withWorkspace } from '../src/db/tenant';
 
 const TABLES = [
@@ -339,16 +339,20 @@ describe('first start', () => {
     }
   }, 120_000);
 
-  it('wipes and rebuilds a half-made cluster that has no credentials file', async () => {
+  it('rebuilds a cluster that this server began creating and never finished', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'conclave-halfmade-'));
     try {
       const first = await startDatabase({ dataDir: dir, port: await freePort() });
       await first.stop();
-      rmSync(join(dir, 'secrets'), { recursive: true, force: true }); // as if first start died before the marker
+      // As if the first start died after initdb and before the credentials were written: the credentials
+      // are missing and the "first start is running" marker is still there.
+      rmSync(join(dir, 'secrets'), { recursive: true, force: true });
+      writeFileSync(join(dir, FIRST_START_MARKER), 'started\n');
 
       const again = await startDatabase({ dataDir: dir, port: await freePort() });
       try {
         expect(existsSync(join(dir, 'secrets', 'db.json'))).toBe(true);
+        expect(existsSync(join(dir, FIRST_START_MARKER))).toBe(false); // a finished first start leaves no marker
         expect(again.workspaceId).toMatch(/^[0-9a-f-]{36}$/);
       } finally {
         await again.stop();
@@ -357,4 +361,52 @@ describe('first start', () => {
       removeDir(dir);
     }
   }, 120_000);
+
+  for (const [what, damage] of [
+    ['the credentials file is missing', (file: string) => rmSync(file, { force: true })],
+    ['the credentials file is corrupt', (file: string) => writeFileSync(file, '{ this is not json')],
+    ['the credentials file has the wrong shape', (file: string) => writeFileSync(file, JSON.stringify({ ownerPassword: 'short' }))],
+  ] as const) {
+    it(`never deletes a database that already holds data when ${what}`, async () => {
+      const dir = mkdtempSync(join(tmpdir(), 'conclave-lostcreds-'));
+      try {
+        const first = await startDatabase({ dataDir: dir, port: await freePort() });
+        const workspaceId = first.workspaceId;
+        await withWorkspace(first.appPool, workspaceId, ({ client }) =>
+          client.query("insert into departments (workspace_id, key, name) values ($1, 'precious', 'Precious')", [workspaceId]),
+        );
+        await first.stop();
+
+        const file = join(dir, 'secrets', 'db.json');
+        const good = readFileSync(file, 'utf8');
+        damage(file);
+
+        const refused = await startDatabase({ dataDir: dir, port: await freePort() }).then(
+          () => undefined,
+          (e: unknown) => e as Error,
+        );
+        expect(refused?.message).toMatch(/already holds a database/);
+        // The message says which file to restore and where it is, and that nothing was deleted.
+        expect(refused?.message).toContain(file);
+        expect(refused?.message).toContain(join(dir, 'postgres'));
+        expect(refused?.message).toMatch(/will not delete a database/);
+        expect(existsSync(join(dir, 'postgres', 'PG_VERSION'))).toBe(true); // still there
+
+        // Put the credentials back and everything is exactly as it was.
+        writeFileSync(file, good);
+        const back = await startDatabase({ dataDir: dir, port: await freePort() });
+        try {
+          expect(back.workspaceId).toBe(workspaceId);
+          const rows = await withWorkspace(back.appPool, workspaceId, ({ client }) =>
+            client.query("select name from departments where key = 'precious'"),
+          );
+          expect(rows.rows).toEqual([{ name: 'Precious' }]);
+        } finally {
+          await back.stop();
+        }
+      } finally {
+        removeDir(dir);
+      }
+    }, 150_000);
+  }
 });

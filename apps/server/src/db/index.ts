@@ -9,6 +9,7 @@ import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import EmbeddedPostgres from 'embedded-postgres';
 import { Client, Pool } from 'pg';
 import { z } from 'zod';
+import { runInitdb } from './initdb';
 
 const HOST = '127.0.0.1';
 const DB_NAME = 'conclave';
@@ -42,30 +43,61 @@ function removeDir(dir: string) {
   rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 300 });
 }
 
+/** The saved logins, or undefined when the file is missing, not JSON, or the wrong shape. Never throws. */
 function readCredentials(file: string): Credentials | undefined {
-  if (!existsSync(file)) return undefined;
-  const parsed = Credentials.safeParse(JSON.parse(readFileSync(file, 'utf8')));
-  return parsed.success ? parsed.data : undefined;
+  try {
+    const parsed = Credentials.safeParse(JSON.parse(readFileSync(file, 'utf8')));
+    return parsed.success ? parsed.data : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
+/**
+ * Written to DATA_DIR before a first start runs initdb and removed once the credentials are saved. It is the
+ * only thing that says "this server made that cluster a moment ago and it holds nothing yet", which is the
+ * only case in which a cluster without credentials may be deleted.
+ */
+export const FIRST_START_MARKER = 'first-start.marker';
+
 const secret = () => randomBytes(32).toString('hex');
+
+/**
+ * UTF-8 always. Without these, initdb on Windows picks WIN1252 from the system locale and cannot store emoji
+ * or most non-Latin text. --no-sync skips fsync of a brand-new cluster; if power fails mid-init the half-made
+ * cluster is wiped and rebuilt (see startDatabase), so nothing is lost.
+ */
+const INITDB_FLAGS = ['--encoding=UTF8', '--locale=C', '--locale-provider=builtin', '--builtin-locale=C.UTF-8', '--no-sync'];
 
 export async function startDatabase({ dataDir, port }: StartOptions): Promise<Database> {
   const pgDir = join(dataDir, 'postgres');
   const credsFile = join(dataDir, 'secrets', 'db.json');
 
+  const marker = join(dataDir, FIRST_START_MARKER);
   let credentials = readCredentials(credsFile);
   const initialised = existsSync(join(pgDir, 'PG_VERSION'));
 
-  // The credentials file is written last, so it marks a finished first start. A cluster without it was
-  // interrupted before the roles existed. It holds no data and nobody knows its superuser password, so
-  // start again. A credentials file without a cluster is stale for the same reason.
-  if (initialised && !credentials) removeDir(pgDir);
+  if (initialised && !credentials) {
+    // A cluster with no usable logins is one of two things. If the marker is there, this server began creating
+    // it and died before saving the logins: it holds nothing, nobody knows its superuser password, so start
+    // again. If not, it is a database that was in use and lost its login file. That may hold someone's data, so
+    // it is never deleted: the person restores the file, or removes the folder themselves if they mean to.
+    if (!existsSync(marker)) {
+      throw new Error(
+        `${pgDir} already holds a database, but the file with its logins is missing or unreadable: ${credsFile}. ` +
+          `Restore that file from a backup and start again. ` +
+          `If you want to start over instead, move or delete ${pgDir} yourself; Conclave will not delete a database.`,
+      );
+    }
+    removeDir(pgDir);
+  }
+  // Saved logins with no cluster belong to nothing. They are not data, so clear them.
   if (!initialised && existsSync(credsFile)) {
     rmSync(credsFile, { force: true });
     credentials = undefined;
   }
   const firstStart = credentials === undefined;
+  if (!firstStart) rmSync(marker, { force: true }); // a marker left over from a finished start means nothing
 
   const superuserPassword = secret(); // used once below, then dropped with this scope
   const isRoot = typeof process.getuid === 'function' && process.getuid() === 0;
@@ -86,16 +118,7 @@ export async function startDatabase({ dataDir, port }: StartOptions): Promise<Da
     port,
     persistent: true,
     authMethod: 'scram-sha-256',
-    // UTF-8 always. Without these, initdb on Windows picks WIN1252 from the system locale and cannot store
-    // emoji or most non-Latin text. --no-sync skips fsync of a brand-new cluster; if power fails mid-init the
-    // half-made cluster is wiped and rebuilt (see above), so nothing is lost.
-    initdbFlags: [
-      '--encoding=UTF8',
-      '--locale=C',
-      '--locale-provider=builtin',
-      '--builtin-locale=C.UTF-8',
-      '--no-sync',
-    ],
+    initdbFlags: INITDB_FLAGS,
     postgresFlags: ['-c', `listen_addresses=${HOST}`],
     // Postgres refuses to run as root. On Linux as root (CI, containers) the library runs it as its own user.
     createPostgresUser: isRoot,
@@ -115,7 +138,25 @@ export async function startDatabase({ dataDir, port }: StartOptions): Promise<Da
       mkdirSync(dataDir, { recursive: true });
       chmodSync(dataDir, 0o755); // the postgres user must be able to reach its folder
     }
-    if (firstStart) await pg.initialise();
+    if (firstStart) {
+      mkdirSync(dataDir, { recursive: true });
+      writeFileSync(marker, `${new Date().toISOString()}\n`); // removed again once the logins are saved below
+      if (process.platform === 'win32') {
+        // On Windows initdb sometimes stalls for good (see initdb.ts), so it runs under a watchdog.
+        const { initdb } = await locatePgBinaries();
+        const { attempts } = await runInitdb({
+          initdb: { file: initdb },
+          pgdata: pgDir,
+          user: 'postgres',
+          password: superuserPassword,
+          authMethod: 'scram-sha-256',
+          flags: INITDB_FLAGS,
+        });
+        if (attempts > 1) console.warn(`[db] initdb stalled and was restarted; it finished on attempt ${attempts}`);
+      } else {
+        await pg.initialise();
+      }
+    }
     await startPostgres(pg, port, recent);
     started = true;
 
@@ -141,6 +182,7 @@ export async function startDatabase({ dataDir, port }: StartOptions): Promise<Da
       }
       mkdirSync(join(dataDir, 'secrets'), { recursive: true });
       writeFileSync(credsFile, JSON.stringify(credentials, null, 2), { mode: 0o600 });
+      rmSync(marker, { force: true }); // the first start is finished: this cluster now has logins
     }
     const creds = credentials!;
 
@@ -220,15 +262,16 @@ async function startPostgres(pg: EmbeddedPostgres, port: number, recent: string[
   }
 }
 
-/** Where the platform package keeps pg_ctl. pnpm does not let us import that package directly. */
-async function locatePgCtl(): Promise<string> {
+/** Where the platform package keeps its programs. pnpm does not let us import that package directly. */
+async function locatePgBinaries(): Promise<{ pg_ctl: string; initdb: string }> {
   const platform = { win32: 'windows', darwin: 'darwin', linux: 'linux' }[process.platform as string];
   if (!platform) throw new Error(`unsupported platform ${process.platform}`);
   const fromLibrary = createRequire(createRequire(import.meta.url).resolve('embedded-postgres'));
   const entry = fromLibrary.resolve(`@embedded-postgres/${platform}-${process.arch}`);
-  const { pg_ctl } = (await import(pathToFileURL(entry).href)) as { pg_ctl: string };
-  return pg_ctl;
+  return (await import(pathToFileURL(entry).href)) as { pg_ctl: string; initdb: string };
 }
+
+const locatePgCtl = async () => (await locatePgBinaries()).pg_ctl;
 
 /**
  * Stop Postgres with a fast, clean shutdown (pg_ctl stop -m fast), so the postmaster ends its own children.
