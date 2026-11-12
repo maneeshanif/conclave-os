@@ -50,7 +50,8 @@ async function reachable(creds: DbCredentials): Promise<boolean> {
 export async function openSystem(env: Record<string, string | undefined> = process.env, log: (m: string) => void = () => undefined): Promise<System> {
   const dataDir = resolveDataDir(env);
   const pgPort = resolvePgPort(env);
-  const companyRoot = path.join(REPO_ROOT, 'company');
+  // COMPANY_DIR lets a second company (or a test) use its own folder. Default: the repo's company/.
+  const companyRoot = env.COMPANY_DIR ? path.resolve(env.COMPANY_DIR) : path.join(REPO_ROOT, 'company');
   let cluster: Cluster | undefined;
   let creds: DbCredentials;
 

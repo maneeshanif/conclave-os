@@ -8,3 +8,5 @@ allowBuilds:
   '@embedded-postgres/linux-x64': true
   '@embedded-postgres/windows-x64': true
   esbuild: false
+  # Its postinstall only checks versions; not needed.
+  protobufjs: false
