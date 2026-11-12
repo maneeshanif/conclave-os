@@ -2,6 +2,13 @@
 
 Newest first. One entry per decision: what, why, and what it replaced.
 
+## 2026-11-13 (candidate connectors: Chatwoot and Composio)
+
+- **Both recorded as candidates in `docs/BUILD.md`, neither scheduled.** Anees asked about them; the build adds no connector before its slice.
+- **Chatwoot** fits the help desk connectors in slice 10 and may be self-hosted. It enters as a connector that feeds the inbox. Outbound replies still need an approval and an executor.
+- **Composio** needs an account and key that only Anees can create, and a tool provider that agents call directly would break hard rules 1, 4, 5 and 11. If used at all, it is read-only, or behind a `propose_*` tool with its own executor. Lower priority.
+- **What would change this:** Anees decides to build either one, and names the slice.
+
 ## 2026-11-13 (S2-10: the morning brief)
 
 - **A record, built by plain code.** One row per day in a briefs table (migrations 0021, 0022). src/brief/build.ts counts, from the tables and nothing else: new leads in the last day (scored, qualified, the best five), approvals waiting and how long the oldest has waited, replies to triage, deals stuck over 14 days, blocked tasks, open action items, emails sent in the last day, the kill switch, and how the goals stand (the same code as the Goals screen, so the two cannot disagree). The summary lines are written from those numbers. An empty day says "Nothing happened overnight, and nothing needs you."; a day with the kill switch on is never called quiet.

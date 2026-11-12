@@ -219,6 +219,13 @@ Work them in order. Tick each when its test passes.
   One test: a morning heartbeat adds scored leads; a campaign (approved by the founder) makes tasks; drafts are approved and sent to the outbox; a reply pauses the sequence and makes one triage task; the pipeline shows conversion by stage. Tag `slice-2-done`.
   *Test:* all three "Done when" checks in one run.
 
+## Candidate connectors (not scheduled; Anees decides whether and in which slice)
+
+Recorded 2026-11-13. Nothing here is built ahead of its slice (CLAUDE.md, Stack).
+
+- **Chatwoot** (open-source shared inbox and help desk). Fits the help desk connectors row in SPEC 10, slice 10, next to Zendesk, Freshdesk and Intercom. It would be a connector that feeds conversations into the existing inbox, and could replace pasting replies in by hand. It can be self-hosted, so it may need no outside account; unconfirmed. Replies to clients still go through `propose_*` and an executor after approval (hard rules 1 and 3).
+- **Composio** (hosted service with ready-made tool integrations and managed logins). Needs Anees's own account and API key, which the build cannot create or enter: it would go in `docs/NEEDS-YOU.md`. It pulls against the hard rules, so it may come in only as a read-only connector, or behind a `propose_*` tool with its own executor, never as a direct tool for an agent (rules 1, 4, 5 and 11). Lowest priority of the two.
+
 ## Opening the next slice
 
 When slice 0 is in daily use, paste this:
