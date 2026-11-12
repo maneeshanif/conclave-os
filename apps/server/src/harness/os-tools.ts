@@ -7,6 +7,10 @@ export interface OsStore {
   autonomy(scope: RunScope): Promise<number>;
   getTask(scope: RunScope): Promise<TaskView | null>;
   getLead(scope: RunScope, leadId: string): Promise<LeadView | null>;
+  /** Adds a lead to the list (autonomy 1). Never marks it verified without a source. */
+  addLead(scope: RunScope, input: AddLeadInput): Promise<{ id: string; existed: boolean; by?: 'email' | 'website'; verified: boolean }>;
+  /** Records a 0 to 100 score and its reason on a lead (autonomy 1). */
+  scoreLead(scope: RunScope, input: { leadId: string; score: number; reason: string }): Promise<void>;
   /** Queues an email for approval. Never sends. Returns the approval id and whether it already existed. */
   proposeEmail(scope: RunScope, p: ProposedEmail): Promise<{ approvalId: string; existed: boolean }>;
   comment(scope: RunScope, text: string): Promise<void>;
@@ -41,6 +45,16 @@ export interface ProposedEmail {
   campaignId?: string | undefined;
 }
 
+export interface AddLeadInput {
+  businessName?: string | undefined;
+  website?: string | undefined;
+  contactName?: string | undefined;
+  email?: string | undefined;
+  notes?: string | undefined;
+  sourceUrl?: string | undefined;
+  market?: string | undefined;
+}
+
 export class ToolError extends Error {}
 
 const NoInput = z.object({}).strict();
@@ -54,6 +68,28 @@ const EmailInput = z
     /** The running campaign this email is part of. Optional: a one-off email has none. */
     campaignId: z.uuid().optional(),
   })
+  .strict();
+const WebAddress = (max: number) =>
+  z
+    .string()
+    .trim()
+    .max(max)
+    .refine((v) => /^https?:\/\//i.test(v) && URL.canParse(v), 'must be an http or https address');
+const AddLeadInput = z
+  .object({
+    businessName: z.string().trim().min(1).max(200).optional(),
+    website: WebAddress(300).optional(),
+    contactName: z.string().trim().min(1).max(200).optional(),
+    email: z.string().trim().toLowerCase().max(254).pipe(z.email()).optional(),
+    notes: z.string().trim().min(1).max(5000).optional(),
+    /** The page where you found it. Without one the lead is stored but marked unverified. */
+    sourceUrl: WebAddress(500).optional(),
+    market: z.enum(['services', 'product', 'founder_network']).optional(),
+  })
+  .strict()
+  .refine((v) => v.businessName || v.email || v.website, { message: 'give at least a business name, an email address or a website' });
+const ScoreInput = z
+  .object({ leadId: z.uuid(), score: z.number().int().min(0).max(100), reason: z.string().trim().min(1).max(1000) })
   .strict();
 const Text = (name: string, max: number) => z.object({ [name]: z.string().min(1).max(max) }).strict();
 
@@ -118,6 +154,26 @@ export const osTools = {
       return JSON.stringify(lead, null, 2);
     },
   },
+  add_lead: {
+    minAutonomy: 1,
+    description:
+      'Add one lead you found to the list. Give the page where you found it as sourceUrl: without it the lead is stored as unverified and cannot join a campaign. A lead that is already there (same email or website) is not added twice.',
+    input: AddLeadInput,
+    async run(store: OsStore, scope: RunScope, args: AddLeadInput) {
+      const r = await store.addLead(scope, args);
+      if (r.existed) return `That lead is already in the list as ${r.id} (same ${r.by}). Nothing was changed.`;
+      return `Added lead ${r.id}, ${r.verified ? 'verified (it has a source)' : 'unverified (no source URL was given)'}.`;
+    },
+  },
+  score_lead: {
+    minAutonomy: 1,
+    description: 'Record how good a fit a lead is: a whole number from 0 to 100 and the reason, in a sentence or two. A new score replaces the old one.',
+    input: ScoreInput,
+    async run(store: OsStore, scope: RunScope, args: { leadId: string; score: number; reason: string }) {
+      await store.scoreLead(scope, args);
+      return `Scored ${args.score} out of 100.`;
+    },
+  },
   propose_email: {
     minAutonomy: 2,
     description:
@@ -157,6 +213,12 @@ export class MemoryOsStore implements OsStore {
   }
   async proposeEmail(): Promise<{ approvalId: string; existed: boolean }> {
     throw new ToolError('Proposals need the database store.');
+  }
+  async addLead(): Promise<{ id: string; existed: boolean; by?: 'email' | 'website'; verified: boolean }> {
+    throw new ToolError('Leads need the database store.');
+  }
+  async scoreLead(): Promise<void> {
+    throw new ToolError('Leads need the database store.');
   }
 
   private task(scope: RunScope) {

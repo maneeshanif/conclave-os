@@ -134,6 +134,13 @@
       "when": 1794505956921,
       "tag": "0018_sequence_runner",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1794507379048,
+      "tag": "0019_leadgen_columns",
+      "breakpoints": true
     }
   ]
 }

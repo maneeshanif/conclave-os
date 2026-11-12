@@ -90,7 +90,7 @@ export async function sequencePass(c: pg.PoolClient, ws: string, now: Date, touc
            join leads l on l.id = e.lead_id
            join sequence_steps s on s.campaign_id = e.campaign_id and s.step = e.steps_sent + 1
           where e.campaign_id = $1 and e.status = 'active'
-            and l.email is not null and l.stage <> 'do_not_contact'
+            and l.email is not null and l.verified and l.stage <> 'do_not_contact'
             and not exists (select 1 from suppression x where lower(x.value) = lower(l.email) or lower(x.value) = '@' || split_part(lower(l.email), '@', 2))
             and (e.steps_sent = 0 or e.last_sent_at + make_interval(days => s.wait_days) <= $2)
             and (

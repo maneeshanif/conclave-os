@@ -370,10 +370,19 @@ export const leads = pgTable(
     ownerAgentId: uuid('owner_agent_id'),
     notes: text('notes'),
     accountId: uuid('account_id'), // set when the lead is promoted (S2-1)
+    domain: text('domain'), // the website's host without www, for finding the same business twice (S2-7)
+    sourceUrl: text('source_url'), // where the lead was found
+    // True only with a source (or when a person says so). Unverified leads cannot join a campaign. Leads a person adds by hand are verified.
+    verified: boolean('verified').notNull().default(true),
+    score: smallint('score'), // 0 to 100, with the reason
+    scoreReason: text('score_reason'),
+    scoredAt: timestamp('scored_at', { withTimezone: true }),
     createdAt: createdAt(),
   },
   (t) => [
     unique('leads_ws_id_uq').on(t.workspaceId, t.id),
+    index('leads_ws_domain_idx').on(t.workspaceId, t.domain),
+    check('leads_score_ck', sql`${t.score} is null or ${t.score} between 0 and 100`),
     foreignKey({ name: 'leads_account_fk', columns: [t.workspaceId, t.accountId], foreignColumns: [accounts.workspaceId, accounts.id] }),
     // One lead per address, however it was typed. Many leads may have no address yet.
     uniqueIndex('leads_ws_email_uq')

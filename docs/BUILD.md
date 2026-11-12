@@ -191,7 +191,7 @@ Work them in order. Tick each when its test passes.
   `GET /api/campaigns/:id/results` and `GET /api/pipeline` as queries over the tables: sent, replied, positive replies, meetings, won; conversion and days in stage per funnel stage; stuck deals. No number is typed by an agent.
   *Test:* a seeded fixture gives exact counts; moving a deal changes the numbers; a reply marked positive counts once.
 
-- [ ] **S2-7 `leadgen-kit` and the lead-gen templates.** SPEC 4, 8, 9.
+- [x] **S2-7 `leadgen-kit` and the lead-gen templates.** SPEC 4, 8, 9.
   Plugin `leadgen-kit` with skills for finding, enriching and scoring a lead, and `os` tools `add_lead` (autonomy 1, dedupes by email and domain, never marks anything verified without a source URL) and `score_lead`. Templates `prospector` and `scorer`. CSV import at `POST /api/leads/import` with a preview and a duplicate report.
   *Test:* `add_lead` twice makes one lead; a lead without a source URL is stored as unverified and is not eligible for a campaign; a scripted agent run adds and scores leads; the CSV import reports duplicates and bad rows without writing them.
 

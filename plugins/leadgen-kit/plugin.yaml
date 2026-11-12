@@ -1,0 +1,9 @@
+# Plugin: leadgen-kit (SPEC 4, 8, 10). Skills and tools for finding leads and scoring them.
+# Nothing in it can contact anyone. Leads go into the list; a person and the campaign rules decide who is written to.
+name: leadgen-kit
+version: 1
+description: "Finds businesses that fit and records them with a source, and scores how good a fit each is. It has no way to contact anyone."
+skills: [find-leads, score-lead]
+connectors: [os]
+# The os tools the skills use. Checked against the server, so this list cannot drift.
+tools: [get_task, get_lead, add_lead, score_lead, comment, complete_task, block_task]

@@ -1,7 +1,8 @@
 import type pg from 'pg';
 import { withWorkspace } from '../db/tenant';
 import { checkClaims, companyMarkdown, isSuppressed } from '../actions/policy';
-import { ToolError, type LeadView, type OsStore, type ProposedEmail, type TaskView } from './os-tools';
+import { ingestLead } from '../leads/ingest';
+import { ToolError, type AddLeadInput, type LeadView, type OsStore, type ProposedEmail, type TaskView } from './os-tools';
 import type { RunScope } from './run-tokens';
 
 /** The `os` tools on the real database. Every write is scoped to the run's own workspace and task. */
@@ -20,6 +21,42 @@ export class DbOsStore implements OsStore {
     );
     const a = r.rows[0];
     return a && a.status === 'active' ? a.autonomy : 0;
+  }
+
+  /** The key of the calling agent, for the audit log. */
+  private async actor(c: pg.PoolClient, scope: RunScope): Promise<string> {
+    const r = await c.query<{ key: string }>('select key from agents where id = $1', [scope.agentId]);
+    return `agent:${r.rows[0]?.key ?? scope.agentId}`;
+  }
+
+  async addLead(scope: RunScope, input: AddLeadInput): Promise<{ id: string; existed: boolean; by?: 'email' | 'website'; verified: boolean }> {
+    return withWorkspace(this.pool, scope.workspaceId, async ({ client: c }) => {
+      // Verified means there is a source. Nothing else makes a lead verified, whatever the agent says in its notes.
+      const verified = !!input.sourceUrl;
+      const r = await ingestLead(c, scope.workspaceId, input, verified);
+      if (r.kind === 'suppressed') throw new ToolError('That address is on the suppression list, so it was not added. Do not look for another way to reach it.');
+      if (r.kind === 'duplicate') return { id: r.id, existed: true, by: r.by, verified: true };
+      await c.query("insert into audit_log (workspace_id, actor, action, subject, data) values ($1, $2, 'lead.added', $3, $4)", [
+        scope.workspaceId,
+        await this.actor(c, scope),
+        r.id,
+        JSON.stringify({ verified, sourceUrl: input.sourceUrl ?? null }),
+      ]);
+      return { id: r.id, existed: false, verified };
+    });
+  }
+
+  async scoreLead(scope: RunScope, input: { leadId: string; score: number; reason: string }): Promise<void> {
+    await withWorkspace(this.pool, scope.workspaceId, async ({ client: c }) => {
+      const r = await c.query('update leads set score = $2, score_reason = $3, scored_at = now() where id = $1 returning id', [input.leadId, input.score, input.reason]);
+      if (!r.rows[0]) throw new ToolError('No such lead.');
+      await c.query("insert into audit_log (workspace_id, actor, action, subject, data) values ($1, $2, 'lead.scored', $3, $4)", [
+        scope.workspaceId,
+        await this.actor(c, scope),
+        input.leadId,
+        JSON.stringify({ score: input.score }),
+      ]);
+    });
   }
 
   async getLead(scope: RunScope, leadId: string): Promise<LeadView | null> {

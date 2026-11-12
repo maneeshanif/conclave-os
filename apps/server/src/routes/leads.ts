@@ -3,6 +3,8 @@ import type { PoolClient, QueryResultRow } from 'pg';
 import { z } from 'zod';
 import type { AppEnv } from '../app';
 import type { Bus } from '../bus';
+import { COLUMN_ALIASES, mapHeaders, parseCsv } from '../leads/csv';
+import { domainOf, ingestLead, isWebAddress, type NewLeadInput } from '../leads/ingest';
 
 export const LEAD_STAGES = ['new', 'contacted', 'replied', 'qualified', 'won', 'lost', 'do_not_contact'] as const;
 const MARKETS = ['services', 'product', 'founder_network'] as const;
@@ -40,6 +42,7 @@ const PatchLead = z
     market: z.enum(MARKETS).optional(),
     notes: z.string().max(5000).nullable().optional(),
     stage: z.enum(LEAD_STAGES).optional(),
+    verified: z.boolean().optional(),
   })
   .refine((v) => Object.values(v).some((x) => x !== undefined), { message: 'Nothing to change.' });
 
@@ -51,7 +54,11 @@ const COLUMNS: Record<string, string> = {
   market: 'market',
   notes: 'notes',
   stage: 'stage',
+  verified: 'verified',
 };
+
+const MAX_IMPORT_ROWS = 5000;
+const ImportBody = z.object({ csv: z.string().min(1, 'is empty').max(2_000_000, 'is too large (2 MB at most)'), dryRun: z.boolean().default(false), verified: z.boolean().default(false) });
 
 const ListQuery = z.object({
   stage: z.string().optional(),
@@ -107,7 +114,7 @@ export function leadRoutes(deps: { workspaceId: string; bus: Bus }) {
     return c.json(
       await q(
         c,
-        `select l.id, l.business_name, l.website, l.contact_name, l.email, l.market, l.stage, l.notes, l.created_at, ${SUPPRESSED} as suppressed
+        `select l.id, l.business_name, l.website, l.contact_name, l.email, l.market, l.stage, l.notes, l.created_at, l.verified, l.score, l.score_reason, l.source_url, ${SUPPRESSED} as suppressed
            from leads l
           where ($1::text[] is null or l.stage = any($1))
             and ($2::text is null or l.business_name ilike $2 escape '!' or l.email ilike $2 escape '!'
@@ -118,10 +125,84 @@ export function leadRoutes(deps: { workspaceId: string; bus: Bus }) {
     );
   });
 
+  /**
+   * A CSV the person drops in. `dryRun` shows what would happen and writes nothing. Rows are checked one by one: a bad
+   * row or a duplicate is reported with its row number and the rest still go in. A row is verified only if it names a
+   * source_url, or the person says the whole file is verified.
+   */
+  r.post('/import', async (c) => {
+    const parsed = ImportBody.safeParse(await c.req.json().catch(() => null));
+    if (!parsed.success) return bad(c, parsed.error);
+    const { csv, dryRun, verified: fileVerified } = parsed.data;
+    const records = parseCsv(csv);
+    if (records.length < 2) return c.json({ error: 'The file needs a header row and at least one row of leads.' }, 400);
+    if (records.length - 1 > MAX_IMPORT_ROWS) return c.json({ error: `That is ${records.length - 1} rows. The limit is ${MAX_IMPORT_ROWS} per file: split it.` }, 400);
+    const { columns, ignored } = mapHeaders(records[0]!);
+    const known = new Set(columns.values());
+    if (!known.has('business_name') && !known.has('email') && !known.has('website')) {
+      return c.json({ error: `No column says who a lead is. Name at least one column business_name, email or website (${Object.values(COLUMN_ALIASES).flat().slice(0, 6).join(', ')} and similar are understood).` }, 400);
+    }
+    const tx = c.get('tx').client;
+    // A preview does the real work inside a savepoint and then undoes it, so it reports exactly what a real import would.
+    await tx.query('savepoint lead_import');
+    let created = 0;
+    const duplicates: { row: number; reason: string }[] = [];
+    const invalid: { row: number; reason: string }[] = [];
+    for (const [i, rec] of records.slice(1).entries()) {
+      const row = i + 2;
+      const cell: Partial<Record<keyof typeof COLUMN_ALIASES, string>> = {};
+      for (const [col, name] of columns) {
+        const v = (rec[col] ?? '').trim();
+        if (v) cell[name] = v;
+      }
+      const input: NewLeadInput = {};
+      if (cell.business_name) input.businessName = cell.business_name.slice(0, 200);
+      if (cell.contact_name) input.contactName = cell.contact_name.slice(0, 200);
+      if (cell.notes) input.notes = cell.notes.slice(0, 5000);
+      if (cell.email) {
+        const e = EmailIn.safeParse(cell.email);
+        if (!e.success) {
+          invalid.push({ row, reason: `"${cell.email}" is not an email address` });
+          continue;
+        }
+        input.email = e.data;
+      }
+      if (cell.website) {
+        const w = /^[a-z][a-z0-9+.-]*:/i.test(cell.website) ? cell.website : `https://${cell.website}`;
+        if (!isWebAddress(w) || w.length > 300) {
+          invalid.push({ row, reason: `"${cell.website}" is not a website address (http or https)` });
+          continue;
+        }
+        input.website = w;
+      }
+      if (cell.source_url) {
+        if (!isWebAddress(cell.source_url) || cell.source_url.length > 500) {
+          invalid.push({ row, reason: `"${cell.source_url}" is not a web address for the source` });
+          continue;
+        }
+        input.sourceUrl = cell.source_url;
+      }
+      if (!input.businessName && !input.email && !input.website) {
+        invalid.push({ row, reason: 'nothing says who this lead is: no business name, email or website' });
+        continue;
+      }
+      const res = await ingestLead(tx, ws, input, fileVerified || !!input.sourceUrl);
+      if (res.kind === 'created') created++;
+      else if (res.kind === 'duplicate') duplicates.push({ row, reason: `already in the list (same ${res.by})` });
+      else invalid.push({ row, reason: 'the address is on the suppression list' });
+    }
+    if (dryRun) await tx.query('rollback to savepoint lead_import');
+    else {
+      await tx.query('release savepoint lead_import');
+      await q(c, "insert into audit_log (workspace_id, actor, action, subject, data) values ($1, $2, 'leads.imported', null, $3)", [ws, ACTOR, JSON.stringify({ created, duplicates: duplicates.length, invalid: invalid.length })]);
+    }
+    return c.json({ ...(dryRun ? { would_create: created } : { created }), duplicates, invalid, ignored_columns: ignored });
+  });
+
   r.get('/:id', async (c) => {
     const [lead] = await q(
       c,
-      `select l.id, l.business_name, l.website, l.contact_name, l.email, l.market, l.stage, l.notes, l.created_at, ${SUPPRESSED} as suppressed
+      `select l.id, l.business_name, l.website, l.contact_name, l.email, l.market, l.stage, l.notes, l.created_at, l.verified, l.score, l.score_reason, l.source_url, ${SUPPRESSED} as suppressed
          from leads l where l.id = $1`,
       [c.req.param('id')],
     );
@@ -136,10 +217,10 @@ export function leadRoutes(deps: { workspaceId: string; bus: Bus }) {
     const b = parsed.data;
     const [row] = await q<{ id: string }>(
       c,
-      `insert into leads (workspace_id, business_name, website, contact_name, email, market, notes, stage)
-       values ($1, $2, $3, $4, $5, coalesce($6, 'services'), $7, coalesce($8, 'new'))
+      `insert into leads (workspace_id, business_name, website, contact_name, email, market, notes, stage, domain)
+       values ($1, $2, $3, $4, $5, coalesce($6, 'services'), $7, coalesce($8, 'new'), $9)
        on conflict (workspace_id, lower(email)) where email is not null do nothing returning id`,
-      [ws, b.businessName ?? null, b.website ?? null, b.contactName ?? null, b.email ?? null, b.market ?? null, b.notes ?? null, b.stage ?? null],
+      [ws, b.businessName ?? null, b.website ?? null, b.contactName ?? null, b.email ?? null, b.market ?? null, b.notes ?? null, b.stage ?? null, domainOf(b.website)],
     );
     if (!row) {
       const [existing] = await q<{ id: string }>(c, 'select id from leads where lower(email) = $1', [b.email]);
@@ -181,6 +262,10 @@ export function leadRoutes(deps: { workspaceId: string; bus: Bus }) {
         values.push(b[key]);
         sets.push(`${col} = $${values.length}`);
       }
+    }
+    if (b.website !== undefined) {
+      values.push(domainOf(b.website as string | null));
+      sets.push(`domain = $${values.length}`);
     }
     await q(c, `update leads set ${sets.join(', ')} where id = $1`, values);
 

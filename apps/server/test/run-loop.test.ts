@@ -59,6 +59,12 @@ class LateStore implements OsStore {
   proposeEmail(s: RunScope, p: ProposedEmail) {
     return this.inner.proposeEmail(s, p);
   }
+  addLead(s: RunScope, i: Parameters<OsStore['addLead']>[1]) {
+    return this.inner.addLead(s, i);
+  }
+  scoreLead(s: RunScope, i: Parameters<OsStore['scoreLead']>[1]) {
+    return this.inner.scoreLead(s, i);
+  }
   getTask(s: RunScope) {
     return this.inner.getTask(s);
   }

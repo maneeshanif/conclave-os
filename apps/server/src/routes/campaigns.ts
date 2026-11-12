@@ -188,14 +188,15 @@ export function campaignRoutes(deps: { workspaceId: string; bus: Bus }) {
     const skipped: { leadId: string; reason: string }[] = [];
     let enrolled = 0;
     for (const leadId of [...new Set(p.data.leadIds)]) {
-      const [l] = await q<{ email: string | null; stage: string; suppressed: boolean }>(
+      const [l] = await q<{ email: string | null; stage: string; verified: boolean; suppressed: boolean }>(
         c,
-        `select l.email, l.stage, exists (select 1 from suppression s where lower(s.value) = lower(l.email) or lower(s.value) = '@' || split_part(lower(l.email), '@', 2)) as suppressed
+        `select l.email, l.stage, l.verified, exists (select 1 from suppression s where lower(s.value) = lower(l.email) or lower(s.value) = '@' || split_part(lower(l.email), '@', 2)) as suppressed
            from leads l where l.id = $1`,
         [leadId],
       );
       if (!l) skipped.push({ leadId, reason: 'no such lead' });
       else if (!l.email) skipped.push({ leadId, reason: 'no email address' });
+      else if (!l.verified) skipped.push({ leadId, reason: 'not verified: it has no source, so a person has to verify it first' });
       else if (l.stage === 'do_not_contact') skipped.push({ leadId, reason: 'marked do not contact' });
       else if (l.suppressed) skipped.push({ leadId, reason: 'on the suppression list' });
       else {
