@@ -10,9 +10,11 @@
     "db:migrate": "tsx --env-file-if-exists=../../.env src/db/migrate-cli.ts"
   },
   "dependencies": {
+    "@better-auth/passkey": "^1.7.20",
     "@conclave/shared": "workspace:*",
     "@hono/node-server": "2.1.6",
     "@hono/node-ws": "^1.3.1",
+    "better-auth": "^1.7.20",
     "cron-parser": "^5.10.4",
     "drizzle-orm": "0.45.4",
     "embedded-postgres": "18.6.0-beta.19",

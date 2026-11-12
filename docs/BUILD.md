@@ -140,7 +140,7 @@ Work them in order. Tick each when its test passes.
   An `action_items` table and `/api/action-items` for what needs the founder: blocked tasks, `ask_founder` questions, failed approvals, the kill switch being on. A page lists them.
   *Test:* an `ask_founder` call creates an item; resolving it unblocks nothing by itself but is recorded; a failed approval appears once.
 
-- [ ] **S1-10 Login for the owner.** SPEC 11 (Auth), 12.
+- [x] **S1-10 Login for the owner.** SPEC 11 (Auth), 12.
   Better Auth with passkeys, one owner (Q10), sessions and devices tables. In local mode on 127.0.0.1 nothing changes. A login wall is required before anything listens on another interface (CLAUDE.md rule 9). Check the Better Auth docs for the current API before using it.
   *Test:* with login on, an API call without a session is 401 and with one is 200; the wall cannot be switched off while a non-loopback interface is configured; a session cookie is HttpOnly, Secure when not on loopback, and SameSite.
 

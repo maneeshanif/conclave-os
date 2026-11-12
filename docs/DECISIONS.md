@@ -2,6 +2,17 @@
 
 Newest first. One entry per decision: what, why, and what it replaced.
 
+## 2026-11-12 (S1-10: owner login)
+
+- **Better Auth 1.7 with the passkey plugin,** checked against its current docs and installed types, not the spec sketch. Login is OFF by default and nothing changes locally. LOGIN=on turns on the wall: every /api route and the event socket need a session; only /api/auth/*, /health, the agents' run-token endpoint (/mcp) and Inngest stay open.
+- **The wall cannot be off on the network.** resolveAuthConfig throws, before anything listens, if BIND_HOST is not loopback and LOGIN is not on, or if PUBLIC_WEB_ORIGIN is missing or not https. Cookies are HttpOnly and SameSite=Lax always, and Secure once the server listens beyond loopback or the web origin is https. Tested.
+- **The first owner gets in with a one-time code, not a password.** A passkey can only be added by someone already signed in, so a code (50 bits, 15 minutes, used once, stored only as a hash, claimed in one SQL statement, locked after 10 wrong guesses) is written to DATA_DIR/owner-setup-code.txt for the person at the machine. It is never printed to a log (rule 4). A signed-in owner makes the same kind of code for a new device. A setup code is only written while there is no owner. If the owner loses every device and every signed-in session, there is no way back in yet: a command run at the machine that issues a fresh code for the existing owner is still to build (listed under open items below).
+- **Passkey identity is localhost,** because an IP address cannot be a passkey identity. With login on, open http://localhost:3000 and use http://localhost:3100 for the API (127.0.0.1 would make the cookie cross-site). PUBLIC_WEB_ORIGIN and PUBLIC_API_ORIGIN change this for a Tailscale https address.
+- **Identity tables are in their own schema, auth,** with no workspace_id and no row-level security: a person signs in before any workspace is chosen, and rule 2 is about tenant data. The members table (which has both) ties the owner to the workspace. Migration 0008 (tables) and 0009 (grants to the app role only).
+- **Devices:** /api/owner/devices lists signed-in sessions and revokes one; /api/owner/codes makes a code for a new device. The cookie secret is AUTH_SECRET or a file made in DATA_DIR/secrets.
+- **Tested:** 27 server tests and 6 page tests, and the real server on a throwaway folder: 401 without a session, wrong code 401, right code 200 with an HttpOnly cookie, the code file removed after use, session then 200, loopback only. **Not tested:** a real passkey ceremony, which needs a browser and an authenticator. The server issues the challenge for the right identity and the web page builds. Please try it once in a browser (S1-12 repeats this).
+- **Open for S1-11/12:** (1) Inngest (/inngest) is not behind the wall; it must have its signing key set before remote access is switched on. (2) A recovery command for an owner who lost every device (a code issued from the machine) is not built yet. (3) "Every approval records the device it came from" is S1-11.
+
 ## 2026-11-12 (S1-9: action items)
 
 - **Two kinds of item.** Recorded items are rows in action_items (a question from ask_founder, a failed send, a send of unknown outcome) and are resolved by hand. A blocked task with no open question and the kill switch being on are derived from live state, have no row and clear themselves, so they cannot be resolved (the API says 404 for them; the page shows no button). A task that is blocked because of a question appears once, as the question.

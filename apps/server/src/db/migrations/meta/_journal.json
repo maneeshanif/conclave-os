@@ -57,6 +57,20 @@
       "when": 1794501195111,
       "tag": "0007_action_items",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1794501909253,
+      "tag": "0008_auth_tables",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1794501911013,
+      "tag": "0009_auth_grants",
+      "breakpoints": true
     }
   ]
 }

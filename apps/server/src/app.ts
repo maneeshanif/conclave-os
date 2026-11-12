@@ -3,6 +3,7 @@ import { cors } from 'hono/cors';
 import type { UpgradeWebSocket } from 'hono/ws';
 import type { Pool } from 'pg';
 import { HealthSchema } from '@conclave/shared';
+import type { Auth, SessionInfo } from './auth';
 import type { Bus } from './bus';
 import { withWorkspace, type Tx } from './db/tenant';
 import type { OsStore } from './harness/os-tools';
@@ -10,10 +11,11 @@ import type { RunTokens } from './harness/run-tokens';
 import { apiRoutes } from './routes/api';
 import type { ApprovalDecision } from './routes/approvals';
 import { mcpRoutes } from './routes/mcp';
+import { ownerRoutes } from './routes/owner';
 import type { Dispatcher } from './workflows/dispatch';
 
 /** `tx` is the request's transaction. `after` holds work that must wait until it commits, such as starting a run. */
-export type AppEnv = { Variables: { tx: Tx; after: (() => Promise<void>)[] } };
+export type AppEnv = { Variables: { tx: Tx; after: (() => Promise<void>)[]; owner?: SessionInfo } };
 
 export interface AppDeps {
   pool: Pool;
@@ -32,6 +34,11 @@ export interface AppDeps {
    * stops DNS rebinding: a page on evil.example resolved to 127.0.0.1 still sends `Host: evil.example`.
    */
   hosts?: string[];
+  /**
+   * The login wall (S1-10). When set, every /api route and the event socket need a signed-in session; only the
+   * sign-in routes under /api/auth, the health check, the agents' own run-token endpoint and Inngest stay open.
+   */
+  auth?: Auth;
   /** Called after an approval decision has committed. The gate (S1-3) starts the executor from here. */
   onApprovalDecided?: (d: ApprovalDecision) => Promise<void> | void;
   /** Called after the kill switch changes. On means stop what is running and drop what is queued. */
@@ -53,7 +60,7 @@ export function createApp(deps?: AppDeps) {
   app.get('/health', (c) => c.json(HealthSchema.parse({ ok: true })));
   if (!deps) return app;
 
-  const origins = deps.webOrigins ?? ['http://127.0.0.1:3000', 'http://localhost:3000'];
+  const origins = deps.webOrigins ?? ['http://127.0.0.1:3000', 'http://localhost:3000', ...(deps.auth ? [deps.auth.config.webOrigin] : [])];
 
   // CORS headers alone do not stop a request: a page can still POST text/plain with no preflight.
   // So refuse, in code, a wrong Host, a foreign Origin on anything that changes state, and a write
@@ -75,7 +82,20 @@ export function createApp(deps?: AppDeps) {
     }
     await next();
   });
-  app.use('/api/*', cors({ origin: origins, allowMethods: ['GET', 'POST', 'PATCH', 'DELETE'], allowHeaders: ['content-type'] }));
+  app.use('/api/*', cors({ origin: origins, allowMethods: ['GET', 'POST', 'PATCH', 'DELETE'], allowHeaders: ['content-type'], credentials: true }));
+  if (deps.auth) {
+    const auth = deps.auth;
+    // Sign-in comes first: it answers without a session and without a database transaction.
+    app.all('/api/auth/*', (c) => auth.handler(c.req.raw));
+    const wall = async (c: Context<AppEnv>, next: () => Promise<void>) => {
+      const me = await auth.session(c.req.raw.headers).catch(() => null);
+      if (!me) return c.json({ error: 'Sign in first.' }, 401);
+      c.set('owner', me);
+      await next();
+    };
+    app.use('/api/*', wall);
+    app.use('/events', wall);
+  }
   app.use('/api/*', async (c, next) => {
     const after: (() => Promise<void>)[] = [];
     c.set('after', after);
@@ -89,6 +109,7 @@ export function createApp(deps?: AppDeps) {
     for (const fn of after) await fn();
   });
 
+  if (deps.auth) app.route('/api/owner', ownerRoutes({ auth: deps.auth }));
   if (deps.bus && deps.dispatcher) {
     app.route('/api', apiRoutes({ workspaceId: deps.workspaceId, dispatcher: deps.dispatcher, bus: deps.bus, onApprovalDecided: deps.onApprovalDecided, onKillSwitch: deps.onKillSwitch, onReleaseHeld: deps.onReleaseHeld }));
   }

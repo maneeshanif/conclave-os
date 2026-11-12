@@ -7,7 +7,8 @@ import { serve as inngestServe } from 'inngest/hono';
 import { createApp } from './app';
 import { Bus } from './bus';
 import { renderAll, renderOne } from './commands/agent-new';
-import { HOST } from './config';
+import { createAuth, resolveAuthSecret } from './auth';
+import { resolveAuthConfig } from './config';
 import { DbOsStore } from './harness/db-os-store';
 import { stopEverything } from './harness/kill-switch';
 import { approvalHooks, createOutreach } from './outreach';
@@ -98,6 +99,17 @@ if (useInngest) {
 const hooks = approvalHooks(gate);
 proposalQueued = hooks.onApprovalRequested;
 
+// Where to listen and whether a login is needed. Throws, before anything listens, if the server would be open to the network.
+const authConfig = resolveAuthConfig(process.env);
+const auth = authConfig.login ? createAuth({ pool: sys.app, workspaceId: sys.workspace.id, config: authConfig, dataDir: sys.dataDir, secret: resolveAuthSecret(process.env, sys.dataDir) }) : undefined;
+if (auth) {
+  const setup = await auth.ensureSetupCode();
+  if (setup.file) console.log(`login is on and there is no owner yet. The one-time setup code is in ${setup.file} (valid 15 minutes, used once). Open ${authConfig.webOrigin}/login to finish.`);
+  else console.log(`login is on (passkeys). Sign in at ${authConfig.webOrigin}/login`);
+} else {
+  console.log('login is off: the server answers on this laptop only (loopback)');
+}
+
 const shell = new Hono();
 const { injectWebSocket, upgradeWebSocket } = createNodeWebSocket({ app: shell });
 shell.route(
@@ -110,7 +122,8 @@ shell.route(
     bus,
     dispatcher,
     upgradeWebSocket,
-    hosts: [`127.0.0.1:${sys.serverPort}`, `localhost:${sys.serverPort}`],
+    hosts: [`127.0.0.1:${sys.serverPort}`, `localhost:${sys.serverPort}`, new URL(authConfig.apiOrigin).host, `${authConfig.host}:${sys.serverPort}`],
+    ...(auth ? { auth } : {}),
     onApprovalDecided: hooks.onApprovalDecided,
     onReleaseHeld: hooks.onReleaseHeld,
     // Turning the kill switch on stops what is running and drops what is queued (S1-5).
@@ -133,8 +146,8 @@ shell.route(
   }
 }
 
-const server = serve({ fetch: shell.fetch, port: sys.serverPort, hostname: HOST }, (info) => {
-  console.log(`conclave server listening on http://${HOST}:${info.port} (workflows: ${dispatcher.name})`);
+const server = serve({ fetch: shell.fetch, port: sys.serverPort, hostname: authConfig.host }, (info) => {
+  console.log(`conclave server listening on http://${authConfig.host}:${info.port} (workflows: ${dispatcher.name})`);
 });
 injectWebSocket(server);
 // `pnpm doctor` reads this to report the server's memory (SPEC 17).
