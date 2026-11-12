@@ -2,6 +2,10 @@
 
 Newest first. One entry per decision: what, why, and what it replaced.
 
+## 2026-11-12 (pnpm dev on Windows)
+
+- **`pnpm dev` no longer uses `pnpm -r --parallel`.** On Windows that mode gives each child a stdin pipe that nobody writes to or closes, and the server then sits silent at no CPU and never listens. Measured on the laptop: with `-r --parallel` the server stalled 7 of 7 starts (5 of 5 with only the server in it); started on its own with stdin closed or inherited it started every time (17 to 19 s); with a stdin pipe held open it stalled 3 of 3. It is not Next, not Postgres and not initdb. `scripts/dev.mjs` starts the server and web app with stdin closed, prefixes their output, and stops both when one exits or on Ctrl+C. Checked: 8 real `pnpm dev` starts, all up in 18 to 22 s. The earlier watchdog is still worth having: one stall was traced into initdb, but it was a rare second problem, not the common one. Replaces `pnpm -r --parallel --if-present dev`.
+
 ## 2026-11-12 (initdb watchdog, data safety, local model)
 
 - **initdb runs under a watchdog on Windows.** On the laptop initdb stalled about one run in ten (the `postgres --check` bootstrap child sat idle), even on a fresh directory with nothing else running, and the library waits forever, so the server never started. Found with traces: `before initialise` printed and `after initialise` never did. Now: 60 s per attempt, the whole process tree killed, the half-made directory cleared, up to three attempts; a real failure (non-zero exit) is reported at once and never retried. Other platforms keep the library's `initialise()`.
