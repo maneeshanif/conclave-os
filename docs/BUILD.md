@@ -299,7 +299,7 @@ Recorded 2026-11-13. Nothing here is built ahead of its slice (CLAUDE.md, Stack)
 
 **Tasks**
 
-- [ ] **S4-1 Model aliases and the `local-worker` alias.** SPEC 7 (Model aliases).
+- [x] **S4-1 Model aliases and the `local-worker` alias.** SPEC 7 (Model aliases).
   One file maps each alias to a model, the runtimes it works on and, where needed, a base URL and a key reference. Add `local-worker` (an OpenAI-compatible endpoint, Ollama's by default, `on: ['openai-agents', 'opencode']`). The role-file loader rejects an alias that does not list the agent's runtime, with the file and the reason. The base URL must be loopback unless the founder sets it explicitly.
   *Test:* a role file naming `local-worker` on `openai-agents` loads; the same alias on `claude-cli` is refused with a message naming both; a missing alias is refused; an unknown field in the alias file is an error.
 
