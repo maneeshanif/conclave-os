@@ -15,6 +15,11 @@ Newest first. One entry per decision: what, why, and what it replaced.
 - **One test file, `slice3-e2e.test.ts`, runs the three "Done when" checks** on the real run loop, reaper, pause table and eval gate, with a scripted model: (1) a run killed halfway (its process lost, heartbeat stopped) is failed by the reaper, its task goes back to todo still holding the session id, and the next run starts from that session and finishes; (2) a plan limit pauses the runtime for every agent on it while an agent on the other runtime keeps working, the queued tasks wait, the pause lifts only at the reset time and wakes exactly the agents with work, who then finish; (3) the unchanged skill scores at the baseline, and a change that makes the 20 sample drafts long and hyped fails the gate with all 20 leads named.
 - **Slice 3 is tagged `slice-3-done`.** Not done and recorded rather than hidden: the eval set is 20 made-up leads and its baseline is the reference drafter's (real leads and a real-agent drafter are in NEEDS-YOU); breakers cover the os tools only until connectors are live; the lite-mode canvas switch waits for slice 6.
 
+## 2026-11-14 (S6-7: objects)
+
+- **One registry, `OBJECT_PANELS` in `packages/shared/src/office/objects.ts`,** from each object type to its panel, label and page; the world and the plain screens both read it. `useObject(type)` opens the panel and throws for an unknown type (the map reader already refuses one at load).
+- **`ready` must match the web app:** a test fails if a panel is marked ready and its page does not exist, or the other way round. The job board (Talent room) and the Boardroom table are not ready yet (no page); the world shows them as "coming" rather than a dead link. They flip when slice 7 and S6-10 add the pages.
+
 ## 2026-11-14 (S6-6: walking up to an agent)
 
 - **`Proximity` in `packages/shared/src/office/proximity.ts`** is pure. A drawer opens within `near` tiles and closes only past `far`, so the edge does not flicker. One drawer at a time: the nearest, ties to the lower id; moving to another agent closes the first and opens the second. A drawer opened from the agent list is pinned and stays until closed, so the list works the same as walking.

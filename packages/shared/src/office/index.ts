@@ -3,9 +3,9 @@
  * layers for rooms, desks, things you can use and places you arrive. This reads it into plain facts and refuses a mistake with the
  * file, the layer and the object named. The property names are our own. Nothing here draws anything.
  */
+import { OBJECT_TYPES, type ObjectType } from './objects';
+
 export const TILE_SIZE = 32;
-export const OBJECT_TYPES = ['approvals-desk', 'whiteboard', 'screen', 'mailbox', 'jobboard', 'boardroom-table'] as const;
-export type ObjectType = (typeof OBJECT_TYPES)[number];
 export const ROOM_KINDS = ['department', 'boardroom', 'lounge', 'hall', 'meeting'] as const;
 export type RoomKind = (typeof ROOM_KINDS)[number];
 
@@ -203,3 +203,4 @@ export * from './places';
 export * from './walk';
 export * from './zones';
 export * from './proximity';
+export * from './objects';

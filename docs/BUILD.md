@@ -462,7 +462,7 @@ From `docs/BORROW-AUDIT.md`. Each goes into its slice's task list when that slic
   Proximity detection with a little hysteresis so the drawer does not flicker; the agent drawer (live run, its tasks, a box to send it a message that becomes a task for it); leaving closes it.
   *Test:* walking within range opens the drawer once and stepping back closes it once; the drawer shows the agent's current run and open tasks; a sent message creates one task assigned to that agent; the drawer works from the agent list too.
 
-- [ ] **S6-7 Objects.** SPEC 12.
+- [x] **S6-7 Objects.** SPEC 12.
   What each object opens: the approvals desk the approvals inbox, the whiteboard the goal ladder, the screen the dashboard (Health), the mailbox the inbox, the job board the Talent room view, the Boardroom table the Boardroom. A registry from object type to panel, used by the world and by the plain screens.
   *Test:* every object type in the map has a registered panel; using an object opens that panel; an unknown type is refused at load (S6-1).
 
