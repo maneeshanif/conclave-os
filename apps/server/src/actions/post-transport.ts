@@ -10,6 +10,8 @@ export interface PostRequest {
   handle: string;
   accountId: string;
   text: string;
+  /** A reviewed video that goes with the post (S5-11), identified by its brief and the hash of the plan that was approved. */
+  media?: { briefId: string; planHash: string };
 }
 
 export interface PostResult {
@@ -39,7 +41,7 @@ export function outboxPostTransport(dataDir: string): PostTransport {
       const dir = path.join(dataDir, 'outbox', 'posts');
       await mkdir(dir, { recursive: true });
       const file = path.join(dir, `${req.approvalId}.json`);
-      await writeFile(file, JSON.stringify({ platform: req.platform, handle: req.handle, text: req.text, writtenAt: new Date().toISOString() }, null, 2), 'utf8');
+      await writeFile(file, JSON.stringify({ platform: req.platform, handle: req.handle, text: req.text, ...(req.media ? { media: req.media } : {}), writtenAt: new Date().toISOString() }, null, 2), 'utf8');
       return { ref: `outbox:${file}`, url: `outbox://posts/${req.approvalId}.json` };
     },
   };
@@ -73,7 +75,7 @@ export function outboxDmTransport(dataDir: string): DmTransport {
 /** Drives a signed-in browser on an account's profile. The Playwright implementation arrives with the profiles (S5-3). */
 export interface BrowserDriver {
   /** Publishes the text, then returns the address the browser ended on and a screenshot of it. Throws SessionExpiredError if asked to log in. */
-  publish(a: { platform: PostPlatform; handle: string; accountId: string; text: string }): Promise<{ finalUrl: string; screenshot: Buffer }>;
+  publish(a: { platform: PostPlatform; handle: string; accountId: string; text: string; media?: { briefId: string; planHash: string } }): Promise<{ finalUrl: string; screenshot: Buffer }>;
 }
 
 /** Publishes through a browser driver and keeps the screenshot in the data folder (SPEC 8: every executor run saves one). */
@@ -81,7 +83,7 @@ export function browserPostTransport(dataDir: string, driver: BrowserDriver): Po
   return {
     name: 'browser',
     async publish(req) {
-      const out = await driver.publish({ platform: req.platform, handle: req.handle, accountId: req.accountId, text: req.text });
+      const out = await driver.publish({ platform: req.platform, handle: req.handle, accountId: req.accountId, text: req.text, ...(req.media ? { media: req.media } : {}) });
       const key = `screenshots/${req.approvalId}.png`;
       await mkdir(path.join(dataDir, 'screenshots'), { recursive: true });
       await writeFile(path.join(dataDir, key), out.screenshot);

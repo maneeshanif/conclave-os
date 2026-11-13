@@ -20,7 +20,7 @@ export interface OsStore {
   /** The posts, newest first, each with its status and where it went (autonomy 0: reading is for everyone). */
   getPosts(scope: RunScope, o: { status?: string | undefined; limit: number }): Promise<{ id: string; platform: string; status: string; text: string; url: string | null; error: string | null; at: string }[]>;
   /** Queues a post for approval (autonomy 2). Never publishes. The same text on the same account is one proposal. */
-  proposePost(scope: RunScope, p: { accountId: string; text: string }): Promise<{ approvalId: string; existed: boolean }>;
+  proposePost(scope: RunScope, p: { accountId: string; text: string; briefId?: string | undefined }): Promise<{ approvalId: string; existed: boolean }>;
   /** Queues one direct message to one person for approval (autonomy 2). Never sends. */
   proposeDm(scope: RunScope, p: { accountId: string; leadId: string; recipient: string; text: string }): Promise<{ approvalId: string; existed: boolean }>;
   /** Records a signal a scout found (autonomy 1). The same address is one signal. Never contacts anyone. */
@@ -332,9 +332,9 @@ export const osTools = {
   propose_post: {
     minAutonomy: 2,
     description:
-      'Queue one post for the founder to approve. It does NOT publish. Give the posting account (accountId) and the exact text; what is approved is what goes out. Plain text only; a link must be to an approved domain, and the text must fit the platform. Call it once per post, then move on.',
-    input: z.object({ accountId: z.uuid(), text: z.string().min(1).max(5000) }).strict(),
-    async run(store: OsStore, scope: RunScope, args: { accountId: string; text: string }) {
+      'Queue one post for the founder to approve. It does NOT publish. Give the posting account (accountId) and the exact text; what is approved is what goes out. Plain text only; a link must be to an approved domain, and the text must fit the platform. Call it once per post, then move on. To post a finished video, give its briefId: it must be a video that has passed review.',
+    input: z.object({ accountId: z.uuid(), text: z.string().min(1).max(5000), briefId: z.uuid().optional() }).strict(),
+    async run(store: OsStore, scope: RunScope, args: { accountId: string; text: string; briefId?: string | undefined }) {
       const r = await store.proposePost(scope, args);
       return r.existed
         ? `Already queued as ${r.approvalId}. Do not propose it again.`

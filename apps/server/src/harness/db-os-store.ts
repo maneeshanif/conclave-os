@@ -314,7 +314,7 @@ export class DbOsStore implements OsStore {
     return out;
   }
 
-  async proposePost(scope: RunScope, p: { accountId: string; text: string }): Promise<{ approvalId: string; existed: boolean }> {
+  async proposePost(scope: RunScope, p: { accountId: string; text: string; briefId?: string | undefined }): Promise<{ approvalId: string; existed: boolean }> {
     const text = p.text.trim();
     const companyMd = this.companyRoot ? await companyMarkdown(this.companyRoot) : '';
     const out = await withWorkspace(this.pool, scope.workspaceId, async ({ client: c }) => {
@@ -325,21 +325,29 @@ export class DbOsStore implements OsStore {
       // The rules are code, not a prompt: length, blocked claims, prices, and links to domains the company file does not approve.
       const check = checkPost(acct.channel, text, companyMd);
       if (!check.ok) throw new ToolError(`Refused: ${check.reasons.join('; ')}. Rewrite without it and propose again.`);
-      const hash = hashText(text);
+      // A video goes only when its plan has passed review, and what is approved names the exact plan (its hash).
+      let planHash: string | null = null;
+      if (p.briefId) {
+        const vb = (await c.query<{ status: string; plan_hash: string | null; review: { ok?: boolean } | null }>('select status, plan_hash, review from video_briefs where id = $1', [p.briefId])).rows[0];
+        if (!vb) throw new ToolError('No such video.');
+        if (vb.status !== 'ready' || !vb.review?.ok || !vb.plan_hash) throw new ToolError(`That video is not ready: its plan has not passed review (it is ${vb.status}). Do not post it.`);
+        planHash = vb.plan_hash;
+      }
+      const hash = hashText(p.briefId ? `${text}\n[video ${p.briefId}]` : text);
       const prior = await c.query<{ status: string; approval_id: string | null }>('select status, approval_id from posts where channel_account_id = $1 and text_hash = $2 order by created_at desc', [acct.id, hash]);
       const live = prior.rows.find((r) => !['rejected', 'expired', 'cancelled'].includes(r.status));
       if (live?.approval_id) return { approvalId: live.approval_id, existed: true };
       // A dead earlier proposal of the same words (rejected, say) does not block a new one; it gets its own approval key.
       const dedupe = `post:${acct.id}:${hash}${prior.rows.length ? `:${prior.rows.length}` : ''}`;
-      const payload = { platform: acct.channel, handle: acct.handle, accountId: acct.id, text };
+      const payload = { platform: acct.channel, handle: acct.handle, accountId: acct.id, text, ...(p.briefId ? { briefId: p.briefId, planHash } : {}) };
       const ap = await c.query<{ id: string }>(
         "insert into approvals (workspace_id, kind, dedupe_key, agent_id, run_id, task_id, payload) values ($1, 'post.publish', $2, $3, $4, $5, $6) returning id",
         [scope.workspaceId, dedupe, scope.agentId, scope.runId, scope.taskId ?? null, JSON.stringify(payload)],
       );
       const actor = await this.actor(c, scope);
       const post = await c.query<{ id: string }>(
-        'insert into posts (workspace_id, channel_account_id, platform, text, text_hash, approval_id, created_by) values ($1, $2, $3, $4, $5, $6, $7) returning id',
-        [scope.workspaceId, acct.id, acct.channel, text, hash, ap.rows[0]!.id, actor],
+        'insert into posts (workspace_id, channel_account_id, platform, text, text_hash, approval_id, created_by, video_brief_id) values ($1, $2, $3, $4, $5, $6, $7, $8) returning id',
+        [scope.workspaceId, acct.id, acct.channel, text, hash, ap.rows[0]!.id, actor, p.briefId ?? null],
       );
       await c.query("insert into audit_log (workspace_id, actor, action, subject, data) values ($1, $2, 'post.proposed', $3, $4)", [scope.workspaceId, actor, post.rows[0]!.id, JSON.stringify({ platform: acct.channel, approval: ap.rows[0]!.id })]);
       return { approvalId: ap.rows[0]!.id, existed: false };

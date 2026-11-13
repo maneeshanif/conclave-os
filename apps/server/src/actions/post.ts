@@ -12,6 +12,9 @@ export const PostPayload = z.object({
   handle: z.string(),
   accountId: z.uuid(),
   text: z.string().trim().min(1).max(5000),
+  /** A reviewed video that goes with the post, and the hash of the plan that was approved (S5-11). */
+  briefId: z.uuid().optional(),
+  planHash: z.string().optional(),
 });
 
 export type PostExecResult = ExecResult | { status: 'needs_login'; reason: string };
@@ -70,14 +73,26 @@ export async function executePost(deps: ExecutorDeps, approvalId: string): Promi
   if (!check.ok) return refuse(`blocked: ${check.reasons.join('; ')}`);
   // The account says how its posts go out. The browser is only used for an account switched to it.
   const viaBrowser = acct.transport === 'browser';
+  // A video goes only if the plan is still the one that was approved: what is approved is what is published.
+  if (p.briefId) {
+    const vb = await withWorkspace(deps.pool, ws, async ({ client: c }) => (await c.query<{ status: string; plan_hash: string | null }>('select status, plan_hash from video_briefs where id = $1', [p.briefId])).rows[0]);
+    if (!vb || vb.status !== 'ready') return refuse(`the video is no longer ready (it is ${vb?.status ?? 'gone'})`);
+    if (vb.plan_hash !== p.planHash) return refuse('the video plan changed after it was approved, so it was not published; ask for a new approval');
+  }
   const transport = viaBrowser ? deps.browserPostTransport : deps.postTransport;
   if (!transport) return refuse(viaBrowser ? `${acct.handle} is set to publish through the browser, but this server has no browser transport` : 'there is no way to publish configured on this server');
 
   try {
     // A browser that is not known to be logged in is not opened at all.
     if (viaBrowser && acct.session_state !== 'valid') throw new SessionExpiredError(`the saved login is ${acct.session_state}`);
-    const out = await transport.publish({ approvalId, platform: acct.channel, handle: acct.handle, accountId: p.accountId, text: p.text });
+    const out = await transport.publish({ approvalId, platform: acct.channel, handle: acct.handle, accountId: p.accountId, text: p.text, ...(p.briefId && p.planHash ? { media: { briefId: p.briefId, planHash: p.planHash } } : {}) });
     await finish('executed', 'published', { ref: out.ref, url: out.url, transport: transport.name, ...(out.screenshot ? { screenshot: out.screenshot } : {}), publishedAt: now().toISOString() }, { url: out.url, text: p.text });
+    if (p.briefId) {
+      await withWorkspace(deps.pool, ws, async ({ client: c }) => {
+        await c.query("update video_briefs set status = 'published' where id = $1 and status = 'ready'", [p.briefId]);
+        await c.query("update video_ideas set stage = 'published', updated_at = now() where id = (select idea_id from video_briefs where id = $1)", [p.briefId]);
+      });
+    }
     return { status: 'executed', ref: out.ref };
   } catch (err) {
     if (err instanceof SessionExpiredError) {

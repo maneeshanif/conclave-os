@@ -777,7 +777,7 @@ export const videoBriefs = pgTable(
     title: text('title').notNull(),
     script: text('script').notNull(),
     shots: jsonb('shots').notNull(), // [{ kind: text | image | clip, description, seconds }]
-    status: text('status').notNull().default('pending_approval'), // pending_approval | approved | rejected | expired | generating | generated | ready | review_failed | failed | cancelled
+    status: text('status').notNull().default('pending_approval'), // pending_approval | approved | rejected | expired | generating | generated | ready | review_failed | published | failed | cancelled
     estimatedCredits: integer('estimated_credits').notNull(), // counted from the shot list, never taken from the agent
     spentCredits: integer('spent_credits').notNull().default(0),
     approvalId: uuid('approval_id'),
@@ -794,7 +794,7 @@ export const videoBriefs = pgTable(
     uniqueIndex('video_briefs_live_idea_uq')
       .on(t.workspaceId, t.ideaId)
       .where(sql`${t.status} not in ('rejected','expired','cancelled','failed')`),
-    check('video_briefs_status_ck', sql`${t.status} in ('pending_approval','approved','rejected','expired','generating','generated','ready','review_failed','failed','cancelled')`),
+    check('video_briefs_status_ck', sql`${t.status} in ('pending_approval','approved','rejected','expired','generating','generated','ready','review_failed','published','failed','cancelled')`),
     check('video_briefs_credits_ck', sql`${t.estimatedCredits} >= 0 and ${t.spentCredits} >= 0`),
     foreignKey({ name: 'video_briefs_idea_fk', columns: [t.workspaceId, t.ideaId], foreignColumns: [videoIdeas.workspaceId, videoIdeas.id] }),
     foreignKey({ name: 'video_briefs_approval_fk', columns: [t.workspaceId, t.approvalId], foreignColumns: [approvals.workspaceId, approvals.id] }),
@@ -912,6 +912,7 @@ export const posts = pgTable(
     textHash: text('text_hash').notNull(), // spacing and case do not make a post new
     status: text('status').notNull().default('proposed'), // proposed | approved | publishing | published | rejected | expired | failed | cancelled
     approvalId: uuid('approval_id'),
+    videoBriefId: uuid('video_brief_id'), // a reviewed video attached to this post (S5-11)
     publishedUrl: text('published_url'),
     publishedAt: timestamp('published_at', { withTimezone: true }),
     error: text('error'),
@@ -925,6 +926,11 @@ export const posts = pgTable(
       .on(t.workspaceId, t.channelAccountId, t.textHash)
       .where(sql`${t.status} not in ('rejected','expired','cancelled')`),
     index('posts_ws_status_idx').on(t.workspaceId, t.status, t.createdAt),
+    // A video goes out in one live post at a time.
+    uniqueIndex('posts_live_video_uq')
+      .on(t.workspaceId, t.videoBriefId)
+      .where(sql`${t.videoBriefId} is not null and ${t.status} not in ('rejected','expired','cancelled','failed')`),
+    foreignKey({ name: 'posts_video_brief_fk', columns: [t.workspaceId, t.videoBriefId], foreignColumns: [videoBriefs.workspaceId, videoBriefs.id] }),
     check('posts_platform_ck', sql`${t.platform} in ('x','linkedin','instagram')`),
     check('posts_status_ck', sql`${t.status} in ('proposed','approved','publishing','published','rejected','expired','failed','cancelled')`),
     foreignKey({ name: 'posts_account_fk', columns: [t.workspaceId, t.channelAccountId], foreignColumns: [channelAccounts.workspaceId, channelAccounts.id] }),

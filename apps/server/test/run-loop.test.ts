@@ -265,6 +265,7 @@ describe('run loop (S0-8)', () => {
       await c.query("update tasks set status = 'in_progress', locked_by = $2 where id in ($1, $3)", [t, writer, orphan]);
       await c.query("insert into runs (workspace_id, agent_id, task_id, trigger, runtime, model, status, started_at) values ($1, $2, $3, 'manual', 'claude-cli', 'writer', 'running', now())", [ws(), writer, t]);
     });
+    await new Promise((r) => setTimeout(r, 50)); // the run must be older than the reaper's clock, or a fast machine can tie
     expect(await reapStaleRuns(sys.app, ws())).toBe(1);
     expect(await task(t)).toMatchObject({ status: 'todo' }); // its first failure: put back, not blocked
     expect(await task(orphan)).toMatchObject({ status: 'blocked' });

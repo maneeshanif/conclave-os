@@ -37,7 +37,9 @@ const RECIPES: Partial<Record<PostPlatform, Recipe>> = {
 /** Builds the driver. `open` gives a fresh page on the account's profile; it is always closed afterwards. */
 export function playwrightDriver(open: (accountId: string) => Promise<DriverPage>): BrowserDriver {
   return {
-    async publish({ platform, accountId, text }) {
+    async publish({ platform, accountId, text, media }) {
+      // A video needs the rendered file to upload, and rendering (Remotion) is not built yet, so it is refused plainly rather than posted without it.
+      if (media) throw new Error('A post with a video needs the rendered video file to upload, and rendering is not built yet. Use the outbox for video posts until it is.');
       const recipe = RECIPES[platform];
       if (!recipe) throw new Error(`${platform} posts need an image, which a text post cannot give, so the browser cannot publish this one. Use a post with media (video and image work arrive in a later task) or the outbox.`);
       const page = await open(accountId);
