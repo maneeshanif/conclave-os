@@ -450,7 +450,7 @@ From `docs/BORROW-AUDIT.md`. Each goes into its slice's task list when that slic
   One function from runs, approvals and discussions to a place: at its desk while a run starts or goes on, at the approvals desk while an approval it proposed waits for you, in the Boardroom during a discussion it is in, in the lounge when idle. \`GET /api/office/state\` and a live \`office.changed\` message from the same events the panels use.
   *Test:* a fixture for each place; an agent with two reasons goes to the stronger one by a fixed order; the live message fires on a run starting, an approval being queued and decided, and a discussion opening.
 
-- [ ] **S6-4 Walking.** SPEC 12; borrow audit A8.
+- [x] **S6-4 Walking.** SPEC 12; borrow audit A8.
   A walkable grid from the collision layer, a path finder, click-to-walk and arrow-key steps for your avatar, and agents walking their paths between places at a fixed speed.
   *Test:* a path from the door to every room exists; a path never crosses a wall; a blocked click goes to the nearest reachable tile; an agent told to change place walks there in the expected number of steps.
 
