@@ -2,6 +2,14 @@
 
 Newest first. One entry per decision: what, why, and what it replaced.
 
+## 2026-11-13 (borrow audit of Paperclip and WorkAdventure)
+
+- **Done as a partial read, and recorded as such.** `docs/BORROW-AUDIT.md` says exactly what was read. It is not a full read of Paperclip (about 12,000 files).
+- **Claude, Claude Code and Cowork are not reverse engineered.** Public documentation covers what we need, and the vendor's terms restrict it.
+- **WorkAdventure license confirmed** as AGPL v3 with the Commons Clause (its `LICENSE.txt` files). Ideas only.
+- **Eight candidate tasks (A1 to A8) added to `docs/BUILD.md`,** not yet in a slice. Highest value: low-trust agents (A1) before slice 5's scouts and slice 10's client channels.
+- **Not copying:** Paperclip's default-on telemetry, and its revision system for agent instructions (it replaced that itself).
+
 ## 2026-11-13 (S3-11: slice 3 end to end, slice 3 done)
 
 - **One test file, `slice3-e2e.test.ts`, runs the three "Done when" checks** on the real run loop, reaper, pause table and eval gate, with a scripted model: (1) a run killed halfway (its process lost, heartbeat stopped) is failed by the reaper, its task goes back to todo still holding the session id, and the next run starts from that session and finishes; (2) a plan limit pauses the runtime for every agent on it while an agent on the other runtime keeps working, the queued tasks wait, the pause lifts only at the reset time and wakes exactly the agents with work, who then finish; (3) the unchanged skill scores at the baseline, and a change that makes the 20 sample drafts long and hyped fails the gate with all 20 leads named.
