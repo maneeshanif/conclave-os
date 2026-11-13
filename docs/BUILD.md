@@ -331,7 +331,7 @@ Recorded 2026-11-13. Nothing here is built ahead of its slice (CLAUDE.md, Stack)
   The brief gets a part "Signals" counting qualified signals since the last brief with the top few (counted from the table, not written by a model), and a Signals page lists them by status with qualify, dismiss and promote.
   *Test:* a fixture gives exact counts in the brief; the page renders each status and the empty state; promote from the page makes the lead.
 
-- [ ] **S4-9 Try a real local model (opt-in).** SPEC 17, 7.
+- [x] **S4-9 Try a real local model (opt-in).** SPEC 17, 7.
   The conformance tests, run against Ollama on this machine when `CONCLAVE_TEST_OLLAMA=<model>` is set, and a note of which tool-calling model fits comfortably in 16 GB while the server and the database are running. Skipped by default.
   *Test:* skipped without the variable; with it, the conformance tests pass on the real endpoint. Running it is a NEEDS-YOU item (RAM must be free).
 

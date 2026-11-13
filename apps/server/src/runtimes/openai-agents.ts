@@ -35,6 +35,8 @@ export interface OpenAIAgentsOptions {
   osUrl: string;
   /** Overrides the alias's endpoint. Tests point it at a fake server; production reads the alias. */
   baseUrl?: string;
+  /** Overrides the model name the alias gives (for trying a model the alias does not name). */
+  model?: string;
   /** The model's key, for a hosted endpoint. A local endpoint needs none. This is the only secret the runner is handed. */
   apiKey?: string;
 }
@@ -112,7 +114,7 @@ export function createOpenAIAgentsRuntime(options: OpenAIAgentsOptions): Runtime
           name: req.agentKey,
           instructions,
           tools: skills.length ? [loadSkillTool(skillsDir)] : [],
-          model: new OpenAIChatCompletionsModel(client, modelNameFor(req.modelAlias, 'openai-agents')),
+          model: new OpenAIChatCompletionsModel(client, options.model ?? modelNameFor(req.modelAlias, 'openai-agents')),
           mcpServers: [mcp],
         });
         const runner = new Runner({ tracingDisabled: true });

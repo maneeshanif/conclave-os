@@ -42,3 +42,7 @@ Things the build parked for you. Each says what to do.
 ## Scouts need something to read (S4-7)
 
 - [ ] A scout works on items put in its task. To make the Demand Radar and Problem Scout useful you need a source: a scraper or API account that fetches public posts (Reddit, X, forums, job boards) within each site's terms, for example through Apify. That needs an account and a key, which I cannot create. Until you choose one, hire a scout (`pnpm agent:new scout --department research`) and paste items into a task to try it. The two room scouts (`demand-scout`, `problem-scout`) are hired paused: switch them on when a source exists.
+
+## Local model through the in-process runner (S4-9)
+
+- [ ] With at least 8 GB of memory free (close the browser and editors), run in PowerShell from the repo folder: `$env:CONCLAVE_TEST_OLLAMA='gemma4:latest'; pnpm exec vitest run apps/server/test/real-local-model-agents.test.ts`. If it passes, tell me and I will point the `local-worker` alias at that model (it names `qwen3:8b`, which is not installed). If it fails on tool calling, we try another model.
