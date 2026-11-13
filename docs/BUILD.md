@@ -388,7 +388,7 @@ Recorded 2026-11-13. Nothing here is built ahead of its slice (CLAUDE.md, Stack)
   A `hooks` table (pattern, format, length, example link, the account it was seen on, a performance score), an `add_hook` tool, and the Hook Scout template on the local model. A hook stores a link to the example and a description of the pattern, never a copy of the post's text.
   *Test:* a hook with no example link is refused; a long verbatim quote is refused; the same example is one hook; the scout cannot propose a post.
 
-- [ ] **S5-7 The Video Ideas inbox.** SPEC 8, 12.
+- [x] **S5-7 The Video Ideas inbox.** SPEC 8, 12.
   `video_ideas` (a line, a link or a voice-note transcript; source founder or hook scout), an API, an inbox page that works on a phone, and a quick-add box.
   *Test:* adding from the page creates one idea; a link is stored as a link; the inbox lists new ideas first; an idea can be shelved or turned into a brief.
 

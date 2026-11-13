@@ -46,6 +46,7 @@ const TABLES = [
   'tasks',
   'thread_messages',
   'threads',
+  'video_ideas',
   'workspace_settings',
   'workspaces',
 ];

@@ -137,6 +137,17 @@ export interface Signal {
   foundAt: string;
 }
 
+export interface VideoIdea {
+  id: string;
+  idea: string;
+  kind: 'line' | 'link' | 'voice';
+  url: string | null;
+  source: 'founder' | 'hook_scout';
+  stage: 'idea' | 'shelved' | 'brief' | 'assets' | 'render' | 'review' | 'published';
+  hookId: string | null;
+  createdAt: string;
+}
+
 export interface HealthOverview {
   generatedAt: string;
   windowHours: number;
@@ -296,6 +307,9 @@ export const api = {
   qualifySignal: (id: string) => call<Signal>(`/api/signals/${id}/qualify`, { method: 'POST', body: '{}' }),
   dismissSignal: (id: string) => call<Signal>(`/api/signals/${id}/dismiss`, { method: 'POST', body: '{}' }),
   promoteSignal: (id: string) => call<Signal>(`/api/signals/${id}/promote`, { method: 'POST', body: '{}' }),
+  videoIdeas: (stage?: string) => call<VideoIdea[]>(`/api/video-ideas${stage ? `?stage=${encodeURIComponent(stage)}` : ''}`),
+  addVideoIdea: (idea: string, kind: 'line' | 'voice') => call<VideoIdea>('/api/video-ideas', { method: 'POST', body: JSON.stringify({ idea, kind }) }),
+  moveVideoIdea: (id: string, action: 'shelve' | 'unshelve' | 'brief') => call<VideoIdea>(`/api/video-ideas/${id}/${action}`, { method: 'POST', body: '{}' }),
   health: () => call<HealthOverview>('/api/health/overview'),
   setKillSwitch: async (on: boolean) => {
     await call('/api/settings', { method: 'PATCH', body: JSON.stringify({ killSwitch: on }) });

@@ -18,6 +18,7 @@ import { healthRoutes } from './health';
 import { pauseRoutes } from './pauses';
 import { settingsRoutes } from './settings';
 import { signalRoutes } from './signals';
+import { videoIdeaRoutes } from './video-ideas';
 import { threadRoutes } from './threads';
 import { suppressionRoutes } from './suppression';
 
@@ -69,6 +70,7 @@ export function apiRoutes(deps: { workspaceId: string; dispatcher: Dispatcher; b
   r.route('/action-items', actionItemRoutes({ workspaceId: ws, bus: deps.bus }));
   r.route('/suppression', suppressionRoutes({ workspaceId: ws }));
   r.route('/signals', signalRoutes({ workspaceId: ws, bus: deps.bus }));
+  r.route('/video-ideas', videoIdeaRoutes({ workspaceId: ws, bus: deps.bus }));
   r.route('/settings', settingsRoutes({ workspaceId: ws, bus: deps.bus, onKillSwitch: deps.onKillSwitch, onReleaseHeld: deps.onReleaseHeld }));
 
   r.get('/agents', async (c) =>

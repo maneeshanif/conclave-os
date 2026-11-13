@@ -736,6 +736,32 @@ export const runtimePauses = pgTable(
   ],
 );
 
+/** A line, a link or a voice note dropped into the Video Ideas inbox (S5-7). */
+export const videoIdeas = pgTable(
+  'video_ideas',
+  {
+    id: id(),
+    workspaceId: workspaceId(),
+    source: text('source').notNull(), // founder | hook_scout
+    idea: text('idea').notNull(),
+    kind: text('kind').notNull().default('line'), // line | link | voice (a voice note is kept as its transcript)
+    url: text('url'),
+    hookId: uuid('hook_id'),
+    stage: text('stage').notNull().default('idea'), // idea | shelved | brief | assets | render | review | published
+    createdBy: text('created_by').notNull(),
+    createdAt: createdAt(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    unique('video_ideas_ws_id_uq').on(t.workspaceId, t.id),
+    index('video_ideas_ws_stage_idx').on(t.workspaceId, t.stage, t.createdAt),
+    check('video_ideas_source_ck', sql`${t.source} in ('founder','hook_scout')`),
+    check('video_ideas_kind_ck', sql`${t.kind} in ('line','link','voice')`),
+    check('video_ideas_stage_ck', sql`${t.stage} in ('idea','shelved','brief','assets','render','review','published')`),
+    foreignKey({ name: 'video_ideas_hook_fk', columns: [t.workspaceId, t.hookId], foreignColumns: [hooks.workspaceId, hooks.id] }),
+  ],
+);
+
 /** A pattern that is working in the niche, with a link to the example and never a copy of it (S5-6). */
 export const hooks = pgTable(
   'hooks',
