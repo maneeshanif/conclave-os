@@ -65,6 +65,9 @@ class LateStore implements OsStore {
   scoreLead(s: RunScope, i: Parameters<OsStore['scoreLead']>[1]) {
     return this.inner.scoreLead(s, i);
   }
+  proposePost(s: RunScope, p: Parameters<OsStore['proposePost']>[1]) {
+    return this.inner.proposePost(s, p);
+  }
   addSignal(s: RunScope, i: Parameters<OsStore['addSignal']>[1]) {
     return this.inner.addSignal(s, i);
   }

@@ -728,6 +728,38 @@ export const runtimePauses = pgTable(
   ],
 );
 
+/** A post an agent proposed to publish (S5-1). The approval is what makes it go out; this row follows it to the result. */
+export const posts = pgTable(
+  'posts',
+  {
+    id: id(),
+    workspaceId: workspaceId(),
+    channelAccountId: uuid('channel_account_id').notNull(),
+    platform: text('platform').notNull(), // x | linkedin | instagram
+    text: text('text').notNull(),
+    textHash: text('text_hash').notNull(), // spacing and case do not make a post new
+    status: text('status').notNull().default('proposed'), // proposed | approved | publishing | published | rejected | expired | failed | cancelled
+    approvalId: uuid('approval_id'),
+    publishedUrl: text('published_url'),
+    publishedAt: timestamp('published_at', { withTimezone: true }),
+    error: text('error'),
+    createdBy: text('created_by').notNull(), // agent:<key> or founder
+    createdAt: createdAt(),
+  },
+  (t) => [
+    unique('posts_ws_id_uq').on(t.workspaceId, t.id),
+    // One live post per account and text. A rejected, expired or cancelled one does not stop the same words being proposed again.
+    uniqueIndex('posts_live_text_uq')
+      .on(t.workspaceId, t.channelAccountId, t.textHash)
+      .where(sql`${t.status} not in ('rejected','expired','cancelled')`),
+    index('posts_ws_status_idx').on(t.workspaceId, t.status, t.createdAt),
+    check('posts_platform_ck', sql`${t.platform} in ('x','linkedin','instagram')`),
+    check('posts_status_ck', sql`${t.status} in ('proposed','approved','publishing','published','rejected','expired','failed','cancelled')`),
+    foreignKey({ name: 'posts_account_fk', columns: [t.workspaceId, t.channelAccountId], foreignColumns: [channelAccounts.workspaceId, channelAccounts.id] }),
+    foreignKey({ name: 'posts_approval_fk', columns: [t.workspaceId, t.approvalId], foreignColumns: [approvals.workspaceId, approvals.id] }),
+  ],
+);
+
 /** What the scouts find (S4-6): a public post or page with a reason to act on it. One per web address. */
 export const signals = pgTable(
   'signals',

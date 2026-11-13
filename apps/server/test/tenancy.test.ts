@@ -32,6 +32,7 @@ const TABLES = [
   'members',
   'messages',
   'outreach_messages',
+  'posts',
   'projects',
   'run_events',
   'runs',

@@ -5,6 +5,7 @@ import { briefOn, dayOf, latestBrief, rebuildBrief } from '../brief/build';
 import { companyTimezone } from '../config';
 import { checkFigures } from '../documents/figures';
 import { ingestLead } from '../leads/ingest';
+import { checkPost, hashText, isPostPlatform } from '../posts';
 import { addSignal, cleanExcerpt, looksLikeInstructions } from '../signals';
 import { ToolError, type AddLeadInput, type AddSignalInput, type BriefView, type DealView, type DraftKind, type LeadView, type OsStore, type ProposedEmail, type TaskView } from './os-tools';
 import type { RunScope } from './run-tokens';
@@ -208,6 +209,40 @@ export class DbOsStore implements OsStore {
         [scope.workspaceId, p.leadId, p.step, l.email, p.subject, p.body, ins.rows[0].id, p.campaignId ?? null, campaign?.channel_account_id ?? null],
       );
       return { approvalId: ins.rows[0].id, existed: false };
+    });
+    if (!out.existed) this.onApproval(scope.workspaceId, out.approvalId);
+    return out;
+  }
+
+  async proposePost(scope: RunScope, p: { accountId: string; text: string }): Promise<{ approvalId: string; existed: boolean }> {
+    const text = p.text.trim();
+    const companyMd = this.companyRoot ? await companyMarkdown(this.companyRoot) : '';
+    const out = await withWorkspace(this.pool, scope.workspaceId, async ({ client: c }) => {
+      const acct = (await c.query<{ id: string; channel: string; handle: string; health: string }>('select id, channel, handle, health from channel_accounts where id = $1', [p.accountId])).rows[0];
+      if (!acct) throw new ToolError('No such account.');
+      if (!isPostPlatform(acct.channel)) throw new ToolError(`${acct.handle} is not a posting account (it is for ${acct.channel}).`);
+      if (acct.health !== 'ok') throw new ToolError(`The account ${acct.handle} is ${acct.health}, so nothing can be proposed for it.`);
+      // The rules are code, not a prompt: length, blocked claims, prices, and links to domains the company file does not approve.
+      const check = checkPost(acct.channel, text, companyMd);
+      if (!check.ok) throw new ToolError(`Refused: ${check.reasons.join('; ')}. Rewrite without it and propose again.`);
+      const hash = hashText(text);
+      const prior = await c.query<{ status: string; approval_id: string | null }>('select status, approval_id from posts where channel_account_id = $1 and text_hash = $2 order by created_at desc', [acct.id, hash]);
+      const live = prior.rows.find((r) => !['rejected', 'expired', 'cancelled'].includes(r.status));
+      if (live?.approval_id) return { approvalId: live.approval_id, existed: true };
+      // A dead earlier proposal of the same words (rejected, say) does not block a new one; it gets its own approval key.
+      const dedupe = `post:${acct.id}:${hash}${prior.rows.length ? `:${prior.rows.length}` : ''}`;
+      const payload = { platform: acct.channel, handle: acct.handle, accountId: acct.id, text };
+      const ap = await c.query<{ id: string }>(
+        "insert into approvals (workspace_id, kind, dedupe_key, agent_id, run_id, task_id, payload) values ($1, 'post.publish', $2, $3, $4, $5, $6) returning id",
+        [scope.workspaceId, dedupe, scope.agentId, scope.runId, scope.taskId ?? null, JSON.stringify(payload)],
+      );
+      const actor = await this.actor(c, scope);
+      const post = await c.query<{ id: string }>(
+        'insert into posts (workspace_id, channel_account_id, platform, text, text_hash, approval_id, created_by) values ($1, $2, $3, $4, $5, $6, $7) returning id',
+        [scope.workspaceId, acct.id, acct.channel, text, hash, ap.rows[0]!.id, actor],
+      );
+      await c.query("insert into audit_log (workspace_id, actor, action, subject, data) values ($1, $2, 'post.proposed', $3, $4)", [scope.workspaceId, actor, post.rows[0]!.id, JSON.stringify({ platform: acct.channel, approval: ap.rows[0]!.id })]);
+      return { approvalId: ap.rows[0]!.id, existed: false };
     });
     if (!out.existed) this.onApproval(scope.workspaceId, out.approvalId);
     return out;

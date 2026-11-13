@@ -12,6 +12,8 @@ export interface OsStore {
   addLead(scope: RunScope, input: AddLeadInput): Promise<{ id: string; existed: boolean; by?: 'email' | 'website'; verified: boolean }>;
   /** Records a 0 to 100 score and its reason on a lead (autonomy 1). */
   scoreLead(scope: RunScope, input: { leadId: string; score: number; reason: string }): Promise<void>;
+  /** Queues a post for approval (autonomy 2). Never publishes. The same text on the same account is one proposal. */
+  proposePost(scope: RunScope, p: { accountId: string; text: string }): Promise<{ approvalId: string; existed: boolean }>;
   /** Records a signal a scout found (autonomy 1). The same address is one signal. Never contacts anyone. */
   addSignal(scope: RunScope, input: AddSignalInput): Promise<{ id: string; created: boolean; flagged: boolean }>;
   /** Scores a signal 0 to 100 with the reason (autonomy 1). 60 or more marks it qualified. A person's decisions are not overridden. */
@@ -265,6 +267,18 @@ export const osTools = {
       return r.qualified ? `Scored ${args.score} out of 100. It is marked qualified.` : `Scored ${args.score} out of 100. It stays new, for a person to look at.`;
     },
   },
+  propose_post: {
+    minAutonomy: 2,
+    description:
+      'Queue one post for the founder to approve. It does NOT publish. Give the posting account (accountId) and the exact text; what is approved is what goes out. Plain text only; a link must be to an approved domain, and the text must fit the platform. Call it once per post, then move on.',
+    input: z.object({ accountId: z.uuid(), text: z.string().min(1).max(5000) }).strict(),
+    async run(store: OsStore, scope: RunScope, args: { accountId: string; text: string }) {
+      const r = await store.proposePost(scope, args);
+      return r.existed
+        ? `Already queued as ${r.approvalId}. Do not propose it again.`
+        : `Queued for approval as ${r.approvalId}. Nothing has been published. Do not retry; finish your task.`;
+    },
+  },
   get_deal: {
     minAutonomy: 0,
     description: 'Read one deal: the account, the offer, the stage and the numbers recorded for it (value, baseline, target, outcome). A draft may state these figures and no others.',
@@ -350,6 +364,9 @@ export class MemoryOsStore implements OsStore {
   }
   async scoreLead(): Promise<void> {
     throw new ToolError('Leads need the database store.');
+  }
+  async proposePost(): Promise<{ approvalId: string; existed: boolean }> {
+    throw new ToolError('Proposals need the database store.');
   }
   async addSignal(): Promise<{ id: string; created: boolean; flagged: boolean }> {
     throw new ToolError('Signals need the database store.');

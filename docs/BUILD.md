@@ -356,7 +356,7 @@ Recorded 2026-11-13. Nothing here is built ahead of its slice (CLAUDE.md, Stack)
 
 **Tasks**
 
-- [ ] **S5-1 Posts and the post proposal.** SPEC 6, 8, 15.
+- [x] **S5-1 Posts and the post proposal.** SPEC 6, 8, 15.
   A `posts` table (account, text, media, status, approval link, result), `propose_post` as an `os` tool (autonomy 2) that queues an approval of kind `post.publish` and never publishes, and the proposal handler's checks: length per platform, blocked claims, no links to unapproved domains, duplicate text refused.
   *Test:* a proposal creates one pending approval and one post row; a second identical proposal is the same approval; a medical, legal or price claim is refused in code; over-length is refused; an agent below autonomy 2 has no such tool.
 
