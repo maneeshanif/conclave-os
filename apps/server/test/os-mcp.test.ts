@@ -62,7 +62,7 @@ describe('the os MCP server (S0-5)', () => {
     expect(init.result.capabilities.tools).toBeDefined();
     expect((await rpc(tokA, 'notifications/initialized', undefined, null)).status).toBe(202);
     const list = await json(rpc(tokA, 'tools/list'));
-    expect(list.result.tools.map((t: { name: string }) => t.name).sort()).toEqual(['ask_founder', 'block_task', 'comment', 'complete_task', 'get_brief', 'get_deal', 'get_lead', 'get_task']);
+    expect(list.result.tools.map((t: { name: string }) => t.name).sort()).toEqual(['ask_founder', 'block_task', 'comment', 'complete_task', 'get_brief', 'get_deal', 'get_lead', 'get_posts', 'get_task']);
     expect(list.result.tools[0]?.inputSchema.type).toBe('object');
   });
 

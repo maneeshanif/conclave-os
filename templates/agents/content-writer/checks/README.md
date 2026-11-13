@@ -1,0 +1,1 @@
+Every post is checked in code when it is proposed (`propose_post`) and again when it is published: the length for the platform, no medical, legal or unlisted-price claims, and links only to the domains under "Approved link domains" in COMPANY.md. A person approves exactly the text that goes out. None of this depends on the agent following it.

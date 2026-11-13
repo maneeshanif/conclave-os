@@ -215,6 +215,16 @@ export class DbOsStore implements OsStore {
     return out;
   }
 
+  async getPosts(scope: RunScope, o: { status?: string | undefined; limit: number }) {
+    const r = await withWorkspace(this.pool, scope.workspaceId, ({ client: c }) =>
+      c.query<{ id: string; platform: string; status: string; text: string; published_url: string | null; error: string | null; created_at: Date }>(
+        'select id, platform, status, text, published_url, error, created_at from posts where ($1::text is null or status = $1) order by created_at desc, id limit $2',
+        [o.status ?? null, o.limit],
+      ),
+    );
+    return r.rows.map((p) => ({ id: p.id, platform: p.platform, status: p.status, text: p.text, url: p.published_url, error: p.error, at: p.created_at.toISOString() }));
+  }
+
   async proposeDm(scope: RunScope, p: { accountId: string; leadId: string; recipient: string; text: string }): Promise<{ approvalId: string; existed: boolean }> {
     const text = p.text.trim();
     const recipient = normalizeHandle(p.recipient);

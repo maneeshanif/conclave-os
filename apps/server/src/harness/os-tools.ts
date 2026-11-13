@@ -12,6 +12,8 @@ export interface OsStore {
   addLead(scope: RunScope, input: AddLeadInput): Promise<{ id: string; existed: boolean; by?: 'email' | 'website'; verified: boolean }>;
   /** Records a 0 to 100 score and its reason on a lead (autonomy 1). */
   scoreLead(scope: RunScope, input: { leadId: string; score: number; reason: string }): Promise<void>;
+  /** The posts, newest first, each with its status and where it went (autonomy 0: reading is for everyone). */
+  getPosts(scope: RunScope, o: { status?: string | undefined; limit: number }): Promise<{ id: string; platform: string; status: string; text: string; url: string | null; error: string | null; at: string }[]>;
   /** Queues a post for approval (autonomy 2). Never publishes. The same text on the same account is one proposal. */
   proposePost(scope: RunScope, p: { accountId: string; text: string }): Promise<{ approvalId: string; existed: boolean }>;
   /** Queues one direct message to one person for approval (autonomy 2). Never sends. */
@@ -269,6 +271,14 @@ export const osTools = {
       return r.qualified ? `Scored ${args.score} out of 100. It is marked qualified.` : `Scored ${args.score} out of 100. It stays new, for a person to look at.`;
     },
   },
+  get_posts: {
+    minAutonomy: 0,
+    description: 'Read the post queue: each post with its platform, status (proposed, approved, publishing, published, rejected, expired, failed, cancelled), text, and the address it was published at. You can filter by status. This only reads.',
+    input: z.object({ status: z.enum(['proposed', 'approved', 'publishing', 'published', 'rejected', 'expired', 'failed', 'cancelled']).optional(), limit: z.number().int().min(1).max(100).default(30) }).strict(),
+    async run(store: OsStore, scope: RunScope, args: { status?: string; limit: number }) {
+      return JSON.stringify(await store.getPosts(scope, args), null, 2);
+    },
+  },
   propose_post: {
     minAutonomy: 2,
     description:
@@ -380,6 +390,9 @@ export class MemoryOsStore implements OsStore {
   }
   async scoreLead(): Promise<void> {
     throw new ToolError('Leads need the database store.');
+  }
+  async getPosts(): Promise<{ id: string; platform: string; status: string; text: string; url: string | null; error: string | null; at: string }[]> {
+    return [];
   }
   async proposeDm(): Promise<{ approvalId: string; existed: boolean }> {
     throw new ToolError('Proposals need the database store.');
