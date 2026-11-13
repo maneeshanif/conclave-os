@@ -489,9 +489,53 @@ From `docs/BORROW-AUDIT.md`. Each goes into its slice's task list when that slic
   Tables \`discussions\`, \`discussion_turns\`, \`decisions\`; stand-up posts, the weekly review, open discussions and the decision log. \`open_discussion\` and \`add_turn\` as \`os\` tools; every turn must cite numbers the OS can check against its own tables, or it is refused. Decisions are recorded by a person through the API. A page for it.
   *Test:* a turn with no evidence, or a figure the tables do not show, is refused; a turn citing a real count is accepted; only a person records a decision; the decision log lists them newest first; the page renders each part and the empty state.
 
-- [ ] **S6-11 Slice 6 end to end.** SPEC 18, row 6.
-  One test: from the door, the avatar walks to the Outreach room (the zone event fires and its panel opens), walks up to the outreach agent (its drawer opens with its run), walks to the approvals desk and uses it (the inbox opens), and an approval is approved there and executed; a Playwright check of the real canvas. Tag \`slice-6-done\`.
+- [ ] **S6-11 Slice 6 end to end.** SPEC 18, row 6. (Last: after S6-12 to S6-15.)
+  One test: from the door, the avatar walks to the Outreach room (the zone event fires and its panel opens), walks up to the outreach agent (its drawer opens with its run), walks to the approvals desk and uses it (the inbox opens), and an approval is approved there and executed; a panel opened from an object and from a deep link; a Playwright check of the real canvas at desktop and Android sizes. The full suite runs once here. Tag \`slice-6-done\`.
   *Test:* all of it in one run.
+
+### New direction from Anees, 2026-11-14 (added after S6-9)
+
+The office is the whole app. Everything below is allowed in slice 6 because slice 6 is the office. **Order from here:** S6-14a (study, read only) → S6-12 → S6-13 → S6-14b (build to match what the study found) → S6-10 (the Boardroom is the meeting table in the world) → S6-15 → S6-11 (end to end, then the full suite and the tag). Hard rules still hold: Phaser only in `apps/web/office`; nothing about Conclave in `apps/`; `propose_*` only; forced RLS with `workspace_id`; claim-once executors.
+
+- [ ] **S6-12a Panels over the world.** SPEC 12.
+  A panel host that opens one registered panel over the world: a side panel on a desktop, full screen at phone width, closed with a button or Escape. The panel is in the address (`?panel=<id>`) so it can be linked to and survives a reload. One registry holds every panel: approvals, needs you, brief, inbox, pipeline, campaigns, goals, tasks (the old home page), signals, ideas, health, and a run log for one task. The existing page components are reused as they are.
+  *Test:* each panel id opens its component and closes again; the address follows the open panel; a link with `?panel=` opens it on load; an unknown id leaves nothing open; at 390 px wide the panel is full screen and at 1280 px it is a side panel and the world stays visible.
+
+- [ ] **S6-12b A place for every panel.** SPEC 12.
+  New object types on the map with a registered panel each (a task board, a brief desk, a pipeline board, a campaign board, a needs-you board, a terminal for run logs), added to `OBJECT_TYPES`, the map script and `OBJECT_PANELS`. Using an object, in the world or from the plain list, opens its panel. Every panel in the registry has a place on the map, and the map reader still refuses an unknown type.
+  *Test:* every panel has exactly one object type that opens it; the map has at least one of each type and all are reachable from the door; using each opens the right panel; the plain list has a button for each.
+
+- [ ] **S6-12c The office is home.** SPEC 12.
+  `/` is the office. There is no top link bar on any page. The old routes (`/approvals`, `/brief`, `/inbox`, `/pipeline`, `/campaigns`, `/goals`, `/health`, `/signals`, `/ideas`, `/action-items`) redirect to `/?panel=<id>` and nothing else. A run log opens from a task in the tasks panel and from the terminal.
+  *Test:* the home page has no navigation links outside the office; each old route redirects to the office with that panel open; a Playwright run at desktop and Android sizes walks to an object, clicks it, sees the panel, closes it, and loads a deep link.
+
+- [ ] **S6-13a Companies.** SPEC 3, 11, 13.
+  From inside the world: a list of companies, switch company, and create one from a company template (`templates/companies/`). Each company is its own workspace with its own company folder outside this repo (under `DATA_DIR`), and every request names which one it is for; the server checks that the signed-in owner may use it. The current company shows in the bar.
+  *Test:* creating from a template makes a workspace, its folder and its departments; switching changes what every panel shows; nothing from one company is readable while in another (the tenancy test covers every table); an unknown or foreign company id is refused.
+
+- [ ] **S6-13b Departments from the world.** SPEC 3, 12.
+  Creating a department claims a free plot on the map and stamps a room into it: desks, a board (shared tasks), a meeting table and a door, and adds the department to the company's `departments.yaml`. The map has reserved plots for this. A department with no free plot is told so, and nothing is half made.
+  *Test:* a new department gets a room with its desks, board and meeting table, reachable from the door; the map still passes the reader; two departments never share a plot; no free plot is a clear refusal and changes nothing.
+
+- [ ] **S6-13c Adding an agent.** SPEC 5, 6, 7.
+  From the world: pick a department and a template and propose an agent. A person approves the proposal; only then does the executor run the same logic as `pnpm agent:new`. No code per agent. The executor claims the approval once, and the agent gets a desk in its department's room.
+  *Test:* the proposal creates nothing until approved; approving creates exactly one agent and one desk; approving twice, or after a rejection, creates no second; a rejected proposal creates nothing; the agent appears in its room.
+
+- [ ] **S6-13d A department works together.** SPEC 4, 12.
+  Agents in a department share its board; when a task passes from one agent to another the first is shown walking to the other's desk; each department has a channel (a short message list) for its agents and the owner. Tables carry `workspace_id` and forced RLS.
+  *Test:* a handoff changes the place of the giver to the receiver's desk for a while and then back; the board lists the department's open tasks and nobody else's; a channel message is saved, shown newest last and never visible from another company.
+
+- [ ] **S6-14a Study jsm-hq.** WORLD-BRIEF, SPEC 12.
+  Find the `jsm-hq` repo and check who made it. If it cannot be found, ask in NEEDS-YOU and go on with WorkAdventure only. Clone it outside this repo (under `DATA_DIR/reference/`). Read its LICENSE before anything else and record the result in DECISIONS. Reuse of images, assets and code is allowed only if the licence allows it, with the LICENSE kept and a line in `docs/CREDITS.md`; otherwise study only and use our own or Kenney CC0 art. Find which library runs its world. Phaser stays ours: if it differs, write a short decision on whether switching is worth it and ask. Run it as a guest if it can be run, install nothing from it with scripts enabled, click every part, keep screenshots in `.reference/`, and write `docs/JSM-REFERENCE.md` in my own words: layout, interactions, what opens on a click, how rooms and objects work, the library and how it is wired, then the gaps against our `/office`.
+  *Test:* `docs/JSM-REFERENCE.md` and the DECISIONS licence entry exist and name the licence; nothing from the clone is inside this repo (a check lists the repo's files against the clone's); `.reference/` and the clone are git-ignored or outside the repo.
+
+- [ ] **S6-14b Build to match it.** WORLD-BRIEF.
+  Close the gaps listed in `docs/JSM-REFERENCE.md`: rooms, objects, click-to-open panels and department zones, with everything from S6-12 and S6-13 inside them. Tasks are drafted here from the study's gap list before any code.
+  *Test:* one test per gap that was listed, written first.
+
+- [ ] **S6-15 The WorkAdventure look, second pass.** WORLD-BRIEF, `docs/WORLD-REFERENCE.md`.
+  Restyle to that look and feel with our own or reusable art: the bottom bar, avatars and a simple avatar picker, proximity bubbles with a text chat (no video), a chat panel, the user list, and the phone layout. Ideas only; nothing copied.
+  *Test:* walking near someone opens a bubble with a text box and moving away closes it; a sent message reaches the other person and no one else; the picker changes your look and it is kept; the browser check at desktop and Android sizes passes with screenshots.
 
 ## Opening the next slice
 
