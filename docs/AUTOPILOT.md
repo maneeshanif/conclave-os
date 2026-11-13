@@ -49,3 +49,12 @@ A session that hits a usage limit stops. Nothing inside the repo can wake a stop
 Resume prompt:
 
 > Autopilot. Read CLAUDE.md, docs/AUTOPILOT.md, docs/QUESTIONS.md (the Answers section) and docs/PROGRESS.md. Claim the next unclaimed task and continue on the `dev` branch. Do not ask anything already answered.
+
+## Test cadence (Anees, 2026-11-14)
+
+Time matters more than running everything every task. Starting with slice 6:
+
+- **Per task:** write the test first for the new behaviour. Run only the test files you added or touched, plus typecheck and lint. Commit and push when those pass.
+- **Per slice:** run the full suite (`pnpm test`) once, after the slice's last task and before tagging `slice-<n>-done`. If it fails, fix it before tagging. This is also the end-to-end check for the slice.
+- **Why it is safe:** the hard rules and the migrations are still checked by the tests you touch, and the full run still happens before every tag. A regression elsewhere is caught at the end of the slice, not at the task.
+- **Exception:** a task that changes the database schema, a migration, an executor, authentication or the os tools also runs the full suite, because those can break distant code.

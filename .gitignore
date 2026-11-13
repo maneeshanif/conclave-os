@@ -22,3 +22,6 @@ Thumbs.db
 # next.js
 next-env.d.ts
 apps/web/AGENTS.md
+
+# Reference screenshots of other products: never committed
+.reference/
