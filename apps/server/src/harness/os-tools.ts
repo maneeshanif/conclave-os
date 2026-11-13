@@ -364,6 +364,9 @@ export type OsToolName = keyof typeof osTools;
 export async function callOsTool(store: OsStore, scope: RunScope, name: string, args: unknown): Promise<string> {
   const tool = (osTools as Record<string, (typeof osTools)[OsToolName]>)[name];
   if (!tool) throw new ToolError(`Unknown tool "${name}".`);
+  // A low-trust run is held to its list, and with no list it fails closed (A1). The list is checked before the level.
+  const list = scope.trust === 'low' ? (scope.allowedTools ?? []) : scope.allowedTools;
+  if (list && !list.includes(name)) throw new ToolError(`Unknown tool "${name}".`);
   if (tool.minAutonomy > (await store.autonomy(scope))) throw new ToolError(`Unknown tool "${name}".`);
   const parsed = tool.input.safeParse(args ?? {});
   if (!parsed.success) throw new ToolError(`Bad input for ${name}: ${parsed.error.issues.map((i) => i.message).join('; ')}`);

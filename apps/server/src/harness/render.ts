@@ -8,6 +8,7 @@ import { RoleFileSchema, type RoleFile } from '../company/schema';
 import { RUNTIMES, type RuntimeName } from '../runtimes/names';
 import { agentWorkDir } from '../paths';
 import { fill } from './fill';
+import { clampForTrust } from './trust';
 import { PermissionsSchema, SHELL_TEMPLATES, assertRunnerCanEnforce, claudeToolLists, opencodePermission, type Permissions } from './permissions';
 import { loadPlugin, type LoadedPlugin } from './plugins';
 
@@ -34,6 +35,7 @@ const TemplateFileSchema = z.object({
     fallback_runtime: z.enum(RUNTIMES).optional(),
     fallback_model: z.string().min(1).optional(),
     start_paused: z.boolean().optional(),
+    trust: z.enum(['standard', 'low']).optional(),
   }),
   skills: z.array(z.string()).default([]),
   /** Plugins from plugins/ this kind of agent is granted: their skills and connectors come with it (SPEC 8). */
@@ -132,6 +134,7 @@ export function renderRoleFile(t: Template, params: RoleParams): string {
     ...(t.file.defaults.fallback_runtime ? { fallback_runtime: t.file.defaults.fallback_runtime } : {}),
     ...(t.file.defaults.fallback_model ? { fallback_model: t.file.defaults.fallback_model } : {}),
     ...(t.file.defaults.start_paused ? { start_paused: true } : {}),
+    ...(t.file.defaults.trust === 'low' ? { trust: 'low' as const } : {}),
     monthly_budget_usd: t.file.defaults.monthly_budget_usd,
     autonomy: params.autonomy ?? t.file.defaults.autonomy,
     template: t.key,
@@ -202,7 +205,7 @@ export const WORK_SUBDIR = 'work';
 
 /** Files for the Claude Code target. Claude Code loads CLAUDE.md from the parent of `work/` too. */
 async function claudeTarget(agent: LoadedAgent, t: Template, rules: string, ctx: WorkdirContext) {
-  const tools = claudeToolLists(t.permissions);
+  const tools = claudeToolLists(clampForTrust(t.permissions, agent.role.trust));
   return {
     'CLAUDE.md': `${rules.trim()}\n\n# Your role\n\n${agent.body.trim()}\n`,
     '.claude/settings.json': JSON.stringify({ permissions: { allow: tools.allow, deny: tools.deny } }, null, 2) + '\n',
@@ -219,7 +222,7 @@ async function claudeTarget(agent: LoadedAgent, t: Template, rules: string, ctx:
  */
 async function opencodeTarget(agent: LoadedAgent, t: Template, rules: string, ctx: WorkdirContext, dir: string) {
   const modelName = modelNameFor(agent.role.model, 'opencode');
-  const permission = opencodePermission(t.permissions);
+  const permission = opencodePermission(clampForTrust(t.permissions, agent.role.trust));
   const config = {
     $schema: 'https://opencode.ai/config.json',
     default_agent: agent.role.id,
@@ -252,7 +255,7 @@ async function opencodeTarget(agent: LoadedAgent, t: Template, rules: string, ct
  * (the `os` tools and `load_skill`) and which grants it cannot provide. The runtime reads these at the start of each run.
  */
 async function openaiAgentsTarget(agent: LoadedAgent, t: Template, rules: string) {
-  const notProvided = assertRunnerCanEnforce(t.permissions);
+  const notProvided = assertRunnerCanEnforce(clampForTrust(t.permissions, agent.role.trust));
   return {
     'INSTRUCTIONS.md': `${rules.trim()}\n\n# Your role\n\n${agent.body.trim()}\n`,
     '.runner.json': JSON.stringify({ runtime: 'openai-agents', tools: ['os', 'load_skill'], notProvided }, null, 2) + '\n',

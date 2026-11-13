@@ -5,6 +5,7 @@ import { briefOn, dayOf, latestBrief, rebuildBrief } from '../brief/build';
 import { companyTimezone } from '../config';
 import { checkFigures } from '../documents/figures';
 import { ingestLead } from '../leads/ingest';
+import { labelUntrusted } from './trust';
 import { checkDm, dmEligible, dmSuppressed, isDmChannel, normalizeHandle } from '../dms';
 import { checkPost, hashText, isPostPlatform } from '../posts';
 import { addSignal, cleanExcerpt, looksLikeInstructions } from '../signals';
@@ -328,11 +329,12 @@ export class DbOsStore implements OsStore {
         [scope.taskId],
       );
       if (!t.rows[0]) return null;
-      const m = await c.query<{ from_id: string; body: string; created_at: Date }>(
-        'select from_id, body, created_at from messages where task_id = $1 order by created_at',
+      const m = await c.query<{ from_id: string; body: string; created_at: Date; low: boolean }>(
+        "select m.from_id, m.body, m.created_at, exists (select 1 from agents a where 'agent:' || a.key = m.from_id and a.trust = 'low') as low from messages m where m.task_id = $1 order by m.created_at",
         [scope.taskId],
       );
-      return { ...t.rows[0], comments: m.rows.map((r) => ({ from: r.from_id, body: r.body, at: r.created_at.toISOString() })) };
+      // What a low-trust agent wrote reaches a reader as data, in a label, never as plain text that could pass for an instruction (A1).
+      return { ...t.rows[0], comments: m.rows.map((r) => ({ from: r.from_id, body: r.low ? labelUntrusted(r.from_id.replace(/^agent:/, ''), r.body) : r.body, at: r.created_at.toISOString() })) };
     });
   }
 

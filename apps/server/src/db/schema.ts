@@ -105,6 +105,7 @@ export const agents = pgTable(
     modelAlias: text('model_alias').notNull(),
     fallbackAlias: text('fallback_alias'),
     fallbackRuntime: text('fallback_runtime'),
+    trust: text('trust').notNull().default('standard'), // standard | low (A1): low-trust agents are contained in the server
     heartbeatCron: text('heartbeat_cron'),
     // What the scheduled morning run asks the agent to do, from the role file. Empty: the agent is only woken (S2-8).
     heartbeatTask: text('heartbeat_task'),

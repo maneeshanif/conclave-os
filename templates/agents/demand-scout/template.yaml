@@ -17,6 +17,8 @@ defaults:
   fallback_model: researcher
   # Level 1 may write to internal tables, which is what recording a signal is. It cannot propose anything to the outside (SPEC 6).
   autonomy: 1
+  # Reads posts and pages anyone can write, so it is held to its own tools, cannot write files, and what it writes is shown to others as data (A1).
+  trust: low
   # Local runs cost nothing; this caps what escalations to Claude may spend in a month. Zero would mean nothing is allowed.
   monthly_budget_usd: 2
   max_turns: 15

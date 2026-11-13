@@ -90,6 +90,8 @@ export const RoleFileSchema = z
     output_check: z.string().optional(),
     /** Hired switched off (rooms 6 and 9 are configured now and turned on later). A person switches the agent on. */
     start_paused: z.boolean().optional(),
+    /** Low: reads input anyone can write, so it is contained in the server (A1). Left out means standard. */
+    trust: z.enum(['standard', 'low']).optional(),
   })
   .strict();
 export type RoleFile = z.infer<typeof RoleFileSchema>;

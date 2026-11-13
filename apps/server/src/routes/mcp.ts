@@ -82,7 +82,8 @@ export function mcpRoutes(deps: { tokens: RunTokens; store: OsStore; breakers?: 
           return { jsonrpc: '2.0', id: msg.id, result: {} };
         case 'tools/list': {
           const level = await deps.store.autonomy(scope!);
-          const tools = toolList.filter((t) => t.minAutonomy <= level).map((t) => ({ name: t.name, description: t.description, inputSchema: t.inputSchema }));
+          const list = scope!.trust === 'low' ? (scope!.allowedTools ?? []) : scope!.allowedTools;
+          const tools = toolList.filter((t) => t.minAutonomy <= level && (!list || list.includes(t.name))).map((t) => ({ name: t.name, description: t.description, inputSchema: t.inputSchema }));
           return { jsonrpc: '2.0', id: msg.id, result: { tools } };
         }
         case 'tools/call': {

@@ -7,6 +7,7 @@ import { failureClass } from './failure';
 import { activePause, pauseRuntime, parseResetTime, RUNTIME_LABEL } from './pauses';
 import { reapRuns } from './reaper';
 import { claudeToolLists } from './permissions';
+import { allowedToolsFor, clampForTrust, type Trust } from './trust';
 import { cleanWorkFolder, loadTemplate } from './render';
 import type { RunTokens } from './run-tokens';
 import type { RuntimeName } from '../runtimes/names';
@@ -54,6 +55,7 @@ interface AgentRow {
   model_alias: string;
   fallback_alias: string | null;
   fallback_runtime: RuntimeName | null;
+  trust: Trust;
   output_check: string | null;
   monthly_budget_usd: string;
   max_turns: number;
@@ -146,7 +148,7 @@ export async function reapStaleRuns(pool: pg.Pool, workspaceId: string): Promise
 export async function executeRun(deps: LoopDeps, workspaceId: string, agentId: string, trigger: string): Promise<RunOutcome> {
   const agent = await withWorkspace(deps.pool, workspaceId, async ({ client: c }) => {
     const r = await c.query<AgentRow>(
-      `select a.id, a.key, a.name, a.status, a.runtime, a.model_alias, a.fallback_alias, a.fallback_runtime, a.output_check, a.monthly_budget_usd, a.max_turns, t.key as template_key, d.name as department
+      `select a.id, a.key, a.name, a.status, a.runtime, a.model_alias, a.fallback_alias, a.fallback_runtime, a.trust, a.output_check, a.monthly_budget_usd, a.max_turns, t.key as template_key, d.name as department
        from agents a left join agent_templates t on t.id = a.template_id left join departments d on d.id = a.department_id
        where a.id = $1`,
       [agentId],
@@ -246,11 +248,17 @@ export async function executeRun(deps: LoopDeps, workspaceId: string, agentId: s
       await note({ from, to, model: toAlias, reason });
     };
 
-    const token = deps.tokens.issue({ workspaceId, agentId, runId, taskId: task.id });
     const { instructions, taskInput } = buildContext(agent, task);
     input = taskInput;
     let tools: { allow: string[]; deny: string[] } = { allow: [], deny: [] };
-    if (agent.template_key) tools = claudeToolLists((await loadTemplate(deps.templatesRoot, agent.template_key)).permissions);
+    let allowedOs: string[] | undefined;
+    if (agent.template_key) {
+      const tpl = await loadTemplate(deps.templatesRoot, agent.template_key);
+      tools = claudeToolLists(clampForTrust(tpl.permissions, agent.trust));
+      allowedOs = allowedToolsFor(agent.trust, tpl.plugins.map((p) => p.tools));
+    } else if (agent.trust === 'low') allowedOs = allowedToolsFor('low', []); // no template to read: only the base tools, never more
+    // A low-trust run's token carries its trust and the tools it may call; the os server enforces both (A1).
+    const token = deps.tokens.issue({ workspaceId, agentId, runId, taskId: task.id, ...(agent.trust === 'low' ? { trust: 'low' as const } : {}), ...(allowedOs ? { allowedTools: allowedOs } : {}) });
 
     for (;;) {
     attempts++;
