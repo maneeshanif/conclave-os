@@ -10,6 +10,7 @@
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
+    "@conclave/shared": "workspace:*",
     "@better-auth/passkey": "^1.7.20",
     "better-auth": "^1.7.20",
     "next": "^16.4.6",

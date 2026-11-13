@@ -1,6 +1,20 @@
 /** The server answers on 127.0.0.1:3100 by default (CLAUDE.md rule 9). */
 export const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://127.0.0.1:3100';
 
+import type { OfficeMap, Placed } from '@conclave/shared';
+
+/** What GET /api/office returns: the map's facts (walls as rows of # and .) and each agent's room and desk. */
+export interface OfficeFacts {
+  map: Omit<OfficeMap, 'walls'> & { walls: string[] };
+  agents: { id: string; key: string; name: string; department: string | null; status: string; room: string | null; desk: number | null }[];
+}
+export type OfficePlace = Pick<Placed, 'agentId' | 'place' | 'reason' | 'x' | 'y'> & { key: string };
+export interface AgentDrawer {
+  agent: { id: string; key: string; name: string; department: string | null; status: string };
+  run: { id: string; status: string } | null;
+  tasks: { id: string; title: string; status: string }[];
+}
+
 export interface Agent {
   id: string;
   key: string;
@@ -313,6 +327,12 @@ export const api = {
   pushKey: () => call<{ publicKey: string }>('/api/push/key'),
   pushSubscribe: (sub: unknown) => call<{ subscribed: true }>('/api/push/subscribe', { method: 'POST', body: JSON.stringify(sub) }),
   pushUnsubscribe: (endpoint: string) => call<{ subscribed: false }>('/api/push/subscribe', { method: 'DELETE', body: JSON.stringify({ endpoint }) }),
+  office: () => call<OfficeFacts>('/api/office'),
+  officeState: async () => (await call<{ places: OfficePlace[] }>('/api/office/state')).places,
+  officeDrawer: (id: string) => call<AgentDrawer>(`/api/office/agents/${id}`),
+  officeMessage: async (id: string, text: string) => {
+    await call(`/api/office/agents/${id}/message`, { method: 'POST', body: JSON.stringify({ text }) });
+  },
   health: () => call<HealthOverview>('/api/health/overview'),
   setKillSwitch: async (on: boolean) => {
     await call('/api/settings', { method: 'PATCH', body: JSON.stringify({ killSwitch: on }) });

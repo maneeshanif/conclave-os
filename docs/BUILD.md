@@ -466,7 +466,9 @@ From `docs/BORROW-AUDIT.md`. Each goes into its slice's task list when that slic
   What each object opens: the approvals desk the approvals inbox, the whiteboard the goal ladder, the screen the dashboard (Health), the mailbox the inbox, the job board the Talent room view, the Boardroom table the Boardroom. A registry from object type to panel, used by the world and by the plain screens.
   *Test:* every object type in the map has a registered panel; using an object opens that panel; an unknown type is refused at load (S6-1).
 
-- [ ] **S6-8 The Phaser world and the plain screens.** SPEC 12.
+- [x] **S6-8a The plain office.** SPEC 12. (Split from S6-8.) `/office` as a list: rooms with the agents in them and why, a button for every object (or "coming"), the agent drawer with a message box, and live refresh on `office.changed`. Done: `apps/web/test/office.test.tsx`.
+
+- [ ] **S6-8b The Phaser world.** SPEC 12. (Rest of S6-8.)
   Phaser 4 (check its current docs first) in \`apps/web/office\`: loads the map and tileset, draws rooms, desks, objects, your avatar and the agents, and drives them from the logic above. The \`/office\` page also has the plain version: rooms listed, agents listed, the same panels. The canvas stops drawing when the tab is hidden; a phone gets the small map and the list.
   *Test:* the plain version renders each room and agent and every object's button; a hidden tab pauses the scene and a visible one resumes it; a Playwright run of the real page at desktop and Android sizes finds a non-blank canvas and takes a screenshot.
 
