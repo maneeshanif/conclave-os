@@ -311,7 +311,7 @@ Recorded 2026-11-13. Nothing here is built ahead of its slice (CLAUDE.md, Stack)
   The in-process runner has no `.claude/skills`. The renderer writes each skill's name and one-line description into the instructions, and the runner gives the agent a `load_skill` tool that returns the skill's text from the agent's rendered folder, only for skills that agent was given, never a path outside it.
   *Test:* the instructions list the descriptions and not the bodies; `load_skill` returns a granted skill; a skill that was not granted, a path with `..`, an absolute path and a symlink out of the folder are all refused.
 
-- [ ] **S4-4 The renderer target for `openai-agents`.** SPEC 5.
+- [x] **S4-4 The renderer target for `openai-agents`.** SPEC 5.
   One more target in the renderer: standing rules, role, skill descriptions and the per-run context become one `instructions` string; connectors become the MCP server list; permissions become the tool list the runner hands over. Nothing outside `runtimes/` and the renderer's per-runtime targets names the runtime (rule 11).
   *Test:* snapshot of a scout rendered for `openai-agents`; the same template rendered for `claude-cli` is unchanged; a permission the runner cannot enforce is a render error, not a silent drop.
 

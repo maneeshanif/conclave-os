@@ -8,7 +8,7 @@ import { RoleFileSchema, type RoleFile } from '../company/schema';
 import { RUNTIMES, type RuntimeName } from '../runtimes/names';
 import { agentWorkDir } from '../paths';
 import { fill } from './fill';
-import { PermissionsSchema, SHELL_TEMPLATES, claudeToolLists, opencodePermission, type Permissions } from './permissions';
+import { PermissionsSchema, SHELL_TEMPLATES, assertRunnerCanEnforce, claudeToolLists, opencodePermission, type Permissions } from './permissions';
 import { loadPlugin, type LoadedPlugin } from './plugins';
 
 /**
@@ -153,7 +153,7 @@ export interface WorkdirContext {
 }
 
 /** Every path a render target may write, relative to the working folder. Cleared before each render. */
-const GENERATED = ['CLAUDE.md', 'AGENTS.md', 'opencode.json', '.claude', '.opencode', '.mcp.json', 'ROLE.md', '.xdg-config'];
+const GENERATED = ['CLAUDE.md', 'AGENTS.md', 'opencode.json', '.claude', '.opencode', '.mcp.json', 'ROLE.md', '.xdg-config', 'INSTRUCTIONS.md', '.skills', '.runner.json'];
 
 async function writeFiles(dir: string, files: Record<string, string>): Promise<string[]> {
   for (const [rel, content] of Object.entries(files)) {
@@ -240,8 +240,22 @@ async function opencodeTarget(agent: LoadedAgent, t: Template, rules: string, ct
   };
 }
 
+/**
+ * Files for the in-process runner (`openai-agents`). It has no config files of its own: the standing rules and the role become
+ * one `INSTRUCTIONS.md`, the granted skills are copied to `.skills`, and `.runner.json` records what the runner is given
+ * (the `os` tools and `load_skill`) and which grants it cannot provide. The runtime reads these at the start of each run.
+ */
+async function openaiAgentsTarget(agent: LoadedAgent, t: Template, rules: string) {
+  const notProvided = assertRunnerCanEnforce(t.permissions);
+  return {
+    'INSTRUCTIONS.md': `${rules.trim()}\n\n# Your role\n\n${agent.body.trim()}\n`,
+    '.runner.json': JSON.stringify({ runtime: 'openai-agents', tools: ['os', 'load_skill'], notProvided }, null, 2) + '\n',
+    ...(await skillFiles(t, '.skills')),
+  };
+}
+
 /** Harness files that must never exist inside `work/`, where the agent can write. */
-const PLANTABLE = ['CLAUDE.md', 'CLAUDE.local.md', 'AGENTS.md', 'opencode.json', 'opencode.jsonc', '.claude', '.opencode', '.mcp.json'];
+const PLANTABLE = ['CLAUDE.md', 'CLAUDE.local.md', 'AGENTS.md', 'opencode.json', 'opencode.jsonc', '.claude', '.opencode', '.mcp.json', 'INSTRUCTIONS.md', '.skills', '.runner.json'];
 
 /** Removes any harness config an agent wrote into its `work/` folder. Run before every run. */
 export async function cleanWorkFolder(agentDir: string): Promise<void> {
@@ -278,6 +292,9 @@ export async function renderWorkdir(agent: LoadedAgent, ctx: WorkdirContext): Pr
       break;
     case 'opencode':
       files = await opencodeTarget(agent, t, rules, ctx, dir);
+      break;
+    case 'openai-agents':
+      files = await openaiAgentsTarget(agent, t, rules);
       break;
     default:
       throw new Error(`Runtime "${agent.role.runtime}" is not built in this slice, so it has no render target yet.`);
