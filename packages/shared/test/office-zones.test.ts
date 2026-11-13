@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { OfficePresence, type OfficeMap, type Room } from '../src/office';
+import { OfficePresence, zoneNotice, type OfficeMap, type Room } from '../src/office';
 
 const room = (o: Partial<Room> & { name: string; x: number; y: number }): Room => ({ kind: 'department', department: null, w: 3, h: 3, maxUsers: null, locked: false, silent: false, focusable: false, ...o });
 /** Three side by side rooms on a 12 x 3 floor: A (open), B (locked, one at a time, silent, focusable) and a meeting room M. */
@@ -119,5 +119,23 @@ describe('availability and raising a hand (S6-5)', () => {
     p.join('b', 'owner', M);
     p.join('a', 'owner', M);
     expect(p.occupants('M')).toEqual(['a', 'b']);
+  });
+});
+
+describe('what to tell someone who walks into a room (S6-8c2)', () => {
+  const r = (o: Partial<Room>) => room({ name: 'R', x: 0, y: 0, ...o });
+  it('says nothing for an ordinary room or no room', () => {
+    expect(zoneNotice(null)).toBeNull();
+    expect(zoneNotice(r({}))).toBeNull();
+  });
+  it('names each property the room has, from the room itself', () => {
+    expect(zoneNotice(r({ silent: true }))).toMatch(/quiet/i);
+    expect(zoneNotice(r({ locked: true, name: 'Vault' }))).toMatch(/Vault.*locked/i);
+    expect(zoneNotice(r({ maxUsers: 4, name: 'Pod' }))).toMatch(/Pod.*4/);
+  });
+  it('puts several together in one line', () => {
+    const t = zoneNotice(r({ silent: true, maxUsers: 2, name: 'Pod' }))!;
+    expect(t).toMatch(/quiet/i);
+    expect(t).toMatch(/2/);
   });
 });

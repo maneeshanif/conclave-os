@@ -186,3 +186,21 @@ describe('zoom and held keys (S6-8c1)', () => {
     expect(w.me.position).toEqual(before);
   });
 });
+
+describe('telling you which room you are in (S6-8c2)', () => {
+  it('says the room once when you walk in, and null once when you leave it', () => {
+    const w = new WorldController(map, { speed: 8 });
+    const seen: (string | null)[] = [];
+    w.onZone((room) => seen.push(room?.name ?? null));
+    w.click(spot);
+    for (let i = 0; i < 400; i++) w.tick(50);
+    expect(seen.at(-1)).toBe(lounge.name);
+    const n = seen.length;
+    for (let i = 0; i < 50; i++) w.tick(50);
+    expect(seen.length).toBe(n);
+    w.click({ x: door.x, y: door.y });
+    for (let i = 0; i < 1200; i++) w.tick(50);
+    expect(seen.length).toBeGreaterThan(n);
+    expect(new Set(seen.filter((s) => s === lounge.name)).size).toBe(1);
+  });
+});

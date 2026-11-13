@@ -18,7 +18,7 @@ export interface OfficeClient {
 
 export const realOfficeClient: OfficeClient = { office: api.office, state: api.officeState, drawer: api.officeDrawer, message: api.officeMessage, live: socketEvents };
 
-const WHERE: Record<string, string> = { desk: 'At its desk', approvals: 'At the approvals desk', boardroom: 'In the Boardroom', lounge: 'In the lounge' };
+export const WHERE: Record<string, string> = { desk: 'At its desk', approvals: 'At the approvals desk', boardroom: 'In the Boardroom', lounge: 'In the lounge' };
 
 /**
  * The plain office (SPEC 12): the same rooms, agents and objects as the world, as a list. It works on a phone, with a screen

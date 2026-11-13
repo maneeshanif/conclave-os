@@ -98,3 +98,13 @@ export class OfficePresence {
     return [...this.people.values()].map((p) => ({ ...p, tile: { ...p.tile } })).sort((a, b) => a.id.localeCompare(b.id));
   }
 }
+
+/** What to tell someone who walks into a room, from the room's own properties. Null when there is nothing to say. */
+export function zoneNotice(room: Room | null): string | null {
+  if (!room) return null;
+  const parts: string[] = [];
+  if (room.locked) parts.push(`${room.name} is locked. Only the owner can come in.`);
+  if (room.silent) parts.push('Quiet room: no bubbles open here.');
+  if (room.maxUsers !== null) parts.push(`${room.name} holds up to ${room.maxUsers} ${room.maxUsers === 1 ? 'person' : 'people'}.`);
+  return parts.length ? parts.join(' ') : null;
+}

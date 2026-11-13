@@ -2,10 +2,11 @@
 
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
-import type { OfficeMap } from '@conclave/shared';
+import { zoneNotice, type OfficeMap } from '@conclave/shared';
 import { API, type OfficeFacts, type OfficePlace } from '../lib/api';
 import { WorldController } from '../office/controller';
-import type { OfficeClient } from './OfficeView';
+import { OfficeBar, WelcomeCard, ZonePill, type Availability, type Person } from './OfficeBar';
+import { WHERE, type OfficeClient } from './OfficeView';
 
 /** Strings of # and . from the server back into the grid of booleans the walking code uses. */
 export const toMap = (facts: OfficeFacts): OfficeMap => ({ ...facts.map, walls: facts.map.walls.map((row) => [...row].map((c) => c === '#')) });
@@ -20,6 +21,24 @@ export function OfficeWorld({ client, onOpen }: { client: OfficeClient; onOpen: 
   const [failed, setFailed] = useState<string | null>(null);
   const [view, setView] = useState<WorldController | null>(null);
   const [whole, setWhole] = useState(false);
+  const [people, setPeople] = useState<Person[]>([]);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [availability, setAvailability] = useState<Availability>(() => {
+    try {
+      const v = localStorage.getItem('conclave.office.availability');
+      return v === 'busy' || v === 'away' ? v : 'available';
+    } catch {
+      return 'available';
+    }
+  });
+  const choose = (a: Availability) => {
+    setAvailability(a);
+    try {
+      localStorage.setItem('conclave.office.availability', a);
+    } catch {
+      // Not saved: it resets next visit.
+    }
+  };
 
   useEffect(() => {
     let stop = () => undefined;
@@ -30,7 +49,11 @@ export function OfficeWorld({ client, onOpen }: { client: OfficeClient; onOpen: 
         if (cancelled || !box.current) return;
         const ctl = new WorldController(toMap(facts));
         const names = new Map(facts.agents.map((a) => [a.id, a.name]));
-        const apply = (places: OfficePlace[]) => ctl.setAgents(places.map((p) => ({ agentId: p.agentId, x: p.x, y: p.y })));
+        const apply = (places: OfficePlace[]) => {
+          ctl.setAgents(places.map((p) => ({ agentId: p.agentId, x: p.x, y: p.y })));
+          setPeople(facts.agents.map((a) => ({ id: a.id, name: a.name, where: WHERE[places.find((p) => p.agentId === a.id)?.place ?? 'lounge'] ?? '' })));
+        };
+        ctl.onZone((room) => setNotice(zoneNotice(room)));
         apply(await client.state());
         ctl.onDrawer((e) => onOpen(e.kind === 'open' ? e.id : null));
         const { startWorld } = await import('../office/scene');
@@ -65,8 +88,22 @@ export function OfficeWorld({ client, onOpen }: { client: OfficeClient; onOpen: 
   return (
     <div className="relative">
       <div ref={box} data-testid="office-world" aria-hidden="true" className="h-60 w-full overflow-hidden rounded-md border border-neutral-200 sm:h-96" />
+      <ZonePill text={notice} />
       {view ? (
-        <div className="absolute bottom-3 right-3 flex flex-col gap-1.5">
+        <OfficeBar
+          people={people}
+          availability={availability}
+          onAvailability={choose}
+          onOpenAgent={onOpen}
+          onOverview={() => {
+            view.overview(!whole);
+            setWhole(!whole);
+          }}
+        />
+      ) : null}
+      <WelcomeCard />
+      {view ? (
+        <div className="absolute bottom-16 right-3 flex flex-col gap-1.5 sm:bottom-3">
           <button type="button" aria-label="Zoom in" className={btn} onClick={() => view.zoomIn()}>
             +
           </button>

@@ -15,6 +15,14 @@ Newest first. One entry per decision: what, why, and what it replaced.
 - **One test file, `slice3-e2e.test.ts`, runs the three "Done when" checks** on the real run loop, reaper, pause table and eval gate, with a scripted model: (1) a run killed halfway (its process lost, heartbeat stopped) is failed by the reaper, its task goes back to todo still holding the session id, and the next run starts from that session and finishes; (2) a plan limit pauses the runtime for every agent on it while an agent on the other runtime keeps working, the queued tasks wait, the pause lifts only at the reset time and wakes exactly the agents with work, who then finish; (3) the unchanged skill scores at the baseline, and a change that makes the 20 sample drafts long and hyped fails the gate with all 20 leads named.
 - **Slice 3 is tagged `slice-3-done`.** Not done and recorded rather than hidden: the eval set is 20 made-up leads and its baseline is the reference drafter's (real leads and a real-agent drafter are in NEEDS-YOU); breakers cover the os tools only until connectors are live; the lite-mode canvas switch waits for slice 6.
 
+## 2026-11-14 (S6-8c2: the bar and the panels)
+
+- **`OfficeBar`** floats over the map: who is here (a count and a People panel; choosing a person opens that agent's drawer), a Tools menu ("see the whole office") and your status menu (available, busy, away; remembered in the browser only, until S6-9 puts it in the presence record). On a phone the same controls sit along the bottom edge and the zoom buttons move up clear of them.
+- **The drawer stays in the plain list below the map** for now rather than inside a left panel; the People panel opens it. Moving it into a side panel is a polish step, not needed for the slice test.
+- **`zoneNotice(room)`** (shared) turns a room's own properties into one line (locked, quiet, limit) and `WorldController.onZone` says when your room changes, so a notice pill appears on entering and goes on leaving. The words are ours.
+- **The welcome card** shows on the first visit (it opens from an effect, so the server render and the first paint match), has a short list of the controls, and "Skip tutorial" or "Got it" keeps it away for good (browser storage; if that is blocked it simply shows again).
+- **Browser check extended:** at desktop and Pixel 7 sizes it sees the card, skips it, finds the bar at the top (desktop) or bottom (phone), opens the People panel, changes the status and saves screenshots.
+
 ## 2026-11-14 (S6-8c1: camera and walking)
 
 - **Zoom lives in `WorldController`:** about 2x by default, steps of 1.25x, never past 3 and never further out than the whole map fits (the lowest zoom is computed from the drawing area, so it also works on a big screen). "See the whole office" is a toggle that remembers the zoom to go back to. The canvas now resizes with its box instead of scaling a fixed size.

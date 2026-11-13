@@ -1,4 +1,4 @@
-import { OfficePresence, Proximity, Walker, nearestReachable, stepFrom, type Direction, type OfficeMap, type ProximityEvent, type Tile } from '@conclave/shared';
+import { OfficePresence, Proximity, Walker, nearestReachable, stepFrom, type Direction, type OfficeMap, type ProximityEvent, type Room, type Tile } from '@conclave/shared';
 
 /**
  * The world without the drawing (SPEC 12). It owns your avatar, every agent's walker, who is near whom and which room you are in,
@@ -29,6 +29,7 @@ export class WorldController {
   private visible = true;
   private lastTile: Tile;
   private held: Direction | null = null;
+  private readonly zoneListeners: ((room: Room | null) => void)[] = [];
   private viewW = 0;
   private viewH = 0;
   private level = 2;
@@ -115,6 +116,11 @@ export class WorldController {
     this.listeners.push(fn);
   }
 
+  /** Called when the room you are in changes (null when you step out into open floor). */
+  onZone(fn: (room: Room | null) => void): void {
+    this.zoneListeners.push(fn);
+  }
+
   /** The agents with where they are now, for the scene to draw. */
   agents(): { id: string; position: { x: number; y: number } }[] {
     return [...this.walkers.entries()].map(([id, w]) => ({ id, position: w.walker.position })).sort((a, b) => a.id.localeCompare(b.id));
@@ -170,7 +176,10 @@ export class WorldController {
     for (const w of this.walkers.values()) w.walker.tick(dtMs);
     const t = this.me.tile;
     if (t.x !== this.lastTile.x || t.y !== this.lastTile.y) {
+      const before = this.presence.roomAt(this.lastTile)?.name ?? null;
       this.presence.move(ME, t);
+      const room = this.presence.roomAt(t);
+      if ((room?.name ?? null) !== before) for (const fn of this.zoneListeners) fn(room);
       this.lastTile = t;
     }
     this.emit(this.proximity.update(this.me.position, this.agents().map((a) => ({ id: a.id, tile: a.position }))));

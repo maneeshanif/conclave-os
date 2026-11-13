@@ -140,7 +140,29 @@ describe('the office page in a real browser (S6-8b)', () => {
       await page.goto(`${ORIGIN}/office`);
       await page.locator('[data-testid="office-world"] canvas').waitFor({ timeout: 30_000 });
       await page.waitForTimeout(1500); // a few frames
+      // The welcome card shows the first time, and skipping it leaves the bar.
+      await page.getByRole('dialog', { name: /welcome/i }).waitFor();
+      writeFileSync(path.join(SHOTS, `office-${name}-welcome.png`), await page.screenshot());
+      await page.getByRole('button', { name: /skip tutorial/i }).click();
+      expect(await page.getByRole('dialog').count()).toBe(0);
       expect(await colours(page)).toBeGreaterThan(3);
+      const people = page.getByRole('button', { name: /people, 2 here/i });
+      await people.waitFor();
+      const world = await page.locator('[data-testid="office-world"]').boundingBox();
+      const at = (await people.boundingBox())!;
+      // On a phone the bar sits along the bottom of the map; on a desktop along the top.
+      if (name === 'android') expect(at.y).toBeGreaterThan(world!.y + world!.height / 2);
+      else expect(at.y).toBeLessThan(world!.y + world!.height / 2);
+      await people.click();
+      await page.getByRole('region', { name: 'People' }).getByText('Scout').waitFor();
+      await page.getByRole('button', { name: /close people/i }).click();
+      await page.getByRole('button', { name: /your status/i }).click();
+      await page.getByRole('menuitemradio', { name: 'Busy' }).click();
+      await page.getByRole('button', { name: /your status/i }).click();
+      expect(await page.getByRole('menuitemradio', { name: 'Busy' }).getAttribute('aria-checked')).toBe('true');
+      await page.keyboard.press('Escape');
+      await page.getByRole('button', { name: /your status/i }).click();
+      writeFileSync(path.join(SHOTS, `office-${name}-bar.png`), await page.screenshot());
       // The plain list is there too.
       await page.getByRole('heading', { name: lounge.name }).waitFor();
       await page.getByRole('button', { name: /Scout/ }).waitFor();
