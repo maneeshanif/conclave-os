@@ -15,6 +15,12 @@ Newest first. One entry per decision: what, why, and what it replaced.
 - **One test file, `slice3-e2e.test.ts`, runs the three "Done when" checks** on the real run loop, reaper, pause table and eval gate, with a scripted model: (1) a run killed halfway (its process lost, heartbeat stopped) is failed by the reaper, its task goes back to todo still holding the session id, and the next run starts from that session and finishes; (2) a plan limit pauses the runtime for every agent on it while an agent on the other runtime keeps working, the queued tasks wait, the pause lifts only at the reset time and wakes exactly the agents with work, who then finish; (3) the unchanged skill scores at the baseline, and a change that makes the 20 sample drafts long and hyped fails the gate with all 20 leads named.
 - **Slice 3 is tagged `slice-3-done`.** Not done and recorded rather than hidden: the eval set is 20 made-up leads and its baseline is the reference drafter's (real leads and a real-agent drafter are in NEEDS-YOU); breakers cover the os tools only until connectors are live; the lite-mode canvas switch waits for slice 6.
 
+## 2026-11-14 (S6-5: zones)
+
+- **`OfficePresence` in `packages/shared/src/office/zones.ts`** is pure: the socket layer (S6-9) feeds it joins, moves and leaves and sends on the events it returns. A move into a locked room by a guest, or into a full room, is refused with a reason and the person stays where they were. The owner passes a locked room; `maxUsers` still applies to the owner.
+- **enter and leave fire once per change of room,** not per step. Moving inside the room you are in never counts against its limit.
+- **Raising a hand works only in a meeting or Boardroom room,** and is lowered on leaving it. Availability is available, busy or away. Silent rooms switch bubbles off (`bubblesAllowed`); `focusable` is a flag the drawing reads for the camera zoom.
+
 ## 2026-11-13 (S6-4: walking)
 
 - **Pure and in `packages/shared/src/office/walk.ts`:** `findPath` (breadth-first, four directions, fixed neighbour order up/right/down/left, so the same walk is always the same path; no corner cutting), `nearestReachable` (a click on a wall or a sealed-off tile goes to the closest tile you can reach), `stepFrom` (one arrow-key step, stops at walls and edges) and a `Walker` that moves at tiles per second and is half way between tiles half way through a step.

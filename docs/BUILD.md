@@ -454,7 +454,7 @@ From `docs/BORROW-AUDIT.md`. Each goes into its slice's task list when that slic
   A walkable grid from the collision layer, a path finder, click-to-walk and arrow-key steps for your avatar, and agents walking their paths between places at a fixed speed.
   *Test:* a path from the door to every room exists; a path never crosses a wall; a blocked click goes to the nearest reachable tile; an agent told to change place walks there in the expected number of steps.
 
-- [ ] **S6-5 Zones.** Borrow audit A8.
+- [x] **S6-5 Zones.** Borrow audit A8.
   Behaviour from the map's own properties: entering a room opens its department panel, a locked room refuses you unless you are the owner, a silent room has no bubbles, a room has a limit on how many can be in it, a focusable area asks the camera to zoom. Your availability (available, busy, away) and raising a hand in a meeting.
   *Test:* entering and leaving fire the right events once; a locked room turns a guest away and lets the owner in; the limit holds; availability and hand-raising are reflected in the presence record.
 
