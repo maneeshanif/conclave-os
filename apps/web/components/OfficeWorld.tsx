@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from 'react';
 import { zoneNotice, type OfficeMap } from '@conclave/shared';
 import { API, type OfficeFacts, type OfficePlace } from '../lib/api';
 import { WorldController } from '../office/controller';
+import type { Who } from '../office/scene';
 import { OfficeBar, WelcomeCard, ZonePill, type Availability, type Person } from './OfficeBar';
 import { WHERE, type OfficeClient } from './OfficeView';
 
@@ -22,6 +23,8 @@ export function OfficeWorld({ client, onOpen }: { client: OfficeClient; onOpen: 
   const [view, setView] = useState<WorldController | null>(null);
   const [whole, setWhole] = useState(false);
   const [people, setPeople] = useState<Person[]>([]);
+  const who = useRef(new Map<string, Who>());
+  const mine = useRef<Availability>('available');
   const [notice, setNotice] = useState<string | null>(null);
   const [availability, setAvailability] = useState<Availability>(() => {
     try {
@@ -33,6 +36,7 @@ export function OfficeWorld({ client, onOpen }: { client: OfficeClient; onOpen: 
   });
   const choose = (a: Availability) => {
     setAvailability(a);
+    mine.current = a;
     try {
       localStorage.setItem('conclave.office.availability', a);
     } catch {
@@ -48,9 +52,9 @@ export function OfficeWorld({ client, onOpen }: { client: OfficeClient; onOpen: 
         const facts = await client.office();
         if (cancelled || !box.current) return;
         const ctl = new WorldController(toMap(facts));
-        const names = new Map(facts.agents.map((a) => [a.id, a.name]));
         const apply = (places: OfficePlace[]) => {
           ctl.setAgents(places.map((p) => ({ agentId: p.agentId, x: p.x, y: p.y })));
+          who.current = new Map(facts.agents.map((a) => [a.id, { name: a.name, key: a.key, place: places.find((p) => p.agentId === a.id)?.place ?? 'lounge' }]));
           setPeople(facts.agents.map((a) => ({ id: a.id, name: a.name, where: WHERE[places.find((p) => p.agentId === a.id)?.place ?? 'lounge'] ?? '' })));
         };
         ctl.onZone((room) => setNotice(zoneNotice(room)));
@@ -58,7 +62,7 @@ export function OfficeWorld({ client, onOpen }: { client: OfficeClient; onOpen: 
         ctl.onDrawer((e) => onOpen(e.kind === 'open' ? e.id : null));
         const { startWorld } = await import('../office/scene');
         if (cancelled || !box.current) return;
-        const world = startWorld({ parent: box.current, mapUrl: `${API}/api/office/map`, tilesUrl: '/office/tiles.png', facts, ctl, names: () => names, onUseObject: (href) => router.push(href) });
+        const world = startWorld({ parent: box.current, mapUrl: `${API}/api/office/map`, tilesUrl: '/office/tiles.png', peopleUrl: '/office/people.png', furnitureUrl: '/office/furniture.png', facts, ctl, who: () => who.current, myStatus: () => mine.current, onUseObject: (href) => router.push(href) });
         setView(ctl);
         const watch = new ResizeObserver(() => world.resize());
         watch.observe(box.current);

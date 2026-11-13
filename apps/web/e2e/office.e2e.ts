@@ -37,6 +37,7 @@ const map = readOfficeMap(JSON.parse(tmj) as OfficeMapJson, { file: 'office.tmj'
 const { walls, ...rest } = map;
 const desk = map.desks[0]!;
 const lounge = map.rooms.find((r) => r.kind === 'lounge')!;
+const door = map.entries.find((e) => e.name === 'door') ?? map.entries[0]!;
 const facts = {
   map: { ...rest, walls: walls.map((row) => row.map((w) => (w ? '#' : '.')).join('')) },
   agents: [
@@ -46,7 +47,7 @@ const facts = {
 };
 const places = {
   places: [
-    { agentId: facts.agents[0]!.id, key: 'scout', place: 'desk', reason: 'Working on a task.', x: desk.x, y: desk.y },
+    { agentId: facts.agents[0]!.id, key: 'scout', place: 'desk', reason: 'Working on a task.', x: door.x + 2, y: door.y },
     { agentId: facts.agents[1]!.id, key: 'closer', place: 'lounge', reason: 'Idle.', x: lounge.x + 1, y: lounge.y + 1 },
   ],
 };
