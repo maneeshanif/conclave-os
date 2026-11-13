@@ -15,6 +15,7 @@ import { singleFlight } from './workflows/single-flight';
 import { ensureDailyBackup, type DailyState } from './backup';
 import { companyMarkdown } from './actions/policy';
 import { assembleGenerated } from './video/assemble';
+import { attachOfficeEvents } from './office/live';
 import { createNotifier, ensureVapidKeys, webPushSender } from './push';
 import { ensureDailyBrief } from './brief/build';
 import { DbOsStore } from './harness/db-os-store';
@@ -172,6 +173,7 @@ if (useInngest) {
 const hooks = approvalHooks(gate);
 proposalQueued = (w, id) => {
   hooks.onApprovalRequested(w, id);
+  bus.publish({ kind: 'approval.changed', workspaceId: w, approvalId: id, status: 'pending' });
   void notifier.notify('approval_waiting', id).catch((err) => console.error('push:', err));
 };
 
@@ -191,6 +193,7 @@ const reaperStatus = new ReaperStatus();
 const vapid = ensureVapidKeys(sys.dataDir);
 const notifier = createNotifier({ pool: sys.app, workspaceId: sys.workspace.id, sender: webPushSender(vapid, process.env.PUSH_SUBJECT?.trim() || 'mailto:conclave-os@example.invalid') });
 notifier.attach(bus);
+attachOfficeEvents(bus); // the office looks again when a run, an approval or a discussion changes (S6-3)
 const backupState: DailyState = {};
 const breakers = new Breakers({ pool: sys.app, workspaceId: sys.workspace.id });
 

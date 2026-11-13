@@ -446,7 +446,7 @@ From `docs/BORROW-AUDIT.md`. Each goes into its slice's task list when that slic
   A new hire gets the next free desk in its department's room, by itself; the assignment is stored so nobody moves when someone else is hired; a retired agent's desk is freed; a full room puts the overflow in the lounge. \`GET /api/office\` returns the map facts and each agent's room and desk.
   *Test:* hiring three agents fills desks 1 to 3 in order; retiring one frees its desk for the next hire and moves nobody; a full room overflows to the lounge; no desk is ever held by two agents.
 
-- [ ] **S6-3 Where each agent is.** SPEC 12 (agents move with their work).
+- [x] **S6-3 Where each agent is.** SPEC 12 (agents move with their work).
   One function from runs, approvals and discussions to a place: at its desk while a run starts or goes on, at the approvals desk while an approval it proposed waits for you, in the Boardroom during a discussion it is in, in the lounge when idle. \`GET /api/office/state\` and a live \`office.changed\` message from the same events the panels use.
   *Test:* a fixture for each place; an agent with two reasons goes to the stronger one by a fixed order; the live message fires on a run starting, an approval being queued and decided, and a discussion opening.
 

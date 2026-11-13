@@ -8,7 +8,11 @@ export type BusMessage =
   | { kind: 'task.changed'; workspaceId: string; taskId: string }
   | { kind: 'approval.changed'; workspaceId: string; approvalId: string; status: string }
   | { kind: 'settings.changed'; workspaceId: string }
-  | { kind: 'action_item.changed'; workspaceId: string; itemId: string };
+  | { kind: 'action_item.changed'; workspaceId: string; itemId: string }
+  /** A Boardroom discussion opened, got a turn or closed (S6-10). */
+  | { kind: 'discussion.changed'; workspaceId: string; discussionId: string }
+  /** Something that moves an agent in the office happened; the world asks /api/office/state again (S6-3). */
+  | { kind: 'office.changed'; workspaceId: string };
 
 export class Bus {
   private ee = new EventEmitter();

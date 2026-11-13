@@ -3,9 +3,10 @@ import path from 'node:path';
 import { Hono } from 'hono';
 import type { AppEnv } from '../app';
 import { assignDesks, loadOffice } from '../office/desks';
+import { officeState } from '../office/state';
 
 /** The office (SPEC 12): the map's facts and where each agent sits. The drawing reads the map file itself from /office/map. */
-export function officeRoutes(deps: { workspaceId: string; companyRoot: string }) {
+export function officeRoutes(deps: { workspaceId: string; companyRoot: string; /** The agents in an open discussion; the Boardroom supplies it (S6-10). */ discussing?: (c: import('pg').PoolClient) => Promise<Set<string>> }) {
   const r = new Hono<AppEnv>();
 
   r.get('/', async (c) => {
@@ -28,6 +29,16 @@ export function officeRoutes(deps: { workspaceId: string; companyRoot: string })
         return { id: a.id, key: a.key, name: a.name, department: a.department, status: a.status, room: seat?.room ?? null, desk: seat?.slot ?? null };
       }),
     });
+  });
+
+  r.get('/state', async (c) => {
+    let office;
+    try {
+      office = await loadOffice(deps.companyRoot);
+    } catch (err) {
+      return c.json({ error: (err as Error).message }, 422);
+    }
+    return c.json({ places: await officeState(c.get('tx').client, deps.workspaceId, office.map, deps.discussing ? await deps.discussing(c.get('tx').client) : undefined) });
   });
 
   r.get('/map', async (c) => {
