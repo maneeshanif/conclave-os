@@ -335,7 +335,7 @@ Recorded 2026-11-13. Nothing here is built ahead of its slice (CLAUDE.md, Stack)
   The conformance tests, run against Ollama on this machine when `CONCLAVE_TEST_OLLAMA=<model>` is set, and a note of which tool-calling model fits comfortably in 16 GB while the server and the database are running. Skipped by default.
   *Test:* skipped without the variable; with it, the conformance tests pass on the real endpoint. Running it is a NEEDS-YOU item (RAM must be free).
 
-- [ ] **S4-10 Slice 4 end to end.** SPEC 18, row 4.
+- [x] **S4-10 Slice 4 end to end.** SPEC 18, row 4.
   One test on the fake OpenAI-compatible server: the ticker wakes the scout on its heartbeat, it files signals through `add_signal`, a failing output check escalates once to Claude (scripted), a plan limit on Claude moves a triage task to the local model, and the morning brief lists the qualified signals. Tag `slice-4-done`.
   *Test:* all of it in one run.
 

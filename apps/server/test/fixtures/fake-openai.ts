@@ -4,7 +4,7 @@ import type { AddressInfo } from 'node:net';
 /**
  * A stand-in for an OpenAI-compatible model endpoint (Ollama, say), so the in-process runtime is tested without a model.
  * The first path segment picks the behaviour: http://127.0.0.1:PORT/<mode>/v1. It answers Chat Completions, streaming or not.
- * Modes: ok, mcp, forbidden, env, limit, auth, hang, turns, and skill:<name> (asks for that skill, then repeats what it got).
+ * Modes: ok, mcp, forbidden, env, limit, auth, hang, turns, skill:<name> (asks for that skill, then repeats what it got), and scout (a whole scout run).
  */
 export interface FakeOpenAI {
   url(mode: string): string;
@@ -49,6 +49,20 @@ export async function startFakeOpenAI(secrets: Record<string, string> = {}): Pro
         // skill:<name> asks for that skill, then repeats back what it was given.
         const last = [...(parsed.messages ?? [])].reverse().find((m) => m.role === 'tool');
         reply = toolResults === 0 ? { tool: { name: 'load_skill', args: { name: mode.slice(6) } } } : { content: `GOT: ${typeof last?.content === 'string' ? last.content : JSON.stringify(last?.content)}` };
+      } else if (mode === 'scout') {
+        // A scout's whole job, in tool calls: read the task, record two signals, score each from the id the tool gave back, finish.
+        // Two markers in the task text switch it to the other behaviours the slice 4 end to end needs.
+        const toolTexts = (parsed.messages ?? []).filter((m) => m.role === 'tool').map((m) => (typeof m.content === 'string' ? m.content : JSON.stringify(m.content)));
+        const idIn = (t: string | undefined) => /signal ([0-9a-f-]{36})/.exec(t ?? '')?.[1] ?? '';
+        if (body.includes('BAD-DRAFT')) reply = { content: 'I looked at everything and I am done.' };
+        else if (body.includes('TRIAGE-TASK')) reply = { content: 'Triaged: the reply is interested; book a call.' };
+        else if (toolResults === 0) reply = { tool: { name: 'get_task', args: {} } };
+        else if (toolResults === 1) reply = { tool: { name: 'add_signal', args: { kind: 'service_request', source: 'reddit', url: 'https://reddit.example/r/smallbiz/comments/e2e1', author: 'u/dana_clinic', excerpt: 'Looking for someone to rebuild our clinic booking page.' } } };
+        else if (toolResults === 2) reply = { tool: { name: 'add_signal', args: { kind: 'pain_point', source: 'forum', url: 'https://forum.example/t/e2e2', author: 'shop_owner', excerpt: 'Our shop site is slow sometimes, whatever.' } } };
+        else if (toolResults === 3) reply = { tool: { name: 'score_signal', args: { signalId: idIn(toolTexts[1]), score: 85, reason: 'Asks for exactly the service we sell.' } } };
+        else if (toolResults === 4) reply = { tool: { name: 'score_signal', args: { signalId: idIn(toolTexts[2]), score: 30, reason: 'Vague and not a request.' } } };
+        else if (toolResults === 5) reply = { tool: { name: 'complete_task', args: { output: 'Recorded 2 signals; 1 qualified.' } } };
+        else reply = { content: 'Recorded 2 signals; 1 qualified.' };
       } else if (mode === 'turns') reply = { tool: { name: 'get_task', args: {} } };
       else if (mode === 'env') {
         const everything = `${body}\n${JSON.stringify(req.headers)}`;
