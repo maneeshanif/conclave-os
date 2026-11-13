@@ -392,7 +392,7 @@ Recorded 2026-11-13. Nothing here is built ahead of its slice (CLAUDE.md, Stack)
   `video_ideas` (a line, a link or a voice-note transcript; source founder or hook scout), an API, an inbox page that works on a phone, and a quick-add box.
   *Test:* adding from the page creates one idea; a link is stored as a link; the inbox lists new ideas first; an idea can be shelved or turned into a brief.
 
-- [ ] **S5-8 The video brief and the generation connector.** SPEC 8.
+- [x] **S5-8 The video brief and the generation connector.** SPEC 8.
   A brief (script, shot list, assets needed, estimated credits) made from an idea and a hook, which is an approval before anything is generated. A `generate_asset` connector interface with a fake; assets are stored by key in the data folder.
   *Test:* nothing is generated before the brief is approved; a rejected brief generates nothing; the credits shown are counted from the shot list; generation is claim-once.
 

@@ -4,6 +4,7 @@ import type { Bus } from '../bus';
 import { withWorkspace } from '../db/tenant';
 import { readSettings, startOfToday, startOfTomorrow, type Settings } from '../settings';
 import { checkClaims, companyMarkdown, emailFooter, isSuppressed } from './policy';
+import type { GenerationConnector } from '../video/generate';
 import type { DmTransport, PostTransport } from './post-transport';
 import type { EmailTransport } from './transport';
 
@@ -30,6 +31,10 @@ export interface ExecutorDeps {
   dmTransport?: DmTransport;
   /** The least time between two DMs from one account. Default 90 seconds. */
   dmGapMs?: number;
+  /** The generation connector for video assets (S5-8). Without one an approved brief is refused. */
+  generator?: GenerationConnector;
+  /** Where generated assets are stored, by key. */
+  dataDir?: string;
   companyRoot: string;
   from: string;
   bus?: Bus;

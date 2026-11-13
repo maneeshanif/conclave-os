@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { MAX_SECONDS_PER_SHOT, MAX_SHOTS, SHOT_KINDS, type Shot } from '../video/briefs';
 import { normalizeUrl, SIGNAL_KINDS, type SignalKind } from '../signals';
 import type { RunScope } from './run-tokens';
 
@@ -12,6 +13,8 @@ export interface OsStore {
   addLead(scope: RunScope, input: AddLeadInput): Promise<{ id: string; existed: boolean; by?: 'email' | 'website'; verified: boolean }>;
   /** Records a 0 to 100 score and its reason on a lead (autonomy 1). */
   scoreLead(scope: RunScope, input: { leadId: string; score: number; reason: string }): Promise<void>;
+  /** Queues a video brief for approval (autonomy 2). Nothing is generated until a person approves it. Credits are counted from the shots. */
+  proposeVideoBrief(scope: RunScope, b: { ideaId: string; title: string; script: string; shots: Shot[] }): Promise<{ approvalId: string; existed: boolean; credits: number }>;
   /** Files a hook (autonomy 1): a pattern and the link to its example. The same example is one hook. */
   addHook(scope: RunScope, input: AddHookInput): Promise<{ id: string; created: boolean }>;
   /** The posts, newest first, each with its status and where it went (autonomy 0: reading is for everyone). */
@@ -289,6 +292,25 @@ export const osTools = {
       return r.qualified ? `Scored ${args.score} out of 100. It is marked qualified.` : `Scored ${args.score} out of 100. It stays new, for a person to look at.`;
     },
   },
+  propose_video_brief: {
+    minAutonomy: 2,
+    description:
+      'Queue a video brief for the founder to approve: a title, the script and a shot list (each shot is a text card, an image or a clip, with a description and a length in seconds). Nothing is generated until a person approves it, because generating costs credits. The credits are counted from your shot list; you do not give a figure. The idea must be one the founder has turned into a brief.',
+    input: z
+      .object({
+        ideaId: z.uuid(),
+        title: z.string().trim().min(1).max(120),
+        script: z.string().trim().min(1).max(4000),
+        shots: z.array(z.object({ kind: z.enum(SHOT_KINDS), description: z.string().trim().min(1).max(300), seconds: z.number().int().min(1).max(MAX_SECONDS_PER_SHOT) }).strict()).min(1).max(MAX_SHOTS),
+      })
+      .strict(),
+    async run(store: OsStore, scope: RunScope, args: { ideaId: string; title: string; script: string; shots: Shot[] }) {
+      const r = await store.proposeVideoBrief(scope, args);
+      return r.existed
+        ? `Already queued as ${r.approvalId}. Do not propose it again.`
+        : `Queued for approval as ${r.approvalId}: ${r.credits} credits to generate. Nothing has been generated. Do not retry; finish your task.`;
+    },
+  },
   add_hook: {
     minAutonomy: 1,
     description:
@@ -421,6 +443,9 @@ export class MemoryOsStore implements OsStore {
   }
   async scoreLead(): Promise<void> {
     throw new ToolError('Leads need the database store.');
+  }
+  async proposeVideoBrief(): Promise<{ approvalId: string; existed: boolean; credits: number }> {
+    throw new ToolError('Proposals need the database store.');
   }
   async addHook(): Promise<{ id: string; created: boolean }> {
     throw new ToolError('Hooks need the database store.');

@@ -736,6 +736,58 @@ export const runtimePauses = pgTable(
   ],
 );
 
+/** A video brief: a script and a shot list a person approves before any credits are spent (S5-8). */
+export const videoBriefs = pgTable(
+  'video_briefs',
+  {
+    id: id(),
+    workspaceId: workspaceId(),
+    ideaId: uuid('idea_id').notNull(),
+    title: text('title').notNull(),
+    script: text('script').notNull(),
+    shots: jsonb('shots').notNull(), // [{ kind: text | image | clip, description, seconds }]
+    status: text('status').notNull().default('pending_approval'), // pending_approval | approved | rejected | expired | generating | generated | failed | cancelled
+    estimatedCredits: integer('estimated_credits').notNull(), // counted from the shot list, never taken from the agent
+    spentCredits: integer('spent_credits').notNull().default(0),
+    approvalId: uuid('approval_id'),
+    error: text('error'),
+    createdBy: text('created_by').notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    unique('video_briefs_ws_id_uq').on(t.workspaceId, t.id),
+    // One live brief per idea. A rejected, expired or cancelled one does not stop a new one.
+    uniqueIndex('video_briefs_live_idea_uq')
+      .on(t.workspaceId, t.ideaId)
+      .where(sql`${t.status} not in ('rejected','expired','cancelled','failed')`),
+    check('video_briefs_status_ck', sql`${t.status} in ('pending_approval','approved','rejected','expired','generating','generated','failed','cancelled')`),
+    check('video_briefs_credits_ck', sql`${t.estimatedCredits} >= 0 and ${t.spentCredits} >= 0`),
+    foreignKey({ name: 'video_briefs_idea_fk', columns: [t.workspaceId, t.ideaId], foreignColumns: [videoIdeas.workspaceId, videoIdeas.id] }),
+    foreignKey({ name: 'video_briefs_approval_fk', columns: [t.workspaceId, t.approvalId], foreignColumns: [approvals.workspaceId, approvals.id] }),
+  ],
+);
+
+/** A generated image or clip, stored by key in the data folder (S5-8). */
+export const videoAssets = pgTable(
+  'video_assets',
+  {
+    id: id(),
+    workspaceId: workspaceId(),
+    briefId: uuid('brief_id').notNull(),
+    shot: integer('shot').notNull(), // 1-based position in the shot list
+    kind: text('kind').notNull(),
+    key: text('key').notNull(),
+    mime: text('mime').notNull(),
+    credits: integer('credits').notNull().default(0),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    unique('video_assets_ws_id_uq').on(t.workspaceId, t.id),
+    unique('video_assets_brief_shot_uq').on(t.workspaceId, t.briefId, t.shot),
+    foreignKey({ name: 'video_assets_brief_fk', columns: [t.workspaceId, t.briefId], foreignColumns: [videoBriefs.workspaceId, videoBriefs.id] }),
+  ],
+);
+
 /** A line, a link or a voice note dropped into the Video Ideas inbox (S5-7). */
 export const videoIdeas = pgTable(
   'video_ideas',

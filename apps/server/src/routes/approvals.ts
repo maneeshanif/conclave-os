@@ -105,6 +105,7 @@ export function approvalRoutes(deps: { workspaceId: string; bus: Bus; onDecided?
     if (!approved) await q(c, "update outreach_messages set status = 'rejected' where approval_id = $1 and status = 'queued'", [id]);
     await q(c, "update posts set status = $2 where approval_id = $1 and status = 'proposed'", [id, approved ? 'approved' : 'rejected']);
     await q(c, "update dms set status = $2 where approval_id = $1 and status = 'proposed'", [id, approved ? 'approved' : 'rejected']);
+    await q(c, "update video_briefs set status = $2 where approval_id = $1 and status = 'pending_approval'", [id, approved ? 'approved' : 'rejected']);
     await q(c, "insert into audit_log (workspace_id, actor, action, subject, data) values ($1, $2, 'approval.decided', $3, $4)", [
       ws,
       DECIDER,

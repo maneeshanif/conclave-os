@@ -36,6 +36,8 @@ export function createOutreach(d: OutreachDeps): { transport: EmailTransport; ex
     // Posts go to a folder, like email. The browser transport needs a login done by hand and is switched on per account (S5-3).
     postTransport: outboxPostTransport(d.dataDir),
     dmTransport: outboxDmTransport(d.dataDir),
+    // Generated assets are stored here. There is no generation connector until the founder chooses a generator (S5-8).
+    dataDir: d.dataDir,
     // Used only for an account a person has logged in to by hand and switched to the browser (S5-3).
     browserPostTransport: browserPostTransport(d.dataDir, playwrightDriver(playwrightPageOpener(d.dataDir, d.env))),
     bus: d.bus,

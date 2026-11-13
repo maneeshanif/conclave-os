@@ -29,7 +29,7 @@ const ws = () => sys.workspace.id;
 const sql = (q: string, p: unknown[] = []) => withWorkspace(sys.app, ws(), ({ client }) => client.query(q, p));
 const scope = () => ({ workspaceId: ws(), agentId, runId, taskId });
 const tool = (name: string, args: unknown) => callOsTool(store, scope(), name, args).then((r) => ({ ok: true as const, text: r }), (e: Error) => ({ ok: false as const, text: e.message }));
-const GAP = 400;
+const GAP = 1200; // long enough that a busy machine cannot let the second DM slip past the gap
 const executors = () => createExecutors({ pool: sys.app, workspaceId: ws(), transport: new OutboxTransport(path.join(sys.dataDir, 'outbox')), companyRoot, from: 'a@b.test', postTransport: outboxPostTransport(sys.dataDir), dmTransport: outboxDmTransport(sys.dataDir), dmGapMs: GAP });
 const dmFiles = () => (existsSync(path.join(sys.dataDir, 'outbox', 'dms')) ? readdirSync(path.join(sys.dataDir, 'outbox', 'dms')) : []);
 let leadN = 0;

@@ -288,6 +288,20 @@
       "when": 1794579898283,
       "tag": "0040_video_ideas_rls",
       "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1794580545825,
+      "tag": "0041_video_briefs",
+      "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "7",
+      "when": 1794580547672,
+      "tag": "0042_video_briefs_rls",
+      "breakpoints": true
     }
   ]
 }

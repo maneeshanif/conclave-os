@@ -74,6 +74,7 @@ describe('slice 3 end to end', () => {
     expect((await taskRow(t)).session_id).toBe('ses_long'); // saved the moment it was known
 
     // Nothing is running it any more and its heartbeat has stopped: the reaper fails the run and puts the task back.
+    await new Promise((r) => setTimeout(r, 150)); // the last event's heartbeat must be in the past, or a busy machine can race it
     const reaped = await reapRuns({ pool: sys.app, workspaceId: ws(), isActive: () => false, staleAfterMs: 0 });
     expect(reaped.requeued.map((r) => r.taskId)).toEqual([t]);
     expect(await taskRow(t)).toMatchObject({ status: 'todo', session_id: 'ses_long' });

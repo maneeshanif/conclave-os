@@ -46,6 +46,8 @@ const TABLES = [
   'tasks',
   'thread_messages',
   'threads',
+  'video_assets',
+  'video_briefs',
   'video_ideas',
   'workspace_settings',
   'workspaces',

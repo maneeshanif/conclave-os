@@ -67,3 +67,7 @@ Things the build parked for you. Each says what to do.
 
 - [ ] **Log in by hand, once per account** (nothing can post for real until you do): `pnpm run browser:login @your_handle`. A browser opens; log in; close it. Then switch the account on when you are ready: `POST /api/browser/accounts/<id>/transport {"transport":"browser"}` (a page for this comes with the phone app work).
 - [ ] **Watch the first real post.** The browser steps for X and LinkedIn were written without a real account and may need their selectors fixed. Set `BROWSER_HEADLESS=0` for the first one so you can see it. Until you switch an account to the browser, every post only writes a file to `DATA_DIRoutboxposts`.
+
+## Video generation (S5-8)
+
+- [ ] **Choose a generator for images and clips** (Google Flow, Veo through an API, or another) and say so. It needs your account and credits, which I cannot create. Until then an approved video brief is refused and spends nothing. When you choose, tell me the generator and its real credit prices so the numbers in `apps/server/src/video/briefs.ts` (image 1, clip 5) match. Read the generator's terms and any unofficial connector's code first (SPEC 8).

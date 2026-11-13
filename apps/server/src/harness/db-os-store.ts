@@ -6,6 +6,7 @@ import { companyTimezone } from '../config';
 import { checkFigures } from '../documents/figures';
 import { ingestLead } from '../leads/ingest';
 import { checkHook } from '../hooks';
+import { checkBrief, estimateCredits, type Shot } from '../video/briefs';
 import { normalizeUrl } from '../signals';
 import { labelUntrusted } from './trust';
 import { checkDm, dmEligible, dmSuppressed, isDmChannel, normalizeHandle } from '../dms';
@@ -213,6 +214,36 @@ export class DbOsStore implements OsStore {
         [scope.workspaceId, p.leadId, p.step, l.email, p.subject, p.body, ins.rows[0].id, p.campaignId ?? null, campaign?.channel_account_id ?? null],
       );
       return { approvalId: ins.rows[0].id, existed: false };
+    });
+    if (!out.existed) this.onApproval(scope.workspaceId, out.approvalId);
+    return out;
+  }
+
+  async proposeVideoBrief(scope: RunScope, b: { ideaId: string; title: string; script: string; shots: Shot[] }): Promise<{ approvalId: string; existed: boolean; credits: number }> {
+    const companyMd = this.companyRoot ? await companyMarkdown(this.companyRoot) : '';
+    const check = checkBrief(b, companyMd);
+    if (!check.ok) throw new ToolError(`Refused: ${check.reasons.join('; ')}. Rewrite without it and propose again.`);
+    const credits = estimateCredits(b.shots);
+    const out = await withWorkspace(this.pool, scope.workspaceId, async ({ client: c }) => {
+      const idea = (await c.query<{ stage: string }>('select stage from video_ideas where id = $1', [b.ideaId])).rows[0];
+      if (!idea) throw new ToolError('No such idea.');
+      if (idea.stage !== 'brief') throw new ToolError(`This idea has not been turned into a brief by the founder (it is ${idea.stage}). Do not write a brief for it.`);
+      const live = (await c.query<{ approval_id: string | null; estimated_credits: number }>("select approval_id, estimated_credits from video_briefs where idea_id = $1 and status not in ('rejected','expired','cancelled','failed')", [b.ideaId])).rows[0];
+      if (live) throw new ToolError('This idea already has a brief waiting or in progress. Do not propose another.');
+      const n = Number((await c.query<{ n: number }>('select count(*)::int as n from video_briefs where idea_id = $1', [b.ideaId])).rows[0]!.n);
+      const payload = { title: b.title, estimatedCredits: credits, shots: b.shots.length, seconds: b.shots.reduce((s, x) => s + x.seconds, 0) };
+      const ap = await c.query<{ id: string }>(
+        "insert into approvals (workspace_id, kind, dedupe_key, agent_id, run_id, task_id, payload) values ($1, 'video.brief', $2, $3, $4, $5, $6) returning id",
+        [scope.workspaceId, `video-brief:${b.ideaId}${n ? `:${n}` : ''}`, scope.agentId, scope.runId, scope.taskId ?? null, JSON.stringify({ ...payload, briefId: null })],
+      );
+      const actor = await this.actor(c, scope);
+      const brief = await c.query<{ id: string }>(
+        'insert into video_briefs (workspace_id, idea_id, title, script, shots, estimated_credits, approval_id, created_by) values ($1, $2, $3, $4, $5, $6, $7, $8) returning id',
+        [scope.workspaceId, b.ideaId, b.title, b.script, JSON.stringify(b.shots), credits, ap.rows[0]!.id, actor],
+      );
+      await c.query('update approvals set payload = jsonb_set(payload, $2, to_jsonb($3::text)) where id = $1', [ap.rows[0]!.id, '{briefId}', brief.rows[0]!.id]);
+      await c.query("insert into audit_log (workspace_id, actor, action, subject, data) values ($1, $2, 'video_brief.proposed', $3, $4)", [scope.workspaceId, actor, brief.rows[0]!.id, JSON.stringify({ credits, shots: b.shots.length })]);
+      return { approvalId: ap.rows[0]!.id, existed: false, credits };
     });
     if (!out.existed) this.onApproval(scope.workspaceId, out.approvalId);
     return out;
