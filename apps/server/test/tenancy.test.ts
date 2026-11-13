@@ -29,6 +29,7 @@ const TABLES = [
   'funnel_stages',
   'funnels',
   'goals',
+  'hooks',
   'leads',
   'members',
   'messages',

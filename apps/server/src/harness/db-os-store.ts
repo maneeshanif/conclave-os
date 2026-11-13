@@ -5,11 +5,13 @@ import { briefOn, dayOf, latestBrief, rebuildBrief } from '../brief/build';
 import { companyTimezone } from '../config';
 import { checkFigures } from '../documents/figures';
 import { ingestLead } from '../leads/ingest';
+import { checkHook } from '../hooks';
+import { normalizeUrl } from '../signals';
 import { labelUntrusted } from './trust';
 import { checkDm, dmEligible, dmSuppressed, isDmChannel, normalizeHandle } from '../dms';
 import { checkPost, hashText, isPostPlatform } from '../posts';
 import { addSignal, cleanExcerpt, looksLikeInstructions } from '../signals';
-import { ToolError, type AddLeadInput, type AddSignalInput, type BriefView, type DealView, type DraftKind, type LeadView, type OsStore, type ProposedEmail, type TaskView } from './os-tools';
+import { ToolError, type AddHookInput, type AddLeadInput, type AddSignalInput, type BriefView, type DealView, type DraftKind, type LeadView, type OsStore, type ProposedEmail, type TaskView } from './os-tools';
 import type { RunScope } from './run-tokens';
 
 /** The `os` tools on the real database. Every write is scoped to the run's own workspace and task. */
@@ -214,6 +216,22 @@ export class DbOsStore implements OsStore {
     });
     if (!out.existed) this.onApproval(scope.workspaceId, out.approvalId);
     return out;
+  }
+
+  async addHook(scope: RunScope, input: AddHookInput): Promise<{ id: string; created: boolean }> {
+    const check = checkHook(input);
+    if (!check.ok) throw new ToolError(`Refused: ${check.reasons.join('; ')}.`);
+    const url = normalizeUrl(input.exampleUrl);
+    return withWorkspace(this.pool, scope.workspaceId, async ({ client: c }) => {
+      const actor = await this.actor(c, scope);
+      const r = await c.query<{ id: string }>(
+        'insert into hooks (workspace_id, pattern, format, platform, example_url, notes, found_by) values ($1, $2, $3, $4, $5, $6, $7) on conflict (workspace_id, example_url) do nothing returning id',
+        [scope.workspaceId, input.pattern, input.format ?? null, input.platform ?? null, url, input.notes ?? null, actor],
+      );
+      if (!r.rows[0]) return { id: (await c.query<{ id: string }>('select id from hooks where example_url = $1', [url])).rows[0]!.id, created: false };
+      await c.query("insert into audit_log (workspace_id, actor, action, subject, data) values ($1, $2, 'hook.filed', $3, $4)", [scope.workspaceId, actor, r.rows[0].id, JSON.stringify({ platform: input.platform ?? null })]);
+      return { id: r.rows[0].id, created: true };
+    });
   }
 
   async getPosts(scope: RunScope, o: { status?: string | undefined; limit: number }) {

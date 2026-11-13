@@ -736,6 +736,24 @@ export const runtimePauses = pgTable(
   ],
 );
 
+/** A pattern that is working in the niche, with a link to the example and never a copy of it (S5-6). */
+export const hooks = pgTable(
+  'hooks',
+  {
+    id: id(),
+    workspaceId: workspaceId(),
+    pattern: text('pattern').notNull(),
+    format: text('format'),
+    platform: text('platform'),
+    exampleUrl: text('example_url').notNull(), // normalised, so the same example is one hook
+    notes: text('notes'),
+    score: smallint('score'), // how well it held attention on our own account, set by results, not by the scout
+    foundBy: text('found_by').notNull(),
+    foundAt: timestamp('found_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [unique('hooks_ws_id_uq').on(t.workspaceId, t.id), unique('hooks_ws_example_uq').on(t.workspaceId, t.exampleUrl), check('hooks_score_ck', sql`${t.score} is null or ${t.score} between 0 and 100`)],
+);
+
 /** A direct message an agent proposed to send to one person (S5-4). One row, one person, one approval. */
 export const dms = pgTable(
   'dms',

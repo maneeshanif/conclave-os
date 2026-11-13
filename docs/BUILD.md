@@ -384,7 +384,7 @@ Recorded 2026-11-13. Nothing here is built ahead of its slice (CLAUDE.md, Stack)
   Flag and stop a run that is alive but has produced no event for a threshold (default 5 minutes), separate from the 15 minute timeout, with its own error kind and a plain message.
   *Test:* a fake runtime that hangs after its first event is stopped at the threshold with the distinct error kind; a runtime that keeps emitting events is not; the threshold is a setting.
 
-- [ ] **S5-6 Hooks and the Hook Scout.** SPEC 8.
+- [x] **S5-6 Hooks and the Hook Scout.** SPEC 8.
   A `hooks` table (pattern, format, length, example link, the account it was seen on, a performance score), an `add_hook` tool, and the Hook Scout template on the local model. A hook stores a link to the example and a description of the pattern, never a copy of the post's text.
   *Test:* a hook with no example link is refused; a long verbatim quote is refused; the same example is one hook; the scout cannot propose a post.
 

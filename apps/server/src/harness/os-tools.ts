@@ -12,6 +12,8 @@ export interface OsStore {
   addLead(scope: RunScope, input: AddLeadInput): Promise<{ id: string; existed: boolean; by?: 'email' | 'website'; verified: boolean }>;
   /** Records a 0 to 100 score and its reason on a lead (autonomy 1). */
   scoreLead(scope: RunScope, input: { leadId: string; score: number; reason: string }): Promise<void>;
+  /** Files a hook (autonomy 1): a pattern and the link to its example. The same example is one hook. */
+  addHook(scope: RunScope, input: AddHookInput): Promise<{ id: string; created: boolean }>;
   /** The posts, newest first, each with its status and where it went (autonomy 0: reading is for everyone). */
   getPosts(scope: RunScope, o: { status?: string | undefined; limit: number }): Promise<{ id: string; platform: string; status: string; text: string; url: string | null; error: string | null; at: string }[]>;
   /** Queues a post for approval (autonomy 2). Never publishes. The same text on the same account is one proposal. */
@@ -163,6 +165,22 @@ export interface AddSignalInput {
   author?: string | undefined;
   excerpt?: string | undefined;
 }
+export interface AddHookInput {
+  pattern: string;
+  exampleUrl: string;
+  platform?: string | undefined;
+  format?: string | undefined;
+  notes?: string | undefined;
+}
+const AddHookInput = z
+  .object({
+    pattern: z.string().trim().min(1).max(600),
+    exampleUrl: z.string().trim().min(1).max(2000),
+    platform: z.string().trim().min(1).max(30).optional(),
+    format: z.string().trim().min(1).max(60).optional(),
+    notes: z.string().trim().min(1).max(600).optional(),
+  })
+  .strict();
 const ScoreSignalInput = z.object({ signalId: z.uuid(), score: z.number().int().min(0).max(100), reason: z.string().trim().min(1).max(1000) }).strict();
 const ScoreInput = z
   .object({ leadId: z.uuid(), score: z.number().int().min(0).max(100), reason: z.string().trim().min(1).max(1000) })
@@ -269,6 +287,16 @@ export const osTools = {
     async run(store: OsStore, scope: RunScope, args: { signalId: string; score: number; reason: string }) {
       const r = await store.scoreSignal(scope, args);
       return r.qualified ? `Scored ${args.score} out of 100. It is marked qualified.` : `Scored ${args.score} out of 100. It stays new, for a person to look at.`;
+    },
+  },
+  add_hook: {
+    minAutonomy: 1,
+    description:
+      'File one hook: a pattern that is working in the niche (opening line shape, format, length) with the link to the example you saw it in. Describe the pattern in your own words; never copy the post. Without a working link to the example it is refused. The same example is only filed once.',
+    input: AddHookInput,
+    async run(store: OsStore, scope: RunScope, args: AddHookInput) {
+      const r = await store.addHook(scope, args);
+      return r.created ? `Filed hook ${r.id}.` : `That example is already filed as hook ${r.id}. Nothing was changed.`;
     },
   },
   get_posts: {
@@ -393,6 +421,9 @@ export class MemoryOsStore implements OsStore {
   }
   async scoreLead(): Promise<void> {
     throw new ToolError('Leads need the database store.');
+  }
+  async addHook(): Promise<{ id: string; created: boolean }> {
+    throw new ToolError('Hooks need the database store.');
   }
   async getPosts(): Promise<{ id: string; platform: string; status: string; text: string; url: string | null; error: string | null; at: string }[]> {
     return [];
