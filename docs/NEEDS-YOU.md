@@ -46,3 +46,19 @@ Things the build parked for you. Each says what to do.
 ## Local model through the in-process runner (S4-9)
 
 - [ ] With at least 8 GB of memory free (close the browser and editors), run in PowerShell from the repo folder: `$env:CONCLAVE_TEST_OLLAMA='gemma4:latest'; pnpm exec vitest run apps/server/test/real-local-model-agents.test.ts`. If it passes, tell me and I will point the `local-worker` alias at that model (it names `qwen3:8b`, which is not installed). If it fails on tool calling, we try another model.
+
+## Auto-resume when the session stops (optional, you turn it on)
+
+- [ ] **Nothing is registered on your machine.** `scripts/resume-autopilot.ps1` resumes the build when no session is working on it; `scripts/register-resume-task.ps1` creates the Task Scheduler entry. To turn it on, run in PowerShell from the repo folder:
+
+  ```
+  powershell -NoProfile -ExecutionPolicy Bypass -File scriptsegister-resume-task.ps1
+  ```
+
+  It checks every 30 minutes, as you, while you are logged in. To try one check without starting Claude: `powershell -NoProfile -ExecutionPolicy Bypass -File scriptsesume-autopilot.ps1 -DryRun`. To turn it off:
+
+  ```
+  powershell -NoProfile -ExecutionPolicy Bypass -File scriptsegister-resume-task.ps1 -Remove
+  ```
+
+  Each check is one line in `DATA_DIRlogsesume.log` (default `%USERPROFILE%.conclave-oslogs`); a run's output is in `resume-<time>.out.txt` beside it. It skips if a "Working now" claim in docs/PROGRESS.md is under 45 minutes old, if its own run is still going, if the repo is not on dev, or until the reset time after a usage limit. It runs `claude -p --permission-mode auto --permission-prompts none`: the same safety checks as your auto mode, and anything that would need your answer is denied. It never uses a flag that skips permission checks.
