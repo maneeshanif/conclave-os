@@ -319,7 +319,7 @@ Recorded 2026-11-13. Nothing here is built ahead of its slice (CLAUDE.md, Stack)
   When a runtime is paused for a plan limit, waiting scout and triage tasks go to the agent's local alternative instead of waiting; writing tasks stay queued. A role file names it (`fallback_runtime` and `fallback_model`), and escalation from a failed output check may cross to a stronger runtime the same way (local to Claude). The move is recorded on the run and shown on the Health screen.
   *Test:* with `claude-cli` paused, a triage task runs on the local alias and a writing task stays queued; after the lift both are back on their own runtime; a failed check on the local model escalates to Claude once and then blocks; an agent with no fallback is unchanged.
 
-- [ ] **S4-6 The `signals` table and its API.** SPEC 11 (`signals`), 12.
+- [x] **S4-6 The `signals` table and its API.** SPEC 11 (`signals`), 12.
   Migration with forced row-level security, `(workspace_id, url)` unique, kinds `service_request | pain_point | tool_news`, statuses `new | qualified | dismissed | promoted`. Routes to list (by status and kind), read, qualify, dismiss and promote to a lead (the lead carries the signal as its reason, and the existing lead checks still apply).
   *Test:* the same URL twice is one signal; a signal from another workspace is invisible; promote creates one lead and links it, twice is a no-op; a bad status or kind is refused.
 

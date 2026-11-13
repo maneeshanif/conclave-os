@@ -728,6 +728,38 @@ export const runtimePauses = pgTable(
   ],
 );
 
+/** What the scouts find (S4-6): a public post or page with a reason to act on it. One per web address. */
+export const signals = pgTable(
+  'signals',
+  {
+    id: id(),
+    workspaceId: workspaceId(),
+    departmentId: uuid('department_id'),
+    kind: text('kind').notNull(), // service_request | pain_point | tool_news
+    source: text('source').notNull(), // reddit, x, a forum, a job board
+    url: text('url').notNull(), // normalised: the same post found twice is one signal
+    author: text('author'),
+    excerpt: text('excerpt'),
+    status: text('status').notNull().default('new'), // new | qualified | dismissed | promoted
+    score: smallint('score'),
+    reason: text('reason'),
+    leadId: uuid('lead_id'),
+    foundBy: text('found_by').notNull(), // founder | agent:<key>
+    foundAt: timestamp('found_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    unique('signals_ws_id_uq').on(t.workspaceId, t.id),
+    unique('signals_ws_url_uq').on(t.workspaceId, t.url),
+    index('signals_ws_status_idx').on(t.workspaceId, t.status, t.foundAt),
+    check('signals_kind_ck', sql`${t.kind} in ('service_request','pain_point','tool_news')`),
+    check('signals_status_ck', sql`${t.status} in ('new','qualified','dismissed','promoted')`),
+    check('signals_score_ck', sql`${t.score} is null or ${t.score} between 0 and 100`),
+    foreignKey({ name: 'signals_department_fk', columns: [t.workspaceId, t.departmentId], foreignColumns: [departments.workspaceId, departments.id] }),
+    foreignKey({ name: 'signals_lead_fk', columns: [t.workspaceId, t.leadId], foreignColumns: [leads.workspaceId, leads.id] }),
+  ],
+);
+
 /** One breaker per tool, such as os:add_lead. Three failures in a row open it for a cooldown (S3-6). */
 export const circuitBreakers = pgTable(
   'circuit_breakers',

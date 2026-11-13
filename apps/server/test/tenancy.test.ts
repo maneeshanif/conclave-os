@@ -38,6 +38,7 @@ const TABLES = [
   'runtime_pauses',
   'sequence_enrollments',
   'sequence_steps',
+  'signals',
   'suppression',
   'tasks',
   'thread_messages',
