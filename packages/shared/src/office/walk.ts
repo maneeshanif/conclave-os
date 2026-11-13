@@ -112,6 +112,19 @@ export class Walker {
 
   /** Starts walking to a tile from where it is. False, and it stays put, if there is no way. */
   walkTo(to: Tile): boolean {
+    const frac = this.progress - Math.floor(this.progress + 1e-9);
+    if (this.path.length && !this.arrived && frac > 1e-6) {
+      // Part way through a step: finish it, then go on to the new place, so the figure does not jump back to the tile it left.
+      const i = Math.floor(this.progress);
+      const here = this.path[i]!;
+      const next = this.path[i + 1]!;
+      const rest = findPath(this.map, next, to);
+      if (!rest) return false;
+      this.start = here;
+      this.path = [here, ...rest];
+      this.progress = frac;
+      return true;
+    }
     const here = this.tile;
     const path = findPath(this.map, here, to);
     if (!path) return false;
@@ -119,6 +132,13 @@ export class Walker {
     this.path = path;
     this.progress = 0;
     return true;
+  }
+
+  /** Stops at the end of the step it is on (a held key let go). */
+  stop(): void {
+    if (this.arrived) return;
+    const keep = Math.min(Math.ceil(this.progress - 1e-9), this.path.length - 1);
+    this.path = this.path.slice(0, keep + 1);
   }
 
   teleport(to: Tile): void {

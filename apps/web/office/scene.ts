@@ -9,6 +9,7 @@ import type { WorldController } from './controller';
  */
 export interface WorldHandle {
   destroy(): void;
+  resize(): void;
   setVisible(v: boolean): void;
 }
 
@@ -16,11 +17,13 @@ const TILE = 32;
 
 export function startWorld(opts: { parent: HTMLElement; mapUrl: string; tilesUrl: string; facts: OfficeFacts; ctl: WorldController; names: () => Map<string, string>; onUseObject: (href: string) => void }): WorldHandle {
   const { ctl, facts } = opts;
+  ctl.setViewport(opts.parent.clientWidth, opts.parent.clientHeight);
 
   class OfficeScene extends Phaser.Scene {
     private dots = new Map<string, Phaser.GameObjects.Container>();
     private me?: Phaser.GameObjects.Arc;
     private cursors?: Phaser.Types.Input.Keyboard.CursorKeys;
+    private heldDir: 'up' | 'down' | 'left' | 'right' | null = null;
 
     constructor() {
       super('office');
@@ -60,11 +63,13 @@ export function startWorld(opts: { parent: HTMLElement; mapUrl: string; tilesUrl
       ctl.tick(delta);
       const k = this.cursors;
       if (k) {
-        if (Phaser.Input.Keyboard.JustDown(k.up)) ctl.key('up');
-        else if (Phaser.Input.Keyboard.JustDown(k.down)) ctl.key('down');
-        else if (Phaser.Input.Keyboard.JustDown(k.left)) ctl.key('left');
-        else if (Phaser.Input.Keyboard.JustDown(k.right)) ctl.key('right');
+        const dir = k.up.isDown ? 'up' : k.down.isDown ? 'down' : k.left.isDown ? 'left' : k.right.isDown ? 'right' : null;
+        if (dir !== this.heldDir) {
+          this.heldDir = dir;
+          ctl.hold(dir);
+        }
       }
+      this.cameras.main.setZoom(ctl.zoom);
       const p = ctl.me.position;
       this.me?.setPosition(p.x * TILE + TILE / 2, p.y * TILE + TILE / 2);
       const names = opts.names();
@@ -92,12 +97,13 @@ export function startWorld(opts: { parent: HTMLElement; mapUrl: string; tilesUrl
     type: Phaser.AUTO,
     parent: opts.parent,
     backgroundColor: '#f8fafc',
-    scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH, width: 640, height: 384 },
+    scale: { mode: Phaser.Scale.RESIZE },
     scene: OfficeScene,
   });
 
   return {
     destroy: () => game.destroy(true),
+    resize: () => ctl.setViewport(opts.parent.clientWidth, opts.parent.clientHeight),
     setVisible: (v) => {
       ctl.setVisible(v);
       if (v) game.loop.wake();

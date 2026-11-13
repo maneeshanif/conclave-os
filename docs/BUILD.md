@@ -472,7 +472,7 @@ From `docs/BORROW-AUDIT.md`. Each goes into its slice's task list when that slic
   Phaser 4 (check its current docs first) in \`apps/web/office\`: loads the map and tileset, draws rooms, desks, objects, your avatar and the agents, and drives them from the logic above. The \`/office\` page also has the plain version: rooms listed, agents listed, the same panels. The canvas stops drawing when the tab is hidden; a phone gets the small map and the list.
   *Test:* the plain version renders each room and agent and every object's button; a hidden tab pauses the scene and a visible one resumes it; a Playwright run of the real page at desktop and Android sizes finds a non-blank canvas and takes a screenshot.
 
-- [ ] **S6-8c1 The world feels like walking about.** WORLD-BRIEF, WORLD-REFERENCE. Default zoom about 2x, zoom in and out, an overview of the whole map; held-key walking at a steady speed; click to walk. Logic in `WorldController` (zoom level, held direction), the scene only draws.
+- [x] **S6-8c1 The world feels like walking about.** WORLD-BRIEF, WORLD-REFERENCE. Default zoom about 2x, zoom in and out, an overview of the whole map; held-key walking at a steady speed; click to walk. Logic in `WorldController` (zoom level, held direction), the scene only draws.
   *Test:* zoom stays within limits and the overview fits the whole map; a held key keeps walking until released and stops at walls; a click still goes to the nearest open tile.
 
 - [ ] **S6-8c2 The bar and the panels.** WORLD-REFERENCE. A floating bar (people, tools, availability), a people panel, the agent drawer inside a left panel, a notice pill when you enter a silent, locked or full zone (from S6-5), a one-time welcome card with skip, and the phone's bottom row.

@@ -107,3 +107,82 @@ describe('the world, without drawing it (S6-8b)', () => {
     expect(w.agents()[0]!.position).toEqual({ x: spot.x, y: spot.y });
   });
 });
+
+describe('zoom and held keys (S6-8c1)', () => {
+  const fresh = () => {
+    const w = new WorldController(map, { speed: 8 });
+    w.setViewport(640, 384);
+    return w;
+  };
+
+  it('starts zoomed in about twice, and the overview fits the whole map', () => {
+    const w = fresh();
+    expect(w.zoom).toBe(2);
+    w.overview(true);
+    const fit = Math.min(640 / (map.width * map.tile), 384 / (map.height * map.tile));
+    expect(w.zoom).toBeCloseTo(fit, 5);
+    expect(fit * map.width * map.tile).toBeLessThanOrEqual(640 + 1e-6);
+    expect(fit * map.height * map.tile).toBeLessThanOrEqual(384 + 1e-6);
+    w.overview(false);
+    expect(w.zoom).toBe(2);
+  });
+
+  it('zooms in and out in steps, never past the limits', () => {
+    const w = fresh();
+    for (let i = 0; i < 20; i++) w.zoomIn();
+    expect(w.zoom).toBe(3);
+    for (let i = 0; i < 40; i++) w.zoomOut();
+    const fit = Math.min(640 / (map.width * map.tile), 384 / (map.height * map.tile));
+    expect(w.zoom).toBeCloseTo(fit, 5);
+    w.zoomIn();
+    expect(w.zoom).toBeGreaterThan(fit);
+  });
+
+  it('on a big screen the lowest zoom is never less than showing the whole map', () => {
+    const w = new WorldController(map);
+    w.setViewport(4000, 3000);
+    expect(w.zoom).toBeGreaterThanOrEqual(2);
+    for (let i = 0; i < 40; i++) w.zoomOut();
+    expect(w.zoom).toBeGreaterThanOrEqual(1);
+  });
+
+  it('keeps walking while a key is held, and stops on a whole tile when it is let go', () => {
+    const w = fresh();
+    w.click(spot);
+    w.tick(60_000);
+    const start = w.me.tile;
+    w.hold('right');
+    w.tick(300);
+    w.tick(300);
+    expect(w.me.position.x).toBeGreaterThan(start.x + 1);
+    w.hold(null);
+    w.tick(10_000);
+    const end = w.me.tile;
+    expect(w.me.position).toEqual(end);
+    expect(end.y).toBe(start.y);
+    expect(end.x).toBeGreaterThan(start.x + 1);
+    expect(map.walls[end.y]![end.x]).toBe(false);
+  });
+
+  it('does not walk through a wall while a key is held', () => {
+    const w = fresh();
+    w.click(spot);
+    w.tick(60_000);
+    w.hold('down');
+    for (let i = 0; i < 200; i++) w.tick(100);
+    const t = w.me.tile;
+    expect(map.walls[t.y]![t.x]).toBe(false);
+    expect(map.walls[t.y + 1]![t.x] || t.y + 1 >= map.height).toBe(true); // it ran to the wall and stayed
+  });
+
+  it('a hidden tab does not walk you', () => {
+    const w = fresh();
+    w.click(spot);
+    w.tick(60_000);
+    w.setVisible(false);
+    const before = w.me.position;
+    w.hold('left');
+    w.tick(5000);
+    expect(w.me.position).toEqual(before);
+  });
+});

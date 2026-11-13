@@ -15,6 +15,12 @@ Newest first. One entry per decision: what, why, and what it replaced.
 - **One test file, `slice3-e2e.test.ts`, runs the three "Done when" checks** on the real run loop, reaper, pause table and eval gate, with a scripted model: (1) a run killed halfway (its process lost, heartbeat stopped) is failed by the reaper, its task goes back to todo still holding the session id, and the next run starts from that session and finishes; (2) a plan limit pauses the runtime for every agent on it while an agent on the other runtime keeps working, the queued tasks wait, the pause lifts only at the reset time and wakes exactly the agents with work, who then finish; (3) the unchanged skill scores at the baseline, and a change that makes the 20 sample drafts long and hyped fails the gate with all 20 leads named.
 - **Slice 3 is tagged `slice-3-done`.** Not done and recorded rather than hidden: the eval set is 20 made-up leads and its baseline is the reference drafter's (real leads and a real-agent drafter are in NEEDS-YOU); breakers cover the os tools only until connectors are live; the lite-mode canvas switch waits for slice 6.
 
+## 2026-11-14 (S6-8c1: camera and walking)
+
+- **Zoom lives in `WorldController`:** about 2x by default, steps of 1.25x, never past 3 and never further out than the whole map fits (the lowest zoom is computed from the drawing area, so it also works on a big screen). "See the whole office" is a toggle that remembers the zoom to go back to. The canvas now resizes with its box instead of scaling a fixed size.
+- **A held arrow key walks until a wall,** and letting go stops on the end of the step you are on (`Walker.stop`), never half way between tiles. A click mid-step finishes that step and carries on from there instead of snapping back (`Walker.walkTo`).
+- **Tested without a browser** (shared walk tests and the controller tests), and looked at in the real browser check, which now shows the close-up camera and the three zoom buttons.
+
 ## 2026-11-14 (S6-8b: the Phaser world)
 
 - **Phaser 4.2.1, only in `apps/web/office`** (loaded by dynamic import inside an effect, so the server render and the plain list never pull it in). `WorldController` holds all the behaviour (your avatar, every agent's walker, proximity, your room, visibility) and is tested with no browser; `scene.ts` only loads the Tiled map and draws, and passes clicks and arrow keys back.

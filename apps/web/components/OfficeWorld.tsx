@@ -18,6 +18,8 @@ export function OfficeWorld({ client, onOpen }: { client: OfficeClient; onOpen: 
   const box = useRef<HTMLDivElement>(null);
   const router = useRouter();
   const [failed, setFailed] = useState<string | null>(null);
+  const [view, setView] = useState<WorldController | null>(null);
+  const [whole, setWhole] = useState(false);
 
   useEffect(() => {
     let stop = () => undefined;
@@ -34,12 +36,16 @@ export function OfficeWorld({ client, onOpen }: { client: OfficeClient; onOpen: 
         const { startWorld } = await import('../office/scene');
         if (cancelled || !box.current) return;
         const world = startWorld({ parent: box.current, mapUrl: `${API}/api/office/map`, tilesUrl: '/office/tiles.png', facts, ctl, names: () => names, onUseObject: (href) => router.push(href) });
+        setView(ctl);
+        const watch = new ResizeObserver(() => world.resize());
+        watch.observe(box.current);
         const onVis = () => world.setVisible(document.visibilityState === 'visible');
         document.addEventListener('visibilitychange', onVis);
         const unlive = client.live((m) => {
           if (m.kind === 'office.changed') void client.state().then(apply);
         });
         stop = () => {
+          watch.disconnect();
           document.removeEventListener('visibilitychange', onVis);
           unlive();
           world.destroy();
@@ -55,5 +61,32 @@ export function OfficeWorld({ client, onOpen }: { client: OfficeClient; onOpen: 
   }, [client, onOpen, router]);
 
   if (failed) return <p className="text-sm text-neutral-500">The world could not start ({failed}). The list below has everything.</p>;
-  return <div ref={box} data-testid="office-world" aria-hidden="true" className="h-60 w-full overflow-hidden rounded-md border border-neutral-200 sm:h-96" />;
+  const btn = 'flex h-9 w-9 items-center justify-center rounded-md bg-neutral-900/80 text-lg text-white hover:bg-neutral-900';
+  return (
+    <div className="relative">
+      <div ref={box} data-testid="office-world" aria-hidden="true" className="h-60 w-full overflow-hidden rounded-md border border-neutral-200 sm:h-96" />
+      {view ? (
+        <div className="absolute bottom-3 right-3 flex flex-col gap-1.5">
+          <button type="button" aria-label="Zoom in" className={btn} onClick={() => view.zoomIn()}>
+            +
+          </button>
+          <button type="button" aria-label="Zoom out" className={btn} onClick={() => view.zoomOut()}>
+            −
+          </button>
+          <button
+            type="button"
+            aria-label={whole ? 'Back to close up' : 'See the whole office'}
+            aria-pressed={whole}
+            className={btn}
+            onClick={() => {
+              view.overview(!whole);
+              setWhole(!whole);
+            }}
+          >
+            ⌗
+          </button>
+        </div>
+      ) : null}
+    </div>
+  );
 }

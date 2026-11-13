@@ -28,6 +28,11 @@ export class WorldController {
   private readonly listeners: ((e: ProximityEvent) => void)[] = [];
   private visible = true;
   private lastTile: Tile;
+  private held: Direction | null = null;
+  private viewW = 0;
+  private viewH = 0;
+  private level = 2;
+  private zoomBeforeOverview: number | null = null;
 
   constructor(
     private readonly map: OfficeMap,
@@ -39,6 +44,66 @@ export class WorldController {
     this.presence.join(ME, 'owner', door);
     this.lastTile = { x: door.x, y: door.y };
     this.proximity = new Proximity(opts.near ?? 1.5, opts.far ?? 2.5);
+  }
+
+  /** The size of the drawing area, so the lowest zoom can be "the whole map fits". */
+  setViewport(w: number, h: number): void {
+    this.viewW = w;
+    this.viewH = h;
+    this.level = this.clamp(this.level);
+  }
+
+  private get fit(): number {
+    return this.viewW && this.viewH ? Math.min(this.viewW / (this.map.width * this.map.tile), this.viewH / (this.map.height * this.map.tile)) : 0.25;
+  }
+
+  private clamp(z: number): number {
+    const lo = this.fit;
+    return Math.max(lo, Math.min(Math.max(3, lo), z));
+  }
+
+  /** How far in the camera is: about twice by default, never past 3, never further out than the whole map. */
+  get zoom(): number {
+    return this.level;
+  }
+
+  zoomIn(): void {
+    this.zoomBeforeOverview = null;
+    this.level = this.clamp(this.level * 1.25);
+  }
+
+  zoomOut(): void {
+    this.zoomBeforeOverview = null;
+    this.level = this.clamp(this.level / 1.25);
+  }
+
+  /** The whole map at once, and back again. */
+  overview(on: boolean): void {
+    if (on) {
+      if (this.zoomBeforeOverview === null) this.zoomBeforeOverview = this.level;
+      this.level = this.fit;
+    } else if (this.zoomBeforeOverview !== null) {
+      this.level = this.clamp(this.zoomBeforeOverview);
+      this.zoomBeforeOverview = null;
+    }
+  }
+
+  /** A direction key held down (or null when let go): walk that way until a wall, and stop on a whole tile at release. */
+  hold(dir: Direction | null): void {
+    this.held = dir;
+    if (!dir) this.me.stop();
+    else this.run(dir);
+  }
+
+  private run(dir: Direction): void {
+    let t = this.me.tile;
+    for (;;) {
+      const n = stepFrom(this.map, t, dir);
+      if (n.x === t.x && n.y === t.y) break;
+      t = n;
+    }
+    const here = this.me.tile;
+    if (t.x !== here.x || t.y !== here.y) this.me.walkTo(t);
   }
 
   get running(): boolean {
@@ -101,6 +166,7 @@ export class WorldController {
   tick(dtMs: number): void {
     if (!this.visible) return;
     this.me.tick(dtMs);
+    if (this.held && this.me.arrived) this.run(this.held);
     for (const w of this.walkers.values()) w.walker.tick(dtMs);
     const t = this.me.tile;
     if (t.x !== this.lastTile.x || t.y !== this.lastTile.y) {

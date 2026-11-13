@@ -144,3 +144,36 @@ describe('walking over time (S6-4)', () => {
     expect(w.arrived).toBe(true);
   });
 });
+
+describe('stopping and turning smoothly (S6-8c1)', () => {
+  it('stops at the end of the step it is on, not half way through it', () => {
+    const m = tiny(['.......']);
+    const w = new Walker(m, { x: 0, y: 0 }, 2);
+    w.walkTo({ x: 6, y: 0 });
+    w.tick(700); // 1.4 tiles in
+    w.stop();
+    w.tick(10_000);
+    expect(w.tile).toEqual({ x: 2, y: 0 });
+    expect(w.position).toEqual({ x: 2, y: 0 });
+    expect(w.arrived).toBe(true);
+  });
+
+  it('stopping when already still does nothing', () => {
+    const m = tiny(['...']);
+    const w = new Walker(m, { x: 1, y: 0 }, 2);
+    w.stop();
+    expect(w.tile).toEqual({ x: 1, y: 0 });
+  });
+
+  it('keeps its place between tiles when told to go somewhere else, instead of snapping back', () => {
+    const m = tiny(['.......']);
+    const w = new Walker(m, { x: 0, y: 0 }, 2);
+    w.walkTo({ x: 6, y: 0 });
+    w.tick(250); // half a tile in
+    expect(w.position.x).toBeCloseTo(0.5, 5);
+    w.walkTo({ x: 4, y: 0 });
+    expect(w.position.x).toBeCloseTo(0.5, 5);
+    w.tick(10_000);
+    expect(w.tile).toEqual({ x: 4, y: 0 });
+  });
+});
