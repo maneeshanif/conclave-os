@@ -16,7 +16,7 @@ export interface OfficeClient {
   live(onMessage: (m: LiveMessage) => void): () => void;
 }
 
-const real: OfficeClient = { office: api.office, state: api.officeState, drawer: api.officeDrawer, message: api.officeMessage, live: socketEvents };
+export const realOfficeClient: OfficeClient = { office: api.office, state: api.officeState, drawer: api.officeDrawer, message: api.officeMessage, live: socketEvents };
 
 const WHERE: Record<string, string> = { desk: 'At its desk', approvals: 'At the approvals desk', boardroom: 'In the Boardroom', lounge: 'In the lounge' };
 
@@ -24,7 +24,7 @@ const WHERE: Record<string, string> = { desk: 'At its desk', approvals: 'At the 
  * The plain office (SPEC 12): the same rooms, agents and objects as the world, as a list. It works on a phone, with a screen
  * reader and with no canvas, and it uses the same panel registry as the world, so the two always agree.
  */
-export function OfficeView({ client = real }: { client?: OfficeClient }) {
+export function OfficeView({ client = realOfficeClient, openId = null }: { client?: OfficeClient; /** An agent the world has walked up to; its drawer opens here. */ openId?: string | null }) {
   const [facts, setFacts] = useState<OfficeFacts | null>(null);
   const [places, setPlaces] = useState<OfficePlace[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -54,6 +54,10 @@ export function OfficeView({ client = real }: { client?: OfficeClient }) {
       if (m.kind === 'office.changed') void loadState();
     });
   }, [client, loadState]);
+
+  useEffect(() => {
+    if (openId) void openDrawer(openId);
+  }, [openId]);
 
   async function openDrawer(id: string) {
     setSent(false);

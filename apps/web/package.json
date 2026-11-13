@@ -10,10 +10,11 @@
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
-    "@conclave/shared": "workspace:*",
     "@better-auth/passkey": "^1.7.20",
+    "@conclave/shared": "workspace:*",
     "better-auth": "^1.7.20",
     "next": "^16.4.6",
+    "phaser": "4.2.1",
     "react": "^19.3.1",
     "react-dom": "^19.3.1"
   },

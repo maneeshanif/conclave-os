@@ -15,6 +15,13 @@ Newest first. One entry per decision: what, why, and what it replaced.
 - **One test file, `slice3-e2e.test.ts`, runs the three "Done when" checks** on the real run loop, reaper, pause table and eval gate, with a scripted model: (1) a run killed halfway (its process lost, heartbeat stopped) is failed by the reaper, its task goes back to todo still holding the session id, and the next run starts from that session and finishes; (2) a plan limit pauses the runtime for every agent on it while an agent on the other runtime keeps working, the queued tasks wait, the pause lifts only at the reset time and wakes exactly the agents with work, who then finish; (3) the unchanged skill scores at the baseline, and a change that makes the 20 sample drafts long and hyped fails the gate with all 20 leads named.
 - **Slice 3 is tagged `slice-3-done`.** Not done and recorded rather than hidden: the eval set is 20 made-up leads and its baseline is the reference drafter's (real leads and a real-agent drafter are in NEEDS-YOU); breakers cover the os tools only until connectors are live; the lite-mode canvas switch waits for slice 6.
 
+## 2026-11-14 (S6-8b: the Phaser world)
+
+- **Phaser 4.2.1, only in `apps/web/office`** (loaded by dynamic import inside an effect, so the server render and the plain list never pull it in). `WorldController` holds all the behaviour (your avatar, every agent's walker, proximity, your room, visibility) and is tested with no browser; `scene.ts` only loads the Tiled map and draws, and passes clicks and arrow keys back.
+- **A hidden tab stops the controller and puts the game loop to sleep;** when it is shown again every agent snaps to where it should be rather than replaying a long walk.
+- **The world sits above the plain list.** Walking up to an agent opens its drawer in the list; clicking a ready object goes to its page. Art is flat shapes on our own tiles for now (no borrowed art); better art is a later polish task.
+- **Browser check:** `apps/web/e2e/office.e2e.ts` (run by `pnpm run e2e:mobile`) serves the real production build with the API stood in by fixtures from the real map, at desktop and Pixel 7 sizes: a canvas with more than three colours, the list under it, no sideways scroll, and a screenshot of each in `e2e-output/` (git-ignored).
+
 ## 2026-11-14 (S6-8a: the plain office)
 
 - **S6-8 is split.** 8a is the plain `/office` page, which needs no canvas and is what a phone and a screen reader get; 8b adds Phaser 4.2.1 above it. The plain page comes first so the world is a skin over something that already works.

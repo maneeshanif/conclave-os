@@ -468,7 +468,7 @@ From `docs/BORROW-AUDIT.md`. Each goes into its slice's task list when that slic
 
 - [x] **S6-8a The plain office.** SPEC 12. (Split from S6-8.) `/office` as a list: rooms with the agents in them and why, a button for every object (or "coming"), the agent drawer with a message box, and live refresh on `office.changed`. Done: `apps/web/test/office.test.tsx`.
 
-- [ ] **S6-8b The Phaser world.** SPEC 12. (Rest of S6-8.)
+- [x] **S6-8b The Phaser world.** SPEC 12. (Rest of S6-8.)
   Phaser 4 (check its current docs first) in \`apps/web/office\`: loads the map and tileset, draws rooms, desks, objects, your avatar and the agents, and drives them from the logic above. The \`/office\` page also has the plain version: rooms listed, agents listed, the same panels. The canvas stops drawing when the tab is hidden; a phone gets the small map and the list.
   *Test:* the plain version renders each room and agent and every object's button; a hidden tab pauses the scene and a visible one resumes it; a Playwright run of the real page at desktop and Android sizes finds a non-blank canvas and takes a screenshot.
 

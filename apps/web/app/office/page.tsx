@@ -1,9 +1,9 @@
 import Link from 'next/link';
-import { OfficeView } from '../../components/OfficeView';
+import { OfficeScreen } from '../../components/OfficeScreen';
 
 export const metadata = { title: 'Office · Conclave OS' };
 
-/** The office (SPEC 12). The plain version: rooms, agents and objects as a list. The world (S6-8b) sits above it. */
+/** The office (SPEC 12). The plain version: rooms, agents and objects as a list. The world sits above it. */
 export default function OfficePage() {
   return (
     <main className="mx-auto max-w-3xl p-4 sm:p-6">
@@ -19,7 +19,7 @@ export default function OfficePage() {
         </Link>
       </nav>
       <h1 className="mb-4 text-xl font-semibold">Office</h1>
-      <OfficeView />
+      <OfficeScreen />
     </main>
   );
 }
