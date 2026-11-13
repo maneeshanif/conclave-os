@@ -204,3 +204,37 @@ describe('telling you which room you are in (S6-8c2)', () => {
     expect(new Set(seen.filter((s) => s === lounge.name)).size).toBe(1);
   });
 });
+
+describe('other people in the office (S6-9)', () => {
+  const them = (x: number, y: number, over = {}) => ({ id: 'p1', name: 'Dana', x, y, availability: 'busy' as const, handRaised: false, ...over });
+
+  it('puts someone on their tile when first seen, and walks them when they move', () => {
+    const w = new WorldController(map, { agentSpeed: 4 });
+    w.setOthers([them(spot.x, spot.y)]);
+    expect(w.others()[0]).toMatchObject({ id: 'p1', name: 'Dana', availability: 'busy', position: { x: spot.x, y: spot.y } });
+    w.setOthers([them(spot.x + 1, spot.y)]);
+    w.tick(100);
+    expect(w.others()[0]!.position.x).toBeGreaterThan(spot.x);
+    expect(w.others()[0]!.position.x).toBeLessThan(spot.x + 1);
+    w.tick(10_000);
+    expect(w.others()[0]!.position).toEqual({ x: spot.x + 1, y: spot.y });
+  });
+
+  it('takes someone away when they are no longer in the list', () => {
+    const w = new WorldController(map);
+    w.setOthers([them(spot.x, spot.y)]);
+    w.setOthers([]);
+    expect(w.others()).toEqual([]);
+  });
+
+  it('says where you are, once for each tile you reach, so the page can tell the others', () => {
+    const w = new WorldController(map, { speed: 8 });
+    const sent: { x: number; y: number }[] = [];
+    w.onMove((t) => sent.push(t));
+    w.click(spot);
+    for (let i = 0; i < 400; i++) w.tick(50);
+    expect(sent.length).toBeGreaterThan(2);
+    expect(sent.at(-1)).toEqual(spot);
+    expect(new Set(sent.map((t) => `${t.x},${t.y}`)).size).toBe(sent.length);
+  });
+});

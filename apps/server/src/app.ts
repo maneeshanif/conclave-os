@@ -4,6 +4,7 @@ import type { UpgradeWebSocket } from 'hono/ws';
 import type { Pool } from 'pg';
 import { HealthSchema } from '@conclave/shared';
 import type { Auth, SessionInfo } from './auth';
+import { PresenceHub } from './office/presence';
 import type { Bus } from './bus';
 import type { Breakers } from './harness/breakers';
 import type { ReaperStatus } from './health';
@@ -31,6 +32,8 @@ export interface AppDeps {
   bus?: Bus;
   dispatcher?: Dispatcher;
   upgradeWebSocket?: UpgradeWebSocket;
+  /** Who is in the office right now (S6-9). One per server; made here if not given. */
+  presence?: PresenceHub;
   inngestHandler?: (c: Context) => Promise<Response>;
   /** Browser origins allowed to call the API. Only the local web app. */
   webOrigins?: string[];
@@ -136,11 +139,15 @@ export function createApp(deps?: AppDeps) {
   if (deps.upgradeWebSocket && deps.bus) {
     const ws = deps.workspaceId;
     const bus = deps.bus;
+    const hub = deps.presence ?? new PresenceHub();
     app.get(
       '/events',
       deps.upgradeWebSocket((c) => {
         const origin = c.req.header('origin');
         let off: (() => void) | undefined;
+        // Presence only for a signed-in session. With login off there is no session, so no presence.
+        const me = (c as Context<AppEnv>).get('owner');
+        let here: ReturnType<PresenceHub['connect']> | undefined;
         return {
           onOpen(_e, socket) {
             if (origin && !origins.includes(origin)) {
@@ -150,9 +157,14 @@ export function createApp(deps?: AppDeps) {
             off = bus.subscribe((m) => {
               if (m.workspaceId === ws) socket.send(JSON.stringify(m));
             });
+            if (me) here = hub.connect(me.sessionId, (m) => socket.send(JSON.stringify(m)));
+          },
+          onMessage(e) {
+            here?.message(e.data);
           },
           onClose() {
             off?.();
+            here?.close();
           },
         };
       }),

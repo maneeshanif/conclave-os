@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { panelFor } from '@conclave/shared';
 import { API, api, type AgentDrawer, type OfficeFacts, type OfficePlace } from '../lib/api';
-import { socketEvents, type LiveMessage } from '../lib/live';
+import { openSocket, socketEvents, type LiveMessage } from '../lib/live';
 import { Button } from './ui/button';
 
 export interface OfficeClient {
@@ -14,9 +14,11 @@ export interface OfficeClient {
   message(id: string, text: string): Promise<void>;
   /** Listens for live updates; returns the function that stops listening. */
   live(onMessage: (m: LiveMessage) => void): () => void;
+  /** A socket you can also send on, for presence (S6-9). Not every client has one. */
+  presence?(onMessage: (m: LiveMessage) => void): { send: (m: unknown) => void; stop: () => void };
 }
 
-export const realOfficeClient: OfficeClient = { office: api.office, state: api.officeState, drawer: api.officeDrawer, message: api.officeMessage, live: socketEvents };
+export const realOfficeClient: OfficeClient = { office: api.office, state: api.officeState, drawer: api.officeDrawer, message: api.officeMessage, live: socketEvents, presence: openSocket };
 
 export const WHERE: Record<string, string> = { desk: 'At its desk', approvals: 'At the approvals desk', boardroom: 'In the Boardroom', lounge: 'In the lounge' };
 

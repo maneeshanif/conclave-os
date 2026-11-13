@@ -162,6 +162,17 @@ export function startWorld(opts: {
         f.moveTo(a.position.x, a.position.y);
         f.label(info?.name ?? '?', placeColour(info?.place ?? 'lounge'));
       }
+      for (const o of ctl.others()) {
+        const id = `person:${o.id}`;
+        live.add(id);
+        let f = this.figures.get(id);
+        if (!f) {
+          f = new Figure(this, lookFor(o.id));
+          this.figures.set(id, f);
+        }
+        f.moveTo(o.position.x, o.position.y);
+        f.label(o.handRaised ? `${o.name} ✋` : o.name, availabilityColour(o.availability));
+      }
       for (const [id, f] of this.figures) {
         if (!live.has(id)) {
           f.box.destroy();

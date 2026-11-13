@@ -481,7 +481,7 @@ From `docs/BORROW-AUDIT.md`. Each goes into its slice's task list when that slic
 - [x] **S6-8c3 The art.** WORLD-REFERENCE. Kenney CC0 tiles and character sprites (or our own), name labels with an availability dot, room names painted on the floor, tinted zones. The licence file is kept with the art.
   *Test:* every tile and sprite in use is listed in a licence file with its source; the world draws a non-blank canvas with sprites at both sizes; a name label shows for you and for each agent.
 
-- [ ] **S6-9 Your co-founder in the same office.** SPEC 12, 15.
+- [x] **S6-9 Your co-founder in the same office.** SPEC 12, 15.
   Live presence over the existing socket for signed-in members: position, availability, raised hand; rate-limited; nothing but presence is sent; an owner and a co-founder see each other; a person who is not signed in sees nothing.
   *Test:* two clients see each other's moves; position updates are rate-limited; a signed-out socket gets no presence; leaving removes the avatar.
 

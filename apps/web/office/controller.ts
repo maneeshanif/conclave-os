@@ -11,6 +11,14 @@ export interface AgentSpot {
   x: number;
   y: number;
 }
+export interface Other {
+  id: string;
+  name: string;
+  x: number;
+  y: number;
+  availability: 'available' | 'busy' | 'away';
+  handRaised: boolean;
+}
 export interface Options {
   /** Tiles per second for you and for agents. */
   speed?: number;
@@ -29,6 +37,8 @@ export class WorldController {
   private visible = true;
   private lastTile: Tile;
   private held: Direction | null = null;
+  private readonly others_ = new Map<string, { walker: Walker; target: Tile; who: Other }>();
+  private readonly moveListeners: ((t: Tile) => void)[] = [];
   private readonly zoneListeners: ((room: Room | null) => void)[] = [];
   private viewW = 0;
   private viewH = 0;
@@ -121,6 +131,35 @@ export class WorldController {
     this.zoneListeners.push(fn);
   }
 
+  /** Called each time you reach a new tile, so the page can tell the others where you are. */
+  onMove(fn: (t: Tile) => void): void {
+    this.moveListeners.push(fn);
+  }
+
+  /** Other people in the office now, from the server's presence. A new one appears where they are; one already here walks. */
+  setOthers(list: Other[]): void {
+    const now = new Set(list.map((o) => o.id));
+    for (const id of [...this.others_.keys()]) if (!now.has(id)) this.others_.delete(id);
+    for (const o of list) {
+      const target = { x: o.x, y: o.y };
+      const have = this.others_.get(o.id);
+      if (!have) {
+        this.others_.set(o.id, { walker: new Walker(this.map, target, this.opts.agentSpeed ?? 3), target, who: o });
+        continue;
+      }
+      have.who = o;
+      if (have.target.x !== target.x || have.target.y !== target.y) {
+        have.target = target;
+        if (this.visible) have.walker.walkTo(target);
+        else have.walker.teleport(target);
+      }
+    }
+  }
+
+  others(): (Other & { position: { x: number; y: number } })[] {
+    return [...this.others_.values()].map((o) => ({ ...o.who, position: o.walker.position })).sort((a, b) => a.id.localeCompare(b.id));
+  }
+
   /** The agents with where they are now, for the scene to draw. */
   agents(): { id: string; position: { x: number; y: number } }[] {
     return [...this.walkers.entries()].map(([id, w]) => ({ id, position: w.walker.position })).sort((a, b) => a.id.localeCompare(b.id));
@@ -166,7 +205,10 @@ export class WorldController {
   setVisible(v: boolean): void {
     if (v === this.visible) return;
     this.visible = v;
-    if (v) for (const w of this.walkers.values()) w.walker.teleport(w.target);
+    if (v) {
+      for (const w of this.walkers.values()) w.walker.teleport(w.target);
+      for (const o of this.others_.values()) o.walker.teleport(o.target);
+    }
   }
 
   tick(dtMs: number): void {
@@ -174,6 +216,7 @@ export class WorldController {
     this.me.tick(dtMs);
     if (this.held && this.me.arrived) this.run(this.held);
     for (const w of this.walkers.values()) w.walker.tick(dtMs);
+    for (const o of this.others_.values()) o.walker.tick(dtMs);
     const t = this.me.tile;
     if (t.x !== this.lastTile.x || t.y !== this.lastTile.y) {
       const before = this.presence.roomAt(this.lastTile)?.name ?? null;
@@ -181,6 +224,7 @@ export class WorldController {
       const room = this.presence.roomAt(t);
       if ((room?.name ?? null) !== before) for (const fn of this.zoneListeners) fn(room);
       this.lastTile = t;
+      for (const fn of this.moveListeners) fn({ x: t.x, y: t.y });
     }
     this.emit(this.proximity.update(this.me.position, this.agents().map((a) => ({ id: a.id, tile: a.position }))));
   }

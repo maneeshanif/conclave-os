@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from 'react';
 import { zoneNotice, type OfficeMap } from '@conclave/shared';
 import { API, type OfficeFacts, type OfficePlace } from '../lib/api';
 import { WorldController } from '../office/controller';
+import { applyPresence, type Member } from '../office/presence';
 import type { Who } from '../office/scene';
 import { OfficeBar, WelcomeCard, ZonePill, type Availability, type Person } from './OfficeBar';
 import { WHERE, type OfficeClient } from './OfficeView';
@@ -25,6 +26,7 @@ export function OfficeWorld({ client, onOpen }: { client: OfficeClient; onOpen: 
   const [people, setPeople] = useState<Person[]>([]);
   const who = useRef(new Map<string, Who>());
   const mine = useRef<Availability>('available');
+  const tellRef = useRef<(() => void) | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [availability, setAvailability] = useState<Availability>(() => {
     try {
@@ -37,6 +39,7 @@ export function OfficeWorld({ client, onOpen }: { client: OfficeClient; onOpen: 
   const choose = (a: Availability) => {
     setAvailability(a);
     mine.current = a;
+    tellRef.current?.();
     try {
       localStorage.setItem('conclave.office.availability', a);
     } catch {
@@ -71,10 +74,23 @@ export function OfficeWorld({ client, onOpen }: { client: OfficeClient; onOpen: 
         const unlive = client.live((m) => {
           if (m.kind === 'office.changed') void client.state().then(apply);
         });
+        // Presence: tell the others where you are, and draw the ones who are here. Only a signed-in session is sent anything.
+        let others: Member[] = [];
+        const link = client.presence?.((m) => {
+          others = applyPresence(others, m);
+          ctl.setOthers(others);
+        });
+        const tell = () => link?.send({ type: 'presence', x: ctl.me.tile.x, y: ctl.me.tile.y, availability: mine.current, handRaised: false });
+        ctl.onMove(tell);
+        tellRef.current = tell;
+        const hello = setTimeout(tell, 500);
         stop = () => {
           watch.disconnect();
           document.removeEventListener('visibilitychange', onVis);
           unlive();
+          clearTimeout(hello);
+          tellRef.current = null;
+          link?.stop();
           world.destroy();
         };
       } catch (err) {
