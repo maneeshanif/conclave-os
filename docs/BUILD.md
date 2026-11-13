@@ -458,7 +458,7 @@ From `docs/BORROW-AUDIT.md`. Each goes into its slice's task list when that slic
   Behaviour from the map's own properties: entering a room opens its department panel, a locked room refuses you unless you are the owner, a silent room has no bubbles, a room has a limit on how many can be in it, a focusable area asks the camera to zoom. Your availability (available, busy, away) and raising a hand in a meeting.
   *Test:* entering and leaving fire the right events once; a locked room turns a guest away and lets the owner in; the limit holds; availability and hand-raising are reflected in the presence record.
 
-- [ ] **S6-6 Walking up to an agent.** SPEC 12.
+- [x] **S6-6 Walking up to an agent.** SPEC 12.
   Proximity detection with a little hysteresis so the drawer does not flicker; the agent drawer (live run, its tasks, a box to send it a message that becomes a task for it); leaving closes it.
   *Test:* walking within range opens the drawer once and stepping back closes it once; the drawer shows the agent's current run and open tasks; a sent message creates one task assigned to that agent; the drawer works from the agent list too.
 

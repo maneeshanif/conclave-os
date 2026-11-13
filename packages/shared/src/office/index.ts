@@ -202,3 +202,4 @@ export function readOfficeMap(json: unknown, o: { file: string; departments: { k
 export * from './places';
 export * from './walk';
 export * from './zones';
+export * from './proximity';

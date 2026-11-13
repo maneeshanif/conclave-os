@@ -73,7 +73,7 @@ export function apiRoutes(deps: { workspaceId: string; dispatcher: Dispatcher; b
   r.route('/action-items', actionItemRoutes({ workspaceId: ws, bus: deps.bus }));
   r.route('/suppression', suppressionRoutes({ workspaceId: ws }));
   r.route('/signals', signalRoutes({ workspaceId: ws, bus: deps.bus }));
-  if (deps.companyRoot) r.route('/office', officeRoutes({ workspaceId: ws, companyRoot: deps.companyRoot }));
+  if (deps.companyRoot) r.route('/office', officeRoutes({ workspaceId: ws, companyRoot: deps.companyRoot, bus: deps.bus, dispatcher: deps.dispatcher }));
   r.route('/video-ideas', videoIdeaRoutes({ workspaceId: ws, bus: deps.bus }));
   r.route('/settings', settingsRoutes({ workspaceId: ws, bus: deps.bus, onKillSwitch: deps.onKillSwitch, onReleaseHeld: deps.onReleaseHeld }));
 

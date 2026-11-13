@@ -15,6 +15,12 @@ Newest first. One entry per decision: what, why, and what it replaced.
 - **One test file, `slice3-e2e.test.ts`, runs the three "Done when" checks** on the real run loop, reaper, pause table and eval gate, with a scripted model: (1) a run killed halfway (its process lost, heartbeat stopped) is failed by the reaper, its task goes back to todo still holding the session id, and the next run starts from that session and finishes; (2) a plan limit pauses the runtime for every agent on it while an agent on the other runtime keeps working, the queued tasks wait, the pause lifts only at the reset time and wakes exactly the agents with work, who then finish; (3) the unchanged skill scores at the baseline, and a change that makes the 20 sample drafts long and hyped fails the gate with all 20 leads named.
 - **Slice 3 is tagged `slice-3-done`.** Not done and recorded rather than hidden: the eval set is 20 made-up leads and its baseline is the reference drafter's (real leads and a real-agent drafter are in NEEDS-YOU); breakers cover the os tools only until connectors are live; the lite-mode canvas switch waits for slice 6.
 
+## 2026-11-14 (S6-6: walking up to an agent)
+
+- **`Proximity` in `packages/shared/src/office/proximity.ts`** is pure. A drawer opens within `near` tiles and closes only past `far`, so the edge does not flicker. One drawer at a time: the nearest, ties to the lower id; moving to another agent closes the first and opens the second. A drawer opened from the agent list is pinned and stays until closed, so the list works the same as walking.
+- **`GET /api/office/agents/:id`** is the drawer: who the agent is, the run going now (running, queued or waiting for approval) and its open tasks. **`POST /api/office/agents/:id/message`** turns a message into one task assigned to that agent (first line is the title, the whole text the body, made by the founder), announces `task.changed` and asks for a run, the same as creating a task on the task board.
+- **The plan-limit test no longer hardcodes a reset date** that the clock had passed.
+
 ## 2026-11-14 (S6-5: zones)
 
 - **`OfficePresence` in `packages/shared/src/office/zones.ts`** is pure: the socket layer (S6-9) feeds it joins, moves and leaves and sends on the events it returns. A move into a locked room by a guest, or into a full room, is refused with a reason and the person stays where they were. The owner passes a locked room; `maxUsers` still applies to the owner.
