@@ -1,10 +1,11 @@
 import { withWorkspace } from '../db/tenant';
 import { executeEmail, recoverApprovals, releaseApproved, type ExecResult, type ExecutorDeps } from './email';
+import { executeDm, recoverDms, releaseDms } from './dm';
 import { executePost, recoverPosts, releasePosts } from './post';
 
 /**
  * The executors (SPEC 6): deterministic code that performs an approved action. The model is never
- * here. Two kinds: `email.send` and `post.publish`. Calls for the same approval are serialised; the claim in
+ * here. Three kinds: `email.send`, `post.publish` and `dm.send`. Calls for the same approval are serialised; the claim in
  * the database makes a second call a no-op even across processes.
  */
 export function createExecutors(deps: ExecutorDeps) {
@@ -14,7 +15,7 @@ export function createExecutors(deps: ExecutorDeps) {
     const existing = inFlight.get(approvalId);
     if (existing) return existing;
     const p = kindOf(approvalId)
-      .then((kind) => (kind === 'post.publish' ? executePost(deps, approvalId) : executeEmail(deps, approvalId)))
+      .then((kind) => (kind === 'post.publish' ? executePost(deps, approvalId) : kind === 'dm.send' ? executeDm(deps, approvalId) : executeEmail(deps, approvalId)))
       .finally(() => inFlight.delete(approvalId));
     inFlight.set(approvalId, p);
     return p;
@@ -24,12 +25,14 @@ export function createExecutors(deps: ExecutorDeps) {
     recover: async () => {
       const mail = await recoverApprovals(deps);
       const posts = await recoverPosts(deps);
-      return { ...mail, resumed: [...mail.resumed, ...posts.resumed], unknown: [...mail.unknown, ...posts.unknown] };
+      const dms = await recoverDms(deps);
+      return { ...mail, resumed: [...mail.resumed, ...posts.resumed, ...dms.resumed], unknown: [...mail.unknown, ...posts.unknown, ...dms.unknown], held: [...mail.held, ...dms.held] };
     },
     release: async () => {
       const mail = await releaseApproved(deps);
       const posts = await releasePosts(deps);
-      return { ...mail, released: [...mail.released, ...posts] };
+      const dms = await releaseDms(deps);
+      return { released: [...mail.released, ...posts, ...dms.released], held: [...mail.held, ...dms.held] };
     },
   };
 }

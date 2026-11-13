@@ -14,6 +14,8 @@ export interface OsStore {
   scoreLead(scope: RunScope, input: { leadId: string; score: number; reason: string }): Promise<void>;
   /** Queues a post for approval (autonomy 2). Never publishes. The same text on the same account is one proposal. */
   proposePost(scope: RunScope, p: { accountId: string; text: string }): Promise<{ approvalId: string; existed: boolean }>;
+  /** Queues one direct message to one person for approval (autonomy 2). Never sends. */
+  proposeDm(scope: RunScope, p: { accountId: string; leadId: string; recipient: string; text: string }): Promise<{ approvalId: string; existed: boolean }>;
   /** Records a signal a scout found (autonomy 1). The same address is one signal. Never contacts anyone. */
   addSignal(scope: RunScope, input: AddSignalInput): Promise<{ id: string; created: boolean; flagged: boolean }>;
   /** Scores a signal 0 to 100 with the reason (autonomy 1). 60 or more marks it qualified. A person's decisions are not overridden. */
@@ -279,6 +281,20 @@ export const osTools = {
         : `Queued for approval as ${r.approvalId}. Nothing has been published. Do not retry; finish your task.`;
     },
   },
+  propose_dm: {
+    minAutonomy: 2,
+    description:
+      'Queue ONE direct message to ONE person for the founder to approve. It does NOT send. Give the DM account (accountId), the lead it is about (leadId), the person\'s handle (recipient) and the exact text. A DM may only follow contact that already happened: the lead has been emailed (with approval) or has replied. There is no way to message a list; each person is a separate proposal.',
+    input: z
+      .object({ accountId: z.uuid(), leadId: z.uuid(), recipient: z.string().regex(/^@?[A-Za-z0-9._]{1,50}$/, 'a single handle such as @dana_clinic'), text: z.string().min(1).max(10_000) })
+      .strict(),
+    async run(store: OsStore, scope: RunScope, args: { accountId: string; leadId: string; recipient: string; text: string }) {
+      const r = await store.proposeDm(scope, args);
+      return r.existed
+        ? `Already queued as ${r.approvalId}. Do not propose it again.`
+        : `Queued for approval as ${r.approvalId}. Nothing has been sent. Do not retry; finish your task.`;
+    },
+  },
   get_deal: {
     minAutonomy: 0,
     description: 'Read one deal: the account, the offer, the stage and the numbers recorded for it (value, baseline, target, outcome). A draft may state these figures and no others.',
@@ -364,6 +380,9 @@ export class MemoryOsStore implements OsStore {
   }
   async scoreLead(): Promise<void> {
     throw new ToolError('Leads need the database store.');
+  }
+  async proposeDm(): Promise<{ approvalId: string; existed: boolean }> {
+    throw new ToolError('Proposals need the database store.');
   }
   async proposePost(): Promise<{ approvalId: string; existed: boolean }> {
     throw new ToolError('Proposals need the database store.');

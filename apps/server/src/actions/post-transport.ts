@@ -45,6 +45,31 @@ export function outboxPostTransport(dataDir: string): PostTransport {
   };
 }
 
+/** A direct message to one person. The outbox writes it to a file; nothing is sent. */
+export interface DmRequest {
+  approvalId: string;
+  channel: 'x_dm' | 'ig_dm';
+  handle: string;
+  recipient: string;
+  text: string;
+}
+export interface DmTransport {
+  readonly name: 'outbox';
+  send(req: DmRequest): Promise<{ ref: string }>;
+}
+export function outboxDmTransport(dataDir: string): DmTransport {
+  return {
+    name: 'outbox',
+    async send(req) {
+      const dir = path.join(dataDir, 'outbox', 'dms');
+      await mkdir(dir, { recursive: true });
+      const file = path.join(dir, `${req.approvalId}.json`);
+      await writeFile(file, JSON.stringify({ channel: req.channel, handle: req.handle, recipient: req.recipient, text: req.text, writtenAt: new Date().toISOString() }, null, 2), 'utf8');
+      return { ref: `outbox:${file}` };
+    },
+  };
+}
+
 /** Drives a signed-in browser on an account's profile. The Playwright implementation arrives with the profiles (S5-3). */
 export interface BrowserDriver {
   /** Publishes the text, then returns the address the browser ended on and a screenshot of it. Throws SessionExpiredError if asked to log in. */

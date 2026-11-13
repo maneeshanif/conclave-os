@@ -25,6 +25,7 @@ const TABLES = [
   'deal_stage_events',
   'deals',
   'departments',
+  'dms',
   'funnel_stages',
   'funnels',
   'goals',

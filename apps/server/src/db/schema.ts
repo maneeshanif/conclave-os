@@ -735,6 +735,40 @@ export const runtimePauses = pgTable(
   ],
 );
 
+/** A direct message an agent proposed to send to one person (S5-4). One row, one person, one approval. */
+export const dms = pgTable(
+  'dms',
+  {
+    id: id(),
+    workspaceId: workspaceId(),
+    channelAccountId: uuid('channel_account_id').notNull(),
+    channel: text('channel').notNull(), // x_dm | ig_dm
+    leadId: uuid('lead_id').notNull(),
+    recipient: text('recipient').notNull(), // the handle, lower-case, without @
+    text: text('text').notNull(),
+    textHash: text('text_hash').notNull(),
+    status: text('status').notNull().default('proposed'), // proposed | approved | sending | sent | rejected | expired | failed | cancelled
+    approvalId: uuid('approval_id'),
+    claimedAt: timestamp('claimed_at', { withTimezone: true }), // when the executor started sending: the gap between sends counts from it
+    sentAt: timestamp('sent_at', { withTimezone: true }),
+    error: text('error'),
+    createdBy: text('created_by').notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    unique('dms_ws_id_uq').on(t.workspaceId, t.id),
+    uniqueIndex('dms_live_uq')
+      .on(t.workspaceId, t.channelAccountId, t.recipient, t.textHash)
+      .where(sql`${t.status} not in ('rejected','expired','cancelled')`),
+    index('dms_account_sent_idx').on(t.workspaceId, t.channelAccountId, t.status, t.sentAt),
+    check('dms_channel_ck', sql`${t.channel} in ('x_dm','ig_dm')`),
+    check('dms_status_ck', sql`${t.status} in ('proposed','approved','sending','sent','rejected','expired','failed','cancelled')`),
+    foreignKey({ name: 'dms_account_fk', columns: [t.workspaceId, t.channelAccountId], foreignColumns: [channelAccounts.workspaceId, channelAccounts.id] }),
+    foreignKey({ name: 'dms_lead_fk', columns: [t.workspaceId, t.leadId], foreignColumns: [leads.workspaceId, leads.id] }),
+    foreignKey({ name: 'dms_approval_fk', columns: [t.workspaceId, t.approvalId], foreignColumns: [approvals.workspaceId, approvals.id] }),
+  ],
+);
+
 /** A post an agent proposed to publish (S5-1). The approval is what makes it go out; this row follows it to the result. */
 export const posts = pgTable(
   'posts',

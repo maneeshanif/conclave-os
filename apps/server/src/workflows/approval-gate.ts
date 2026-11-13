@@ -110,6 +110,7 @@ export async function expireApproval({ pool, workspaceId, bus }: Deps, approvalI
     if (!r.rows[0]) return false;
     await c.query("update outreach_messages set status = 'expired' where approval_id = $1 and status = 'queued'", [approvalId]);
     await c.query("update posts set status = 'expired' where approval_id = $1 and status = 'proposed'", [approvalId]);
+    await c.query("update dms set status = 'expired' where approval_id = $1 and status = 'proposed'", [approvalId]);
     await c.query("insert into audit_log (workspace_id, actor, action, subject, data) values ($1, 'gate', 'approval.expired', $2, '{}')", [workspaceId, approvalId]);
     return true;
   });

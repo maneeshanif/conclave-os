@@ -2,6 +2,7 @@ import { Hono, type Context } from 'hono';
 import type { QueryResultRow } from 'pg';
 import { z } from 'zod';
 import { EmailPayload } from '../actions/email';
+import { DmPayload } from '../actions/dm';
 import { PostPayload } from '../actions/post';
 import type { AppEnv } from '../app';
 import type { Bus } from '../bus';
@@ -28,6 +29,7 @@ const Decision = z.object({
 const EDITABLE: Record<string, readonly string[]> = {
   'email.send': ['subject', 'body'],
   'post.publish': ['text'],
+  'dm.send': ['text'],
 };
 
 const LEAD_CARD = `(select jsonb_build_object('id', l.id, 'business_name', l.business_name, 'website', l.website,
@@ -84,7 +86,7 @@ export function approvalRoutes(deps: { workspaceId: string; bus: Bus; onDecided?
       if (outside.length) {
         return c.json({ error: `An edit can change only the ${allowed.join(' and the ')}, not the recipient, the lead or the step (${outside.join(', ')}).` }, 400);
       }
-      const merged = a.kind === 'post.publish' ? PostPayload.safeParse({ ...a.payload, ...editedPayload }) : EmailPayload.safeParse({ ...a.payload, ...editedPayload });
+      const merged = a.kind === 'post.publish' ? PostPayload.safeParse({ ...a.payload, ...editedPayload }) : a.kind === 'dm.send' ? DmPayload.safeParse({ ...a.payload, ...editedPayload }) : EmailPayload.safeParse({ ...a.payload, ...editedPayload });
       if (!merged.success) return c.json({ error: merged.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`).join('; ') }, 400);
       edited = merged.data;
     }
@@ -102,6 +104,7 @@ export function approvalRoutes(deps: { workspaceId: string; bus: Bus; onDecided?
     ]);
     if (!approved) await q(c, "update outreach_messages set status = 'rejected' where approval_id = $1 and status = 'queued'", [id]);
     await q(c, "update posts set status = $2 where approval_id = $1 and status = 'proposed'", [id, approved ? 'approved' : 'rejected']);
+    await q(c, "update dms set status = $2 where approval_id = $1 and status = 'proposed'", [id, approved ? 'approved' : 'rejected']);
     await q(c, "insert into audit_log (workspace_id, actor, action, subject, data) values ($1, $2, 'approval.decided', $3, $4)", [
       ws,
       DECIDER,

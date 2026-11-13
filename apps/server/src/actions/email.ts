@@ -4,7 +4,7 @@ import type { Bus } from '../bus';
 import { withWorkspace } from '../db/tenant';
 import { readSettings, startOfToday, startOfTomorrow, type Settings } from '../settings';
 import { checkClaims, companyMarkdown, emailFooter, isSuppressed } from './policy';
-import type { PostTransport } from './post-transport';
+import type { DmTransport, PostTransport } from './post-transport';
 import type { EmailTransport } from './transport';
 
 export const EmailPayload = z.object({
@@ -26,6 +26,10 @@ export interface ExecutorDeps {
   postTransport?: PostTransport;
   /** The signed-in browser, for accounts switched to it (S5-3). */
   browserPostTransport?: PostTransport;
+  /** How a direct message goes out (S5-4). Without one, DMs are refused. */
+  dmTransport?: DmTransport;
+  /** The least time between two DMs from one account. Default 90 seconds. */
+  dmGapMs?: number;
   companyRoot: string;
   from: string;
   bus?: Bus;

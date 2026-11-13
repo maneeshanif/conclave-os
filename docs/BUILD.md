@@ -368,7 +368,7 @@ Recorded 2026-11-13. Nothing here is built ahead of its slice (CLAUDE.md, Stack)
   A profile folder per channel account under the data folder (never in the repo), a record of which accounts have one and whether the session is believed valid, and `pnpm run browser:login <account>` that opens a visible browser on that profile for you to log in by hand. The OS never sees a password.
   *Test:* the profile path is inside the data folder and outside the repo; an account with no profile cannot use the browser transport; a profile marked expired raises the item; the login command refuses an unknown account. Logging in is a NEEDS-YOU item.
 
-- [ ] **S5-4 Approved DMs, one at a time.** SPEC 15, rule 6.
+- [x] **S5-4 Approved DMs, one at a time.** SPEC 15, rule 6.
   DM executors for X and Instagram as their own approval kind: each DM is a separate approval to a named person, with the account's daily cap, a minimum gap between sends, and a refusal to send to anyone who has not been written to first by a person or who is on the suppression list.
   *Test:* two approved DMs at once go out one after the other with the gap; the cap holds; a suppressed recipient is refused; there is no tool or route that sends to a list.
 

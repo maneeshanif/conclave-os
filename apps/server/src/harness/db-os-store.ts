@@ -5,6 +5,7 @@ import { briefOn, dayOf, latestBrief, rebuildBrief } from '../brief/build';
 import { companyTimezone } from '../config';
 import { checkFigures } from '../documents/figures';
 import { ingestLead } from '../leads/ingest';
+import { checkDm, dmEligible, dmSuppressed, isDmChannel, normalizeHandle } from '../dms';
 import { checkPost, hashText, isPostPlatform } from '../posts';
 import { addSignal, cleanExcerpt, looksLikeInstructions } from '../signals';
 import { ToolError, type AddLeadInput, type AddSignalInput, type BriefView, type DealView, type DraftKind, type LeadView, type OsStore, type ProposedEmail, type TaskView } from './os-tools';
@@ -209,6 +210,45 @@ export class DbOsStore implements OsStore {
         [scope.workspaceId, p.leadId, p.step, l.email, p.subject, p.body, ins.rows[0].id, p.campaignId ?? null, campaign?.channel_account_id ?? null],
       );
       return { approvalId: ins.rows[0].id, existed: false };
+    });
+    if (!out.existed) this.onApproval(scope.workspaceId, out.approvalId);
+    return out;
+  }
+
+  async proposeDm(scope: RunScope, p: { accountId: string; leadId: string; recipient: string; text: string }): Promise<{ approvalId: string; existed: boolean }> {
+    const text = p.text.trim();
+    const recipient = normalizeHandle(p.recipient);
+    const companyMd = this.companyRoot ? await companyMarkdown(this.companyRoot) : '';
+    const out = await withWorkspace(this.pool, scope.workspaceId, async ({ client: c }) => {
+      const acct = (await c.query<{ id: string; channel: string; handle: string; health: string }>('select id, channel, handle, health from channel_accounts where id = $1', [p.accountId])).rows[0];
+      if (!acct) throw new ToolError('No such account.');
+      if (!isDmChannel(acct.channel)) throw new ToolError(`${acct.handle} is not a direct-message account (it is for ${acct.channel}).`);
+      if (acct.health !== 'ok') throw new ToolError(`The account ${acct.handle} is ${acct.health}, so nothing can be proposed for it.`);
+      const lead = (await c.query<{ stage: string; email: string | null }>('select stage, email from leads where id = $1', [p.leadId])).rows[0];
+      if (!lead) throw new ToolError('No such lead.');
+      if (lead.stage === 'do_not_contact') throw new ToolError('This lead is marked do not contact.');
+      if (!dmEligible(lead.stage)) throw new ToolError('This lead has not been in touch with us, and we have not written to them first (a person approves that first message). A direct message to them would be a cold message, which is not allowed. Email first.');
+      const supp = await c.query<{ value: string }>('select value from suppression');
+      if (dmSuppressed(recipient, lead.email, supp.rows.map((r) => r.value))) throw new ToolError('This person is on the suppression list. Do not contact them.');
+      const check = checkDm(acct.channel, text, companyMd);
+      if (!check.ok) throw new ToolError(`Refused: ${check.reasons.join('; ')}. Rewrite without it and propose again.`);
+      const hash = hashText(text);
+      const prior = await c.query<{ status: string; approval_id: string | null }>('select status, approval_id from dms where channel_account_id = $1 and recipient = $2 and text_hash = $3 order by created_at desc', [acct.id, recipient, hash]);
+      const live = prior.rows.find((r) => !['rejected', 'expired', 'cancelled'].includes(r.status));
+      if (live?.approval_id) return { approvalId: live.approval_id, existed: true };
+      const dedupe = `dm:${acct.id}:${recipient}:${hash}${prior.rows.length ? `:${prior.rows.length}` : ''}`;
+      const payload = { channel: acct.channel, handle: acct.handle, accountId: acct.id, leadId: p.leadId, recipient: `@${recipient}`, text };
+      const ap = await c.query<{ id: string }>(
+        "insert into approvals (workspace_id, kind, dedupe_key, agent_id, run_id, task_id, payload) values ($1, 'dm.send', $2, $3, $4, $5, $6) returning id",
+        [scope.workspaceId, dedupe, scope.agentId, scope.runId, scope.taskId ?? null, JSON.stringify(payload)],
+      );
+      const actor = await this.actor(c, scope);
+      const dm = await c.query<{ id: string }>(
+        'insert into dms (workspace_id, channel_account_id, channel, lead_id, recipient, text, text_hash, approval_id, created_by) values ($1, $2, $3, $4, $5, $6, $7, $8, $9) returning id',
+        [scope.workspaceId, acct.id, acct.channel, p.leadId, recipient, text, hash, ap.rows[0]!.id, actor],
+      );
+      await c.query("insert into audit_log (workspace_id, actor, action, subject, data) values ($1, $2, 'dm.proposed', $3, $4)", [scope.workspaceId, actor, dm.rows[0]!.id, JSON.stringify({ channel: acct.channel, approval: ap.rows[0]!.id })]);
+      return { approvalId: ap.rows[0]!.id, existed: false };
     });
     if (!out.existed) this.onApproval(scope.workspaceId, out.approvalId);
     return out;

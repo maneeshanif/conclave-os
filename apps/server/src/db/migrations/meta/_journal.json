@@ -239,6 +239,20 @@
       "when": 1794557705631,
       "tag": "0033_channel_account_browser",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1794558340249,
+      "tag": "0034_dms",
+      "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1794558342599,
+      "tag": "0035_dms_rls",
+      "breakpoints": true
     }
   ]
 }
