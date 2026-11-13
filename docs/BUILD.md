@@ -380,7 +380,7 @@ Recorded 2026-11-13. Nothing here is built ahead of its slice (CLAUDE.md, Stack)
   A `trust: standard | low` field in the role file and on the agent. A low-trust agent reads untrusted input (inbound replies, scraped pages, Reddit); it cannot edit its own role file, skills or config, it can call only tools its template lists, and a missing scope refuses. Its output is labelled as data when a higher-trust agent reads it and is never promoted into instructions. The scout templates default to low.
   *Test:* a low-trust run cannot change its role file or call a tool outside its allow list; a higher-trust agent shown its output sees it inside a data label; a role file with an unknown trust value is refused.
 
-- [ ] **S5-5b Silent-run watchdog (borrow audit A2).**
+- [x] **S5-5b Silent-run watchdog (borrow audit A2).**
   Flag and stop a run that is alive but has produced no event for a threshold (default 5 minutes), separate from the 15 minute timeout, with its own error kind and a plain message.
   *Test:* a fake runtime that hangs after its first event is stopped at the threshold with the distinct error kind; a runtime that keeps emitting events is not; the threshold is a setting.
 
@@ -413,7 +413,7 @@ Recorded 2026-11-13. Nothing here is built ahead of its slice (CLAUDE.md, Stack)
 From `docs/BORROW-AUDIT.md`. Each goes into its slice's task list when that slice is drafted. Keep them in this order of value.
 
 - [ ] **A1 Low-trust agents.** (Scheduled as S5-5a; done.) Slice 5, before any social scout. A `trust: standard or low` field on an agent. Low-trust agents read untrusted input (inbound replies, scraped pages, Reddit), cannot edit their own config or skills, and cannot hand raw untrusted text to a higher-trust agent as instructions; a missing scope refuses. *Test:* a low-trust run cannot change its role file or call a tool outside its allow list, and a higher-trust agent given its output sees it labelled as data.
-- [ ] **A2 Silent-run watchdog.** (Scheduled as S5-5b.) Slice 5 or 6. Flag and stop a run that is alive but silent past a threshold, separate from the 15 minute timeout. *Test:* a fake runtime that hangs after its first event is stopped at the threshold with a distinct error kind.
+- [ ] **A2 Silent-run watchdog.** (Scheduled as S5-5b; done.) Slice 5 or 6. Flag and stop a run that is alive but silent past a threshold, separate from the 15 minute timeout. *Test:* a fake runtime that hangs after its first event is stopped at the threshold with a distinct error kind.
 - [ ] **A3 Tool risk classes and a call log.** Slice 8, before the slice 10 connectors. Each os tool and connector tool gets a risk class, and every call is logged with its decision. *Test:* a high-risk tool called without approval is refused and logged.
 - [ ] **A4 Agent `verifying` step.** Slice 8, with hiring. A new or changed agent runs a tiny probe on its rendered folder before it goes active. *Test:* an agent whose folder fails the probe never becomes active.
 - [ ] **A5 Hand-off test, one alternative attempt, spend correction.** Small checks from P6 to P8, in slice 5 or 6.

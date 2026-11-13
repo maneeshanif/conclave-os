@@ -16,6 +16,7 @@ export function failureClass(e: { kind: ErrorKind; message: string }): FailureCl
   if (e.kind === 'auth') return 'auth';
   if (e.kind === 'cancelled' || e.kind === 'config' || e.kind === 'max_turns' || e.kind === 'timeout') return 'permanent';
   if (PLAN.test(e.message)) return 'plan_limit';
-  if (e.kind === 'limit' || TRANSIENT.test(e.message)) return 'transient';
+  // A run that went quiet is most often a hung call, which another try usually clears (A2).
+  if (e.kind === 'silent' || e.kind === 'limit' || TRANSIENT.test(e.message)) return 'transient';
   return 'permanent';
 }

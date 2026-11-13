@@ -82,6 +82,8 @@ const loop: LoopDeps = {
   dataDir: sys.dataDir,
   workspaceSlug: sys.workspace.slug,
   templatesRoot: sys.templatesRoot,
+  // A run that says nothing for this long is stopped (A2). RUN_SILENCE_MINUTES changes it; 0 turns it off.
+  silenceMs: Number(process.env.RUN_SILENCE_MINUTES ?? 5) * 60_000,
   // A transient model error is retried after 5 seconds, 20 seconds and a minute, then once on the agent's fallback model (S3-2).
   retry: { delaysMs: [5_000, 20_000, 60_000] },
   prepare: (agentKey, over) => renderOne(sys, agentKey, over),

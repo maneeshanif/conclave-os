@@ -7,6 +7,7 @@ import { failureClass } from './failure';
 import { activePause, pauseRuntime, parseResetTime, RUNTIME_LABEL } from './pauses';
 import { reapRuns } from './reaper';
 import { claudeToolLists } from './permissions';
+import { withSilenceWatchdog } from './silence';
 import { allowedToolsFor, clampForTrust, type Trust } from './trust';
 import { cleanWorkFolder, loadTemplate } from './render';
 import type { RunTokens } from './run-tokens';
@@ -24,6 +25,8 @@ export interface LoopDeps {
   templatesRoot: string;
   /** Run timeout; default 15 minutes. */
   timeoutMs?: number;
+  /** A run that produces no event for this long is cancelled and ends with the `silent` error (A2). Default 5 minutes; 0 turns it off. */
+  silenceMs?: number;
   /**
    * Retry a transient model error (SPEC 14): wait the first delay, try again, wait the next, and so on, then the agent's
    * fallback model once. Without it a run makes a single attempt.
@@ -263,7 +266,9 @@ export async function executeRun(deps: LoopDeps, workspaceId: string, agentId: s
     for (;;) {
     attempts++;
     final = undefined;
-    for await (const e of runtime.start({
+    const live = runtime;
+    for await (const e of withSilenceWatchdog<RunEvent>(
+      live.start({
       runId,
       workspaceId,
       agentId,
@@ -279,7 +284,11 @@ export async function executeRun(deps: LoopDeps, workspaceId: string, agentId: s
       allowedTools: tools.allow,
       deniedTools: tools.deny,
       ...((noResume ? sessionId : (sessionId ?? task.session_id)) ? { sessionId: (noResume ? sessionId : (sessionId ?? task.session_id))! } : {}),
-    })) {
+      }),
+      deps.silenceMs ?? 300_000,
+      () => live.cancel(runId),
+      (ms) => ({ type: 'error', kind: 'silent', message: `The run produced no output for ${Math.round(ms / 1000)} seconds, so it was stopped. It was most likely stuck.` }),
+    )) {
       seq++;
       if (e.type === 'cost') {
         usd += e.usd;
