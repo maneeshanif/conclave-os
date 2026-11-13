@@ -158,3 +158,13 @@ describe.skipIf(!windows)('the whole decision, as a dry run (auto-resume)', () =
     expect(log(data).trim().split('\n')).toHaveLength(2);
   });
 });
+
+describe.skipIf(!windows)('both scripts are valid PowerShell (auto-resume)', () => {
+  it('parse without errors, so the scheduled task does not fail on first run', () => {
+    for (const file of ['resume-autopilot.ps1', 'register-resume-task.ps1']) {
+      const full = path.join(REPO_ROOT, 'scripts', file).replace(/\\/g, '/');
+      const out = ps(`$e = $null; [void][System.Management.Automation.Language.Parser]::ParseFile('${full}', [ref]$null, [ref]$e); $e.Count`);
+      expect(out, file).toBe('0');
+    }
+  });
+});

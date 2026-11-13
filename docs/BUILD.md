@@ -360,7 +360,7 @@ Recorded 2026-11-13. Nothing here is built ahead of its slice (CLAUDE.md, Stack)
   A `posts` table (account, text, media, status, approval link, result), `propose_post` as an `os` tool (autonomy 2) that queues an approval of kind `post.publish` and never publishes, and the proposal handler's checks: length per platform, blocked claims, no links to unapproved domains, duplicate text refused.
   *Test:* a proposal creates one pending approval and one post row; a second identical proposal is the same approval; a medical, legal or price claim is refused in code; over-length is refused; an agent below autonomy 2 has no such tool.
 
-- [ ] **S5-2 The publish executors and transports.** SPEC 6, 8, 14.
+- [x] **S5-2 The publish executors and transports.** SPEC 6, 8, 14.
   One executor interface for X, LinkedIn and Instagram posts, claim-once (`approved` to `executing`), with an `outbox` transport (default) and a `browser` transport that drives a Playwright page through a small driver interface. Every run saves a screenshot and the final URL on the approval record. An expired session stops the executor and raises an action item; nothing is retried.
   *Test:* with the outbox transport an approved post is written once and marked published; two executions at once publish once; a rejected or expired approval never publishes; the fake browser publishes, and its screenshot and final URL are stored; an expired session raises one item and the post stays approved, not failed; the kill switch stops it.
 

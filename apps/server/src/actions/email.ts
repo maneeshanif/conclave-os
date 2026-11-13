@@ -4,6 +4,7 @@ import type { Bus } from '../bus';
 import { withWorkspace } from '../db/tenant';
 import { readSettings, startOfToday, startOfTomorrow, type Settings } from '../settings';
 import { checkClaims, companyMarkdown, emailFooter, isSuppressed } from './policy';
+import type { PostTransport } from './post-transport';
 import type { EmailTransport } from './transport';
 
 export const EmailPayload = z.object({
@@ -21,6 +22,8 @@ export interface ExecutorDeps {
   pool: pg.Pool;
   workspaceId: string;
   transport: EmailTransport;
+  /** How a post is published (S5-2). Without one, posts are refused. */
+  postTransport?: PostTransport;
   companyRoot: string;
   from: string;
   bus?: Bus;

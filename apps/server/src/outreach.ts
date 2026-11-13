@@ -1,5 +1,6 @@
 import type pg from 'pg';
 import { createExecutors, type Executors } from './actions';
+import { outboxPostTransport } from './actions/post-transport';
 import { transportFromEnv, type EmailTransport } from './actions/transport';
 import type { Bus } from './bus';
 import type { ApprovalDecision } from './routes/approvals';
@@ -30,6 +31,8 @@ export function createOutreach(d: OutreachDeps): { transport: EmailTransport; ex
     transport,
     companyRoot: d.companyRoot,
     from: (d.env.OUTREACH_FROM ?? '').trim(),
+    // Posts go to a folder, like email. The browser transport needs a login done by hand and is switched on per account (S5-3).
+    postTransport: outboxPostTransport(d.dataDir),
     bus: d.bus,
   });
   return { transport, executors };
