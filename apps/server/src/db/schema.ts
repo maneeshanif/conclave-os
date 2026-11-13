@@ -736,6 +736,26 @@ export const runtimePauses = pgTable(
   ],
 );
 
+/** Where each agent sits in the office (S6-2). One desk per agent, and a numbered desk is held by one agent only. */
+export const officeDesks = pgTable(
+  'office_desks',
+  {
+    id: id(),
+    workspaceId: workspaceId(),
+    agentId: uuid('agent_id').notNull(),
+    room: text('room').notNull(), // a room name from the office map
+    slot: integer('slot'), // the desk number; null in the lounge, which has none
+    assignedAt: timestamp('assigned_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    unique('office_desks_ws_id_uq').on(t.workspaceId, t.id),
+    unique('office_desks_ws_agent_uq').on(t.workspaceId, t.agentId),
+    unique('office_desks_ws_room_slot_uq').on(t.workspaceId, t.room, t.slot),
+    check('office_desks_slot_ck', sql`${t.slot} is null or ${t.slot} >= 1`),
+    foreignKey({ name: 'office_desks_agent_fk', columns: [t.workspaceId, t.agentId], foreignColumns: [agents.workspaceId, agents.id] }).onDelete('cascade'),
+  ],
+);
+
 /** A device that asked for push notifications (S5-10). Stored once per endpoint. */
 export const pushSubscriptions = pgTable(
   'push_subscriptions',

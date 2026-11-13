@@ -33,6 +33,7 @@ const TABLES = [
   'leads',
   'members',
   'messages',
+  'office_desks',
   'outreach_messages',
   'posts',
   'projects',

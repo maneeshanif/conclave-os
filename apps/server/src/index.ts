@@ -206,6 +206,7 @@ shell.route(
     breakers,
     push: { notifier, publicKey: vapid.publicKey },
     reaperStatus,
+    companyRoot: sys.companyRoot,
     bus,
     dispatcher,
     upgradeWebSocket,

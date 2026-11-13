@@ -17,6 +17,7 @@ import type { ReaperStatus } from '../health';
 import { healthRoutes } from './health';
 import { pauseRoutes } from './pauses';
 import { settingsRoutes } from './settings';
+import { officeRoutes } from './office';
 import { signalRoutes } from './signals';
 import { videoIdeaRoutes } from './video-ideas';
 import { threadRoutes } from './threads';
@@ -31,6 +32,8 @@ export function apiRoutes(deps: { workspaceId: string; dispatcher: Dispatcher; b
   onReleaseHeld?: () => Promise<number> | number;
   /** Copies the company folder into the database again (S3-4): a raised budget, a new goal or funnel, without a restart. */
   onCompanyReload?: () => Promise<Record<string, number>>;
+  /** Where company/ is, for the office map (S6-2). Without it there is no office. */
+  companyRoot?: string;
   /** What the last reaper pass did, for the Health screen (S3-7). */
   reaperStatus?: ReaperStatus;
 }) {
@@ -42,7 +45,7 @@ export function apiRoutes(deps: { workspaceId: string; dispatcher: Dispatcher; b
   // A malformed id is a 404, not a database error.
   // Settings is a single record with actions (/settings/release-held), not a collection of ids.
   const idGuard = async (c: Context<AppEnv>, next: () => Promise<void>) =>
-    c.req.param('kind') === 'settings' || c.req.param('kind') === 'brief' || c.req.param('kind') === 'company' || c.req.param('kind') === 'runtime-pauses' || c.req.param('kind') === 'health' || c.req.param('kind') === 'browser' || (c.req.param('kind') === 'leads' && c.req.param('id') === 'import') || z.uuid().safeParse(c.req.param('id')).success ? next() : c.json({ error: 'Not found' }, 404);
+    c.req.param('kind') === 'settings' || c.req.param('kind') === 'brief' || c.req.param('kind') === 'company' || c.req.param('kind') === 'runtime-pauses' || c.req.param('kind') === 'health' || c.req.param('kind') === 'office' || c.req.param('kind') === 'browser' || (c.req.param('kind') === 'leads' && c.req.param('id') === 'import') || z.uuid().safeParse(c.req.param('id')).success ? next() : c.json({ error: 'Not found' }, 404);
   r.use('/:kind/:id/*', idGuard);
   r.use('/:kind/:id', idGuard);
 
@@ -70,6 +73,7 @@ export function apiRoutes(deps: { workspaceId: string; dispatcher: Dispatcher; b
   r.route('/action-items', actionItemRoutes({ workspaceId: ws, bus: deps.bus }));
   r.route('/suppression', suppressionRoutes({ workspaceId: ws }));
   r.route('/signals', signalRoutes({ workspaceId: ws, bus: deps.bus }));
+  if (deps.companyRoot) r.route('/office', officeRoutes({ workspaceId: ws, companyRoot: deps.companyRoot }));
   r.route('/video-ideas', videoIdeaRoutes({ workspaceId: ws, bus: deps.bus }));
   r.route('/settings', settingsRoutes({ workspaceId: ws, bus: deps.bus, onKillSwitch: deps.onKillSwitch, onReleaseHeld: deps.onReleaseHeld }));
 

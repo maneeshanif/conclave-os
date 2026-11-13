@@ -330,6 +330,20 @@
       "when": 1794583088737,
       "tag": "0046_post_video",
       "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "7",
+      "when": 1794584500233,
+      "tag": "0047_office_desks",
+      "breakpoints": true
+    },
+    {
+      "idx": 48,
+      "version": "7",
+      "when": 1794584502191,
+      "tag": "0048_office_desks_rls",
+      "breakpoints": true
     }
   ]
 }

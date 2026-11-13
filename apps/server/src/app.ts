@@ -52,6 +52,8 @@ export interface AppDeps {
   onReleaseHeld?: () => Promise<number> | number;
   /** What the last reaper pass did, for the Health screen (S3-7). */
   reaperStatus?: ReaperStatus;
+  /** Where company/ is: the office map lives there (S6-2). */
+  companyRoot?: string;
   /** Push notifications (S5-10): the notifier and the public key the browser subscribes with. */
   push?: { notifier: Notifier; publicKey: string };
   /** Circuit breakers for the os tools (S3-6). */
@@ -126,7 +128,7 @@ export function createApp(deps?: AppDeps) {
   if (deps.push) app.route('/api/push', pushRoutes(deps.push));
   if (deps.breakers) app.route('/api/breakers', breakerRoutes({ breakers: deps.breakers }));
   if (deps.bus && deps.dispatcher) {
-    app.route('/api', apiRoutes({ workspaceId: deps.workspaceId, dispatcher: deps.dispatcher, bus: deps.bus, onApprovalDecided: deps.onApprovalDecided, onKillSwitch: deps.onKillSwitch, onReleaseHeld: deps.onReleaseHeld, ...(deps.onCompanyReload ? { onCompanyReload: deps.onCompanyReload } : {}), ...(deps.reaperStatus ? { reaperStatus: deps.reaperStatus } : {}) }));
+    app.route('/api', apiRoutes({ workspaceId: deps.workspaceId, dispatcher: deps.dispatcher, bus: deps.bus, onApprovalDecided: deps.onApprovalDecided, onKillSwitch: deps.onKillSwitch, onReleaseHeld: deps.onReleaseHeld, ...(deps.onCompanyReload ? { onCompanyReload: deps.onCompanyReload } : {}), ...(deps.reaperStatus ? { reaperStatus: deps.reaperStatus } : {}), ...(deps.companyRoot ? { companyRoot: deps.companyRoot } : {}) }));
   }
   if (deps.tokens && deps.store) app.route('/mcp', mcpRoutes({ tokens: deps.tokens, store: deps.store, ...(deps.breakers ? { breakers: deps.breakers } : {}) }));
   if (deps.inngestHandler) app.on(['GET', 'POST', 'PUT'], '/inngest', deps.inngestHandler);

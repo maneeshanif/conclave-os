@@ -442,7 +442,7 @@ From `docs/BORROW-AUDIT.md`. Each goes into its slice's task list when that slic
   \`company/office.tmj\`: a Tiled JSON map with a collision layer, a \`rooms\` object layer (each room named, with \`department\`, \`kind\`, \`maxUsers\`, \`locked\`, \`silent\` properties of our own), numbered \`desks\`, \`objects\` (approvals desk, whiteboard, screen, mailbox, job board, boardroom table), and \`entries\` (the door, spawn points). A script draws the starter tileset and map. The reader validates the file and says which file, layer and object is wrong.
   *Test:* the starter map loads; every active department has a room; a desk number twice, a room naming an unknown department, an object of an unknown type, and a missing collision layer are each refused with a message naming the thing.
 
-- [ ] **S6-2 Desks.** SPEC 12.
+- [x] **S6-2 Desks.** SPEC 12.
   A new hire gets the next free desk in its department's room, by itself; the assignment is stored so nobody moves when someone else is hired; a retired agent's desk is freed; a full room puts the overflow in the lounge. \`GET /api/office\` returns the map facts and each agent's room and desk.
   *Test:* hiring three agents fills desks 1 to 3 in order; retiring one frees its desk for the next hire and moves nobody; a full room overflows to the lounge; no desk is ever held by two agents.
 
