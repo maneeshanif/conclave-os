@@ -42,6 +42,7 @@ function parseJson(line: string): Json | null {
 /** Claude Code `--output-format stream-json`. */
 export function claudeParser(): Parser {
   const toolNames = new Map<string, string>();
+  const countedMessages = new Set<string>();
   let sessionId: string | undefined;
   let finished = false;
   let turns = 0;
@@ -56,7 +57,14 @@ export function claudeParser(): Parser {
         sessionId = str(e.session_id);
         out.push({ type: 'session', sessionId });
       } else if (type === 'assistant') {
-        turns++;
+        // Claude Code streams one model message as one event per content block, all with the same message.id.
+        // A turn is a message, so count each id once. An event with no id cannot be matched, so it counts itself.
+        const messageId = str(obj(e.message).id);
+        if (!messageId) turns++;
+        else if (!countedMessages.has(messageId)) {
+          countedMessages.add(messageId);
+          turns++;
+        }
         for (const c of (obj(e.message).content as unknown[] | undefined) ?? []) {
           const b = obj(c);
           if (b.type === 'text' && str(b.text)) out.push({ type: 'message', text: str(b.text) });

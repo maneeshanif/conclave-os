@@ -104,3 +104,12 @@ for (const flavor of ['claude-cli', 'opencode'] as const) {
     });
   });
 }
+
+describe('turn counting through the runtime (S0-13)', () => {
+  it('does not stop a run whose one message was streamed as seven events', async () => {
+    // One message.id over seven assistant events is one turn, so a limit of two turns is not reached.
+    const events = await collect(runtime('claude-cli', 'split').start(await request({ modelAlias: 'researcher', maxTurns: 2 })));
+    expect(last(events)).toMatchObject({ type: 'done' });
+    expect(events.filter((e) => e.type === 'error')).toEqual([]);
+  });
+});

@@ -1,0 +1,3 @@
+# Keep LF in the working tree on every machine. Windows git otherwise converts to CRLF, and vitest rewrites
+# snapshots with LF, which showed up as a phantom change after every test run.
+* text=auto eol=lf

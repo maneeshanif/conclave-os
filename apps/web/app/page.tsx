@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
 import { RunLog } from '../components/RunLog';
 import { Badge } from '../components/ui/badge';
@@ -120,7 +121,39 @@ export default function Home() {
           <h1 className="text-xl font-semibold">Conclave OS</h1>
           <p className="text-sm text-neutral-500">Slice 0: tasks and runs. The office comes in slice 6.</p>
         </div>
-        <span className={`text-xs ${live ? 'text-green-700' : 'text-neutral-400'}`}>{live ? '● live' : '○ offline'}</span>
+        <div className="flex items-center gap-4">
+          <Link href="/approvals" className="text-sm font-medium underline">
+            Approvals
+          </Link>
+          <Link href="/action-items" className="text-sm font-medium underline">
+            Needs you
+          </Link>
+          <Link href="/brief" className="text-sm font-medium underline">
+            Brief
+          </Link>
+          <Link href="/inbox" className="text-sm font-medium underline">
+            Inbox
+          </Link>
+          <Link href="/pipeline" className="text-sm font-medium underline">
+            Pipeline
+          </Link>
+          <Link href="/campaigns" className="text-sm font-medium underline">
+            Campaigns
+          </Link>
+          <Link href="/goals" className="text-sm font-medium underline">
+            Goals
+          </Link>
+          <Link href="/ideas" className="text-sm font-medium underline">
+            Ideas
+          </Link>
+          <Link href="/signals" className="text-sm font-medium underline">
+            Signals
+          </Link>
+          <Link href="/health" className="text-sm font-medium underline">
+            Health
+          </Link>
+          <span className={`text-xs ${live ? 'text-green-700' : 'text-neutral-400'}`}>{live ? '● live' : '○ offline'}</span>
+        </div>
       </header>
       {error && <p className="mb-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-800">{error}</p>}
 

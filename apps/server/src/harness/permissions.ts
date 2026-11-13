@@ -45,6 +45,19 @@ export function claudeToolLists(p: Permissions): { allow: string[]; deny: string
   return { allow, deny: [...new Set(deny)] };
 }
 
+/**
+ * What the in-process runner can enforce. It has the `os` tools and `load_skill` and nothing else: no shell, no files, no
+ * web, no subagents. A template that grants a shell or subagents cannot be run there, so rendering it is an error rather than
+ * a quiet drop (the person would think the agent had a shell). A grant of files or web access is harmless to leave out, since
+ * the agent simply does not have the tool; those are returned so the rendered folder can say they are not provided.
+ */
+export function assertRunnerCanEnforce(p: Permissions): string[] {
+  for (const k of ['shell', 'subagents'] as const) {
+    if (p[k] === 'allow') throw new Error(`This template grants ${k}, which the openai-agents runtime does not have (no shell, no subagents). Run it on claude-cli or opencode.`);
+  }
+  return (['read', 'write', 'web_search', 'web_fetch'] as const).filter((k) => p[k] === 'allow');
+}
+
 /** OpenCode `permission` map (opencode 1.19 shape: tool key to action). */
 export function opencodePermission(p: Permissions): Record<string, string> {
   return {

@@ -1,0 +1,185 @@
+{
+  "note": "SAMPLE leads: made up, no real people or businesses, no email addresses. They exist so the eval gate has something to score. Replace them with real leads from the pipeline (docs/NEEDS-YOU.md).",
+  "leads": [
+    {
+      "id": "sample-01-alder-street-dental",
+      "company": "Alder Street Dental",
+      "contact": "Priya",
+      "observation": "their booking page asks visitors to phone first",
+      "mustMention": [
+        "Alder Street Dental"
+      ]
+    },
+    {
+      "id": "sample-02-brightwater-physio",
+      "company": "Brightwater Physio",
+      "contact": "Tom",
+      "observation": "the opening hours differ between their site and their listing",
+      "mustMention": [
+        "Brightwater Physio"
+      ]
+    },
+    {
+      "id": "sample-03-cedar-pine-law",
+      "company": "Cedar & Pine Law",
+      "contact": "Marcus",
+      "observation": "the contact form has no confirmation message",
+      "mustMention": [
+        "Cedar & Pine Law"
+      ]
+    },
+    {
+      "id": "sample-04-dunmore-veterinary",
+      "company": "Dunmore Veterinary",
+      "contact": "Elena",
+      "observation": "the homepage loads slowly on a phone",
+      "mustMention": [
+        "Dunmore Veterinary"
+      ]
+    },
+    {
+      "id": "sample-05-eastgate-opticians",
+      "company": "Eastgate Opticians",
+      "contact": "Sam",
+      "observation": "there is no way to book an eye test online",
+      "mustMention": [
+        "Eastgate Opticians"
+      ]
+    },
+    {
+      "id": "sample-06-fernhill-yoga",
+      "company": "Fernhill Yoga",
+      "contact": "Aisha",
+      "observation": "the class timetable is a photo, not text",
+      "mustMention": [
+        "Fernhill Yoga"
+      ]
+    },
+    {
+      "id": "sample-07-granary-accountants",
+      "company": "Granary Accountants",
+      "contact": "Owen",
+      "observation": "their services page lists nothing about fees",
+      "mustMention": [
+        "Granary Accountants"
+      ]
+    },
+    {
+      "id": "sample-08-harbour-bikes",
+      "company": "Harbour Bikes",
+      "contact": "Lena",
+      "observation": "the shop page has no stock or price information",
+      "mustMention": [
+        "Harbour Bikes"
+      ]
+    },
+    {
+      "id": "sample-09-ivy-lane-florist",
+      "company": "Ivy Lane Florist",
+      "contact": "Jo",
+      "observation": "the order form breaks on a small screen",
+      "mustMention": [
+        "Ivy Lane Florist"
+      ]
+    },
+    {
+      "id": "sample-10-juniper-dental-care",
+      "company": "Juniper Dental Care",
+      "contact": "Raj",
+      "observation": "new patient forms are a downloadable PDF",
+      "mustMention": [
+        "Juniper Dental Care"
+      ]
+    },
+    {
+      "id": "sample-11-kestrel-plumbing",
+      "company": "Kestrel Plumbing",
+      "contact": "Dan",
+      "observation": "the phone number is not tappable on mobile",
+      "mustMention": [
+        "Kestrel Plumbing"
+      ]
+    },
+    {
+      "id": "sample-12-lantern-caf",
+      "company": "Lantern Café",
+      "contact": "Mei",
+      "observation": "the menu is only available as an image",
+      "mustMention": [
+        "Lantern Café"
+      ]
+    },
+    {
+      "id": "sample-13-marlow-chiropractic",
+      "company": "Marlow Chiropractic",
+      "contact": "Chloe",
+      "observation": "reviews on the site are three years old",
+      "mustMention": [
+        "Marlow Chiropractic"
+      ]
+    },
+    {
+      "id": "sample-14-northfield-tutors",
+      "company": "Northfield Tutors",
+      "contact": "Ahmed",
+      "observation": "the enquiry form asks for twelve fields",
+      "mustMention": [
+        "Northfield Tutors"
+      ]
+    },
+    {
+      "id": "sample-15-oakhurst-surveyors",
+      "company": "Oakhurst Surveyors",
+      "contact": "Ruth",
+      "observation": "the site has no https padlock",
+      "mustMention": [
+        "Oakhurst Surveyors"
+      ]
+    },
+    {
+      "id": "sample-16-pembroke-pet-grooming",
+      "company": "Pembroke Pet Grooming",
+      "contact": "Ivan",
+      "observation": "the booking calendar shows last year",
+      "mustMention": [
+        "Pembroke Pet Grooming"
+      ]
+    },
+    {
+      "id": "sample-17-quarry-hill-physio",
+      "company": "Quarry Hill Physio",
+      "contact": "Nadia",
+      "observation": "the clinic address is missing from the contact page",
+      "mustMention": [
+        "Quarry Hill Physio"
+      ]
+    },
+    {
+      "id": "sample-18-rowan-skin-clinic",
+      "company": "Rowan Skin Clinic",
+      "contact": "Felix",
+      "observation": "the treatment pages have no clear next step",
+      "mustMention": [
+        "Rowan Skin Clinic"
+      ]
+    },
+    {
+      "id": "sample-19-sable-dental-studio",
+      "company": "Sable Dental Studio",
+      "contact": "Hana",
+      "observation": "the homepage photo is a stock image of another country",
+      "mustMention": [
+        "Sable Dental Studio"
+      ]
+    },
+    {
+      "id": "sample-20-thistle-garden-design",
+      "company": "Thistle Garden Design",
+      "contact": "Luca",
+      "observation": "the portfolio gallery takes ten seconds to load",
+      "mustMention": [
+        "Thistle Garden Design"
+      ]
+    }
+  ]
+}

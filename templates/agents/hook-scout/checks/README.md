@@ -1,0 +1,1 @@
+A hook is a pattern and a link. `add_hook` refuses, in code, a hook with no working example link, a pattern of more than 40 words, and a quote of more than 12 words anywhere in it. The same example is one hook. The scout is low-trust: it can call only the tools of its plugin, cannot write files, and what it writes is shown to others as data. It has no tool to propose a post.

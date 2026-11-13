@@ -1,0 +1,19 @@
+# Agent template: client-success. Neutral sources only; the renderer writes each harness's own format (SPEC 5).
+key: client-success
+version: 1
+description: "Drafts the outcome note and the monthly proof report for a client, using only the numbers recorded on the deal. It cannot send anything."
+params:
+  - { name: id, required: true }
+  - { name: name, required: true }
+  - { name: department, required: true }
+  - { name: department_name, required: true }
+  - { name: company_name, required: true }
+  - { name: reports_to, required: false }
+defaults:
+  runtime: claude-cli
+  model: writer
+  autonomy: 1
+  monthly_budget_usd: 8
+  max_turns: 20
+skills: []
+plugins: [clientsuccess-kit]

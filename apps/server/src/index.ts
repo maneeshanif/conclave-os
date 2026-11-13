@@ -7,16 +7,43 @@ import { serve as inngestServe } from 'inngest/hono';
 import { createApp } from './app';
 import { Bus } from './bus';
 import { renderAll, renderOne } from './commands/agent-new';
-import { HOST } from './config';
+import { createAuth, resolveAuthSecret } from './auth';
+import { loadCompany } from './company/loader';
+import { syncCompany } from './company/sync';
+import { dispatchLimit, resolveAuthConfig, resolveLite, resolvePgPort } from './config';
+import { singleFlight } from './workflows/single-flight';
+import { ensureDailyBackup, type DailyState } from './backup';
+import { companyMarkdown } from './actions/policy';
+import { assembleGenerated } from './video/assemble';
+import { attachOfficeEvents } from './office/live';
+import { createNotifier, ensureVapidKeys, webPushSender } from './push';
+import { ensureDailyBrief } from './brief/build';
 import { DbOsStore } from './harness/db-os-store';
-import { cancelAllRuns, executeRun, reapStaleRuns, type LoopDeps } from './harness/loop';
+import { stopEverything } from './harness/kill-switch';
+import { approvalHooks, createOutreach } from './outreach';
+import { cancelAllRuns, executeRun, isRunActive, reapStaleRuns, type LoopDeps } from './harness/loop';
+import { Breakers } from './harness/breakers';
+import { ReaperStatus } from './health';
+import { closeBudgetItems } from './harness/budget';
+import { liftExpiredPauses } from './harness/pauses';
+import { reapRuns } from './harness/reaper';
 import { RunTokens } from './harness/run-tokens';
 import { createCliRuntime } from './runtimes/cli';
-import { openSystem } from './system';
+import { createOpenAIAgentsRuntime } from './runtimes/openai-agents';
+import { openSystem, ownerAccess } from './system';
 import { LocalDispatcher, tick, type Dispatcher, type RunRequestEvent } from './workflows/dispatch';
+import { createInngestGate, gateOps, LocalApprovalGate, type ApprovalGate } from './workflows/approval-gate';
 import { createWorkflows } from './workflows/inngest';
+import { runSequences } from './workflows/sequences';
 
 const sys = await openSystem();
+
+// The company folder is the source of truth for departments, goals, funnels and agents (SPEC 5): copy it into the
+// database at start. A mistake in a file stops the server with the file and the reason, rather than running on stale rows.
+{
+  const synced = await syncCompany(sys.app, sys.workspace.id, await loadCompany(sys.companyRoot));
+  console.log(`company synced: ${synced.departments} departments, ${synced.agents} agents, ${synced.funnels} funnels, ${synced.goals} goals`);
+}
 if (!sys.ownsDatabase) {
   console.error('Another Conclave server is already running on this DATA_DIR. Stop it first.');
   await sys.close();
@@ -24,7 +51,26 @@ if (!sys.ownsDatabase) {
 }
 const bus = new Bus();
 const tokens = new RunTokens();
-const store = new DbOsStore(sys.app, (workspaceId, taskId) => bus.publish({ kind: 'task.changed', workspaceId, taskId }));
+// A proposal asks the approval gate to start waiting. The gate is built below, so this is bound late.
+let proposalQueued: (workspaceId: string, approvalId: string) => void = () => undefined;
+const store = new DbOsStore(
+  sys.app,
+  (workspaceId, taskId) => bus.publish({ kind: 'task.changed', workspaceId, taskId }),
+  sys.companyRoot,
+  (workspaceId, approvalId) => proposalQueued(workspaceId, approvalId),
+);
+
+// The email side: the transport (the outbox unless both real-sending settings are set) and the executors.
+const { transport, executors } = createOutreach({
+  pool: sys.app,
+  workspaceId: sys.workspace.id,
+  dataDir: sys.dataDir,
+  companyRoot: sys.companyRoot,
+  bus,
+  env: process.env,
+});
+console.log(`email transport: ${transport.name}${transport.name === 'outbox' ? ` (files in ${path.join(sys.dataDir, 'outbox')}, nothing leaves this machine)` : ''}`);
+if (!process.env.OUTREACH_FROM?.trim()) console.warn('OUTREACH_FROM is not set: approved emails will be refused until it is (see .env.example).');
 
 // Every agent's working folder must match its role file before anything runs.
 for (const r of await renderAll(sys)) console.log(`agent ${r.id}: ${r.runtime} folder ready`);
@@ -36,11 +82,15 @@ const loop: LoopDeps = {
   pool: sys.app,
   tokens,
   bus,
-  runtimes: { 'claude-cli': createCliRuntime('claude-cli'), opencode: createCliRuntime('opencode') },
+  runtimes: { 'claude-cli': createCliRuntime('claude-cli'), opencode: createCliRuntime('opencode'), 'openai-agents': createOpenAIAgentsRuntime({ osUrl: sys.osUrl }) },
   dataDir: sys.dataDir,
   workspaceSlug: sys.workspace.slug,
   templatesRoot: sys.templatesRoot,
-  prepare: (agentKey) => renderOne(sys, agentKey),
+  // A run that says nothing for this long is stopped (A2). RUN_SILENCE_MINUTES changes it; 0 turns it off.
+  silenceMs: Number(process.env.RUN_SILENCE_MINUTES ?? 5) * 60_000,
+  // A transient model error is retried after 5 seconds, 20 seconds and a minute, then once on the agent's fallback model (S3-2).
+  retry: { delaysMs: [5_000, 20_000, 60_000] },
+  prepare: (agentKey, over) => renderOne(sys, agentKey, over),
 };
 const execute = (e: RunRequestEvent) => executeRun(loop, e.workspaceId, e.agentId, e.trigger);
 
@@ -52,14 +102,100 @@ const useInngest = !!(process.env.INNGEST_DEV || process.env.INNGEST_BASE_URL ||
 let dispatcher: Dispatcher;
 let inngestHandler: ((c: Context) => Promise<Response>) | undefined;
 let ticker: NodeJS.Timeout | undefined;
+let gate: ApprovalGate;
+// When the ticker last asked each agent, so an idle agent is not asked again every minute (S0-13).
+const asked = new Map<string, Date>();
+// Each minute: wake agents whose heartbeat is due (S0-13), and let the sequence runner make tasks for people whose next
+// step is due (S2-5). The runner is idempotent, so running it every minute is cheap and safe.
+const lite = resolveLite(); // LITE=1: one run at a time and no scheduled task overlapping itself (S3-10)
+const runEveryMinute = async () => {
+  const tz = process.env.COMPANY_TIMEZONE?.trim() || undefined; // schedules are read in the company's time zone; unset means this machine's
+  const woken = await tick(sys.app, sys.workspace.id, dispatcher, new Date(), asked, tz ? { tz } : {});
+  const briefTime = process.env.BRIEF_TIME?.trim() || '06:30'; // HH:MM in the company's time zone
+  const brief = await ensureDailyBrief({ pool: sys.app, workspaceId: sys.workspace.id, tz, after: briefTime });
+  if (brief) {
+    console.log(`morning brief for ${brief.day} is ready`);
+    void notifier.notify('brief', brief.day).catch((err) => console.error('push:', err));
+  }
+  // The daily backup: a database dump beside the data, the last 14 kept, and a commit of the company folder (S3-9).
+  const backed = await ensureDailyBackup({
+    withOwner: ownerAccess(sys.dataDir, resolvePgPort()),
+    pool: sys.app,
+    workspaceId: sys.workspace.id,
+    dataDir: sys.dataDir,
+    companyRoot: sys.companyRoot,
+    tz,
+    after: process.env.BACKUP_TIME?.trim() || '02:30',
+    state: backupState,
+  });
+  if (backed?.ok) console.log(`backup: wrote ${backed.file} (${backed.rows} rows)${backed.committed ? '; company folder committed' : ''}`);
+  else if (backed) console.error(`backup failed: ${backed.error}`);
+  // Briefs whose assets were just generated are laid out and reviewed (S5-9).
+  const assembled = await assembleGenerated(sys.app, sys.workspace.id, await companyMarkdown(sys.companyRoot));
+  if (assembled.ready.length || assembled.failed.length) console.log(`video: ${assembled.ready.length} plan(s) ready, ${assembled.failed.length} failed review`);
+  // Runs whose process has gone quiet for good are failed and their tasks put back (S3-1). Nothing here needs a person.
+  const reaped = await reapRuns({ pool: sys.app, workspaceId: sys.workspace.id, isActive: isRunActive });
+  reaperStatus.record(reaped);
+  for (const t of reaped.requeued) void dispatcher.request({ workspaceId: sys.workspace.id, agentId: t.agentId, trigger: 'task_assigned' });
+  if (reaped.reaped.length) console.log(`reaper: failed ${reaped.reaped.length} silent run(s); ${reaped.requeued.length} task(s) put back, ${reaped.blocked.length} blocked`);
+  // A runtime whose plan limit has reset is let go, and the agents with work waiting are woken (S3-3).
+  const lifted = await liftExpiredPauses({ pool: sys.app, workspaceId: sys.workspace.id });
+  for (const agentId of lifted.agentsWithWork) void dispatcher.request({ workspaceId: sys.workspace.id, agentId, trigger: 'task_assigned' });
+  if (lifted.lifted.length) console.log(`plan limit reset: ${lifted.lifted.join(', ')} can run again`);
+  // An agent that is back under its budget (a raised budget, a new month) is let go and woken if it has work (S3-4).
+  const budgets = await closeBudgetItems({ pool: sys.app, workspaceId: sys.workspace.id });
+  for (const agentId of budgets.agentsWithWork) void dispatcher.request({ workspaceId: sys.workspace.id, agentId, trigger: 'task_assigned' });
+  const seq = await runSequences({ pool: sys.app, workspaceId: sys.workspace.id, bus });
+  if (seq.created) console.log(`sequences: made ${seq.created} step task(s)`);
+  return woken;
+};
+const everyMinute = lite ? singleFlight(runEveryMinute, [] as string[]) : runEveryMinute;
+if (lite) console.log('lite mode: one run at a time');
 if (useInngest) {
-  const wf = createWorkflows({ execute, tickAll: () => tick(sys.app, sys.workspace.id, dispatcher) });
+  const wf = createWorkflows({
+    execute,
+    tickAll: everyMinute,
+    approvals: gateOps({ pool: sys.app, workspaceId: sys.workspace.id, bus, executors }),
+    lite,
+  });
   dispatcher = wf.dispatcher;
+  gate = createInngestGate({ send: (e) => wf.inngest.send(e), pool: sys.app, workspaceId: sys.workspace.id, bus, executors });
   inngestHandler = inngestServe({ client: wf.inngest, functions: wf.functions });
 } else {
-  dispatcher = new LocalDispatcher(execute);
-  ticker = setInterval(() => void tick(sys.app, sys.workspace.id, dispatcher).catch((err) => console.error('ticker:', err)), 60_000);
+  dispatcher = new LocalDispatcher(execute, dispatchLimit());
+  gate = new LocalApprovalGate({ pool: sys.app, workspaceId: sys.workspace.id, bus, executors });
+  ticker = setInterval(
+    () => void everyMinute().catch((err) => console.error('ticker:', err)),
+    60_000,
+  );
 }
+
+const hooks = approvalHooks(gate);
+proposalQueued = (w, id) => {
+  hooks.onApprovalRequested(w, id);
+  bus.publish({ kind: 'approval.changed', workspaceId: w, approvalId: id, status: 'pending' });
+  void notifier.notify('approval_waiting', id).catch((err) => console.error('push:', err));
+};
+
+// Where to listen and whether a login is needed. Throws, before anything listens, if the server would be open to the network.
+const authConfig = resolveAuthConfig(process.env);
+const auth = authConfig.login ? createAuth({ pool: sys.app, workspaceId: sys.workspace.id, config: authConfig, dataDir: sys.dataDir, secret: resolveAuthSecret(process.env, sys.dataDir) }) : undefined;
+if (auth) {
+  const setup = await auth.ensureSetupCode();
+  if (setup.file) console.log(`login is on and there is no owner yet. The one-time setup code is in ${setup.file} (valid 15 minutes, used once). Open ${authConfig.webOrigin}/login to finish.`);
+  else console.log(`login is on (passkeys). Sign in at ${authConfig.webOrigin}/login`);
+} else {
+  console.log('login is off: the server answers on this laptop only (loopback)');
+}
+
+const reaperStatus = new ReaperStatus();
+// Push notifications for the installed app: the brief, a failed executor and an approval waiting, and nothing else (S5-10).
+const vapid = ensureVapidKeys(sys.dataDir);
+const notifier = createNotifier({ pool: sys.app, workspaceId: sys.workspace.id, sender: webPushSender(vapid, process.env.PUSH_SUBJECT?.trim() || 'mailto:conclave-os@example.invalid') });
+notifier.attach(bus);
+attachOfficeEvents(bus); // the office looks again when a run, an approval or a discussion changes (S6-3)
+const backupState: DailyState = {};
+const breakers = new Breakers({ pool: sys.app, workspaceId: sys.workspace.id });
 
 const shell = new Hono();
 const { injectWebSocket, upgradeWebSocket } = createNodeWebSocket({ app: shell });
@@ -70,16 +206,43 @@ shell.route(
     workspaceId: sys.workspace.id,
     tokens,
     store,
+    breakers,
+    push: { notifier, publicKey: vapid.publicKey },
+    reaperStatus,
+    companyRoot: sys.companyRoot,
     bus,
     dispatcher,
     upgradeWebSocket,
-    hosts: [`127.0.0.1:${sys.serverPort}`, `localhost:${sys.serverPort}`],
+    hosts: [`127.0.0.1:${sys.serverPort}`, `localhost:${sys.serverPort}`, new URL(authConfig.apiOrigin).host, `${authConfig.host}:${sys.serverPort}`],
+    ...(auth ? { auth } : {}),
+    onApprovalDecided: hooks.onApprovalDecided,
+    onCompanyReload: async () => {
+      const synced = await syncCompany(sys.app, sys.workspace.id, await loadCompany(sys.companyRoot));
+      return { departments: synced.departments, agents: synced.agents, funnels: synced.funnels, goals: synced.goals };
+    },
+    onReleaseHeld: hooks.onReleaseHeld,
+    // Turning the kill switch on stops what is running and drops what is queued (S1-5).
+    onKillSwitch: async (on) => {
+      if (!on) return;
+      const { dropped, cancelled } = await stopEverything(dispatcher);
+      console.log(`kill switch on: cancelled ${cancelled} run(s), dropped ${dropped} queued request(s)`);
+    },
     ...(inngestHandler ? { inngestHandler } : {}),
   }),
 );
 
-const server = serve({ fetch: shell.fetch, port: sys.serverPort, hostname: HOST }, (info) => {
-  console.log(`conclave server listening on http://${HOST}:${info.port} (workflows: ${dispatcher.name})`);
+// What was decided while the server was down is sent now, once; what is still pending waits again (SPEC 6).
+{
+  const r = await gate.recover();
+  if (r.waiting.length || r.expired.length || r.resumed.length || r.unknown.length || r.held.length) {
+    console.log(
+      `approvals: ${r.waiting.length} waiting, ${r.expired.length} expired, ${r.resumed.length - r.held.length} sent, ${r.held.length} held for a send cap, ${r.unknown.length} left mid-send by the last run (not resent)`,
+    );
+  }
+}
+
+const server = serve({ fetch: shell.fetch, port: sys.serverPort, hostname: authConfig.host }, (info) => {
+  console.log(`conclave server listening on http://${authConfig.host}:${info.port} (workflows: ${dispatcher.name})`);
 });
 injectWebSocket(server);
 // `pnpm doctor` reads this to report the server's memory (SPEC 17).
@@ -91,6 +254,7 @@ async function shutdown() {
   if (stopping) return;
   stopping = true;
   if (ticker) clearInterval(ticker);
+  if (gate instanceof LocalApprovalGate) gate.stop();
   const n = await cancelAllRuns();
   if (n) console.log(`cancelled ${n} run(s)`);
   // Give the cancelled runs a moment to write their final state.

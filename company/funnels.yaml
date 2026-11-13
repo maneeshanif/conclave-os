@@ -1,0 +1,33 @@
+# The two funnels (SPEC 10), as data. A stage is a row: the pipeline screen, conversion by stage and the stage rules
+# all read these. `owner` is a department key or a person ("founder"). `exit` says in words when a deal moves on.
+# `requires` lists fields a deal must have before it may move PAST the stage: decision_maker (a named person) and
+# due (a date). `won: true` marks the stage where a deal counts as won and its client project is created.
+# Edit this file, then restart (or run a sync): the database copy follows it. A deal keeps its stage.
+
+funnels:
+  - key: services
+    name: Services funnel
+    market: services
+    stages:
+      - { key: target,               name: Target,               owner: lead-gen,  exit: "Site, owner name and email are verified" }
+      - { key: signal,               name: Signal,               owner: outreach,  exit: "The findings pass the auditor's check" }
+      - { key: first-touch,          name: First touch,          owner: outreach,  exit: "Sent after your approval" }
+      - { key: reply,                name: Reply,                owner: outreach,  exit: "Triaged the same day" }
+      - { key: free-concept,         name: Free concept,         owner: frontend,  exit: "Delivered, with one baseline number agreed, such as steps to book" }
+      - { key: first-priced-outcome, name: First priced outcome, owner: founder,   exit: "A decision-maker and a date are named", requires: [decision_maker, due] }
+      - { key: deliver,              name: Deliver,              owner: engineering, exit: "The client confirms the target", won: true }
+      - { key: outcome-note,         name: Outcome note,         owner: chief-of-staff, exit: "Sent within the week, with a request for one introduction" }
+      - { key: retainer,             name: Retainer,             owner: founder,   exit: "Signed" }
+
+  - key: product
+    name: Product funnel (Vespera)
+    market: product
+    stages:
+      - { key: target,               name: Target,               owner: lead-gen,  exit: "The owner is reachable" }
+      - { key: problem-conversation, name: Problem conversation, owner: founder,   exit: "They describe the problem in their own words" }
+      - { key: slice-session,        name: Slice session,        owner: founder,   exit: "Their baseline is measured: enquiries missed and time to first reply" }
+      - { key: paid-pilot,           name: Paid pilot,           owner: founder,   exit: "Signed", won: true }
+      - { key: production-build,     name: Production build,     owner: engineering, exit: "The pilot target is met" }
+      - { key: monthly-proof-report, name: Monthly proof report, owner: product,   exit: "Sent every month" }
+      - { key: subscription,         name: Subscription,         owner: founder,   exit: "Signed" }
+      - { key: case-and-introduction, name: Case and introduction, owner: marketing, exit: "Published" }

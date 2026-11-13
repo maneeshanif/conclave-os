@@ -15,6 +15,335 @@
       "when": 1794448454838,
       "tag": "0001_rls_roles_grants",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1794451418351,
+      "tag": "0002_slice1_outreach",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1794451419187,
+      "tag": "0003_slice1_rls",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1794497482808,
+      "tag": "0004_leads_email_unique",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1794498180161,
+      "tag": "0005_send_window",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1794498196763,
+      "tag": "0006_send_window_limits",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1794501195111,
+      "tag": "0007_action_items",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1794501909253,
+      "tag": "0008_auth_tables",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1794501911013,
+      "tag": "0009_auth_grants",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1794503746707,
+      "tag": "0010_accounts_contacts_deals",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1794503748478,
+      "tag": "0011_crm_rls",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1794504338608,
+      "tag": "0012_funnels_projects",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1794504340320,
+      "tag": "0013_funnels_rls",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1794505006238,
+      "tag": "0014_campaigns_channels",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1794505008005,
+      "tag": "0015_campaigns_rls",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1794505433058,
+      "tag": "0016_threads_enrollments",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1794505434940,
+      "tag": "0017_threads_rls",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1794505956921,
+      "tag": "0018_sequence_runner",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1794507379048,
+      "tag": "0019_leadgen_columns",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1794508225976,
+      "tag": "0020_heartbeats",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1794509778802,
+      "tag": "0021_briefs",
+      "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1794509781244,
+      "tag": "0022_briefs_rls",
+      "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1794515503293,
+      "tag": "0023_deal_figures",
+      "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1794518073176,
+      "tag": "0024_runtime_pauses",
+      "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1794518075955,
+      "tag": "0025_runtime_pauses_rls",
+      "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1794521806917,
+      "tag": "0026_circuit_breakers",
+      "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1794521809257,
+      "tag": "0027_circuit_breakers_rls",
+      "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1794528176974,
+      "tag": "0028_fallback_runtime",
+      "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1794528747795,
+      "tag": "0029_signals",
+      "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1794528750231,
+      "tag": "0030_signals_rls",
+      "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1794531450130,
+      "tag": "0031_posts",
+      "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1794531452064,
+      "tag": "0032_posts_rls",
+      "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1794557705631,
+      "tag": "0033_channel_account_browser",
+      "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1794558340249,
+      "tag": "0034_dms",
+      "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1794558342599,
+      "tag": "0035_dms_rls",
+      "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1794559492289,
+      "tag": "0036_agent_trust",
+      "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1794579380002,
+      "tag": "0037_hooks",
+      "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1794579382076,
+      "tag": "0038_hooks_rls",
+      "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1794579895180,
+      "tag": "0039_video_ideas",
+      "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1794579898283,
+      "tag": "0040_video_ideas_rls",
+      "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1794580545825,
+      "tag": "0041_video_briefs",
+      "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "7",
+      "when": 1794580547672,
+      "tag": "0042_video_briefs_rls",
+      "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "7",
+      "when": 1794581764797,
+      "tag": "0043_video_plan",
+      "breakpoints": true
+    },
+    {
+      "idx": 44,
+      "version": "7",
+      "when": 1794582293477,
+      "tag": "0044_push",
+      "breakpoints": true
+    },
+    {
+      "idx": 45,
+      "version": "7",
+      "when": 1794582295329,
+      "tag": "0045_push_rls",
+      "breakpoints": true
+    },
+    {
+      "idx": 46,
+      "version": "7",
+      "when": 1794583088737,
+      "tag": "0046_post_video",
+      "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "7",
+      "when": 1794584500233,
+      "tag": "0047_office_desks",
+      "breakpoints": true
+    },
+    {
+      "idx": 48,
+      "version": "7",
+      "when": 1794584502191,
+      "tag": "0048_office_desks_rls",
+      "breakpoints": true
     }
   ]
 }

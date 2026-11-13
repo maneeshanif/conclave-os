@@ -1,0 +1,9 @@
+# Plugin: outreach-kit (SPEC 8, 10). Skills and tools for writing first-touch emails that a person approves.
+# Nothing in it can send. The only door out is propose_email, which queues an email for approval.
+name: outreach-kit
+version: 1
+description: "Writes the first email to one lead and proposes it for approval. It has no way to send."
+skills: [first-touch-email]
+connectors: [os]
+# The os tools the skill uses. Checked against the server, so this list cannot drift.
+tools: [get_lead, propose_email]

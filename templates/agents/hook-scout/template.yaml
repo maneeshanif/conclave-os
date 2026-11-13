@@ -1,0 +1,30 @@
+# Agent template: hook-scout. Neutral sources only; the renderer writes each harness's own format (SPEC 5).
+key: hook-scout
+version: 1
+description: "Studies what is working in the niche and files each pattern as a hook, with a link to the example and never a copy. It runs on the local model once a week. It cannot write or propose a post."
+params:
+  - { name: id, required: true }
+  - { name: name, required: true }
+  - { name: department, required: true }
+  - { name: department_name, required: true }
+  - { name: company_name, required: true }
+  - { name: reports_to, required: false }
+defaults:
+  # The local model through the in-process runner, free to run all day. When a check fails twice it escalates once to Claude.
+  runtime: openai-agents
+  model: local-worker
+  fallback_runtime: claude-cli
+  fallback_model: researcher
+  # Level 1 may write to internal tables, which is what recording a signal is. It cannot propose anything to the outside (SPEC 6).
+  autonomy: 1
+  # Reads posts and pages anyone can write, so it is held to its own tools, cannot write files, and what it writes is shown to others as data (A1).
+  trust: low
+  # Local runs cost nothing; this caps what escalations to Claude may spend in a month. Zero would mean nothing is allowed.
+  monthly_budget_usd: 2
+  max_turns: 15
+  output_check: non-empty
+  # Monday at 09:00. Change it in the role file.
+  heartbeat: "0 9 * * 1"
+  heartbeat_task: "Study the posts waiting in your open tasks. File each pattern that is working with add_hook: the pattern in your own words and the link to the example. Never copy a post. When you are done, call complete_task with how many hooks you filed."
+skills: []
+plugins: [hooks-kit]

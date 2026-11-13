@@ -1,0 +1,22 @@
+# Agent template: publisher. Neutral sources only; the renderer writes each harness's own format (SPEC 5).
+key: publisher
+version: 1
+description: "Reports on the post queue: what is waiting for approval, what went out, what failed. It only reads; an executor publishes, after a person approves."
+params:
+  - { name: id, required: true }
+  - { name: name, required: true }
+  - { name: department, required: true }
+  - { name: department_name, required: true }
+  - { name: company_name, required: true }
+  - { name: reports_to, required: false }
+defaults:
+  runtime: claude-cli
+  model: researcher
+  autonomy: 0
+  monthly_budget_usd: 3
+  max_turns: 10
+  # Every weekday morning at 08:00, after the brief. Change it in the role file.
+  heartbeat: "0 8 * * 1-5"
+  heartbeat_task: "Read the post queue with get_posts and report: how many posts are waiting for approval, which went out since yesterday (with their addresses), and which failed or are waiting for a login. Finish with complete_task."
+skills: []
+plugins: [publishing-kit]

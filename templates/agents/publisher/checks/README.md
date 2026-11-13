@@ -1,0 +1,1 @@
+The publisher has no tool that changes anything: `get_posts` is a read. Its report is only words. Publishing is done by an executor after an approval, and the executor, not this agent, records the result.

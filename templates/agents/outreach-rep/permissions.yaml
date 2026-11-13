@@ -1,0 +1,9 @@
+# Neutral permission rules (SPEC 5, default permissions). The renderer maps these to each harness.
+# shell and network writes are denied for every template except coder and code reviewer.
+# The rep reads its task through the os tools and needs no web access: the audit is another agent's job.
+read: allow
+write: allow
+shell: deny
+web_search: deny
+web_fetch: deny
+subagents: deny

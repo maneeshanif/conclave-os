@@ -5,7 +5,9 @@ import { z } from 'zod';
 import { aliasWorksOn } from '../config/models';
 import {
   DepartmentsFileSchema,
+  FunnelsFileSchema,
   GoalsFileSchema,
+  type Funnel,
   RoleFileSchema,
   type Department,
   type GoalsFile,
@@ -25,6 +27,8 @@ export interface Company {
   companyMd: string;
   departments: Department[];
   goals: GoalsFile;
+  /** From funnels.yaml. Empty when the company has no such file. */
+  funnels: Funnel[];
   agents: LoadedAgent[];
 }
 
@@ -86,10 +90,13 @@ export function parseRoleFile(text: string, rolePath: string): LoadedAgent {
       `model alias "${role.model}" does not list runtime "${role.runtime}". Pick an alias that works on ${role.runtime}.`,
     );
   }
-  if (role.fallback_model && !aliasWorksOn(role.fallback_model, role.runtime)) {
+  if (role.fallback_runtime && !role.fallback_model) {
+    throw new CompanyLoadError(rolePath, 'fallback_runtime needs a fallback_model: name the model alias to use on that runtime.');
+  }
+  if (role.fallback_model && !aliasWorksOn(role.fallback_model, role.fallback_runtime ?? role.runtime)) {
     throw new CompanyLoadError(
       rolePath,
-      `fallback alias "${role.fallback_model}" does not list runtime "${role.runtime}".`,
+      `fallback alias "${role.fallback_model}" does not list runtime "${role.fallback_runtime ?? role.runtime}".`,
     );
   }
   return { role, body, rolePath };
@@ -115,6 +122,29 @@ export async function loadCompany(root: string): Promise<Company> {
   for (const [dept, g] of Object.entries(goals.department_goals)) {
     if (!deptKeys.has(dept)) throw new CompanyLoadError('goals.yaml', `department_goals names unknown department "${dept}"`);
     if (!rungIds.has(g.serves)) throw new CompanyLoadError('goals.yaml', `department_goals.${dept} serves unknown rung "${g.serves}"`);
+  }
+
+  let funnels: Funnel[] = [];
+  if (await exists(path.join(root, 'funnels.yaml'))) {
+    funnels = parseWith(FunnelsFileSchema, await readYaml(root, 'funnels.yaml'), 'funnels.yaml').funnels;
+    const seen = new Set<string>();
+    for (const f of funnels) {
+      if (seen.has(f.key)) throw new CompanyLoadError('funnels.yaml', `funnel "${f.key}" is listed twice`);
+      seen.add(f.key);
+      const stageKeys = new Set<string>();
+      for (const st of f.stages) {
+        if (stageKeys.has(st.key)) throw new CompanyLoadError('funnels.yaml', `funnel "${f.key}" lists stage "${st.key}" twice`);
+        stageKeys.add(st.key);
+      }
+    }
+  }
+
+  // A goal that counts a funnel stage must name one that exists.
+  if (funnels.length) {
+    const stageKeys = new Set(funnels.flatMap((f) => f.stages.map((s) => `${f.key}/${s.key}`)));
+    for (const [dept, g] of Object.entries(goals.department_goals)) {
+      if (g.stage && !stageKeys.has(g.stage)) throw new CompanyLoadError('goals.yaml', `department_goals.${dept} counts stage "${g.stage}", which is not in funnels.yaml`);
+    }
   }
 
   const agents: LoadedAgent[] = [];
@@ -144,5 +174,5 @@ export async function loadCompany(root: string): Promise<Company> {
     }
   }
 
-  return { root, companyMd, departments, goals, agents };
+  return { root, companyMd, departments, goals, funnels, agents };
 }

@@ -1,0 +1,23 @@
+# Agent template: prospector. Neutral sources only; the renderer writes each harness's own format (SPEC 5).
+key: prospector
+version: 1
+description: "Finds businesses that fit the target and adds them to the lead list with the page it found each on. It can read the web and cannot contact anyone."
+params:
+  - { name: id, required: true }
+  - { name: name, required: true }
+  - { name: department, required: true }
+  - { name: department_name, required: true }
+  - { name: company_name, required: true }
+  - { name: reports_to, required: false }
+defaults:
+  runtime: claude-cli
+  model: researcher
+  # Level 1 may write to internal tables, which is what adding a lead is. It cannot propose anything to the outside (SPEC 6).
+  autonomy: 1
+  monthly_budget_usd: 10
+  max_turns: 40
+  # Every morning at 07:00 in the company's time zone, with a task to do. Change either in the role file.
+  heartbeat: "0 7 * * *"
+  heartbeat_task: "Find 10 new businesses that fit the target in the company file and add each one with add_lead, giving the page you found it on as sourceUrl. Skip any that are already in the list. When you are done, call complete_task with how many you added."
+skills: []
+plugins: [leadgen-kit]

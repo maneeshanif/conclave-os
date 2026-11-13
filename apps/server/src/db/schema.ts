@@ -10,6 +10,7 @@
 import { sql } from 'drizzle-orm';
 import {
   bigserial,
+  boolean,
   check,
   date,
   foreignKey,
@@ -24,6 +25,7 @@ import {
   text,
   timestamp,
   unique,
+  uniqueIndex,
   uuid,
 } from 'drizzle-orm/pg-core';
 
@@ -102,7 +104,13 @@ export const agents = pgTable(
     runtime: text('runtime').notNull(),
     modelAlias: text('model_alias').notNull(),
     fallbackAlias: text('fallback_alias'),
+    fallbackRuntime: text('fallback_runtime'),
+    trust: text('trust').notNull().default('standard'), // standard | low (A1): low-trust agents are contained in the server
     heartbeatCron: text('heartbeat_cron'),
+    // What the scheduled morning run asks the agent to do, from the role file. Empty: the agent is only woken (S2-8).
+    heartbeatTask: text('heartbeat_task'),
+    // The last scheduled time a heartbeat was handled (asked, skipped or let go). Kept in the database so a restart does not ask again.
+    lastHeartbeatAt: timestamp('last_heartbeat_at', { withTimezone: true }),
     autonomy: smallint('autonomy').notNull().default(0),
     maxTurns: integer('max_turns').notNull().default(25),
     outputCheck: text('output_check'),
@@ -348,4 +356,741 @@ export const auditLog = pgTable(
     data: jsonb('data').notNull().default({}),
   },
   (t) => [unique('audit_log_ws_id_uq').on(t.workspaceId, t.id)],
+);
+
+// ---------------------------------------------------------------------------------------------------
+// Slice 1: approvals and outreach (SPEC 6, 10, 15). Same tenancy rule; RLS in *_slice1_rls.sql.
+
+/** A person or business the company may contact. Slice 2 grows this into accounts, contacts and deals. */
+export const leads = pgTable(
+  'leads',
+  {
+    id: id(),
+    workspaceId: workspaceId(),
+    market: text('market').notNull().default('services'), // services | product | founder_network
+    businessName: text('business_name'),
+    website: text('website'),
+    contactName: text('contact_name'),
+    email: text('email'),
+    stage: text('stage').notNull().default('new'), // new | contacted | replied | won | lost | do_not_contact
+    ownerAgentId: uuid('owner_agent_id'),
+    notes: text('notes'),
+    accountId: uuid('account_id'), // set when the lead is promoted (S2-1)
+    domain: text('domain'), // the website's host without www, for finding the same business twice (S2-7)
+    sourceUrl: text('source_url'), // where the lead was found
+    // True only with a source (or when a person says so). Unverified leads cannot join a campaign. Leads a person adds by hand are verified.
+    verified: boolean('verified').notNull().default(true),
+    score: smallint('score'), // 0 to 100, with the reason
+    scoreReason: text('score_reason'),
+    scoredAt: timestamp('scored_at', { withTimezone: true }),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    unique('leads_ws_id_uq').on(t.workspaceId, t.id),
+    index('leads_ws_domain_idx').on(t.workspaceId, t.domain),
+    check('leads_score_ck', sql`${t.score} is null or ${t.score} between 0 and 100`),
+    foreignKey({ name: 'leads_account_fk', columns: [t.workspaceId, t.accountId], foreignColumns: [accounts.workspaceId, accounts.id] }),
+    // One lead per address, however it was typed. Many leads may have no address yet.
+    uniqueIndex('leads_ws_email_uq')
+      .on(t.workspaceId, sql`lower(${t.email})`)
+      .where(sql`${t.email} is not null`),
+    foreignKey({ name: 'leads_owner_fk', columns: [t.workspaceId, t.ownerAgentId], foreignColumns: [agents.workspaceId, agents.id] }),
+  ],
+);
+
+/** A sales funnel, loaded from company/funnels.yaml (S2-2). */
+export const funnels = pgTable(
+  'funnels',
+  {
+    id: id(),
+    workspaceId: workspaceId(),
+    key: text('key').notNull(),
+    name: text('name').notNull(),
+    market: text('market'),
+    createdAt: createdAt(),
+  },
+  (t) => [unique('funnels_ws_id_uq').on(t.workspaceId, t.id), unique('funnels_ws_key_uq').on(t.workspaceId, t.key)],
+);
+
+/** One stage of a funnel. `exit_requires` lists what a deal needs before it may move past; `won` marks the winning stage. */
+export const funnelStages = pgTable(
+  'funnel_stages',
+  {
+    id: id(),
+    workspaceId: workspaceId(),
+    funnelId: uuid('funnel_id').notNull(),
+    key: text('key').notNull(),
+    position: integer('position').notNull(),
+    name: text('name').notNull(),
+    owner: text('owner'),
+    exitRule: text('exit_rule'),
+    exitRequires: text('exit_requires').array().notNull().default(sql`'{}'::text[]`),
+    won: boolean('won').notNull().default(false),
+    retired: boolean('retired').notNull().default(false),
+  },
+  (t) => [
+    unique('funnel_stages_ws_id_uq').on(t.workspaceId, t.id),
+    unique('funnel_stages_funnel_key_uq').on(t.workspaceId, t.funnelId, t.key),
+    foreignKey({ name: 'funnel_stages_funnel_fk', columns: [t.workspaceId, t.funnelId], foreignColumns: [funnels.workspaceId, funnels.id] }),
+  ],
+);
+
+/** Every move of a deal between stages: the source of days-in-stage and conversion (S2-6). */
+export const dealStageEvents = pgTable(
+  'deal_stage_events',
+  {
+    id: bigserial('id', { mode: 'number' }).primaryKey(),
+    workspaceId: workspaceId(),
+    dealId: uuid('deal_id').notNull(),
+    fromStage: text('from_stage'),
+    toStage: text('to_stage').notNull(),
+    actor: text('actor').notNull(),
+    note: text('note'),
+    at: timestamp('at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    unique('deal_stage_events_ws_id_uq').on(t.workspaceId, t.id),
+    foreignKey({ name: 'deal_stage_events_deal_fk', columns: [t.workspaceId, t.dealId], foreignColumns: [deals.workspaceId, deals.id] }),
+    index('deal_stage_events_deal_idx').on(t.workspaceId, t.dealId, t.at),
+  ],
+);
+
+/** Delivery work for a won client (SPEC 10). One per won deal. */
+export const projects = pgTable(
+  'projects',
+  {
+    id: id(),
+    workspaceId: workspaceId(),
+    accountId: uuid('account_id').notNull(),
+    dealId: uuid('deal_id'),
+    name: text('name').notNull(),
+    status: text('status').notNull().default('active'), // active | done | paused
+    createdAt: createdAt(),
+  },
+  (t) => [
+    unique('projects_ws_id_uq').on(t.workspaceId, t.id),
+    uniqueIndex('projects_ws_deal_uq').on(t.workspaceId, t.dealId).where(sql`${t.dealId} is not null`),
+    foreignKey({ name: 'projects_account_fk', columns: [t.workspaceId, t.accountId], foreignColumns: [accounts.workspaceId, accounts.id] }),
+    foreignKey({ name: 'projects_deal_fk', columns: [t.workspaceId, t.dealId], foreignColumns: [deals.workspaceId, deals.id] }),
+  ],
+);
+
+/** A business: a client or a prospect that has become more than a lead (SPEC 10). */
+export const accounts = pgTable(
+  'accounts',
+  {
+    id: id(),
+    workspaceId: workspaceId(),
+    name: text('name').notNull(),
+    website: text('website'),
+    market: text('market'),
+    stage: text('stage').notNull().default('prospect'), // prospect | client | past_client | lost
+    ownerAgentId: uuid('owner_agent_id'),
+    health: text('health'),
+    notes: text('notes'),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    unique('accounts_ws_id_uq').on(t.workspaceId, t.id),
+    foreignKey({ name: 'accounts_owner_fk', columns: [t.workspaceId, t.ownerAgentId], foreignColumns: [agents.workspaceId, agents.id] }),
+    check('accounts_stage_ck', sql`${t.stage} in ('prospect','client','past_client','lost')`),
+  ],
+);
+
+/** A person at an account, with every channel handle. */
+export const contacts = pgTable(
+  'contacts',
+  {
+    id: id(),
+    workspaceId: workspaceId(),
+    accountId: uuid('account_id').notNull(),
+    name: text('name'),
+    role: text('role'),
+    email: text('email'),
+    phone: text('phone'),
+    instagram: text('instagram'),
+    xHandle: text('x_handle'),
+    linkedin: text('linkedin'),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    unique('contacts_ws_id_uq').on(t.workspaceId, t.id),
+    foreignKey({ name: 'contacts_account_fk', columns: [t.workspaceId, t.accountId], foreignColumns: [accounts.workspaceId, accounts.id] }),
+    index('contacts_account_idx').on(t.workspaceId, t.accountId),
+  ],
+);
+
+/** An open opportunity: offer, value, stage, next step, due date. */
+export const deals = pgTable(
+  'deals',
+  {
+    id: id(),
+    workspaceId: workspaceId(),
+    accountId: uuid('account_id').notNull(),
+    offer: text('offer'),
+    value: numeric('value'),
+    funnelId: uuid('funnel_id'),
+    stage: text('stage').notNull().default('open'), // a stage key of its funnel
+    status: text('status').notNull().default('open'), // open | won | lost
+    decisionMaker: text('decision_maker'),
+    // The one number the deal is about (S2-12): what is measured, where it started, the target, and where it ended up.
+    // Documents may quote these and nothing else.
+    metric: text('metric'),
+    baselineValue: numeric('baseline_value'),
+    targetValue: numeric('target_value'),
+    outcomeValue: numeric('outcome_value'),
+    lostReason: text('lost_reason'),
+    stageChangedAt: timestamp('stage_changed_at', { withTimezone: true }).notNull().defaultNow(),
+    nextStep: text('next_step'),
+    due: date('due'),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    unique('deals_ws_id_uq').on(t.workspaceId, t.id),
+    foreignKey({ name: 'deals_funnel_fk', columns: [t.workspaceId, t.funnelId], foreignColumns: [funnels.workspaceId, funnels.id] }),
+    check('deals_status_ck', sql`${t.status} in ('open','won','lost')`),
+    foreignKey({ name: 'deals_account_fk', columns: [t.workspaceId, t.accountId], foreignColumns: [accounts.workspaceId, accounts.id] }),
+    check('deals_value_ck', sql`${t.value} is null or ${t.value} >= 0`),
+    check('deals_figures_ck', sql`(${t.baselineValue} is null or ${t.baselineValue} >= 0) and (${t.targetValue} is null or ${t.targetValue} >= 0) and (${t.outcomeValue} is null or ${t.outcomeValue} >= 0)`),
+    index('deals_account_idx').on(t.workspaceId, t.accountId),
+  ],
+);
+
+/** A mailbox or social account the OS sends from. The caps live here, not in a prompt (SPEC 10, 15). */
+export const channelAccounts = pgTable(
+  'channel_accounts',
+  {
+    id: id(),
+    workspaceId: workspaceId(),
+    channel: text('channel').notNull(), // email | x_dm | ig_dm | linkedin
+    handle: text('handle').notNull(),
+    dailyCap: integer('daily_cap').notNull().default(10),
+    warmupUntil: date('warmup_until'),
+    warmupCap: integer('warmup_cap').notNull().default(5),
+    health: text('health').notNull().default('ok'), // ok | paused | blocked
+    // How a post goes out (S5-3): outbox (a file) or browser (a signed-in profile). Switched to browser on purpose, per account.
+    transport: text('transport').notNull().default('outbox'),
+    browserProfile: text('browser_profile'), // the profile folder name under DATA_DIR/browser-profiles; null until a person has logged in
+    sessionState: text('session_state').notNull().default('none'), // none | valid | expired
+    sessionCheckedAt: timestamp('session_checked_at', { withTimezone: true }),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    check('channel_accounts_transport_ck', sql`${t.transport} in ('outbox','browser')`),
+    check('channel_accounts_session_ck', sql`${t.sessionState} in ('none','valid','expired')`),
+    unique('channel_accounts_ws_id_uq').on(t.workspaceId, t.id),
+    uniqueIndex('channel_accounts_handle_uq').on(t.workspaceId, t.channel, sql`lower(${t.handle})`),
+    check('channel_accounts_caps_ck', sql`${t.dailyCap} between 1 and 1000 and ${t.warmupCap} between 1 and 1000`),
+    check('channel_accounts_health_ck', sql`${t.health} in ('ok','paused','blocked')`),
+  ],
+);
+
+/** One push: a market, an audience, a channel, a sequence, a status. A founder approves it before it runs. */
+export const campaigns = pgTable(
+  'campaigns',
+  {
+    id: id(),
+    workspaceId: workspaceId(),
+    name: text('name').notNull(),
+    market: text('market'),
+    channel: text('channel').notNull().default('email'),
+    audience: jsonb('audience').notNull().default(sql`'{}'::jsonb`),
+    channelAccountId: uuid('channel_account_id'),
+    status: text('status').notNull().default('draft'), // draft | approved | running | paused | done
+    approvedAt: timestamp('approved_at', { withTimezone: true }),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    unique('campaigns_ws_id_uq').on(t.workspaceId, t.id),
+    foreignKey({ name: 'campaigns_channel_fk', columns: [t.workspaceId, t.channelAccountId], foreignColumns: [channelAccounts.workspaceId, channelAccounts.id] }),
+    check('campaigns_status_ck', sql`${t.status} in ('draft','approved','running','paused','done')`),
+  ],
+);
+
+/** The ordered messages of a campaign, with the wait before each. Step 1 goes out at once. */
+export const sequenceSteps = pgTable(
+  'sequence_steps',
+  {
+    id: id(),
+    workspaceId: workspaceId(),
+    campaignId: uuid('campaign_id').notNull(),
+    step: smallint('step').notNull(),
+    waitDays: smallint('wait_days').notNull().default(0),
+    skill: text('skill'),
+    template: text('template'),
+  },
+  (t) => [
+    unique('sequence_steps_ws_id_uq').on(t.workspaceId, t.id),
+    unique('sequence_steps_campaign_step_uq').on(t.workspaceId, t.campaignId, t.step),
+    foreignKey({ name: 'sequence_steps_campaign_fk', columns: [t.workspaceId, t.campaignId], foreignColumns: [campaigns.workspaceId, campaigns.id] }),
+  ],
+);
+
+/** Who is in which campaign, and where they are in its sequence. A reply or an unsubscribe pauses it (S2-4). */
+export const sequenceEnrollments = pgTable(
+  'sequence_enrollments',
+  {
+    id: id(),
+    workspaceId: workspaceId(),
+    campaignId: uuid('campaign_id').notNull(),
+    leadId: uuid('lead_id').notNull(),
+    stepsSent: smallint('steps_sent').notNull().default(0),
+    lastSentAt: timestamp('last_sent_at', { withTimezone: true }),
+    requestedStep: smallint('requested_step').notNull().default(0), // the step the runner last made a task for
+    stepTaskId: uuid('step_task_id'),
+    status: text('status').notNull().default('active'), // active | paused | done | unsubscribed
+    pausedReason: text('paused_reason'),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    unique('sequence_enrollments_ws_id_uq').on(t.workspaceId, t.id),
+    unique('sequence_enrollments_campaign_lead_uq').on(t.workspaceId, t.campaignId, t.leadId),
+    foreignKey({ name: 'sequence_enrollments_campaign_fk', columns: [t.workspaceId, t.campaignId], foreignColumns: [campaigns.workspaceId, campaigns.id] }),
+    foreignKey({ name: 'sequence_enrollments_task_fk', columns: [t.workspaceId, t.stepTaskId], foreignColumns: [tasks.workspaceId, tasks.id] }),
+    foreignKey({ name: 'sequence_enrollments_lead_fk', columns: [t.workspaceId, t.leadId], foreignColumns: [leads.workspaceId, leads.id] }),
+    check('sequence_enrollments_status_ck', sql`${t.status} in ('active','paused','done','unsubscribed')`),
+    index('sequence_enrollments_lead_idx').on(t.workspaceId, t.leadId),
+  ],
+);
+
+/** One thread per contact (or lead): every email, reply and note with them, in order (SPEC 10). */
+export const threads = pgTable(
+  'threads',
+  {
+    id: id(),
+    workspaceId: workspaceId(),
+    leadId: uuid('lead_id'),
+    contactId: uuid('contact_id'),
+    status: text('status').notNull().default('open'), // open | closed
+    lastMessageAt: timestamp('last_message_at', { withTimezone: true }),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    unique('threads_ws_id_uq').on(t.workspaceId, t.id),
+    uniqueIndex('threads_ws_lead_uq').on(t.workspaceId, t.leadId).where(sql`${t.leadId} is not null`),
+    foreignKey({ name: 'threads_lead_fk', columns: [t.workspaceId, t.leadId], foreignColumns: [leads.workspaceId, leads.id] }),
+    foreignKey({ name: 'threads_contact_fk', columns: [t.workspaceId, t.contactId], foreignColumns: [contacts.workspaceId, contacts.id] }),
+    check('threads_who_ck', sql`${t.leadId} is not null or ${t.contactId} is not null`),
+  ],
+);
+
+/** A message in a thread. Inbound text is data from outside: stored and shown, never obeyed. */
+export const threadMessages = pgTable(
+  'thread_messages',
+  {
+    id: id(),
+    workspaceId: workspaceId(),
+    threadId: uuid('thread_id').notNull(),
+    direction: text('direction').notNull(), // in | out
+    channel: text('channel').notNull().default('email'),
+    subject: text('subject'),
+    body: text('body').notNull(),
+    campaignId: uuid('campaign_id'),
+    classification: text('classification'), // positive | neutral | negative
+    at: timestamp('at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    unique('thread_messages_ws_id_uq').on(t.workspaceId, t.id),
+    foreignKey({ name: 'thread_messages_thread_fk', columns: [t.workspaceId, t.threadId], foreignColumns: [threads.workspaceId, threads.id] }),
+    check('thread_messages_direction_ck', sql`${t.direction} in ('in','out')`),
+    check('thread_messages_class_ck', sql`${t.classification} is null or ${t.classification} in ('positive','neutral','negative')`),
+    index('thread_messages_thread_idx').on(t.workspaceId, t.threadId, t.at),
+  ],
+);
+
+/** The morning brief: one record per day, built from the tables and kept as it was (S2-10). */
+export const briefs = pgTable(
+  'briefs',
+  {
+    id: id(),
+    workspaceId: workspaceId(),
+    day: date('day').notNull(),
+    quiet: boolean('quiet').notNull().default(false),
+    summary: jsonb('summary').notNull().default(sql`'[]'::jsonb`),
+    content: jsonb('content').notNull(),
+    // One paragraph written by the chief of staff agent. Shown as the agent's; the numbers never depend on it.
+    narrative: text('narrative'),
+    narrativeBy: text('narrative_by'),
+    createdAt: createdAt(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [unique('briefs_ws_id_uq').on(t.workspaceId, t.id), unique('briefs_ws_day_uq').on(t.workspaceId, t.day)],
+);
+
+/** A runtime that has hit its plan limit: its agents start no runs until `until` (S3-3). One active pause per runtime. */
+export const runtimePauses = pgTable(
+  'runtime_pauses',
+  {
+    id: id(),
+    workspaceId: workspaceId(),
+    runtime: text('runtime').notNull(),
+    until: timestamp('until', { withTimezone: true }).notNull(),
+    reason: text('reason').notNull(),
+    createdAt: createdAt(),
+    liftedAt: timestamp('lifted_at', { withTimezone: true }),
+    liftedBy: text('lifted_by'), // system at the reset, or the person who lifted it early
+  },
+  (t) => [
+    unique('runtime_pauses_ws_id_uq').on(t.workspaceId, t.id),
+    uniqueIndex('runtime_pauses_active_uq').on(t.workspaceId, t.runtime).where(sql`${t.liftedAt} is null`),
+  ],
+);
+
+/** Where each agent sits in the office (S6-2). One desk per agent, and a numbered desk is held by one agent only. */
+export const officeDesks = pgTable(
+  'office_desks',
+  {
+    id: id(),
+    workspaceId: workspaceId(),
+    agentId: uuid('agent_id').notNull(),
+    room: text('room').notNull(), // a room name from the office map
+    slot: integer('slot'), // the desk number; null in the lounge, which has none
+    assignedAt: timestamp('assigned_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    unique('office_desks_ws_id_uq').on(t.workspaceId, t.id),
+    unique('office_desks_ws_agent_uq').on(t.workspaceId, t.agentId),
+    unique('office_desks_ws_room_slot_uq').on(t.workspaceId, t.room, t.slot),
+    check('office_desks_slot_ck', sql`${t.slot} is null or ${t.slot} >= 1`),
+    foreignKey({ name: 'office_desks_agent_fk', columns: [t.workspaceId, t.agentId], foreignColumns: [agents.workspaceId, agents.id] }).onDelete('cascade'),
+  ],
+);
+
+/** A device that asked for push notifications (S5-10). Stored once per endpoint. */
+export const pushSubscriptions = pgTable(
+  'push_subscriptions',
+  {
+    id: id(),
+    workspaceId: workspaceId(),
+    endpoint: text('endpoint').notNull(),
+    p256dh: text('p256dh').notNull(),
+    auth: text('auth').notNull(),
+    userAgent: text('user_agent'),
+    failures: integer('failures').notNull().default(0), // in a row; five drops the subscription
+    lastOkAt: timestamp('last_ok_at', { withTimezone: true }),
+    createdAt: createdAt(),
+  },
+  (t) => [unique('push_subscriptions_ws_id_uq').on(t.workspaceId, t.id), unique('push_subscriptions_ws_endpoint_uq').on(t.workspaceId, t.endpoint)],
+);
+
+/** One row per notification already handled, so each is sent exactly once (S5-10). */
+export const pushEvents = pgTable(
+  'push_events',
+  {
+    id: id(),
+    workspaceId: workspaceId(),
+    kind: text('kind').notNull(), // approval_waiting | executor_failed | brief
+    ref: text('ref').notNull(), // the approval id, or the brief's day
+    sent: integer('sent').notNull().default(0),
+    createdAt: createdAt(),
+  },
+  (t) => [unique('push_events_ws_id_uq').on(t.workspaceId, t.id), unique('push_events_ws_kind_ref_uq').on(t.workspaceId, t.kind, t.ref), check('push_events_kind_ck', sql`${t.kind} in ('approval_waiting','executor_failed','brief')`)],
+);
+
+/** A video brief: a script and a shot list a person approves before any credits are spent (S5-8). */
+export const videoBriefs = pgTable(
+  'video_briefs',
+  {
+    id: id(),
+    workspaceId: workspaceId(),
+    ideaId: uuid('idea_id').notNull(),
+    title: text('title').notNull(),
+    script: text('script').notNull(),
+    shots: jsonb('shots').notNull(), // [{ kind: text | image | clip, description, seconds }]
+    status: text('status').notNull().default('pending_approval'), // pending_approval | approved | rejected | expired | generating | generated | ready | review_failed | published | failed | cancelled
+    estimatedCredits: integer('estimated_credits').notNull(), // counted from the shot list, never taken from the agent
+    spentCredits: integer('spent_credits').notNull().default(0),
+    approvalId: uuid('approval_id'),
+    error: text('error'),
+    plan: jsonb('plan'), // the assembly plan (S5-9)
+    planHash: text('plan_hash'),
+    review: jsonb('review'), // { ok, reasons }
+    createdBy: text('created_by').notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    unique('video_briefs_ws_id_uq').on(t.workspaceId, t.id),
+    // One live brief per idea. A rejected, expired or cancelled one does not stop a new one.
+    uniqueIndex('video_briefs_live_idea_uq')
+      .on(t.workspaceId, t.ideaId)
+      .where(sql`${t.status} not in ('rejected','expired','cancelled','failed')`),
+    check('video_briefs_status_ck', sql`${t.status} in ('pending_approval','approved','rejected','expired','generating','generated','ready','review_failed','published','failed','cancelled')`),
+    check('video_briefs_credits_ck', sql`${t.estimatedCredits} >= 0 and ${t.spentCredits} >= 0`),
+    foreignKey({ name: 'video_briefs_idea_fk', columns: [t.workspaceId, t.ideaId], foreignColumns: [videoIdeas.workspaceId, videoIdeas.id] }),
+    foreignKey({ name: 'video_briefs_approval_fk', columns: [t.workspaceId, t.approvalId], foreignColumns: [approvals.workspaceId, approvals.id] }),
+  ],
+);
+
+/** A generated image or clip, stored by key in the data folder (S5-8). */
+export const videoAssets = pgTable(
+  'video_assets',
+  {
+    id: id(),
+    workspaceId: workspaceId(),
+    briefId: uuid('brief_id').notNull(),
+    shot: integer('shot').notNull(), // 1-based position in the shot list
+    kind: text('kind').notNull(),
+    key: text('key').notNull(),
+    mime: text('mime').notNull(),
+    credits: integer('credits').notNull().default(0),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    unique('video_assets_ws_id_uq').on(t.workspaceId, t.id),
+    unique('video_assets_brief_shot_uq').on(t.workspaceId, t.briefId, t.shot),
+    foreignKey({ name: 'video_assets_brief_fk', columns: [t.workspaceId, t.briefId], foreignColumns: [videoBriefs.workspaceId, videoBriefs.id] }),
+  ],
+);
+
+/** A line, a link or a voice note dropped into the Video Ideas inbox (S5-7). */
+export const videoIdeas = pgTable(
+  'video_ideas',
+  {
+    id: id(),
+    workspaceId: workspaceId(),
+    source: text('source').notNull(), // founder | hook_scout
+    idea: text('idea').notNull(),
+    kind: text('kind').notNull().default('line'), // line | link | voice (a voice note is kept as its transcript)
+    url: text('url'),
+    hookId: uuid('hook_id'),
+    stage: text('stage').notNull().default('idea'), // idea | shelved | brief | assets | render | review | published
+    createdBy: text('created_by').notNull(),
+    createdAt: createdAt(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    unique('video_ideas_ws_id_uq').on(t.workspaceId, t.id),
+    index('video_ideas_ws_stage_idx').on(t.workspaceId, t.stage, t.createdAt),
+    check('video_ideas_source_ck', sql`${t.source} in ('founder','hook_scout')`),
+    check('video_ideas_kind_ck', sql`${t.kind} in ('line','link','voice')`),
+    check('video_ideas_stage_ck', sql`${t.stage} in ('idea','shelved','brief','assets','render','review','published')`),
+    foreignKey({ name: 'video_ideas_hook_fk', columns: [t.workspaceId, t.hookId], foreignColumns: [hooks.workspaceId, hooks.id] }),
+  ],
+);
+
+/** A pattern that is working in the niche, with a link to the example and never a copy of it (S5-6). */
+export const hooks = pgTable(
+  'hooks',
+  {
+    id: id(),
+    workspaceId: workspaceId(),
+    pattern: text('pattern').notNull(),
+    format: text('format'),
+    platform: text('platform'),
+    exampleUrl: text('example_url').notNull(), // normalised, so the same example is one hook
+    notes: text('notes'),
+    score: smallint('score'), // how well it held attention on our own account, set by results, not by the scout
+    foundBy: text('found_by').notNull(),
+    foundAt: timestamp('found_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [unique('hooks_ws_id_uq').on(t.workspaceId, t.id), unique('hooks_ws_example_uq').on(t.workspaceId, t.exampleUrl), check('hooks_score_ck', sql`${t.score} is null or ${t.score} between 0 and 100`)],
+);
+
+/** A direct message an agent proposed to send to one person (S5-4). One row, one person, one approval. */
+export const dms = pgTable(
+  'dms',
+  {
+    id: id(),
+    workspaceId: workspaceId(),
+    channelAccountId: uuid('channel_account_id').notNull(),
+    channel: text('channel').notNull(), // x_dm | ig_dm
+    leadId: uuid('lead_id').notNull(),
+    recipient: text('recipient').notNull(), // the handle, lower-case, without @
+    text: text('text').notNull(),
+    textHash: text('text_hash').notNull(),
+    status: text('status').notNull().default('proposed'), // proposed | approved | sending | sent | rejected | expired | failed | cancelled
+    approvalId: uuid('approval_id'),
+    claimedAt: timestamp('claimed_at', { withTimezone: true }), // when the executor started sending: the gap between sends counts from it
+    sentAt: timestamp('sent_at', { withTimezone: true }),
+    error: text('error'),
+    createdBy: text('created_by').notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    unique('dms_ws_id_uq').on(t.workspaceId, t.id),
+    uniqueIndex('dms_live_uq')
+      .on(t.workspaceId, t.channelAccountId, t.recipient, t.textHash)
+      .where(sql`${t.status} not in ('rejected','expired','cancelled')`),
+    index('dms_account_sent_idx').on(t.workspaceId, t.channelAccountId, t.status, t.sentAt),
+    check('dms_channel_ck', sql`${t.channel} in ('x_dm','ig_dm')`),
+    check('dms_status_ck', sql`${t.status} in ('proposed','approved','sending','sent','rejected','expired','failed','cancelled')`),
+    foreignKey({ name: 'dms_account_fk', columns: [t.workspaceId, t.channelAccountId], foreignColumns: [channelAccounts.workspaceId, channelAccounts.id] }),
+    foreignKey({ name: 'dms_lead_fk', columns: [t.workspaceId, t.leadId], foreignColumns: [leads.workspaceId, leads.id] }),
+    foreignKey({ name: 'dms_approval_fk', columns: [t.workspaceId, t.approvalId], foreignColumns: [approvals.workspaceId, approvals.id] }),
+  ],
+);
+
+/** A post an agent proposed to publish (S5-1). The approval is what makes it go out; this row follows it to the result. */
+export const posts = pgTable(
+  'posts',
+  {
+    id: id(),
+    workspaceId: workspaceId(),
+    channelAccountId: uuid('channel_account_id').notNull(),
+    platform: text('platform').notNull(), // x | linkedin | instagram
+    text: text('text').notNull(),
+    textHash: text('text_hash').notNull(), // spacing and case do not make a post new
+    status: text('status').notNull().default('proposed'), // proposed | approved | publishing | published | rejected | expired | failed | cancelled
+    approvalId: uuid('approval_id'),
+    videoBriefId: uuid('video_brief_id'), // a reviewed video attached to this post (S5-11)
+    publishedUrl: text('published_url'),
+    publishedAt: timestamp('published_at', { withTimezone: true }),
+    error: text('error'),
+    createdBy: text('created_by').notNull(), // agent:<key> or founder
+    createdAt: createdAt(),
+  },
+  (t) => [
+    unique('posts_ws_id_uq').on(t.workspaceId, t.id),
+    // One live post per account and text. A rejected, expired or cancelled one does not stop the same words being proposed again.
+    uniqueIndex('posts_live_text_uq')
+      .on(t.workspaceId, t.channelAccountId, t.textHash)
+      .where(sql`${t.status} not in ('rejected','expired','cancelled')`),
+    index('posts_ws_status_idx').on(t.workspaceId, t.status, t.createdAt),
+    // A video goes out in one live post at a time.
+    uniqueIndex('posts_live_video_uq')
+      .on(t.workspaceId, t.videoBriefId)
+      .where(sql`${t.videoBriefId} is not null and ${t.status} not in ('rejected','expired','cancelled','failed')`),
+    foreignKey({ name: 'posts_video_brief_fk', columns: [t.workspaceId, t.videoBriefId], foreignColumns: [videoBriefs.workspaceId, videoBriefs.id] }),
+    check('posts_platform_ck', sql`${t.platform} in ('x','linkedin','instagram')`),
+    check('posts_status_ck', sql`${t.status} in ('proposed','approved','publishing','published','rejected','expired','failed','cancelled')`),
+    foreignKey({ name: 'posts_account_fk', columns: [t.workspaceId, t.channelAccountId], foreignColumns: [channelAccounts.workspaceId, channelAccounts.id] }),
+    foreignKey({ name: 'posts_approval_fk', columns: [t.workspaceId, t.approvalId], foreignColumns: [approvals.workspaceId, approvals.id] }),
+  ],
+);
+
+/** What the scouts find (S4-6): a public post or page with a reason to act on it. One per web address. */
+export const signals = pgTable(
+  'signals',
+  {
+    id: id(),
+    workspaceId: workspaceId(),
+    departmentId: uuid('department_id'),
+    kind: text('kind').notNull(), // service_request | pain_point | tool_news
+    source: text('source').notNull(), // reddit, x, a forum, a job board
+    url: text('url').notNull(), // normalised: the same post found twice is one signal
+    author: text('author'),
+    excerpt: text('excerpt'),
+    status: text('status').notNull().default('new'), // new | qualified | dismissed | promoted
+    score: smallint('score'),
+    reason: text('reason'),
+    leadId: uuid('lead_id'),
+    foundBy: text('found_by').notNull(), // founder | agent:<key>
+    foundAt: timestamp('found_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    unique('signals_ws_id_uq').on(t.workspaceId, t.id),
+    unique('signals_ws_url_uq').on(t.workspaceId, t.url),
+    index('signals_ws_status_idx').on(t.workspaceId, t.status, t.foundAt),
+    check('signals_kind_ck', sql`${t.kind} in ('service_request','pain_point','tool_news')`),
+    check('signals_status_ck', sql`${t.status} in ('new','qualified','dismissed','promoted')`),
+    check('signals_score_ck', sql`${t.score} is null or ${t.score} between 0 and 100`),
+    foreignKey({ name: 'signals_department_fk', columns: [t.workspaceId, t.departmentId], foreignColumns: [departments.workspaceId, departments.id] }),
+    foreignKey({ name: 'signals_lead_fk', columns: [t.workspaceId, t.leadId], foreignColumns: [leads.workspaceId, leads.id] }),
+  ],
+);
+
+/** One breaker per tool, such as os:add_lead. Three failures in a row open it for a cooldown (S3-6). */
+export const circuitBreakers = pgTable(
+  'circuit_breakers',
+  {
+    id: id(),
+    workspaceId: workspaceId(),
+    key: text('key').notNull(),
+    state: text('state').notNull().default('closed'), // closed | open
+    failures: integer('failures').notNull().default(0),
+    lastError: text('last_error'),
+    openedAt: timestamp('opened_at', { withTimezone: true }),
+    openUntil: timestamp('open_until', { withTimezone: true }),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [unique('circuit_breakers_ws_id_uq').on(t.workspaceId, t.id), unique('circuit_breakers_ws_key_uq').on(t.workspaceId, t.key), check('circuit_breakers_state_ck', sql`${t.state} in ('closed','open')`)],
+);
+
+/** Every message drafted or sent to a lead, one row per message. */
+export const outreachMessages = pgTable(
+  'outreach_messages',
+  {
+    id: id(),
+    workspaceId: workspaceId(),
+    leadId: uuid('lead_id').notNull(),
+    channel: text('channel').notNull().default('email'), // email | x_dm | ig_dm | linkedin | call
+    step: smallint('step').notNull().default(1),
+    direction: text('direction').notNull().default('out'),
+    toAddress: text('to_address'),
+    subject: text('subject'),
+    body: text('body'),
+    approvalId: uuid('approval_id'),
+    campaignId: uuid('campaign_id'),
+    channelAccountId: uuid('channel_account_id'),
+    status: text('status').notNull().default('draft'), // draft | queued | sent | failed | refused | rejected | expired
+    sentAt: timestamp('sent_at', { withTimezone: true }),
+    externalRef: text('external_ref'),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    unique('outreach_ws_id_uq').on(t.workspaceId, t.id),
+    index('outreach_ws_sent_idx').on(t.workspaceId, t.channel, t.sentAt),
+    foreignKey({ name: 'outreach_lead_fk', columns: [t.workspaceId, t.leadId], foreignColumns: [leads.workspaceId, leads.id] }),
+    foreignKey({ name: 'outreach_approval_fk', columns: [t.workspaceId, t.approvalId], foreignColumns: [approvals.workspaceId, approvals.id] }),
+    foreignKey({ name: 'outreach_campaign_fk', columns: [t.workspaceId, t.campaignId], foreignColumns: [campaigns.workspaceId, campaigns.id] }),
+    foreignKey({ name: 'outreach_channel_fk', columns: [t.workspaceId, t.channelAccountId], foreignColumns: [channelAccounts.workspaceId, channelAccounts.id] }),
+    index('outreach_channel_sent_idx').on(t.workspaceId, t.channelAccountId, t.sentAt),
+  ],
+);
+
+/** One list per workspace. Executors check it at send time (SPEC 10). */
+export const suppression = pgTable(
+  'suppression',
+  {
+    id: id(),
+    workspaceId: workspaceId(),
+    value: text('value').notNull(), // a lowercased email address or a domain such as @example.com
+    reason: text('reason'),
+    addedAt: timestamp('added_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [unique('suppression_ws_value_uq').on(t.workspaceId, t.value), unique('suppression_ws_id_uq').on(t.workspaceId, t.id)],
+);
+
+/** The kill switch and the daily email cap (SPEC 11, slice 1). One row per workspace. */
+export const workspaceSettings = pgTable('workspace_settings', {
+  workspaceId: uuid('workspace_id').primaryKey().references(() => workspaces.id),
+  killSwitch: smallint('kill_switch').notNull().default(0), // 1 = everything stopped
+  killSwitchAt: timestamp('kill_switch_at', { withTimezone: true }),
+  // Sends are capped two ways, both settings. A rolling window (default 30 in 5 hours; follow-ups count) and a per-day cap.
+  // An email over a cap is held, not failed, and goes out when there is room.
+  windowHours: integer('window_hours').notNull().default(5),
+  windowCap: integer('window_cap').notNull().default(30),
+  emailDailyCap: integer('email_daily_cap').notNull().default(100),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+},
+(t) => [
+  // Sanity limits, the same ones the API enforces: a cap of zero or a window of a year is a mistake, not a setting.
+  check('workspace_settings_limits_ck', sql`${t.windowHours} between 1 and 168 and ${t.windowCap} between 1 and 100000 and ${t.emailDailyCap} between 1 and 100000`),
+]);
+
+/** Things that need a person: a failed executor, a send of unknown outcome, an agent's question. */
+export const actionItems = pgTable(
+  'action_items',
+  {
+    id: id(),
+    workspaceId: workspaceId(),
+    kind: text('kind').notNull(), // executor_failed | send_unknown | question
+    title: text('title').notNull(),
+    body: text('body'),
+    approvalId: uuid('approval_id'),
+    taskId: uuid('task_id'),
+    status: text('status').notNull().default('open'), // open | done
+    resolvedAt: timestamp('resolved_at', { withTimezone: true }),
+    resolvedBy: text('resolved_by'),
+    resolutionNote: text('resolution_note'),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    unique('action_items_ws_id_uq').on(t.workspaceId, t.id),
+    // One item per approval and kind: a failure that is recorded twice still shows once.
+    uniqueIndex('action_items_approval_kind_uq').on(t.workspaceId, t.approvalId, t.kind).where(sql`${t.approvalId} is not null`),
+    foreignKey({ name: 'action_items_task_fk', columns: [t.workspaceId, t.taskId], foreignColumns: [tasks.workspaceId, tasks.id] }),
+    foreignKey({ name: 'action_items_approval_fk', columns: [t.workspaceId, t.approvalId], foreignColumns: [approvals.workspaceId, approvals.id] }),
+  ],
 );

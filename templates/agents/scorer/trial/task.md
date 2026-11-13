@@ -1,0 +1,1 @@
+Trial task for a new scorer. Score the three newest unscored leads. Read each with get_lead, then call score_lead with a whole number from 0 to 100 and a one-sentence reason that names the facts you used. Then call complete_task with how many you scored.

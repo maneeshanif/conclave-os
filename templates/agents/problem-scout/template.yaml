@@ -1,0 +1,32 @@
+# Agent template: problem-scout. Neutral sources only; the renderer writes each harness's own format (SPEC 5).
+key: problem-scout
+version: 1
+description: "Micro-SaaS Lab problem scout (room 6): reads public posts describing recurring problems and records each as a pain_point signal, so the weekly brief can say what is worth building. Starts paused; a person switches it on."
+params:
+  - { name: id, required: true }
+  - { name: name, required: true }
+  - { name: department, required: true }
+  - { name: department_name, required: true }
+  - { name: company_name, required: true }
+  - { name: reports_to, required: false }
+defaults:
+  # The local model through the in-process runner, free to run all day. When a check fails twice it escalates once to Claude.
+  runtime: openai-agents
+  model: local-worker
+  fallback_runtime: claude-cli
+  fallback_model: researcher
+  # Level 1 may write to internal tables, which is what recording a signal is. It cannot propose anything to the outside (SPEC 6).
+  autonomy: 1
+  # Reads posts and pages anyone can write, so it is held to its own tools, cannot write files, and what it writes is shown to others as data (A1).
+  trust: low
+  # Local runs cost nothing; this caps what escalations to Claude may spend in a month. Zero would mean nothing is allowed.
+  monthly_budget_usd: 2
+  max_turns: 15
+  output_check: non-empty
+  # Rooms 6 and 9 are configured now and switched on later (SPEC 4): a hire starts paused.
+  start_paused: true
+  # Every hour, on the hour. Change it in the role file.
+  heartbeat: "0 * * * *"
+  heartbeat_task: "Look at the posts waiting in your open tasks. Record each one where a person describes a problem that keeps coming back with add_signal (kind pain_point), then score it with score_signal on how often and how painfully it recurs. Skip one-off complaints. When you are done, call complete_task with how many you recorded and how many you skipped."
+skills: []
+plugins: [signals-kit]
