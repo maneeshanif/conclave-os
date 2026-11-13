@@ -20,6 +20,8 @@ export interface BriefContent {
     kill_switch: boolean;
   };
   sent: { emails_24h: number };
+  /** Qualified signals a scout found that no person has acted on yet (S4-8). Briefs made before slice 4 have none. */
+  signals: { waiting: number; new: number; items: { id: string; kind: string; source: string; url: string; author: string | null; excerpt: string | null; score: number | null }[] };
   goals: { current_rung: string | null; rungs: { key: string; title: string | null; target: number | null; current: number | null; pct: number | null; met: boolean }[]; departments: { department: string | null; metric: string | null; target: number | null; current: number | null; pct: number | null; measured: boolean }[] };
 }
 
@@ -94,6 +96,13 @@ export async function buildBrief(c: pg.PoolClient, now: Date): Promise<{ content
   const killSwitch = ((await c.query<{ kill_switch: number }>('select kill_switch from workspace_settings')).rows[0]?.kill_switch ?? 0) === 1;
   const sent = (await c.query<{ n: number }>("select count(*)::int as n from outreach_messages where status = 'sent' and sent_at >= $1", [since])).rows[0]!.n;
 
+  const sigRows = (
+    await c.query<{ id: string; kind: string; source: string; url: string; author: string | null; excerpt: string | null; score: number | null }>(
+      "select id, kind, source, url, author, excerpt, score from signals where status = 'qualified' order by score desc nulls last, found_at desc, id limit 5",
+    )
+  ).rows;
+  const sigCounts = (await c.query<{ waiting: number; fresh: number }>("select count(*)::int as waiting, count(*) filter (where updated_at >= $1)::int as fresh from signals where status = 'qualified'", [since])).rows[0]!;
+
   const g = await measureGoals(c, now);
 
   const content: BriefContent = {
@@ -116,6 +125,7 @@ export async function buildBrief(c: pg.PoolClient, now: Date): Promise<{ content
       kill_switch: killSwitch,
     },
     sent: { emails_24h: sent },
+    signals: { waiting: sigCounts.waiting, new: sigCounts.fresh, items: sigRows.map((s) => ({ ...s, excerpt: s.excerpt === null ? null : s.excerpt.length > 240 ? `${s.excerpt.slice(0, 237)}...` : s.excerpt })) },
     goals: {
       current_rung: g.current_rung,
       rungs: g.rungs.map((x) => ({ key: x.key, title: x.title, target: x.target, current: x.current, pct: x.pct, met: x.met })),
@@ -131,6 +141,7 @@ export async function buildBrief(c: pg.PoolClient, now: Date): Promise<{ content
   if (stuckCount) lines.push(`${plural(stuckCount, 'deal', 'deals')} stuck for more than ${STUCK_AFTER_DAYS} days.`);
   if (blocked.length) lines.push(`${plural(blocked.length, 'task', 'tasks')} blocked.`);
   if (itemCount) lines.push(`${plural(itemCount, 'item', 'items')} need you.`);
+  if (sigCounts.waiting) lines.push(`${plural(sigCounts.waiting, 'qualified signal', 'qualified signals')} waiting (${sigCounts.fresh} new since yesterday).`);
   if (sent) lines.push(`${plural(sent, 'email', 'emails')} sent in the last day.`);
   const quiet = lines.length === 0;
   return { content, summary: quiet ? ['Nothing happened overnight, and nothing needs you.'] : lines, quiet };

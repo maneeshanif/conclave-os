@@ -3,8 +3,8 @@
 Update after every task. A new session starts here.
 
 - **Branch:** `dev`, the only working branch. It holds the spec v4 to v6, slice 0 and the slice 1 work in progress. One PR, `dev` into `master`, stays open until Anees merges it.
-- **Last done:** S4-7 scout template, signal tools, paused room scouts. S4-1 to S4-6 done. Slices 1 to 3 done and tagged.
-- **Working now:** S4-8, laptop, 2026-11-13 05:30:09
+- **Last done:** S4-8 signals in the brief and the Signals page. S4-1 to S4-7 done. Slices 1 to 3 done and tagged.
+- **Working now:** S4-9 (real local model, opt-in), laptop, 2026-11-13 05:38:11
 - **Next:** S4-3 skill loader, S4-4 renderer target, S4-5 and on (BUILD.md). Parked for Anees: see NEEDS-YOU. S0-15 is open.
 - **Resolved: the server not starting under `pnpm dev` on Windows.** Cause: `pnpm -r --parallel` gives each child an open stdin pipe. Fixed by `scripts/dev.mjs`; 8 of 8 real starts fine (see DECISIONS). A rare separate initdb stall is covered by the watchdog. Not yet seen again: a stalled start with the launcher.
 - **Slice 1 already on `dev` (not reviewed):** tables and RLS migrations 0002/0003, `actions/policy.ts` (claim checks, footer, suppression), `actions/transport.ts` (outbox by default, Resend untested), `actions/email.ts` (claim-once executor, restart recovery), `propose_email` and `get_lead` os tools, kill switch check in the run loop. Not built: approvals, leads, suppression, kill-switch and action-item API routes; executor wiring in `index.ts`; the `outreach-rep` template; the approvals page; slice 1 tests; login and phone access.

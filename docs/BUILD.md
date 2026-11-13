@@ -327,7 +327,7 @@ Recorded 2026-11-13. Nothing here is built ahead of its slice (CLAUDE.md, Stack)
   A `scout` template that runs on `openai-agents` with `local-worker`, a heartbeat, and a short skill that says what counts as a signal and what does not. Two `os` tools: `add_signal` (kind, source, URL, excerpt; refuses a missing URL, an excerpt that is not text, and anything shaped like an instruction to the agent) and `score_signal`. The tools do not post, message or follow anyone (rule 6). The Demand Radar and Problem Scout agents are configured and paused; turning one on is a setting.
   *Test:* the template renders and hires; `add_signal` dedupes and records who found it; a page that tells the agent to ignore its rules is stored as data and changes nothing; the paused agents do not run on a heartbeat until switched on.
 
-- [ ] **S4-8 Signals in the morning brief and a Signals page.** SPEC 3, 12, 18 (the "Done when").
+- [x] **S4-8 Signals in the morning brief and a Signals page.** SPEC 3, 12, 18 (the "Done when").
   The brief gets a part "Signals" counting qualified signals since the last brief with the top few (counted from the table, not written by a model), and a Signals page lists them by status with qualify, dismiss and promote.
   *Test:* a fixture gives exact counts in the brief; the page renders each status and the empty state; promote from the page makes the lead.
 

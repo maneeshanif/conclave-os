@@ -122,6 +122,21 @@ export interface GoalsData {
 }
 
 /** The morning brief (S2-10): counted from the tables; the narrative is the chief of staff agent's own paragraph. */
+export interface Signal {
+  id: string;
+  kind: string;
+  source: string;
+  url: string;
+  author: string | null;
+  excerpt: string | null;
+  status: 'new' | 'qualified' | 'dismissed' | 'promoted';
+  score: number | null;
+  reason: string | null;
+  leadId: string | null;
+  foundBy: string;
+  foundAt: string;
+}
+
 export interface HealthOverview {
   generatedAt: string;
   windowHours: number;
@@ -150,6 +165,8 @@ export interface Brief {
     deals: { stuck: number; items: { deal_id: string; account: string; stage: string; days: number }[] };
     attention: { blocked: { task_id: string; title: string; reason: string | null }[]; action_items: { id: string; kind: string; title: string }[]; kill_switch: boolean };
     sent: { emails_24h: number };
+    /** Missing in briefs made before slice 4. */
+    signals?: { waiting: number; new: number; items: { id: string; kind: string; source: string; url: string; author: string | null; excerpt: string | null; score: number | null }[] };
     goals: { current_rung: string | null; rungs: { key: string; title: string | null; target: number | null; current: number | null; pct: number | null; met: boolean }[]; departments: unknown[] };
   };
 }
@@ -275,6 +292,10 @@ export const api = {
     }
   },
   rebuildBrief: () => call<Brief>('/api/brief/rebuild', { method: 'POST', body: '{}' }),
+  signals: (status?: string) => call<Signal[]>(`/api/signals${status ? `?status=${encodeURIComponent(status)}` : ''}`),
+  qualifySignal: (id: string) => call<Signal>(`/api/signals/${id}/qualify`, { method: 'POST', body: '{}' }),
+  dismissSignal: (id: string) => call<Signal>(`/api/signals/${id}/dismiss`, { method: 'POST', body: '{}' }),
+  promoteSignal: (id: string) => call<Signal>(`/api/signals/${id}/promote`, { method: 'POST', body: '{}' }),
   health: () => call<HealthOverview>('/api/health/overview'),
   setKillSwitch: async (on: boolean) => {
     await call('/api/settings', { method: 'PATCH', body: JSON.stringify({ killSwitch: on }) });

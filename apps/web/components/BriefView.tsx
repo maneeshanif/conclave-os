@@ -127,6 +127,12 @@ export function BriefView({ client = real }: { client?: BriefClient }) {
               {c.leads.top.length === 0 && <p className="text-sm text-neutral-500">None scored yet.</p>}
             </Part>
           )}
+          {c.signals && c.signals.waiting > 0 && (
+            <Part title={`Signals waiting (${c.signals.waiting})`}>
+              <List items={c.signals.items.map((s) => <span key={s.id}><strong>{s.author ?? s.source}</strong>{s.score !== null ? ` · ${s.score}` : ''}{s.excerpt ? ` · ${s.excerpt}` : ''}</span>)} />
+              <a href="/signals" className="text-sm underline">Review the signals</a>
+            </Part>
+          )}
           {c.goals.rungs.length > 0 && (
             <Part title="Goals">
               <List items={c.goals.rungs.map((g) => `${g.title ?? g.key}: ${g.current !== null ? g.current : 'not measured'}${g.target ? ` of ${g.target}` : ''}${g.pct !== null ? ` · ${g.pct}%` : ''}`)} />
