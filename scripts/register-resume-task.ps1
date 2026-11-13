@@ -31,4 +31,4 @@ $trigger = New-ScheduledTaskTrigger -Once -At (Get-Date).AddMinutes(1) -Repetiti
 $settings = New-ScheduledTaskSettingsSet -MultipleInstances IgnoreNew -StartWhenAvailable -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -ExecutionTimeLimit (New-TimeSpan -Hours 0)
 $principal = New-ScheduledTaskPrincipal -UserId ([Security.Principal.WindowsIdentity]::GetCurrent().Name) -LogonType Interactive -RunLevel Limited
 Register-ScheduledTask -TaskName $TaskName -Action $action -Trigger $trigger -Settings $settings -Principal $principal -Description 'Resumes the Conclave OS autopilot build when nothing is working on it.' | Out-Null
-Write-Output "Created the task $TaskName: every $EveryMinutes minutes, running $script. Log: DATA_DIR\logs\resume.log"
+Write-Output "Created the task $TaskName: every $EveryMinutes minutes, running ${script}. Log: DATA_DIR\logs\resume.log"
