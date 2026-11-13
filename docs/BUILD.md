@@ -472,6 +472,15 @@ From `docs/BORROW-AUDIT.md`. Each goes into its slice's task list when that slic
   Phaser 4 (check its current docs first) in \`apps/web/office\`: loads the map and tileset, draws rooms, desks, objects, your avatar and the agents, and drives them from the logic above. The \`/office\` page also has the plain version: rooms listed, agents listed, the same panels. The canvas stops drawing when the tab is hidden; a phone gets the small map and the list.
   *Test:* the plain version renders each room and agent and every object's button; a hidden tab pauses the scene and a visible one resumes it; a Playwright run of the real page at desktop and Android sizes finds a non-blank canvas and takes a screenshot.
 
+- [ ] **S6-8c1 The world feels like walking about.** WORLD-BRIEF, WORLD-REFERENCE. Default zoom about 2x, zoom in and out, an overview of the whole map; held-key walking at a steady speed; click to walk. Logic in `WorldController` (zoom level, held direction), the scene only draws.
+  *Test:* zoom stays within limits and the overview fits the whole map; a held key keeps walking until released and stops at walls; a click still goes to the nearest open tile.
+
+- [ ] **S6-8c2 The bar and the panels.** WORLD-REFERENCE. A floating bar (people, tools, availability), a people panel, the agent drawer inside a left panel, a notice pill when you enter a silent, locked or full zone (from S6-5), a one-time welcome card with skip, and the phone's bottom row.
+  *Test:* each control renders and works; the pill text comes from the room's own properties; the welcome card shows once and stays away after skip; at phone size the bar is the bottom row with no sideways scroll; a Playwright run at desktop and Android sizes with screenshots.
+
+- [ ] **S6-8c3 The art.** WORLD-REFERENCE. Kenney CC0 tiles and character sprites (or our own), name labels with an availability dot, room names painted on the floor, tinted zones. The licence file is kept with the art.
+  *Test:* every tile and sprite in use is listed in a licence file with its source; the world draws a non-blank canvas with sprites at both sizes; a name label shows for you and for each agent.
+
 - [ ] **S6-9 Your co-founder in the same office.** SPEC 12, 15.
   Live presence over the existing socket for signed-in members: position, availability, raised hand; rate-limited; nothing but presence is sent; an owner and a co-founder see each other; a person who is not signed in sees nothing.
   *Test:* two clients see each other's moves; position updates are rate-limited; a signed-out socket gets no presence; leaving removes the avatar.
