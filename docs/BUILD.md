@@ -364,7 +364,7 @@ Recorded 2026-11-13. Nothing here is built ahead of its slice (CLAUDE.md, Stack)
   One executor interface for X, LinkedIn and Instagram posts, claim-once (`approved` to `executing`), with an `outbox` transport (default) and a `browser` transport that drives a Playwright page through a small driver interface. Every run saves a screenshot and the final URL on the approval record. An expired session stops the executor and raises an action item; nothing is retried.
   *Test:* with the outbox transport an approved post is written once and marked published; two executions at once publish once; a rejected or expired approval never publishes; the fake browser publishes, and its screenshot and final URL are stored; an expired session raises one item and the post stays approved, not failed; the kill switch stops it.
 
-- [ ] **S5-3 Browser profiles.** SPEC 8, 12.
+- [x] **S5-3 Browser profiles.** SPEC 8, 12.
   A profile folder per channel account under the data folder (never in the repo), a record of which accounts have one and whether the session is believed valid, and `pnpm run browser:login <account>` that opens a visible browser on that profile for you to log in by hand. The OS never sees a password.
   *Test:* the profile path is inside the data folder and outside the repo; an account with no profile cannot use the browser transport; a profile marked expired raises the item; the login command refuses an unknown account. Logging in is a NEEDS-YOU item.
 

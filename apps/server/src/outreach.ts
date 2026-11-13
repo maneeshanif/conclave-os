@@ -1,6 +1,8 @@
 import type pg from 'pg';
 import { createExecutors, type Executors } from './actions';
-import { outboxPostTransport } from './actions/post-transport';
+import { browserPostTransport, outboxPostTransport } from './actions/post-transport';
+import { playwrightDriver } from './browser/driver';
+import { playwrightPageOpener } from './browser/playwright';
 import { transportFromEnv, type EmailTransport } from './actions/transport';
 import type { Bus } from './bus';
 import type { ApprovalDecision } from './routes/approvals';
@@ -33,6 +35,8 @@ export function createOutreach(d: OutreachDeps): { transport: EmailTransport; ex
     from: (d.env.OUTREACH_FROM ?? '').trim(),
     // Posts go to a folder, like email. The browser transport needs a login done by hand and is switched on per account (S5-3).
     postTransport: outboxPostTransport(d.dataDir),
+    // Used only for an account a person has logged in to by hand and switched to the browser (S5-3).
+    browserPostTransport: browserPostTransport(d.dataDir, playwrightDriver(playwrightPageOpener(d.dataDir, d.env))),
     bus: d.bus,
   });
   return { transport, executors };

@@ -12,6 +12,7 @@ const usage = `Usage:
   pnpm run eval:baseline -- --drafts <file.json> | --reference   store a new baseline
   pnpm run backup           make a backup now (the server makes one each night)
   pnpm run backup:restore <file>   fill an EMPTY database from a backup; never touches one that holds data
+  pnpm run browser:login <account>   log in to a posting account by hand, in a visible browser, once
   pnpm run e2e              slice 0 end to end on both engines, against a running server`;
 
 async function main(argv: string[]): Promise<number> {
@@ -87,6 +88,10 @@ async function main(argv: string[]): Promise<number> {
     case 'backup:restore': {
       const { restoreFromFile } = await import('@conclave/server/commands/backup');
       return restoreFromFile(rest.find((a) => a !== '--'));
+    }
+    case 'browser:login': {
+      const { browserLogin } = await import('@conclave/server/commands/browser');
+      return browserLogin(rest.find((a) => a !== '--'));
     }
     case 'doctor': {
       const { doctor } = await import('@conclave/server/commands/doctor');

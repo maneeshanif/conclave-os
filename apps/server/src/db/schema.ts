@@ -567,9 +567,16 @@ export const channelAccounts = pgTable(
     warmupUntil: date('warmup_until'),
     warmupCap: integer('warmup_cap').notNull().default(5),
     health: text('health').notNull().default('ok'), // ok | paused | blocked
+    // How a post goes out (S5-3): outbox (a file) or browser (a signed-in profile). Switched to browser on purpose, per account.
+    transport: text('transport').notNull().default('outbox'),
+    browserProfile: text('browser_profile'), // the profile folder name under DATA_DIR/browser-profiles; null until a person has logged in
+    sessionState: text('session_state').notNull().default('none'), // none | valid | expired
+    sessionCheckedAt: timestamp('session_checked_at', { withTimezone: true }),
     createdAt: createdAt(),
   },
   (t) => [
+    check('channel_accounts_transport_ck', sql`${t.transport} in ('outbox','browser')`),
+    check('channel_accounts_session_ck', sql`${t.sessionState} in ('none','valid','expired')`),
     unique('channel_accounts_ws_id_uq').on(t.workspaceId, t.id),
     uniqueIndex('channel_accounts_handle_uq').on(t.workspaceId, t.channel, sql`lower(${t.handle})`),
     check('channel_accounts_caps_ck', sql`${t.dailyCap} between 1 and 1000 and ${t.warmupCap} between 1 and 1000`),

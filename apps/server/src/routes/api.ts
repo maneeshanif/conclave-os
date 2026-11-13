@@ -9,6 +9,7 @@ import { goalRoutes } from './goals';
 import { leadRoutes } from './leads';
 import { actionItemRoutes } from './action-items';
 import { briefRoutes } from './brief';
+import { browserRoutes } from './browser';
 import { campaignRoutes } from './campaigns';
 import { crmRoutes } from './crm';
 import { reportRoutes } from './reports';
@@ -40,7 +41,7 @@ export function apiRoutes(deps: { workspaceId: string; dispatcher: Dispatcher; b
   // A malformed id is a 404, not a database error.
   // Settings is a single record with actions (/settings/release-held), not a collection of ids.
   const idGuard = async (c: Context<AppEnv>, next: () => Promise<void>) =>
-    c.req.param('kind') === 'settings' || c.req.param('kind') === 'brief' || c.req.param('kind') === 'company' || c.req.param('kind') === 'runtime-pauses' || c.req.param('kind') === 'health' || (c.req.param('kind') === 'leads' && c.req.param('id') === 'import') || z.uuid().safeParse(c.req.param('id')).success ? next() : c.json({ error: 'Not found' }, 404);
+    c.req.param('kind') === 'settings' || c.req.param('kind') === 'brief' || c.req.param('kind') === 'company' || c.req.param('kind') === 'runtime-pauses' || c.req.param('kind') === 'health' || c.req.param('kind') === 'browser' || (c.req.param('kind') === 'leads' && c.req.param('id') === 'import') || z.uuid().safeParse(c.req.param('id')).success ? next() : c.json({ error: 'Not found' }, 404);
   r.use('/:kind/:id/*', idGuard);
   r.use('/:kind/:id', idGuard);
 
@@ -61,6 +62,7 @@ export function apiRoutes(deps: { workspaceId: string; dispatcher: Dispatcher; b
     }
   });
   r.route('/', healthRoutes({ ...(deps.reaperStatus ? { reaper: deps.reaperStatus } : {}) }));
+  r.route('/browser', browserRoutes());
   r.route('/', pauseRoutes({ workspaceId: ws, bus: deps.bus }));
   r.route('/', briefRoutes({ workspaceId: ws, bus: deps.bus }));
   r.route('/', threadRoutes({ workspaceId: ws, bus: deps.bus }));

@@ -4,6 +4,7 @@ import { checkPost, hashText, isPostPlatform } from '../posts';
 import { readSettings } from '../settings';
 import type { ExecResult, ExecutorDeps } from './email';
 import { companyMarkdown } from './policy';
+import { markSession } from '../browser/profiles';
 import { SessionExpiredError } from './post-transport';
 
 export const PostPayload = z.object({
@@ -61,16 +62,20 @@ export async function executePost(deps: ExecutorDeps, approvalId: string): Promi
   const p = parsed.data;
 
   // The world can change between the proposal and the approval, so everything is checked again here.
-  const acct = await withWorkspace(deps.pool, ws, async ({ client: c }) => (await c.query<{ channel: string; handle: string; health: string }>('select channel, handle, health from channel_accounts where id = $1', [p.accountId])).rows[0]);
+  const acct = await withWorkspace(deps.pool, ws, async ({ client: c }) => (await c.query<{ channel: string; handle: string; health: string; transport: string; session_state: string }>('select channel, handle, health, transport, session_state from channel_accounts where id = $1', [p.accountId])).rows[0]);
   if (!acct) return refuse('the account no longer exists');
   if (!isPostPlatform(acct.channel)) return refuse(`${acct.handle} is not a posting account`);
   if (acct.health !== 'ok') return refuse(`the account ${acct.handle} is ${acct.health}`);
   const check = checkPost(acct.channel, p.text, await companyMarkdown(deps.companyRoot));
   if (!check.ok) return refuse(`blocked: ${check.reasons.join('; ')}`);
-  const transport = deps.postTransport;
-  if (!transport) return refuse('there is no way to publish configured on this server');
+  // The account says how its posts go out. The browser is only used for an account switched to it.
+  const viaBrowser = acct.transport === 'browser';
+  const transport = viaBrowser ? deps.browserPostTransport : deps.postTransport;
+  if (!transport) return refuse(viaBrowser ? `${acct.handle} is set to publish through the browser, but this server has no browser transport` : 'there is no way to publish configured on this server');
 
   try {
+    // A browser that is not known to be logged in is not opened at all.
+    if (viaBrowser && acct.session_state !== 'valid') throw new SessionExpiredError(`the saved login is ${acct.session_state}`);
     const out = await transport.publish({ approvalId, platform: acct.channel, handle: acct.handle, accountId: p.accountId, text: p.text });
     await finish('executed', 'published', { ref: out.ref, url: out.url, transport: transport.name, ...(out.screenshot ? { screenshot: out.screenshot } : {}), publishedAt: now().toISOString() }, { url: out.url, text: p.text });
     return { status: 'executed', ref: out.ref };
@@ -78,11 +83,9 @@ export async function executePost(deps: ExecutorDeps, approvalId: string): Promi
     if (err instanceof SessionExpiredError) {
       const reason = `${acct.handle}'s login has expired (${err.message}). Log in again, then press "send the approved ones".`;
       await withWorkspace(deps.pool, ws, async ({ client: c }) => {
+        await markSession(c, ws, p.accountId, 'expired', 'executor:post');
         await c.query("update approvals set status = 'approved' where id = $1 and status = 'executing'", [approvalId]);
         await c.query("update posts set status = 'approved' where approval_id = $1", [approvalId]);
-        const marker = `account: ${p.accountId}\n`;
-        const open = await c.query("select 1 from action_items where kind = 'session_expired' and status = 'open' and body like $1", [`${marker}%`]);
-        if (!open.rows.length) await c.query("insert into action_items (workspace_id, kind, title, body) values ($1, 'session_expired', $2, $3)", [ws, `The login for ${acct.handle} has expired`, `${marker}${reason}\nNothing was posted. The approved post waits and goes out once you have logged in again.`]);
       });
       return { status: 'needs_login', reason };
     }

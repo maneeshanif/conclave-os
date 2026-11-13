@@ -24,6 +24,8 @@ export interface ExecutorDeps {
   transport: EmailTransport;
   /** How a post is published (S5-2). Without one, posts are refused. */
   postTransport?: PostTransport;
+  /** The signed-in browser, for accounts switched to it (S5-3). */
+  browserPostTransport?: PostTransport;
   companyRoot: string;
   from: string;
   bus?: Bus;

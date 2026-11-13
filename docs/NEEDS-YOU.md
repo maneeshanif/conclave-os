@@ -62,3 +62,8 @@ Things the build parked for you. Each says what to do.
   ```
 
   Each check is one line in `DATA_DIRlogsesume.log` (default `%USERPROFILE%.conclave-oslogs`); a run's output is in `resume-<time>.out.txt` beside it. It skips if a "Working now" claim in docs/PROGRESS.md is under 45 minutes old, if its own run is still going, if the repo is not on dev, or until the reset time after a usage limit. It runs `claude -p --permission-mode auto --permission-prompts none`: the same safety checks as your auto mode, and anything that would need your answer is denied. It never uses a flag that skips permission checks.
+
+## Posting through a browser (S5-3)
+
+- [ ] **Log in by hand, once per account** (nothing can post for real until you do): `pnpm run browser:login @your_handle`. A browser opens; log in; close it. Then switch the account on when you are ready: `POST /api/browser/accounts/<id>/transport {"transport":"browser"}` (a page for this comes with the phone app work).
+- [ ] **Watch the first real post.** The browser steps for X and LinkedIn were written without a real account and may need their selectors fixed. Set `BROWSER_HEADLESS=0` for the first one so you can see it. Until you switch an account to the browser, every post only writes a file to `DATA_DIRoutboxposts`.
