@@ -22,6 +22,7 @@ function Part({ title, children, tone }: { title: string; children: ReactNode; t
   );
 }
 
+const REASON: Record<string, string> = { paused: 'its usual engine hit a plan limit', retry: 'its usual engine kept failing', escalate: 'a check failed, so a stronger engine tried' };
 const money = (n: number) => `$${n.toFixed(2)}`;
 const size = (b: number) => (b >= 1024 ** 3 ? `${(b / 1024 ** 3).toFixed(1)} GB` : `${Math.max(1, Math.round(b / 1024 ** 2))} MB`);
 const plural = (n: number, w: string) => `${n} ${w}${n === 1 ? '' : 's'}`;
@@ -145,6 +146,18 @@ export function HealthView({ client = real }: { client?: HealthClient }) {
               ))}
             </ul>
           </Part>
+
+          {o.reroutes.length > 0 && (
+            <Part title="Moved to another engine">
+              <ul className="space-y-1 text-sm text-neutral-800">
+                {o.reroutes.map((r, i) => (
+                  <li key={i}>
+                    {r.agent} moved from {r.from} to {r.to} at {new Date(r.at).toLocaleTimeString()}: {REASON[r.reason] ?? r.reason}.
+                  </li>
+                ))}
+              </ul>
+            </Part>
+          )}
 
           <Part title="Housekeeping">
             <p className="text-sm text-neutral-800">

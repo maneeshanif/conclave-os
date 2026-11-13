@@ -104,6 +104,7 @@ export const agents = pgTable(
     runtime: text('runtime').notNull(),
     modelAlias: text('model_alias').notNull(),
     fallbackAlias: text('fallback_alias'),
+    fallbackRuntime: text('fallback_runtime'),
     heartbeatCron: text('heartbeat_cron'),
     // What the scheduled morning run asks the agent to do, from the role file. Empty: the agent is only woken (S2-8).
     heartbeatTask: text('heartbeat_task'),

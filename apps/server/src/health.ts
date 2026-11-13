@@ -44,6 +44,10 @@ export async function buildHealth(c: pg.PoolClient, o: { hours: number; now?: Da
     "select key, failures, last_error, opened_at, open_until from circuit_breakers where state = 'open' order by key",
   );
   const pauses = await rows<{ runtime: string; until: Date; reason: string }>('select runtime, until, reason from runtime_pauses where lifted_at is null and until > $1 order by until', [now]);
+  const moved = await rows<{ agent: string; data: { from: string; to: string; reason: string }; at: Date }>(
+    "select a.key as agent, e.data, e.at as at from run_events e join runs r on r.id = e.run_id join agents a on a.id = r.agent_id where e.type = 'reroute' and e.at >= $1 order by e.at desc limit 20",
+    [since],
+  );
   const [size] = await rows<{ bytes: string }>('select pg_database_size(current_database()) as bytes');
   const last = o.reaper?.get() ?? null;
 
@@ -71,5 +75,6 @@ export async function buildHealth(c: pg.PoolClient, o: { hours: number; now?: Da
     pauses: pauses.map((p) => ({ runtime: p.runtime, label: RUNTIME_LABEL[p.runtime] ?? p.runtime, until: p.until.toISOString(), reason: p.reason })),
     reaper: last ? { at: last.at.toISOString(), reaped: last.reaped, requeued: last.requeued, blocked: last.blocked } : null,
     database: { sizeBytes: Number(size?.bytes ?? 0) },
+    reroutes: moved.map((m) => ({ agent: m.agent, from: m.data.from, to: m.data.to, reason: m.data.reason, at: m.at.toISOString() })),
   };
 }

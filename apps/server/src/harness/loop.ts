@@ -31,7 +31,8 @@ export interface LoopDeps {
   /** The clock, for tests. */
   now?: () => Date;
   /** Renders the agent's folder again from its role file. Called before every run. */
-  prepare?: (agentKey: string) => Promise<void>;
+  /** Renders the agent's folder again before a run; `over` asks for the folder of its other engine (S4-5). */
+  prepare?: (agentKey: string, over?: { runtime: RuntimeName; model: string }) => Promise<void>;
 }
 
 export async function killSwitchOn(pool: pg.Pool, workspaceId: string): Promise<boolean> {
@@ -52,6 +53,7 @@ interface AgentRow {
   runtime: RuntimeName;
   model_alias: string;
   fallback_alias: string | null;
+  fallback_runtime: RuntimeName | null;
   output_check: string | null;
   monthly_budget_usd: string;
   max_turns: number;
@@ -144,7 +146,7 @@ export async function reapStaleRuns(pool: pg.Pool, workspaceId: string): Promise
 export async function executeRun(deps: LoopDeps, workspaceId: string, agentId: string, trigger: string): Promise<RunOutcome> {
   const agent = await withWorkspace(deps.pool, workspaceId, async ({ client: c }) => {
     const r = await c.query<AgentRow>(
-      `select a.id, a.key, a.name, a.status, a.runtime, a.model_alias, a.fallback_alias, a.output_check, a.monthly_budget_usd, a.max_turns, t.key as template_key, d.name as department
+      `select a.id, a.key, a.name, a.status, a.runtime, a.model_alias, a.fallback_alias, a.fallback_runtime, a.output_check, a.monthly_budget_usd, a.max_turns, t.key as template_key, d.name as department
        from agents a left join agent_templates t on t.id = a.template_id left join departments d on d.id = a.department_id
        where a.id = $1`,
       [agentId],
@@ -154,14 +156,29 @@ export async function executeRun(deps: LoopDeps, workspaceId: string, agentId: s
   if (!agent) return { status: 'not_runnable', reason: 'no such agent' };
   if (await killSwitchOn(deps.pool, workspaceId)) return { status: 'not_runnable', reason: 'the kill switch is on' };
   if (agent.status !== 'active') return { status: 'not_runnable', reason: `agent is ${agent.status}` };
-  const runtime = deps.runtimes[agent.runtime];
-  if (!runtime) return { status: 'not_runnable', reason: `runtime ${agent.runtime} is not available` };
+  const now = () => (deps.now ?? (() => new Date()))();
+  // The other engine this role names (S4-5), used while the first is paused, for retries and for escalation. Only if it exists here.
+  const fbRuntime: RuntimeName = agent.fallback_runtime ?? agent.runtime;
+  const hasFallback = !!agent.fallback_alias && !!deps.runtimes[fbRuntime];
   // The month's budget is checked before every run: at or over it, nothing starts and no task is taken (S3-4).
   const budget = await checkBudget(deps.pool, workspaceId, agent, (deps.now ?? (() => new Date()))());
   if (budget.over) return { status: 'not_runnable', reason: `${agent.name} is over its budget for the month ($${budget.spent.toFixed(2)} of $${budget.budget.toFixed(2)})` };
   // A runtime that has hit its plan limit starts nothing, and no task is taken, until the reset (S3-3).
-  const paused = await activePause(deps.pool, workspaceId, agent.runtime, (deps.now ?? (() => new Date()))());
-  if (paused) return { status: 'not_runnable', reason: `${RUNTIME_LABEL[agent.runtime] ?? agent.runtime} is paused until ${paused.until.toISOString()} (a plan limit was reached)` };
+  // While it is paused, an agent whose role file names another engine carries on there (a scout moves to the local model);
+  // one with no other engine waits in the queue.
+  let runtimeName: RuntimeName = agent.runtime;
+  let startAlias = agent.model_alias;
+  let reroutedFrom: RuntimeName | null = null;
+  const paused = await activePause(deps.pool, workspaceId, agent.runtime, now());
+  if (paused) {
+    const canMove = hasFallback && agent.fallback_runtime && agent.fallback_runtime !== agent.runtime && !(await activePause(deps.pool, workspaceId, agent.fallback_runtime, now()));
+    if (!canMove) return { status: 'not_runnable', reason: `${RUNTIME_LABEL[agent.runtime] ?? agent.runtime} is paused until ${paused.until.toISOString()} (a plan limit was reached)` };
+    reroutedFrom = agent.runtime;
+    runtimeName = agent.fallback_runtime!;
+    startAlias = agent.fallback_alias!;
+  }
+  let runtime = deps.runtimes[runtimeName];
+  if (!runtime) return { status: 'not_runnable', reason: `runtime ${runtimeName} is not available` };
 
   // Wake and check out, in plain code, before any model call.
   const task = await checkoutTask(deps.pool, workspaceId, agentId);
@@ -173,7 +190,7 @@ export async function executeRun(deps: LoopDeps, workspaceId: string, agentId: s
       const r = await c.query<{ id: string }>(
         `insert into runs (workspace_id, agent_id, task_id, trigger, runtime, model, status, started_at, heartbeat_at)
          values ($1, $2, $3, $4, $5, $6, 'running', now(), now()) returning id`,
-        [workspaceId, agentId, task.id, trigger, agent.runtime, agent.model_alias],
+        [workspaceId, agentId, task.id, trigger, runtimeName, startAlias],
       );
       return r.rows[0]!.id;
     });
@@ -192,14 +209,16 @@ export async function executeRun(deps: LoopDeps, workspaceId: string, agentId: s
   let tout = 0;
   let sessionId: string | undefined;
   // Retry plan (S3-2): the waits on the agent's own model, then the fallback model once.
-  let alias = agent.model_alias;
+  let alias = startAlias;
+  // A session belongs to one engine: once this run is on another one it starts fresh and never resumes the old session.
+  let noResume = reroutedFrom !== null;
   let attempts = 0;
   let planStep = 0;
   let onFallback = false;
   // Output check (S3-5): the result is checked once the run reports done; a failure gets one repair, then the stronger model.
   let stage: 'main' | 'repair' | 'escalated' = 'main';
   let input: string;
-  const plan = deps.retry ? [...deps.retry.delaysMs.map((wait) => ({ alias: agent.model_alias, wait, fallback: false })), ...(agent.fallback_alias ? [{ alias: agent.fallback_alias, wait: 0, fallback: true }] : [])] : [];
+  const plan = deps.retry ? [...deps.retry.delaysMs.map((wait) => ({ alias: startAlias, wait, fallback: false, runtime: runtimeName })), ...(hasFallback && !reroutedFrom ? [{ alias: agent.fallback_alias!, wait: 0, fallback: true, runtime: fbRuntime }] : [])] : [];
   active.set(runId, runtime);
   try {
     await audit(deps.pool, workspaceId, 'run.running', runId, { agent: agent.key, task: task.id, trigger });
@@ -208,8 +227,24 @@ export async function executeRun(deps: LoopDeps, workspaceId: string, agentId: s
 
     const workspaceDir = agentWorkDir(deps.dataDir, deps.workspaceSlug, agent.key);
     // Fresh harness config for every run, and nothing the agent planted in work/ survives (SPEC 5).
-    if (deps.prepare) await deps.prepare(agent.key);
+    if (deps.prepare) await deps.prepare(agent.key, reroutedFrom ? { runtime: runtimeName, model: startAlias } : undefined);
     await cleanWorkFolder(workspaceDir);
+    const note = (data: unknown) => withWorkspace(deps.pool, workspaceId, ({ client: c }) => c.query('insert into run_events (workspace_id, run_id, type, data) values ($1, $2, $3, $4)', [workspaceId, runId, 'reroute', JSON.stringify(data)])).catch(() => undefined);
+    if (reroutedFrom) await note({ from: reroutedFrom, to: runtimeName, model: startAlias, reason: 'paused' });
+    // Moves this run to another engine: its folder is rendered for that engine, the run row says where it is, and no session carries over.
+    const switchTo = async (to: RuntimeName, toAlias: string, reason: string) => {
+      if (to === runtimeName) return;
+      const from = runtimeName;
+      runtimeName = to;
+      runtime = deps.runtimes[to]!;
+      active.set(runId, runtime);
+      noResume = true;
+      sessionId = undefined;
+      if (deps.prepare) await deps.prepare(agent.key, { runtime: to, model: toAlias });
+      await cleanWorkFolder(workspaceDir);
+      await withWorkspace(deps.pool, workspaceId, ({ client: c }) => c.query('update runs set runtime = $2, model = $3 where id = $1', [runId, to, toAlias]));
+      await note({ from, to, model: toAlias, reason });
+    };
 
     const token = deps.tokens.issue({ workspaceId, agentId, runId, taskId: task.id });
     const { instructions, taskInput } = buildContext(agent, task);
@@ -235,7 +270,7 @@ export async function executeRun(deps: LoopDeps, workspaceId: string, agentId: s
       timeoutMs: deps.timeoutMs ?? 900_000,
       allowedTools: tools.allow,
       deniedTools: tools.deny,
-      ...((sessionId ?? task.session_id) ? { sessionId: (sessionId ?? task.session_id)! } : {}),
+      ...((noResume ? sessionId : (sessionId ?? task.session_id)) ? { sessionId: (noResume ? sessionId : (sessionId ?? task.session_id))! } : {}),
     })) {
       seq++;
       if (e.type === 'cost') {
@@ -273,6 +308,7 @@ export async function executeRun(deps: LoopDeps, workspaceId: string, agentId: s
       if (await killSwitchOn(deps.pool, workspaceId)) break;
       alias = next.alias;
       onFallback = next.fallback;
+      if (next.fallback) await switchTo(next.runtime, next.alias, 'retry');
       continue;
     }
     if (final?.type === 'done' && agent.output_check) {
@@ -280,7 +316,7 @@ export async function executeRun(deps: LoopDeps, workspaceId: string, agentId: s
       const check = agent.output_check;
       const verdict = await withWorkspace(deps.pool, workspaceId, ({ client: c }) => runCheck(c, check, { output, runId }));
       if (!verdict.ok) {
-        const move: "repair" | "escalate" | null = verdict.fatal ? null : stage === 'main' ? 'repair' : stage === 'repair' && agent.fallback_alias ? 'escalate' : null;
+        const move: "repair" | "escalate" | null = verdict.fatal ? null : stage === 'main' ? 'repair' : stage === 'repair' && hasFallback ? 'escalate' : null;
         if (move) {
           await withWorkspace(deps.pool, workspaceId, ({ client: c }) =>
             c.query('insert into run_events (workspace_id, run_id, type, data) values ($1, $2, $3, $4)', [workspaceId, runId, 'repair', JSON.stringify({ stage: move, check, reasons: verdict.reasons })]),
@@ -289,6 +325,7 @@ export async function executeRun(deps: LoopDeps, workspaceId: string, agentId: s
           if (move === 'escalate') {
             alias = agent.fallback_alias!;
             onFallback = true;
+            await switchTo(fbRuntime, alias, 'escalate');
           }
           stage = move === 'repair' ? 'repair' : 'escalated';
           continue;
@@ -346,7 +383,7 @@ export async function executeRun(deps: LoopDeps, workspaceId: string, agentId: s
     ]);
   });
   if (planLimit && error) {
-    await withWorkspace(deps.pool, workspaceId, ({ client: c }) => pauseRuntime(c, workspaceId, agent.runtime, parseResetTime(error.message, (deps.now ?? (() => new Date()))()), error.message)).catch((err) => console.error('could not pause the runtime:', (err as Error).message));
+    await withWorkspace(deps.pool, workspaceId, ({ client: c }) => pauseRuntime(c, workspaceId, runtimeName, parseResetTime(error.message, (deps.now ?? (() => new Date()))()), error.message)).catch((err) => console.error('could not pause the runtime:', (err as Error).message));
   }
   deps.bus.publish({ kind: 'run.state', workspaceId, runId, taskId: task.id, status, ...(error ? { error: `${error.kind}: ${error.message}` } : {}) });
   deps.bus.publish({ kind: 'task.changed', workspaceId, taskId: task.id });

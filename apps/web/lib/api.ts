@@ -132,6 +132,7 @@ export interface HealthOverview {
   pauses: { runtime: string; label: string; until: string; reason: string }[];
   reaper: { at: string; reaped: number; requeued: number; blocked: number } | null;
   database: { sizeBytes: number };
+  reroutes: { agent: string; from: string; to: string; reason: string; at: string }[];
 }
 
 export interface Brief {

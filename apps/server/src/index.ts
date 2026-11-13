@@ -84,7 +84,7 @@ const loop: LoopDeps = {
   templatesRoot: sys.templatesRoot,
   // A transient model error is retried after 5 seconds, 20 seconds and a minute, then once on the agent's fallback model (S3-2).
   retry: { delaysMs: [5_000, 20_000, 60_000] },
-  prepare: (agentKey) => renderOne(sys, agentKey),
+  prepare: (agentKey, over) => renderOne(sys, agentKey, over),
 };
 const execute = (e: RunRequestEvent) => executeRun(loop, e.workspaceId, e.agentId, e.trigger);
 

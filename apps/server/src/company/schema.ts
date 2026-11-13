@@ -72,6 +72,10 @@ export const RoleFileSchema = z
     }),
     model: z.string().min(1),
     fallback_model: z.string().optional(),
+    /** The other engine to use when this one is paused for a plan limit, or to escalate to when a check fails (S4-5). */
+    fallback_runtime: z
+      .enum(RUNTIMES, { error: (issue) => `unknown runtime "${String(issue.input)}". Use one of: ${RUNTIMES.join(', ')}` })
+      .optional(),
     heartbeat: z.string().optional(),
     /** What each scheduled run should do. A task with this text is made when the heartbeat fires. */
     heartbeat_task: z.string().min(1).max(2000).optional(),

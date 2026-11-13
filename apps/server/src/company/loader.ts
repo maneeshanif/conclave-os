@@ -90,10 +90,13 @@ export function parseRoleFile(text: string, rolePath: string): LoadedAgent {
       `model alias "${role.model}" does not list runtime "${role.runtime}". Pick an alias that works on ${role.runtime}.`,
     );
   }
-  if (role.fallback_model && !aliasWorksOn(role.fallback_model, role.runtime)) {
+  if (role.fallback_runtime && !role.fallback_model) {
+    throw new CompanyLoadError(rolePath, 'fallback_runtime needs a fallback_model: name the model alias to use on that runtime.');
+  }
+  if (role.fallback_model && !aliasWorksOn(role.fallback_model, role.fallback_runtime ?? role.runtime)) {
     throw new CompanyLoadError(
       rolePath,
-      `fallback alias "${role.fallback_model}" does not list runtime "${role.runtime}".`,
+      `fallback alias "${role.fallback_model}" does not list runtime "${role.fallback_runtime ?? role.runtime}".`,
     );
   }
   return { role, body, rolePath };

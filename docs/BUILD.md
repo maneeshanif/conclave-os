@@ -315,7 +315,7 @@ Recorded 2026-11-13. Nothing here is built ahead of its slice (CLAUDE.md, Stack)
   One more target in the renderer: standing rules, role, skill descriptions and the per-run context become one `instructions` string; connectors become the MCP server list; permissions become the tool list the runner hands over. Nothing outside `runtimes/` and the renderer's per-runtime targets names the runtime (rule 11).
   *Test:* snapshot of a scout rendered for `openai-agents`; the same template rendered for `claude-cli` is unchanged; a permission the runner cannot enforce is a render error, not a silent drop.
 
-- [ ] **S4-5 Move short jobs to the local model when Claude is paused.** SPEC 7 (Plan limits are part of the design), 14.
+- [x] **S4-5 Move short jobs to the local model when Claude is paused.** SPEC 7 (Plan limits are part of the design), 14.
   When a runtime is paused for a plan limit, waiting scout and triage tasks go to the agent's local alternative instead of waiting; writing tasks stay queued. A role file names it (`fallback_runtime` and `fallback_model`), and escalation from a failed output check may cross to a stronger runtime the same way (local to Claude). The move is recorded on the run and shown on the Health screen.
   *Test:* with `claude-cli` paused, a triage task runs on the local alias and a writing task stays queued; after the lift both are back on their own runtime; a failed check on the local model escalates to Claude once and then blocks; an agent with no fallback is unchanged.
 

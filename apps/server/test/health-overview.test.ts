@@ -29,6 +29,7 @@ interface Overview {
   pauses: { runtime: string; label: string }[];
   reaper: { at: string; reaped: number; requeued: number; blocked: number } | null;
   database: { sizeBytes: number };
+  reroutes: { agent: string; from: string; to: string; reason: string }[];
 }
 const overview = async (q = '') => (await (await app().request(`/api/health/overview${q}`)).json()) as Overview;
 const run = (agent: string, status: string, hoursAgo: number, usd = 0) =>
@@ -110,6 +111,19 @@ describe('GET /api/health/overview (S3-7)', () => {
     expect(o.killSwitch.at).toBeTruthy();
     expect(o.reaper).toMatchObject({ reaped: 2, requeued: 1, blocked: 0 });
     expect(o.reaper!.at).toBeTruthy();
+  });
+
+  it('lists the runs that were moved to another engine in the window, newest first', async () => {
+    const mk = async (hoursAgo: number) => {
+      const run = (await sql("insert into runs (workspace_id, agent_id, trigger, runtime, status, started_at) values ($1, $2, 'manual', 'openai-agents', 'succeeded', now() - ($3 || ' hours')::interval) returning id", [ws(), a1, String(hoursAgo)])).rows[0].id;
+      await sql("insert into run_events (workspace_id, run_id, type, data, at) values ($1, $2, 'reroute', $3, now() - ($4 || ' hours')::interval)", [ws(), run, JSON.stringify({ from: 'claude-cli', to: 'openai-agents', reason: 'paused' }), String(hoursAgo)]);
+    };
+    await mk(30); // outside a 24-hour window
+    await mk(2);
+    const o = await overview();
+    expect(o.reroutes).toHaveLength(1);
+    expect(o.reroutes[0]).toMatchObject({ agent: 'health-one', from: 'claude-cli', to: 'openai-agents', reason: 'paused' });
+    expect((await overview('?hours=48')).reroutes).toHaveLength(2);
   });
 
   it('refuses a silly window', async () => {

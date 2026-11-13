@@ -16,6 +16,7 @@ const overview = (over: Partial<HealthOverview> = {}): HealthOverview => ({
   pauses: [],
   reaper: null,
   database: { sizeBytes: 12 * 1024 * 1024 },
+  reroutes: [],
   ...over,
 });
 const agent = (over = {}) => ({ id: 'a1', key: 'prospector', name: 'Prospector', runs: 4, failed: 1, failureRate: 0.25, spentThisMonth: 1.5, budget: 5, overBudget: false, ...over });
@@ -93,6 +94,12 @@ describe('the Health page (S3-7)', () => {
     render(<HealthView client={c} />);
     fireEvent.click(await screen.findByRole('button', { name: /turn the kill switch on/i }));
     expect(c.setKillSwitch).not.toHaveBeenCalled();
+  });
+
+  it('lists the work that was moved to another engine, and why', async () => {
+    render(<HealthView client={client(overview({ reroutes: [{ agent: 'prospector', from: 'claude-cli', to: 'openai-agents', reason: 'paused', at: '2026-11-13T11:00:00Z' }] }))} />);
+    expect(await screen.findByText(/prospector moved from claude-cli to openai-agents/i)).toBeTruthy();
+    expect(screen.getByText(/plan limit/i)).toBeTruthy();
   });
 
   it('shows the last reaper pass', async () => {
