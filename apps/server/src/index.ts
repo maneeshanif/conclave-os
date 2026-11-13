@@ -13,6 +13,8 @@ import { syncCompany } from './company/sync';
 import { dispatchLimit, resolveAuthConfig, resolveLite, resolvePgPort } from './config';
 import { singleFlight } from './workflows/single-flight';
 import { ensureDailyBackup, type DailyState } from './backup';
+import { companyMarkdown } from './actions/policy';
+import { assembleGenerated } from './video/assemble';
 import { ensureDailyBrief } from './brief/build';
 import { DbOsStore } from './harness/db-os-store';
 import { stopEverything } from './harness/kill-switch';
@@ -123,6 +125,9 @@ const runEveryMinute = async () => {
   });
   if (backed?.ok) console.log(`backup: wrote ${backed.file} (${backed.rows} rows)${backed.committed ? '; company folder committed' : ''}`);
   else if (backed) console.error(`backup failed: ${backed.error}`);
+  // Briefs whose assets were just generated are laid out and reviewed (S5-9).
+  const assembled = await assembleGenerated(sys.app, sys.workspace.id, await companyMarkdown(sys.companyRoot));
+  if (assembled.ready.length || assembled.failed.length) console.log(`video: ${assembled.ready.length} plan(s) ready, ${assembled.failed.length} failed review`);
   // Runs whose process has gone quiet for good are failed and their tasks put back (S3-1). Nothing here needs a person.
   const reaped = await reapRuns({ pool: sys.app, workspaceId: sys.workspace.id, isActive: isRunActive });
   reaperStatus.record(reaped);

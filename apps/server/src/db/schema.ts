@@ -746,11 +746,14 @@ export const videoBriefs = pgTable(
     title: text('title').notNull(),
     script: text('script').notNull(),
     shots: jsonb('shots').notNull(), // [{ kind: text | image | clip, description, seconds }]
-    status: text('status').notNull().default('pending_approval'), // pending_approval | approved | rejected | expired | generating | generated | failed | cancelled
+    status: text('status').notNull().default('pending_approval'), // pending_approval | approved | rejected | expired | generating | generated | ready | review_failed | failed | cancelled
     estimatedCredits: integer('estimated_credits').notNull(), // counted from the shot list, never taken from the agent
     spentCredits: integer('spent_credits').notNull().default(0),
     approvalId: uuid('approval_id'),
     error: text('error'),
+    plan: jsonb('plan'), // the assembly plan (S5-9)
+    planHash: text('plan_hash'),
+    review: jsonb('review'), // { ok, reasons }
     createdBy: text('created_by').notNull(),
     createdAt: createdAt(),
   },
@@ -760,7 +763,7 @@ export const videoBriefs = pgTable(
     uniqueIndex('video_briefs_live_idea_uq')
       .on(t.workspaceId, t.ideaId)
       .where(sql`${t.status} not in ('rejected','expired','cancelled','failed')`),
-    check('video_briefs_status_ck', sql`${t.status} in ('pending_approval','approved','rejected','expired','generating','generated','failed','cancelled')`),
+    check('video_briefs_status_ck', sql`${t.status} in ('pending_approval','approved','rejected','expired','generating','generated','ready','review_failed','failed','cancelled')`),
     check('video_briefs_credits_ck', sql`${t.estimatedCredits} >= 0 and ${t.spentCredits} >= 0`),
     foreignKey({ name: 'video_briefs_idea_fk', columns: [t.workspaceId, t.ideaId], foreignColumns: [videoIdeas.workspaceId, videoIdeas.id] }),
     foreignKey({ name: 'video_briefs_approval_fk', columns: [t.workspaceId, t.approvalId], foreignColumns: [approvals.workspaceId, approvals.id] }),

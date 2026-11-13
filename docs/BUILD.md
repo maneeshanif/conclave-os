@@ -396,7 +396,7 @@ Recorded 2026-11-13. Nothing here is built ahead of its slice (CLAUDE.md, Stack)
   A brief (script, shot list, assets needed, estimated credits) made from an idea and a hook, which is an approval before anything is generated. A `generate_asset` connector interface with a fake; assets are stored by key in the data folder.
   *Test:* nothing is generated before the brief is approved; a rejected brief generates nothing; the credits shown are counted from the shot list; generation is claim-once.
 
-- [ ] **S5-9 Assembly and the review check.** SPEC 8.
+- [x] **S5-9 Assembly and the review check.** SPEC 8.
   A deterministic assembly plan (scenes, captions, timing, brand) from an approved brief and its assets; the same inputs give the same plan byte for byte. A review check in code (duration within the brief, every shot has an asset, captions present, brand colours and logo present, no blocked claim in captions) before the approval card.
   *Test:* identical inputs give an identical plan; each review rule fails with its reason; a plan that fails review is not offered for approval.
 

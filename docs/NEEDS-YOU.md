@@ -71,3 +71,7 @@ Things the build parked for you. Each says what to do.
 ## Video generation (S5-8)
 
 - [ ] **Choose a generator for images and clips** (Google Flow, Veo through an API, or another) and say so. It needs your account and credits, which I cannot create. Until then an approved video brief is refused and spends nothing. When you choose, tell me the generator and its real credit prices so the numbers in `apps/server/src/video/briefs.ts` (image 1, clip 5) match. Read the generator's terms and any unofficial connector's code first (SPEC 8).
+
+## Brand for videos (S5-9)
+
+- [ ] **Add a "## Brand" section to `company/COMPANY.md`** with three lines: `- primary: #RRGGBB`, `- text: #RRGGBB` and `- logo: <path of your logo under the data folder's assets>`. Until it is there, every video plan fails review with that reason. Also add "## Approved link domains" (the domains a post may link to) if you want posts with links.
