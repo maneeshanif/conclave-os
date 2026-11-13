@@ -15,6 +15,7 @@ import { singleFlight } from './workflows/single-flight';
 import { ensureDailyBackup, type DailyState } from './backup';
 import { companyMarkdown } from './actions/policy';
 import { assembleGenerated } from './video/assemble';
+import { createNotifier, ensureVapidKeys, webPushSender } from './push';
 import { ensureDailyBrief } from './brief/build';
 import { DbOsStore } from './harness/db-os-store';
 import { stopEverything } from './harness/kill-switch';
@@ -111,7 +112,10 @@ const runEveryMinute = async () => {
   const woken = await tick(sys.app, sys.workspace.id, dispatcher, new Date(), asked, tz ? { tz } : {});
   const briefTime = process.env.BRIEF_TIME?.trim() || '06:30'; // HH:MM in the company's time zone
   const brief = await ensureDailyBrief({ pool: sys.app, workspaceId: sys.workspace.id, tz, after: briefTime });
-  if (brief) console.log(`morning brief for ${brief.day} is ready`);
+  if (brief) {
+    console.log(`morning brief for ${brief.day} is ready`);
+    void notifier.notify('brief', brief.day).catch((err) => console.error('push:', err));
+  }
   // The daily backup: a database dump beside the data, the last 14 kept, and a commit of the company folder (S3-9).
   const backed = await ensureDailyBackup({
     withOwner: ownerAccess(sys.dataDir, resolvePgPort()),
@@ -166,7 +170,10 @@ if (useInngest) {
 }
 
 const hooks = approvalHooks(gate);
-proposalQueued = hooks.onApprovalRequested;
+proposalQueued = (w, id) => {
+  hooks.onApprovalRequested(w, id);
+  void notifier.notify('approval_waiting', id).catch((err) => console.error('push:', err));
+};
 
 // Where to listen and whether a login is needed. Throws, before anything listens, if the server would be open to the network.
 const authConfig = resolveAuthConfig(process.env);
@@ -180,6 +187,10 @@ if (auth) {
 }
 
 const reaperStatus = new ReaperStatus();
+// Push notifications for the installed app: the brief, a failed executor and an approval waiting, and nothing else (S5-10).
+const vapid = ensureVapidKeys(sys.dataDir);
+const notifier = createNotifier({ pool: sys.app, workspaceId: sys.workspace.id, sender: webPushSender(vapid, process.env.PUSH_SUBJECT?.trim() || 'mailto:conclave-os@example.invalid') });
+notifier.attach(bus);
 const backupState: DailyState = {};
 const breakers = new Breakers({ pool: sys.app, workspaceId: sys.workspace.id });
 
@@ -193,6 +204,7 @@ shell.route(
     tokens,
     store,
     breakers,
+    push: { notifier, publicKey: vapid.publicKey },
     reaperStatus,
     bus,
     dispatcher,

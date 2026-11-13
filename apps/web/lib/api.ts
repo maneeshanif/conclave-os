@@ -310,6 +310,9 @@ export const api = {
   videoIdeas: (stage?: string) => call<VideoIdea[]>(`/api/video-ideas${stage ? `?stage=${encodeURIComponent(stage)}` : ''}`),
   addVideoIdea: (idea: string, kind: 'line' | 'voice') => call<VideoIdea>('/api/video-ideas', { method: 'POST', body: JSON.stringify({ idea, kind }) }),
   moveVideoIdea: (id: string, action: 'shelve' | 'unshelve' | 'brief') => call<VideoIdea>(`/api/video-ideas/${id}/${action}`, { method: 'POST', body: '{}' }),
+  pushKey: () => call<{ publicKey: string }>('/api/push/key'),
+  pushSubscribe: (sub: unknown) => call<{ subscribed: true }>('/api/push/subscribe', { method: 'POST', body: JSON.stringify(sub) }),
+  pushUnsubscribe: (endpoint: string) => call<{ subscribed: false }>('/api/push/subscribe', { method: 'DELETE', body: JSON.stringify({ endpoint }) }),
   health: () => call<HealthOverview>('/api/health/overview'),
   setKillSwitch: async (on: boolean) => {
     await call('/api/settings', { method: 'PATCH', body: JSON.stringify({ killSwitch: on }) });

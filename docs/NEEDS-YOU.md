@@ -75,3 +75,8 @@ Things the build parked for you. Each says what to do.
 ## Brand for videos (S5-9)
 
 - [ ] **Add a "## Brand" section to `company/COMPANY.md`** with three lines: `- primary: #RRGGBB`, `- text: #RRGGBB` and `- logo: <path of your logo under the data folder's assets>`. Until it is there, every video plan fails review with that reason. Also add "## Approved link domains" (the domains a post may link to) if you want posts with links.
+
+## Notifications on your phone (S5-10)
+
+- [ ] After the phone steps above (Tailscale, install the app), open **Health** in the installed app and press "Turn on notifications". On an iPhone the app must be added to the home screen first. I have not been able to try a real push; if one does not arrive, tell me what the Health page says.
+- [ ] Optional: set `PUSH_SUBJECT` in `.env` to a `mailto:` address you are happy for push services to see. The default is a placeholder.

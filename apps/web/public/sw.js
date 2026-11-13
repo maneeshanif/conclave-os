@@ -53,3 +53,42 @@ self.addEventListener('fetch', (event) => {
     );
   }
 });
+
+// Push (S5-10). The server sends a fixed title, a short line and a page to open, never the text of a post or a lead. The page
+// must be a path on this site: anything else falls back to the approvals page, so a message cannot send a person elsewhere.
+self.addEventListener('push', (event) => {
+  let data;
+  try {
+    data = event.data ? event.data.json() : {};
+  } catch {
+    data = {};
+  }
+  if (!data || typeof data !== 'object') data = {};
+  const title = typeof data.title === 'string' && data.title ? data.title : 'Conclave OS';
+  const url = typeof data.url === 'string' && /^\/(?!\/)/.test(data.url) ? data.url : '/approvals';
+  event.waitUntil(
+    self.registration.showNotification(title, {
+      body: typeof data.body === 'string' ? data.body : '',
+      tag: typeof data.tag === 'string' ? data.tag : undefined,
+      icon: '/icons/icon-192.png',
+      data: { url },
+    }),
+  );
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const raw = event.notification.data && event.notification.data.url;
+  const url = typeof raw === 'string' && /^\/(?!\/)/.test(raw) ? raw : '/approvals';
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((list) => {
+      for (const c of list) {
+        if ('focus' in c) {
+          if ('navigate' in c) c.navigate(url);
+          return c.focus();
+        }
+      }
+      return self.clients.openWindow(url);
+    }),
+  );
+});

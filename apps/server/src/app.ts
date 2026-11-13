@@ -13,6 +13,8 @@ import type { RunTokens } from './harness/run-tokens';
 import { apiRoutes } from './routes/api';
 import type { ApprovalDecision } from './routes/approvals';
 import { breakerRoutes } from './routes/breakers';
+import { pushRoutes } from './routes/push';
+import type { Notifier } from './push';
 import { mcpRoutes } from './routes/mcp';
 import { ownerRoutes } from './routes/owner';
 import type { Dispatcher } from './workflows/dispatch';
@@ -50,6 +52,8 @@ export interface AppDeps {
   onReleaseHeld?: () => Promise<number> | number;
   /** What the last reaper pass did, for the Health screen (S3-7). */
   reaperStatus?: ReaperStatus;
+  /** Push notifications (S5-10): the notifier and the public key the browser subscribes with. */
+  push?: { notifier: Notifier; publicKey: string };
   /** Circuit breakers for the os tools (S3-6). */
   breakers?: Breakers;
   /** Copies the company folder into the database again, on request. */
@@ -119,6 +123,7 @@ export function createApp(deps?: AppDeps) {
   });
 
   if (deps.auth) app.route('/api/owner', ownerRoutes({ auth: deps.auth }));
+  if (deps.push) app.route('/api/push', pushRoutes(deps.push));
   if (deps.breakers) app.route('/api/breakers', breakerRoutes({ breakers: deps.breakers }));
   if (deps.bus && deps.dispatcher) {
     app.route('/api', apiRoutes({ workspaceId: deps.workspaceId, dispatcher: deps.dispatcher, bus: deps.bus, onApprovalDecided: deps.onApprovalDecided, onKillSwitch: deps.onKillSwitch, onReleaseHeld: deps.onReleaseHeld, ...(deps.onCompanyReload ? { onCompanyReload: deps.onCompanyReload } : {}), ...(deps.reaperStatus ? { reaperStatus: deps.reaperStatus } : {}) }));

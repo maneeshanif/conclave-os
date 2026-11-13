@@ -736,6 +736,37 @@ export const runtimePauses = pgTable(
   ],
 );
 
+/** A device that asked for push notifications (S5-10). Stored once per endpoint. */
+export const pushSubscriptions = pgTable(
+  'push_subscriptions',
+  {
+    id: id(),
+    workspaceId: workspaceId(),
+    endpoint: text('endpoint').notNull(),
+    p256dh: text('p256dh').notNull(),
+    auth: text('auth').notNull(),
+    userAgent: text('user_agent'),
+    failures: integer('failures').notNull().default(0), // in a row; five drops the subscription
+    lastOkAt: timestamp('last_ok_at', { withTimezone: true }),
+    createdAt: createdAt(),
+  },
+  (t) => [unique('push_subscriptions_ws_id_uq').on(t.workspaceId, t.id), unique('push_subscriptions_ws_endpoint_uq').on(t.workspaceId, t.endpoint)],
+);
+
+/** One row per notification already handled, so each is sent exactly once (S5-10). */
+export const pushEvents = pgTable(
+  'push_events',
+  {
+    id: id(),
+    workspaceId: workspaceId(),
+    kind: text('kind').notNull(), // approval_waiting | executor_failed | brief
+    ref: text('ref').notNull(), // the approval id, or the brief's day
+    sent: integer('sent').notNull().default(0),
+    createdAt: createdAt(),
+  },
+  (t) => [unique('push_events_ws_id_uq').on(t.workspaceId, t.id), unique('push_events_ws_kind_ref_uq').on(t.workspaceId, t.kind, t.ref), check('push_events_kind_ck', sql`${t.kind} in ('approval_waiting','executor_failed','brief')`)],
+);
+
 /** A video brief: a script and a shot list a person approves before any credits are spent (S5-8). */
 export const videoBriefs = pgTable(
   'video_briefs',

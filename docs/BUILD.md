@@ -400,7 +400,7 @@ Recorded 2026-11-13. Nothing here is built ahead of its slice (CLAUDE.md, Stack)
   A deterministic assembly plan (scenes, captions, timing, brand) from an approved brief and its assets; the same inputs give the same plan byte for byte. A review check in code (duration within the brief, every shot has an asset, captions present, brand colours and logo present, no blocked claim in captions) before the approval card.
   *Test:* identical inputs give an identical plan; each review rule fails with its reason; a plan that fails review is not offered for approval.
 
-- [ ] **S5-10 The phone app and push.** SPEC 12.
+- [x] **S5-10 The phone app and push.** SPEC 12.
   Web Push with VAPID keys generated on this machine and kept in the data folder; subscriptions stored; three notifications only: the morning brief, a failed executor, and an approval waiting. Payloads carry no post text or personal data.
   *Test:* keys are never in the repo or a log; a subscription is stored once; each of the three events sends exactly one notification and nothing else does; a payload has no body text from a post or a lead; an expired subscription is removed.
 

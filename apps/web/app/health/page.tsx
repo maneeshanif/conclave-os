@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { HealthView } from '../../components/HealthView';
+import { PushToggle } from '../../components/PushToggle';
 
 export const metadata = { title: 'Health · Conclave OS' };
 
@@ -19,6 +20,9 @@ export default function HealthPage() {
         </Link>
       </nav>
       <HealthView />
+      <div className="mt-6">
+        <PushToggle />
+      </div>
     </main>
   );
 }

@@ -36,6 +36,8 @@ const TABLES = [
   'outreach_messages',
   'posts',
   'projects',
+  'push_events',
+  'push_subscriptions',
   'run_events',
   'runs',
   'runtime_pauses',
