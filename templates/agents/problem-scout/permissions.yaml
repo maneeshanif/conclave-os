@@ -1,0 +1,9 @@
+# Neutral permission rules (SPEC 5, default permissions). The renderer maps these to each harness.
+# The scout runs in the in-process runner, which has the os tools and load_skill and nothing else:
+# no files, no web, no shell. Items reach it in its task; a source connector (later) puts them there.
+read: deny
+write: deny
+shell: deny
+web_search: deny
+web_fetch: deny
+subagents: deny

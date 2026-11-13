@@ -88,6 +88,8 @@ export const RoleFileSchema = z
     connectors: z.array(z.string()).default([]),
     max_turns: z.number().int().positive().default(25),
     output_check: z.string().optional(),
+    /** Hired switched off (rooms 6 and 9 are configured now and turned on later). A person switches the agent on. */
+    start_paused: z.boolean().optional(),
   })
   .strict();
 export type RoleFile = z.infer<typeof RoleFileSchema>;

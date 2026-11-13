@@ -1,0 +1,30 @@
+# Agent template: demand-scout. Neutral sources only; the renderer writes each harness's own format (SPEC 5).
+key: demand-scout
+version: 1
+description: "Demand Radar scout (room 9): reads public posts where someone is asking for the services the company sells and records each as a service_request signal. Starts paused; a person switches it on."
+params:
+  - { name: id, required: true }
+  - { name: name, required: true }
+  - { name: department, required: true }
+  - { name: department_name, required: true }
+  - { name: company_name, required: true }
+  - { name: reports_to, required: false }
+defaults:
+  # The local model through the in-process runner, free to run all day. When a check fails twice it escalates once to Claude.
+  runtime: openai-agents
+  model: local-worker
+  fallback_runtime: claude-cli
+  fallback_model: researcher
+  # Level 1 may write to internal tables, which is what recording a signal is. It cannot propose anything to the outside (SPEC 6).
+  autonomy: 1
+  # Local runs cost nothing; this caps what escalations to Claude may spend in a month. Zero would mean nothing is allowed.
+  monthly_budget_usd: 2
+  max_turns: 15
+  output_check: non-empty
+  # Rooms 6 and 9 are configured now and switched on later (SPEC 4): a hire starts paused.
+  start_paused: true
+  # Every hour, on the hour. Change it in the role file.
+  heartbeat: "0 * * * *"
+  heartbeat_task: "Look at the posts waiting in your open tasks. Record each one where a person is asking for the services in the company file with add_signal (kind service_request), then score it with score_signal. Skip job ads and anything that is not a real request. When you are done, call complete_task with how many you recorded and how many you skipped."
+skills: []
+plugins: [signals-kit]

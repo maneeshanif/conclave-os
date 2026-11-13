@@ -323,7 +323,7 @@ Recorded 2026-11-13. Nothing here is built ahead of its slice (CLAUDE.md, Stack)
   Migration with forced row-level security, `(workspace_id, url)` unique, kinds `service_request | pain_point | tool_news`, statuses `new | qualified | dismissed | promoted`. Routes to list (by status and kind), read, qualify, dismiss and promote to a lead (the lead carries the signal as its reason, and the existing lead checks still apply).
   *Test:* the same URL twice is one signal; a signal from another workspace is invisible; promote creates one lead and links it, twice is a no-op; a bad status or kind is refused.
 
-- [ ] **S4-7 The scout template and the signal tools.** SPEC 9, 3 (rooms 6 and 9), 6.
+- [x] **S4-7 The scout template and the signal tools.** SPEC 9, 3 (rooms 6 and 9), 6.
   A `scout` template that runs on `openai-agents` with `local-worker`, a heartbeat, and a short skill that says what counts as a signal and what does not. Two `os` tools: `add_signal` (kind, source, URL, excerpt; refuses a missing URL, an excerpt that is not text, and anything shaped like an instruction to the agent) and `score_signal`. The tools do not post, message or follow anyone (rule 6). The Demand Radar and Problem Scout agents are configured and paused; turning one on is a setting.
   *Test:* the template renders and hires; `add_signal` dedupes and records who found it; a page that tells the agent to ignore its rules is stored as data and changes nothing; the paused agents do not run on a heartbeat until switched on.
 

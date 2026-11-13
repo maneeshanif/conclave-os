@@ -39,4 +39,6 @@ Things the build parked for you. Each says what to do.
 
 - [x] Cleared by Anees's go-ahead; the cause is fixed and guarded (S3-12). Nothing to do.
 
+## Scouts need something to read (S4-7)
 
+- [ ] A scout works on items put in its task. To make the Demand Radar and Problem Scout useful you need a source: a scraper or API account that fetches public posts (Reddit, X, forums, job boards) within each site's terms, for example through Apify. That needs an account and a key, which I cannot create. Until you choose one, hire a scout (`pnpm agent:new scout --department research`) and paste items into a task to try it. The two room scouts (`demand-scout`, `problem-scout`) are hired paused: switch them on when a source exists.

@@ -5,7 +5,8 @@ import { briefOn, dayOf, latestBrief, rebuildBrief } from '../brief/build';
 import { companyTimezone } from '../config';
 import { checkFigures } from '../documents/figures';
 import { ingestLead } from '../leads/ingest';
-import { ToolError, type AddLeadInput, type BriefView, type DealView, type DraftKind, type LeadView, type OsStore, type ProposedEmail, type TaskView } from './os-tools';
+import { addSignal, cleanExcerpt, looksLikeInstructions } from '../signals';
+import { ToolError, type AddLeadInput, type AddSignalInput, type BriefView, type DealView, type DraftKind, type LeadView, type OsStore, type ProposedEmail, type TaskView } from './os-tools';
 import type { RunScope } from './run-tokens';
 
 /** The `os` tools on the real database. Every write is scoped to the run's own workspace and task. */
@@ -46,6 +47,33 @@ export class DbOsStore implements OsStore {
         JSON.stringify({ verified, sourceUrl: input.sourceUrl ?? null }),
       ]);
       return { id: r.id, existed: false, verified };
+    });
+  }
+
+  async addSignal(scope: RunScope, input: AddSignalInput): Promise<{ id: string; created: boolean; flagged: boolean }> {
+    return withWorkspace(this.pool, scope.workspaceId, async ({ client: c }) => {
+      const excerpt = input.excerpt === undefined ? undefined : cleanExcerpt(input.excerpt);
+      const flagged = !!excerpt && looksLikeInstructions(excerpt);
+      const found = await addSignal(c, scope.workspaceId, { ...input, excerpt }, await this.actor(c, scope));
+      // An item that reads like orders to an agent is kept as text, with a note for the person who reviews it. It changes nothing.
+      if (found.created && flagged) await c.query('update signals set reason = $2 where id = $1', [found.id, 'The text of this item looked like instructions to an AI agent. It was kept as plain text only.']);
+      return { ...found, flagged: found.created && flagged };
+    });
+  }
+
+  async scoreSignal(scope: RunScope, input: { signalId: string; score: number; reason: string }): Promise<{ qualified: boolean }> {
+    return withWorkspace(this.pool, scope.workspaceId, async ({ client: c }) => {
+      const cur = (await c.query<{ status: string }>('select status from signals where id = $1 for update', [input.signalId])).rows[0];
+      if (!cur) throw new ToolError('No such signal.');
+      if (cur.status === 'promoted') throw new ToolError('That signal was already promoted to a lead by a person. Leave it alone.');
+      if (cur.status === 'dismissed') throw new ToolError('A person dismissed that signal. Leave it alone.');
+      const qualified = input.score >= 60;
+      await c.query(
+        "update signals set score = $2, reason = $3, status = case when $4 then 'qualified' else status end, updated_at = now() where id = $1",
+        [input.signalId, input.score, input.reason, qualified],
+      );
+      await c.query("insert into audit_log (workspace_id, actor, action, subject, data) values ($1, $2, 'signal.scored', $3, $4)", [scope.workspaceId, await this.actor(c, scope), input.signalId, JSON.stringify({ score: input.score, qualified })]);
+      return { qualified };
     });
   }
 

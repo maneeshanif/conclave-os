@@ -31,6 +31,29 @@ export function normalizeUrl(raw: string): string {
   return out;
 }
 
+/** Plain, short text from an untrusted post: no control characters, line endings made one kind, cut to 1,000 characters. */
+export function cleanExcerpt(text: string): string {
+  let out = '';
+  for (const ch of text.replace(/\r\n?/g, '\n')) {
+    const code = ch.codePointAt(0)!;
+    if (code === 9 || code === 10 || (code >= 32 && code !== 127)) out += ch;
+  }
+  return out.trim().slice(0, 1000);
+}
+
+const INSTRUCTIONY = [
+  /\b(ignore|disregard|forget|override)\b[^.\n]{0,40}\b(instruction|rule|prompt|guideline|previous|above|system)s?\b/i,
+  /\b(you|agent|assistant)\s+(must|should|shall|will|need to)\s+(now\s+)?(call|send|email|reply|post|ignore|run|execute|promote|delete|mark|forward)\b/i,
+  /\b(system|developer)\s*(prompt|message|instruction)/i,
+  /\bpropose_\w+|\bcomplete_task\b|\badd_lead\b|\bscore_\w+\b|\bask_founder\b/i,
+  /<\/?(system|assistant|tool|instructions?)>/i,
+];
+
+/** True when an excerpt reads like orders to an AI agent. It is still kept, as text only; this is only to flag it for a person. */
+export function looksLikeInstructions(text: string): boolean {
+  return INSTRUCTIONY.some((re) => re.test(text));
+}
+
 export interface NewSignal {
   kind: SignalKind;
   source: string;
