@@ -339,6 +339,67 @@ Recorded 2026-11-13. Nothing here is built ahead of its slice (CLAUDE.md, Stack)
   One test on the fake OpenAI-compatible server: the ticker wakes the scout on its heartbeat, it files signals through `add_signal`, a failing output check escalates once to Claude (scripted), a plan limit on Claude moves a triage task to the local model, and the morning brief lists the qualified signals. Tag `slice-4-done`.
   *Test:* all of it in one run.
 
+## Slice 5: Marketing, browser and video
+
+**Done when (SPEC 18, row 5):** you approve a post or a video on your phone and it is live, with a screenshot in the record.
+
+**Reads:** SPEC 6 (approvals and executors), 8 (the browser table, the video studio), 12 (the phone app and push), 14, 15 (caps, no bulk DM, no unverified claims), 3 (room 3). The spec's own rule: where a platform offers a posting API, use it instead of the browser.
+
+**Already there from earlier slices:** the approval gate and the claim-once executor pattern (email), send caps and the kill switch, channel accounts with caps, the outbox transport, the blocked-claims check, plugins and templates, the PWA shell (manifest, icons, shell-only service worker), the `os` tools and the Health screen.
+
+**Decided in drafting (logged in DECISIONS.md when built):**
+- **Nothing goes live in this slice's build.** I cannot create accounts, log in to X, LinkedIn or Instagram, or hold a key. Every executor has an interface with two transports: `outbox` (writes the post to a file in the data folder; the default, nothing leaves the machine) and `browser` (a Playwright session in a profile folder you log into once by hand). The browser transport is built and tested against a fake browser, and stays off until you turn it on per account. Logging in once by hand, and switching a real transport on, are NEEDS-YOU items.
+- **Every post is an approval first.** A post proposal carries the exact text, the account and the media; what you approve is what is published, byte for byte. The executor claims the approval once and never retries a publish (rule 3). Content is checked in the proposal handler, not by a prompt: no medical, legal or pricing claim that is not in the company file (rule 7).
+- **DMs are one at a time and capped.** No bulk, no follow or like automation (rule 6); each DM is its own approval and the account's cap and a minimum gap between sends are enforced in code.
+- **Video generation is behind a connector interface** (`generate_asset`), with a fake in the tests. Which generator you use, and its credits, are yours to choose; credits are spent only after you approve a brief. Assembly is deterministic code (the same brief renders the same video), tested on its plan; an actual render needs Remotion and is an opt-in check, since its license terms need your reading before the OS is sold.
+- **Push** uses Web Push with keys made on this machine (stored in the data folder, never in the repo). Delivery to your phone needs the app reachable from it (the Tailscale step already in NEEDS-YOU).
+
+**Tasks**
+
+- [ ] **S5-1 Posts and the post proposal.** SPEC 6, 8, 15.
+  A `posts` table (account, text, media, status, approval link, result), `propose_post` as an `os` tool (autonomy 2) that queues an approval of kind `post.publish` and never publishes, and the proposal handler's checks: length per platform, blocked claims, no links to unapproved domains, duplicate text refused.
+  *Test:* a proposal creates one pending approval and one post row; a second identical proposal is the same approval; a medical, legal or price claim is refused in code; over-length is refused; an agent below autonomy 2 has no such tool.
+
+- [ ] **S5-2 The publish executors and transports.** SPEC 6, 8, 14.
+  One executor interface for X, LinkedIn and Instagram posts, claim-once (`approved` to `executing`), with an `outbox` transport (default) and a `browser` transport that drives a Playwright page through a small driver interface. Every run saves a screenshot and the final URL on the approval record. An expired session stops the executor and raises an action item; nothing is retried.
+  *Test:* with the outbox transport an approved post is written once and marked published; two executions at once publish once; a rejected or expired approval never publishes; the fake browser publishes, and its screenshot and final URL are stored; an expired session raises one item and the post stays approved, not failed; the kill switch stops it.
+
+- [ ] **S5-3 Browser profiles.** SPEC 8, 12.
+  A profile folder per channel account under the data folder (never in the repo), a record of which accounts have one and whether the session is believed valid, and `pnpm run browser:login <account>` that opens a visible browser on that profile for you to log in by hand. The OS never sees a password.
+  *Test:* the profile path is inside the data folder and outside the repo; an account with no profile cannot use the browser transport; a profile marked expired raises the item; the login command refuses an unknown account. Logging in is a NEEDS-YOU item.
+
+- [ ] **S5-4 Approved DMs, one at a time.** SPEC 15, rule 6.
+  DM executors for X and Instagram as their own approval kind: each DM is a separate approval to a named person, with the account's daily cap, a minimum gap between sends, and a refusal to send to anyone who has not been written to first by a person or who is on the suppression list.
+  *Test:* two approved DMs at once go out one after the other with the gap; the cap holds; a suppressed recipient is refused; there is no tool or route that sends to a list.
+
+- [ ] **S5-5 The content plugin and the writer, publisher and hook scout templates.** SPEC 8, 9.
+  `content-kit` (skills: write-post, adapt-for-platform), a `content-writer` template (proposes posts, cannot publish) and a `publisher` template (checks the approved queue, level 0 on trial).
+  *Test:* manifests match the disk and the server; the writer has no web write tool and no publish tool; rendered for Claude Code.
+
+- [ ] **S5-6 Hooks and the Hook Scout.** SPEC 8.
+  A `hooks` table (pattern, format, length, example link, the account it was seen on, a performance score), an `add_hook` tool, and the Hook Scout template on the local model. A hook stores a link to the example and a description of the pattern, never a copy of the post's text.
+  *Test:* a hook with no example link is refused; a long verbatim quote is refused; the same example is one hook; the scout cannot propose a post.
+
+- [ ] **S5-7 The Video Ideas inbox.** SPEC 8, 12.
+  `video_ideas` (a line, a link or a voice-note transcript; source founder or hook scout), an API, an inbox page that works on a phone, and a quick-add box.
+  *Test:* adding from the page creates one idea; a link is stored as a link; the inbox lists new ideas first; an idea can be shelved or turned into a brief.
+
+- [ ] **S5-8 The video brief and the generation connector.** SPEC 8.
+  A brief (script, shot list, assets needed, estimated credits) made from an idea and a hook, which is an approval before anything is generated. A `generate_asset` connector interface with a fake; assets are stored by key in the data folder.
+  *Test:* nothing is generated before the brief is approved; a rejected brief generates nothing; the credits shown are counted from the shot list; generation is claim-once.
+
+- [ ] **S5-9 Assembly and the review check.** SPEC 8.
+  A deterministic assembly plan (scenes, captions, timing, brand) from an approved brief and its assets; the same inputs give the same plan byte for byte. A review check in code (duration within the brief, every shot has an asset, captions present, brand colours and logo present, no blocked claim in captions) before the approval card.
+  *Test:* identical inputs give an identical plan; each review rule fails with its reason; a plan that fails review is not offered for approval.
+
+- [ ] **S5-10 The phone app and push.** SPEC 12.
+  Web Push with VAPID keys generated on this machine and kept in the data folder; subscriptions stored; three notifications only: the morning brief, a failed executor, and an approval waiting. Payloads carry no post text or personal data.
+  *Test:* keys are never in the repo or a log; a subscription is stored once; each of the three events sends exactly one notification and nothing else does; a payload has no body text from a post or a lead; an expired subscription is removed.
+
+- [ ] **S5-11 Slice 5 end to end.** SPEC 18, row 5.
+  One test: a writer proposes a post, you approve it on a phone-sized screen, the publisher executes it through the fake browser, and the approval record shows the screenshot and final URL; a video brief is approved, assets are generated by the fake connector, the plan passes review, and the approved video is published the same way; push fires for the approval and for a failed executor. Tag `slice-5-done`.
+  *Test:* all of it in one run.
+
 ## Opening the next slice
 
 When slice 0 is in daily use, paste this:
