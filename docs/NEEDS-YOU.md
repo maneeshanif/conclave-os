@@ -80,3 +80,7 @@ Things the build parked for you. Each says what to do.
 
 - [ ] After the phone steps above (Tailscale, install the app), open **Health** in the installed app and press "Turn on notifications". On an iPhone the app must be added to the home screen first. I have not been able to try a real push; if one does not arrive, tell me what the Health page says.
 - [ ] Optional: set `PUSH_SUBJECT` in `.env` to a `mailto:` address you are happy for push services to see. The default is a placeholder.
+
+## The world library (S6-14a)
+
+- [ ] **Not blocking.** JSM HQ draws its office with PixiJS 8 and we use Phaser 4. I recommend staying with Phaser (see DECISIONS, 2026-11-14: our world needs a camera that follows, input, animation and Tiled maps, and the logic is already separate from the drawing). Tell me if you want a switch anyway. Its licence is MIT; I copied nothing and credited it in `docs/CREDITS.md`.
