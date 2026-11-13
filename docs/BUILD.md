@@ -419,7 +419,68 @@ From `docs/BORROW-AUDIT.md`. Each goes into its slice's task list when that slic
 - [ ] **A5 Hand-off test, one alternative attempt, spend correction.** Small checks from P6 to P8, in slice 5 or 6.
 - [ ] **A6 Release channels.** Slice 9.
 - [ ] **A7 Task watchdog (optional).** Slice 8, only if Anees wants it.
-- [ ] **A8 The world, in detail.** Slice 6. The WorkAdventure-style features listed in `docs/BORROW-AUDIT.md`: Tiled maps, proximity bubbles, zones with behaviour (meeting, lockable, silent, max users, focusable), entry and walk-to, availability and raise hand. Our own property names, our own or CC0 art.
+- [ ] **A8 The world, in detail.** (Scheduled as S6-4 to S6-6.) Slice 6. The WorkAdventure-style features listed in `docs/BORROW-AUDIT.md`: Tiled maps, proximity bubbles, zones with behaviour (meeting, lockable, silent, max users, focusable), entry and walk-to, availability and raise hand. Our own property names, our own or CC0 art.
+
+## Slice 6: The office
+
+**Done when (SPEC 18, row 6):** you walk from the door to the Outreach room, open an agent by walking up to it, and approve a card at the approvals desk.
+
+**Reads:** SPEC 12 (the office, WorkAdventure-style; the panels; the phone), 3 and 4 (rooms, the Boardroom), 11 (`discussions`, `discussion_turns`, `decisions`), 13 (repo layout), 14, and `docs/BORROW-AUDIT.md` (the WorkAdventure features, candidate task A8). **License rule:** WorkAdventure is AGPL with the Commons Clause. Ideas only, written fresh. Our own property names, our own tiles drawn by script, or Kenney (CC0). Never its code, maps or art (CLAUDE.md).
+
+**Already there from earlier slices:** the approvals inbox, goals, health, brief, inbox and signals panels as React components; live events on the bus and the socket; login and the owner identity (for the co-founder); agents, departments and runs in the database; the PWA shell.
+
+**Decided in drafting (logged in DECISIONS.md when built):**
+- **The world is pure logic with a thin Phaser skin.** The map reader, desk assignment, pathfinding, zones, proximity, where each agent should be, and what an object opens are plain TypeScript with tests, in \`apps/web/office\`. Phaser (only inside \`apps/web/office\`, CLAUDE.md) draws what that logic says. So almost everything is testable without a browser, and the one browser check is a Playwright screenshot of the real canvas.
+- **The office is never the only way in.** Every action in it is also a button on a plain screen: a room list, an agent list, the same panels. On a phone the office shows as a small map plus the list, and the canvas stops drawing when the tab is hidden.
+- **Art is ours.** The starter tileset is drawn by a script into a PNG (flat colours, our own), and the starter map is written by a script into a Tiled JSON file. Kenney tiles may replace them later by editing the map in Tiled, with no code change.
+- **Movement follows data.** Where an agent stands is computed from runs, approvals and discussions, never set by hand, so the world cannot disagree with the panels.
+- **The Boardroom's rule is code:** a discussion turn must cite numbers that the OS can check against its own tables, or it is refused. Decisions are recorded by a person.
+
+**Tasks**
+
+- [ ] **S6-1 The office map file and its reader.** SPEC 12.
+  \`company/office.tmj\`: a Tiled JSON map with a collision layer, a \`rooms\` object layer (each room named, with \`department\`, \`kind\`, \`maxUsers\`, \`locked\`, \`silent\` properties of our own), numbered \`desks\`, \`objects\` (approvals desk, whiteboard, screen, mailbox, job board, boardroom table), and \`entries\` (the door, spawn points). A script draws the starter tileset and map. The reader validates the file and says which file, layer and object is wrong.
+  *Test:* the starter map loads; every active department has a room; a desk number twice, a room naming an unknown department, an object of an unknown type, and a missing collision layer are each refused with a message naming the thing.
+
+- [ ] **S6-2 Desks.** SPEC 12.
+  A new hire gets the next free desk in its department's room, by itself; the assignment is stored so nobody moves when someone else is hired; a retired agent's desk is freed; a full room puts the overflow in the lounge. \`GET /api/office\` returns the map facts and each agent's room and desk.
+  *Test:* hiring three agents fills desks 1 to 3 in order; retiring one frees its desk for the next hire and moves nobody; a full room overflows to the lounge; no desk is ever held by two agents.
+
+- [ ] **S6-3 Where each agent is.** SPEC 12 (agents move with their work).
+  One function from runs, approvals and discussions to a place: at its desk while a run starts or goes on, at the approvals desk while an approval it proposed waits for you, in the Boardroom during a discussion it is in, in the lounge when idle. \`GET /api/office/state\` and a live \`office.changed\` message from the same events the panels use.
+  *Test:* a fixture for each place; an agent with two reasons goes to the stronger one by a fixed order; the live message fires on a run starting, an approval being queued and decided, and a discussion opening.
+
+- [ ] **S6-4 Walking.** SPEC 12; borrow audit A8.
+  A walkable grid from the collision layer, a path finder, click-to-walk and arrow-key steps for your avatar, and agents walking their paths between places at a fixed speed.
+  *Test:* a path from the door to every room exists; a path never crosses a wall; a blocked click goes to the nearest reachable tile; an agent told to change place walks there in the expected number of steps.
+
+- [ ] **S6-5 Zones.** Borrow audit A8.
+  Behaviour from the map's own properties: entering a room opens its department panel, a locked room refuses you unless you are the owner, a silent room has no bubbles, a room has a limit on how many can be in it, a focusable area asks the camera to zoom. Your availability (available, busy, away) and raising a hand in a meeting.
+  *Test:* entering and leaving fire the right events once; a locked room turns a guest away and lets the owner in; the limit holds; availability and hand-raising are reflected in the presence record.
+
+- [ ] **S6-6 Walking up to an agent.** SPEC 12.
+  Proximity detection with a little hysteresis so the drawer does not flicker; the agent drawer (live run, its tasks, a box to send it a message that becomes a task for it); leaving closes it.
+  *Test:* walking within range opens the drawer once and stepping back closes it once; the drawer shows the agent's current run and open tasks; a sent message creates one task assigned to that agent; the drawer works from the agent list too.
+
+- [ ] **S6-7 Objects.** SPEC 12.
+  What each object opens: the approvals desk the approvals inbox, the whiteboard the goal ladder, the screen the dashboard (Health), the mailbox the inbox, the job board the Talent room view, the Boardroom table the Boardroom. A registry from object type to panel, used by the world and by the plain screens.
+  *Test:* every object type in the map has a registered panel; using an object opens that panel; an unknown type is refused at load (S6-1).
+
+- [ ] **S6-8 The Phaser world and the plain screens.** SPEC 12.
+  Phaser 4 (check its current docs first) in \`apps/web/office\`: loads the map and tileset, draws rooms, desks, objects, your avatar and the agents, and drives them from the logic above. The \`/office\` page also has the plain version: rooms listed, agents listed, the same panels. The canvas stops drawing when the tab is hidden; a phone gets the small map and the list.
+  *Test:* the plain version renders each room and agent and every object's button; a hidden tab pauses the scene and a visible one resumes it; a Playwright run of the real page at desktop and Android sizes finds a non-blank canvas and takes a screenshot.
+
+- [ ] **S6-9 Your co-founder in the same office.** SPEC 12, 15.
+  Live presence over the existing socket for signed-in members: position, availability, raised hand; rate-limited; nothing but presence is sent; an owner and a co-founder see each other; a person who is not signed in sees nothing.
+  *Test:* two clients see each other's moves; position updates are rate-limited; a signed-out socket gets no presence; leaving removes the avatar.
+
+- [ ] **S6-10 The Boardroom.** SPEC 4, 11.
+  Tables \`discussions\`, \`discussion_turns\`, \`decisions\`; stand-up posts, the weekly review, open discussions and the decision log. \`open_discussion\` and \`add_turn\` as \`os\` tools; every turn must cite numbers the OS can check against its own tables, or it is refused. Decisions are recorded by a person through the API. A page for it.
+  *Test:* a turn with no evidence, or a figure the tables do not show, is refused; a turn citing a real count is accepted; only a person records a decision; the decision log lists them newest first; the page renders each part and the empty state.
+
+- [ ] **S6-11 Slice 6 end to end.** SPEC 18, row 6.
+  One test: from the door, the avatar walks to the Outreach room (the zone event fires and its panel opens), walks up to the outreach agent (its drawer opens with its run), walks to the approvals desk and uses it (the inbox opens), and an approval is approved there and executed; a Playwright check of the real canvas. Tag \`slice-6-done\`.
+  *Test:* all of it in one run.
 
 ## Opening the next slice
 
