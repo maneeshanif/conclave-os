@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 
 export type Availability = 'available' | 'busy' | 'away';
 export interface Person {
@@ -21,7 +21,7 @@ const item = 'flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text
  * The bar over the world: who is here, a tools menu and your status. Floating groups on a desktop; on a phone the same controls
  * sit along the bottom edge. It only reports what you chose; the page decides what to do (SPEC 12).
  */
-export function OfficeBar(props: { people: Person[]; availability: Availability; onAvailability: (a: Availability) => void; onOpenAgent: (id: string) => void; onOverview: () => void }) {
+export function OfficeBar(props: { people: Person[]; availability: Availability; onAvailability: (a: Availability) => void; onOpenAgent: (id: string) => void; onOverview: () => void; /** More controls next to the people button (the company switcher). */ extra?: ReactNode }) {
   const [menu, setMenu] = useState<'tools' | 'status' | null>(null);
   const [panel, setPanel] = useState(false);
   const current = STATUS.find((s) => s.id === props.availability)!;
@@ -29,11 +29,14 @@ export function OfficeBar(props: { people: Person[]; availability: Availability;
   return (
     <>
       <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 flex items-end justify-between gap-2 p-2 sm:inset-x-0 sm:bottom-auto sm:top-0 sm:items-start sm:p-3">
-        <div className={`pointer-events-auto flex ${pill}`}>
-          <button type="button" aria-label={`People, ${props.people.length} here`} aria-expanded={panel} onClick={() => setPanel(!panel)} className="flex items-center gap-2 px-3 py-2 text-sm">
-            <span aria-hidden>👥</span>
-            <span>{props.people.length}</span>
-          </button>
+        <div className="pointer-events-auto flex gap-2">
+          <div className={`flex ${pill}`}>
+            <button type="button" aria-label={`People, ${props.people.length} here`} aria-expanded={panel} onClick={() => setPanel(!panel)} className="flex items-center gap-2 px-3 py-2 text-sm">
+              <span aria-hidden>👥</span>
+              <span>{props.people.length}</span>
+            </button>
+          </div>
+          {props.extra}
         </div>
         <div className="pointer-events-auto relative flex gap-2">
           <div className={`relative ${pill}`}>

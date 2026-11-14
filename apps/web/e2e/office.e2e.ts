@@ -52,6 +52,10 @@ const places = {
   ],
 };
 
+const COMPANY_A = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+const COMPANY_B = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+let made = false;
+const officeCompany: (string | null)[] = [];
 let server: ChildProcess;
 let browser: Browser;
 
@@ -86,6 +90,12 @@ async function stub(context: BrowserContext) {
     const req = route.request();
     if (req.method() === 'OPTIONS') return route.fulfill({ status: 204, headers: { ...cors, 'access-control-allow-headers': 'content-type', 'access-control-allow-methods': 'GET,POST' } });
     const url = new URL(req.url());
+    if (url.pathname === '/api/companies' && req.method() === 'GET') return route.fulfill({ status: 200, headers: cors, body: JSON.stringify({ companies: [{ id: COMPANY_A, slug: 'local', name: 'First Co', isDefault: true }, ...(made ? [{ id: COMPANY_B, slug: 'new-one', name: 'New One', isDefault: false }] : [])], templates: ['starter'] }) });
+    if (url.pathname === '/api/companies' && req.method() === 'POST') {
+      made = true;
+      return route.fulfill({ status: 201, headers: cors, body: JSON.stringify({ id: COMPANY_B, slug: 'new-one', name: 'New One', isDefault: false }) });
+    }
+    if (url.pathname === '/api/office') officeCompany.push(req.headers()['x-company'] ?? null);
     if (url.pathname === '/api/office') return route.fulfill({ status: 200, headers: cors, body: JSON.stringify(facts) });
     if (url.pathname === '/api/office/state') return route.fulfill({ status: 200, headers: cors, body: JSON.stringify(places) });
     if (url.pathname === '/api/office/map') return route.fulfill({ status: 200, headers: cors, body: tmj });
@@ -170,6 +180,20 @@ describe('the office page in a real browser (S6-8b)', () => {
       await page.getByRole('button', { name: /Scout/ }).waitFor();
       // No sideways scroll on a phone.
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
+      // The company you are in is shown, and a new one can be made and switched to: after that every request names it.
+      made = false;
+      officeCompany.length = 0;
+      await page.getByRole('button', { name: /company: first co/i }).click();
+      await page.getByRole('menuitem', { name: /new company/i }).click();
+      const dialog = page.getByRole('dialog', { name: 'New company' });
+      await dialog.getByLabel('Name').fill('New One');
+      writeFileSync(path.join(SHOTS, `office-${name}-company.png`), await page.screenshot());
+      await dialog.getByRole('button', { name: 'Create', exact: true }).click();
+      await page.getByRole('button', { name: /company: new one/i }).waitFor({ timeout: 15_000 });
+      expect(officeCompany.at(-1)).toBe(COMPANY_B);
+      await page.evaluate(() => localStorage.removeItem('conclave.company'));
+      await page.reload();
+      await page.getByRole('button', { name: /company: first co/i }).waitFor({ timeout: 15_000 });
       // Using an object opens its panel over the office: beside the world on a desktop, the whole screen on a phone.
       await page.getByRole('button', { name: 'Approvals inbox' }).click();
       const panel = page.getByRole('dialog', { name: 'Approvals' });

@@ -1,4 +1,5 @@
 import { API } from './api';
+import { eventsUrl } from './company';
 
 /** A message from the server's live socket. Only `kind` matters to most pages. */
 export interface LiveMessage {
@@ -20,7 +21,7 @@ export function openSocket(onMessage: (m: LiveMessage) => void): { send: (m: unk
   let stopped = false;
   let retry: ReturnType<typeof setTimeout> | undefined;
   const connect = () => {
-    socket = new WebSocket(`${API.replace(/^http/, 'ws')}/events`);
+    socket = new WebSocket(eventsUrl(API));
     socket.onclose = () => {
       if (!stopped) retry = setTimeout(connect, 2000);
     };

@@ -167,5 +167,8 @@ const map = {
   nextobjectid: nextId + 1,
 };
 writeFileSync(path.join(root, 'company/office.tmj'), JSON.stringify(map, null, 1) + '\n');
+// A new company starts from the same office (the starter company template).
+mkdirSync(path.join(root, 'templates/companies/starter'), { recursive: true });
+writeFileSync(path.join(root, 'templates/companies/starter/office.tmj'), JSON.stringify(map, null, 1) + '\n');
 process.stdout.write(`wrote company/office.tmj (${W}x${H}) and apps/web/public/office/tiles.png
 `);

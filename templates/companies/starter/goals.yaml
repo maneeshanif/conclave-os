@@ -1,0 +1,14 @@
+# The goal ladder. Example numbers: set your own.
+north_star: monthly revenue from customers who would recommend us
+
+ladder:
+  - id: rung-1
+    target_usd: 1000
+    by: null
+    source: services
+
+current_rung: rung-1
+
+department_goals:
+  lead-gen: { metric: qualified_leads_per_week,  target: 10, serves: rung-1 }
+  outreach: { metric: positive_replies_per_week, target: 2,  serves: rung-1 }

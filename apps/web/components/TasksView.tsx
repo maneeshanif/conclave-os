@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
+import { eventsUrl } from '../lib/company';
 import { API, api, type Agent, type Run, type StoredEvent, type Task, type TaskDetail } from '../lib/api';
 import { RunLog } from './RunLog';
 import { Badge } from './ui/badge';
@@ -67,7 +68,7 @@ export function TasksView({ taskId, only = false }: { taskId?: string; only?: bo
     let stopped = false;
     let retry: ReturnType<typeof setTimeout> | undefined;
     const connect = () => {
-      socket = new WebSocket(`${API.replace(/^http/, 'ws')}/events`);
+      socket = new WebSocket(eventsUrl(API));
       socket.onopen = () => setLive(true);
       socket.onclose = () => {
         setLive(false);

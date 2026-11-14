@@ -2,6 +2,18 @@
 export const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://127.0.0.1:3100';
 
 import type { OfficeMap, Placed } from '@conclave/shared';
+import { currentCompany } from './company';
+
+export interface CompanySummary {
+  id: string;
+  slug: string;
+  name: string;
+  isDefault: boolean;
+}
+export interface CompanyList {
+  companies: CompanySummary[];
+  templates: string[];
+}
 
 /** What GET /api/office returns: the map's facts (walls as rows of # and .) and each agent's room and desk. */
 export interface OfficeFacts {
@@ -282,7 +294,8 @@ export interface DecisionBody {
 }
 
 async function call<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${API}${path}`, { credentials: 'include', ...init, headers: { 'content-type': 'application/json', ...(init?.headers ?? {}) } });
+  const company = currentCompany();
+  const res = await fetch(`${API}${path}`, { credentials: 'include', ...init, headers: { 'content-type': 'application/json', ...(company ? { 'x-company': company } : {}), ...(init?.headers ?? {}) } });
   const body = (await res.json().catch(() => ({}))) as T & { error?: string };
   if (res.status === 401 && typeof window !== 'undefined' && window.location.pathname !== '/login') window.location.assign('/login');
   if (!res.ok) throw new Error(body.error ?? `HTTP ${res.status}`);
@@ -327,6 +340,8 @@ export const api = {
   pushKey: () => call<{ publicKey: string }>('/api/push/key'),
   pushSubscribe: (sub: unknown) => call<{ subscribed: true }>('/api/push/subscribe', { method: 'POST', body: JSON.stringify(sub) }),
   pushUnsubscribe: (endpoint: string) => call<{ subscribed: false }>('/api/push/subscribe', { method: 'DELETE', body: JSON.stringify({ endpoint }) }),
+  companies: () => call<CompanyList>('/api/companies'),
+  createCompany: (c: { name: string; template: string }) => call<CompanySummary>('/api/companies', { method: 'POST', body: JSON.stringify(c) }),
   office: async () => {
     const f = await call<OfficeFacts>('/api/office');
     if (!f || typeof f !== 'object' || !f.map || !Array.isArray(f.map.rooms) || !Array.isArray(f.agents)) throw new Error('The office answered with something unexpected.');

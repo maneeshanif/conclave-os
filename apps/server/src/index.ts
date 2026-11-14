@@ -3,6 +3,7 @@ import path from 'node:path';
 import { serve } from '@hono/node-server';
 import { createNodeWebSocket } from '@hono/node-ws';
 import { Hono, type Context } from 'hono';
+import { Companies } from './companies';
 import { serve as inngestServe } from 'inngest/hono';
 import { createApp } from './app';
 import { Bus } from './bus';
@@ -210,6 +211,7 @@ shell.route(
     push: { notifier, publicKey: vapid.publicKey },
     reaperStatus,
     companyRoot: sys.companyRoot,
+    companies: new Companies({ dataDir: sys.dataDir, templatesRoot: sys.templatesRoot, pool: sys.app, defaultCompany: { id: sys.workspace.id, slug: sys.workspace.slug, root: sys.companyRoot } }),
     bus,
     dispatcher,
     upgradeWebSocket,

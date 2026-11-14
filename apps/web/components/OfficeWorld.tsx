@@ -6,6 +6,7 @@ import { API, type OfficeFacts, type OfficePlace } from '../lib/api';
 import { WorldController } from '../office/controller';
 import { applyPresence, type Member } from '../office/presence';
 import type { Who } from '../office/scene';
+import { CompanySwitcher } from './CompanySwitcher';
 import { OfficeBar, WelcomeCard, ZonePill, type Availability, type Person } from './OfficeBar';
 import { WHERE, type OfficeClient } from './OfficeView';
 
@@ -113,6 +114,7 @@ export function OfficeWorld({ client, onOpen, onPanel }: { client: OfficeClient;
           availability={availability}
           onAvailability={choose}
           onOpenAgent={onOpen}
+          extra={<CompanySwitcher onSwitch={() => window.location.reload()} />}
           onOverview={() => {
             view.overview(!whole);
             setWhole(!whole);

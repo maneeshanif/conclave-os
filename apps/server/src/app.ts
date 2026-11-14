@@ -4,7 +4,9 @@ import type { UpgradeWebSocket } from 'hono/ws';
 import type { Pool } from 'pg';
 import { HealthSchema } from '@conclave/shared';
 import type { Auth, SessionInfo } from './auth';
+import type { Companies } from './companies';
 import { PresenceHub } from './office/presence';
+import { companyRoutes } from './routes/companies';
 import type { Bus } from './bus';
 import type { Breakers } from './harness/breakers';
 import type { ReaperStatus } from './health';
@@ -34,6 +36,13 @@ export interface AppDeps {
   upgradeWebSocket?: UpgradeWebSocket;
   /** Who is in the office right now (S6-9). One per server; made here if not given. */
   presence?: PresenceHub;
+  /**
+   * Many companies (S6-13a). A request that names another company (header `x-company`, or `?company=` for the socket) is handed to a
+   * full app of its own for that company, so nothing a route does can reach across companies.
+   */
+  companies?: Companies;
+  /** Set on the per-company apps made from `companies`, so they do not hand on again. */
+  isCompanyApp?: boolean;
   inngestHandler?: (c: Context) => Promise<Response>;
   /** Browser origins allowed to call the API. Only the local web app. */
   webOrigins?: string[];
@@ -78,6 +87,28 @@ export function createApp(deps?: AppDeps) {
   app.get('/health', (c) => c.json(HealthSchema.parse({ ok: true })));
   if (!deps) return app;
 
+  // Which company a request is for. The app made for that company does every check itself (host, origin, sign-in), so this runs first.
+  if (deps.companies && !deps.isCompanyApp) {
+    const companies = deps.companies;
+    const inner = new Map<string, ReturnType<typeof createApp>>();
+    app.use('*', async (c, next) => {
+      const want = c.req.header('x-company') ?? c.req.query('company');
+      if (!want || want === deps.workspaceId) return next();
+      const co = await companies.get(want);
+      if (!co) return c.json({ error: 'Unknown company.' }, 404);
+      let app2 = inner.get(co.id);
+      if (!app2) {
+        // Its own presence list, and no reload of the default company's folder.
+        const forCompany: AppDeps = { ...deps, workspaceId: co.id, companyRoot: co.root, isCompanyApp: true };
+        delete forCompany.presence;
+        delete forCompany.onCompanyReload;
+        app2 = createApp(forCompany);
+        inner.set(co.id, app2);
+      }
+      return app2.fetch(c.req.raw, c.env);
+    });
+  }
+
   const origins = deps.webOrigins ?? ['http://127.0.0.1:3000', 'http://localhost:3000', ...(deps.auth ? [deps.auth.config.webOrigin] : [])];
 
   // CORS headers alone do not stop a request: a page can still POST text/plain with no preflight.
@@ -100,7 +131,7 @@ export function createApp(deps?: AppDeps) {
     }
     await next();
   });
-  app.use('/api/*', cors({ origin: origins, allowMethods: ['GET', 'POST', 'PATCH', 'DELETE'], allowHeaders: ['content-type'], credentials: true }));
+  app.use('/api/*', cors({ origin: origins, allowMethods: ['GET', 'POST', 'PATCH', 'DELETE'], allowHeaders: ['content-type', 'x-company'], credentials: true }));
   if (deps.auth) {
     const auth = deps.auth;
     // Sign-in comes first: it answers without a session and without a database transaction.
@@ -129,6 +160,7 @@ export function createApp(deps?: AppDeps) {
 
   if (deps.auth) app.route('/api/owner', ownerRoutes({ auth: deps.auth }));
   if (deps.push) app.route('/api/push', pushRoutes(deps.push));
+  if (deps.companies) app.route('/api/companies', companyRoutes({ companies: deps.companies }));
   if (deps.breakers) app.route('/api/breakers', breakerRoutes({ breakers: deps.breakers }));
   if (deps.bus && deps.dispatcher) {
     app.route('/api', apiRoutes({ workspaceId: deps.workspaceId, dispatcher: deps.dispatcher, bus: deps.bus, onApprovalDecided: deps.onApprovalDecided, onKillSwitch: deps.onKillSwitch, onReleaseHeld: deps.onReleaseHeld, ...(deps.onCompanyReload ? { onCompanyReload: deps.onCompanyReload } : {}), ...(deps.reaperStatus ? { reaperStatus: deps.reaperStatus } : {}), ...(deps.companyRoot ? { companyRoot: deps.companyRoot } : {}) }));
