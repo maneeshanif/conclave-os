@@ -37,6 +37,10 @@ export interface OsStore {
   addBriefNote(scope: RunScope, text: string): Promise<{ day: string }>;
   /** Queues an email for approval. Never sends. Returns the approval id and whether it already existed. */
   proposeEmail(scope: RunScope, p: ProposedEmail): Promise<{ approvalId: string; existed: boolean }>;
+  /** Posts to the calling agent's own department channel (autonomy 1). */
+  departmentSay(scope: RunScope, text: string): Promise<void>;
+  /** Gives the current task to a colleague in the same department, with a note (autonomy 1). The task goes back to todo for them. */
+  handOffTask(scope: RunScope, to: string, note: string): Promise<void>;
   comment(scope: RunScope, text: string): Promise<void>;
   completeTask(scope: RunScope, output: string): Promise<void>;
   blockTask(scope: RunScope, reason: string): Promise<void>;
@@ -212,6 +216,24 @@ export const osTools = {
     async run(store: OsStore, scope: RunScope, args: { text: string }) {
       await store.comment(scope, args.text);
       return 'Comment added.';
+    },
+  },
+  department_say: {
+    minAutonomy: 1,
+    description: "Post a short message to your own department's channel, where your colleagues and the owner read it. Not for questions the owner must answer: use ask_founder for those.",
+    input: Text('text', 2000),
+    async run(store: OsStore, scope: RunScope, args: { text: string }) {
+      await store.departmentSay(scope, args.text);
+      return 'Posted to your department channel.';
+    },
+  },
+  hand_off_task: {
+    minAutonomy: 1,
+    description: 'Give your current task to a colleague in your own department, with a note saying what is left to do. Use their key. The task goes back to todo for them and you must stop work on it.',
+    input: z.object({ to: z.string().trim().min(1).max(100), note: z.string().min(1).max(4000) }).strict(),
+    async run(store: OsStore, scope: RunScope, args: { to: string; note: string }) {
+      await store.handOffTask(scope, args.to, args.note);
+      return `Handed to ${args.to}. Stop work on this task now.`;
     },
   },
   complete_task: {
@@ -464,6 +486,12 @@ export class MemoryOsStore implements OsStore {
   }
   async scoreSignal(): Promise<{ qualified: boolean }> {
     throw new ToolError('Signals need the database store.');
+  }
+  async departmentSay(): Promise<void> {
+    throw new ToolError('The department channel needs the database store.');
+  }
+  async handOffTask(): Promise<void> {
+    throw new ToolError('Handing a task on needs the database store.');
   }
   async getBrief(): Promise<BriefView | null> {
     return null;

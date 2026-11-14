@@ -344,6 +344,20 @@
       "when": 1794584502191,
       "tag": "0048_office_desks_rls",
       "breakpoints": true
+    },
+    {
+      "idx": 49,
+      "version": "7",
+      "when": 1794693482033,
+      "tag": "0049_department_messages",
+      "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "7",
+      "when": 1794693496878,
+      "tag": "0050_department_messages_rls",
+      "breakpoints": true
     }
   ]
 }

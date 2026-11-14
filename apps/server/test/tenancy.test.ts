@@ -24,6 +24,7 @@ const TABLES = [
   'contacts',
   'deal_stage_events',
   'deals',
+  'department_messages',
   'departments',
   'dms',
   'funnel_stages',

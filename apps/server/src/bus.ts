@@ -11,6 +11,8 @@ export type BusMessage =
   | { kind: 'action_item.changed'; workspaceId: string; itemId: string }
   /** A Boardroom discussion opened, got a turn or closed (S6-10). */
   | { kind: 'discussion.changed'; workspaceId: string; discussionId: string }
+  /** A department's channel got a message (S6-13d). */
+  | { kind: 'department.changed'; workspaceId: string; department: string }
   /** Something that moves an agent in the office happened; the world asks /api/office/state again (S6-3). */
   | { kind: 'office.changed'; workspaceId: string };
 

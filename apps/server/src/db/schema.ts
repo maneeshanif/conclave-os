@@ -756,6 +756,23 @@ export const officeDesks = pgTable(
   ],
 );
 
+/** A department's channel (S6-13d): short messages between its agents and the owner. Author is 'founder' or 'agent:<key>'. */
+export const departmentMessages = pgTable(
+  'department_messages',
+  {
+    id: id(),
+    workspaceId: workspaceId(),
+    departmentId: uuid('department_id').notNull(),
+    author: text('author').notNull(),
+    body: text('body').notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    unique('department_messages_ws_id_uq').on(t.workspaceId, t.id),
+    foreignKey({ name: 'department_messages_department_fk', columns: [t.workspaceId, t.departmentId], foreignColumns: [departments.workspaceId, departments.id] }).onDelete('cascade'),
+  ],
+);
+
 /** A device that asked for push notifications (S5-10). Stored once per endpoint. */
 export const pushSubscriptions = pgTable(
   'push_subscriptions',

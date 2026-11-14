@@ -104,6 +104,12 @@ class LateStore implements OsStore {
   comment(s: RunScope, t: string) {
     return this.inner.comment(s, t);
   }
+  departmentSay(s: RunScope, t: string) {
+    return this.inner.departmentSay(s, t);
+  }
+  handOffTask(s: RunScope, to: string, note: string) {
+    return this.inner.handOffTask(s, to, note);
+  }
   completeTask(s: RunScope, o: string) {
     return this.inner.completeTask(s, o);
   }

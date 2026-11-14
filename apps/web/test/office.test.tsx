@@ -76,11 +76,19 @@ describe('the plain office (S6-8)', () => {
     expect(screen.getByText(/Boardroom$/, { selector: 'span' }).textContent).toMatch(/coming/i);
   });
 
-  it('shows an object that every room has (a board, a table) once, not once for each room', async () => {
-    const twice = { ...facts, map: { ...facts.map, objects: [...facts.map.objects, { type: 'dept-board' as const, name: 'A board', x: 1, y: 2 }, { type: 'dept-board' as const, name: 'B board', x: 3, y: 2 }] } };
-    render(<OfficeView client={client({ office: vi.fn(async () => twice) })} />);
-    await screen.findByRole('heading', { name: 'Outreach' });
-    expect(screen.getAllByText(/Department board/)).toHaveLength(1);
+  it('gives each department room a Board and a Channel button for that department, and leaves them out of the row of things', async () => {
+    const open = vi.fn();
+    const rooms = { ...facts, map: { ...facts.map, objects: [...facts.map.objects, { type: 'dept-board' as const, name: 'Outreach board', x: 1, y: 2 }, { type: 'dept-table' as const, name: 'Outreach table', x: 3, y: 2 }] } };
+    render(<OfficeView client={client({ office: vi.fn(async () => rooms) })} onPanel={open} />);
+    const section = (await screen.findByRole('heading', { name: 'Outreach' })).closest('section')!;
+    fireEvent.click(within(section).getByRole('button', { name: /^board$/i }));
+    expect(open).toHaveBeenLastCalledWith('department-board', { dept: 'outreach' });
+    fireEvent.click(within(section).getByRole('button', { name: /^channel$/i }));
+    expect(open).toHaveBeenLastCalledWith('department-meeting', { dept: 'outreach' });
+    expect(within(screen.getByRole('region', { name: 'Things in the office' })).queryByText(/Department board|Meeting table/)).toBeNull();
+    // A room that is not a department's has neither.
+    const lounge = screen.getByRole('heading', { name: 'Lounge' }).closest('section')!;
+    expect(within(lounge).queryByRole('button', { name: /^board$/i })).toBeNull();
   });
 
   it('opens the drawer for an agent: its run, its open tasks, and a box that sends a message', async () => {

@@ -395,6 +395,26 @@ export class DbOsStore implements OsStore {
     });
   }
 
+  async departmentSay(scope: RunScope, text: string) {
+    await withWorkspace(this.pool, scope.workspaceId, async ({ client: c }) => {
+      const a = (await c.query<{ key: string; department_id: string | null }>('select key, department_id from agents where id = $1', [scope.agentId])).rows[0];
+      if (!a?.department_id) throw new ToolError('You are not in a department, so there is no channel to post to.');
+      await c.query('insert into department_messages (workspace_id, department_id, author, body) values ($1, $2, $3, $4)', [scope.workspaceId, a.department_id, `agent:${a.key}`, text]);
+    });
+  }
+
+  async handOffTask(scope: RunScope, to: string, note: string) {
+    await this.inTask(scope, async (c, taskId, key) => {
+      const me = (await c.query<{ department_id: string | null }>('select department_id from agents where id = $1', [scope.agentId])).rows[0];
+      if (to === key) throw new ToolError('That is you. Name a colleague.');
+      const them = (await c.query<{ id: string }>("select id from agents where key = $1 and status = 'active' and department_id is not distinct from $2 and department_id is not null", [to, me?.department_id ?? null])).rows[0];
+      if (!them) throw new ToolError(`There is no active colleague "${to}" in your department.`);
+      // The task is theirs now: back to todo, with nobody holding it, and the earlier session left behind (it was this agent's).
+      await c.query("update tasks set assignee_id = $2, status = 'todo', locked_by = null, session_id = null, blocked_reason = null where id = $1", [taskId, them.id]);
+      await c.query('insert into messages (workspace_id, task_id, from_id, to_id, body) values ($1, $2, $3, $4, $5)', [scope.workspaceId, taskId, `agent:${key}`, `agent:${to}`, note]);
+    });
+  }
+
   async comment(scope: RunScope, text: string) {
     await this.inTask(scope, (c, taskId, key) =>
       c.query('insert into messages (workspace_id, task_id, from_id, body) values ($1, $2, $3, $4)', [scope.workspaceId, taskId, `agent:${key}`, text]),

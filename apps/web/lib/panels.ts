@@ -3,7 +3,7 @@
  * panel now, and the open one is kept in the address (`/?panel=approvals`) so it can be linked to and survives a reload.
  * Pure: it only turns ids and addresses into each other.
  */
-export const PANEL_IDS = ['tasks', 'approvals', 'needs-you', 'brief', 'inbox', 'pipeline', 'campaigns', 'goals', 'signals', 'ideas', 'health', 'run-log'] as const;
+export const PANEL_IDS = ['tasks', 'approvals', 'needs-you', 'brief', 'inbox', 'pipeline', 'campaigns', 'goals', 'signals', 'ideas', 'health', 'run-log', 'department-board', 'department-meeting'] as const;
 export type PanelId = (typeof PANEL_IDS)[number];
 
 export const PANEL_LABELS: Record<PanelId, string> = {
@@ -19,13 +19,20 @@ export const PANEL_LABELS: Record<PanelId, string> = {
   ideas: 'Ideas',
   health: 'Health',
   'run-log': 'Run log',
+  'department-board': 'Department board',
+  'department-meeting': 'Department channel',
 };
 
 export interface PanelState {
   id: PanelId;
   /** Only the run log takes one: the task whose runs to show. */
   task?: string;
+  /** Only a department board or channel takes one: the department's key. */
+  dept?: string;
 }
+
+const WITH_DEPT = ['department-board', 'department-meeting'] as const;
+const DEPT = /^[a-z0-9][a-z0-9-]{0,60}$/;
 
 /** The old routes, which now only lead to the office with the matching panel open. */
 export const LEGACY_ROUTES: Record<string, PanelId> = {
@@ -47,7 +54,9 @@ const known = (v: string | null): v is PanelId => v !== null && (PANEL_IDS as re
 /** The address that opens a panel over the office. `base` is the page the office is on ('/' once it is the home page). */
 export function panelHref(p: PanelId | PanelState, base = '/'): string {
   const s: PanelState = typeof p === 'string' ? { id: p } : p;
-  return s.id === 'run-log' && s.task ? `${base}?panel=run-log&task=${s.task}` : `${base}?panel=${s.id}`;
+  if (s.id === 'run-log' && s.task) return `${base}?panel=run-log&task=${s.task}`;
+  if ((WITH_DEPT as readonly string[]).includes(s.id) && s.dept) return `${base}?panel=${s.id}&dept=${s.dept}`;
+  return `${base}?panel=${s.id}`;
 }
 
 /** The panel an address asks for. Null for nothing, an unknown name, or a run log with no usable task. */
@@ -58,6 +67,10 @@ export function parsePanel(search: string | URLSearchParams): PanelState | null 
   if (id === 'run-log') {
     const task = q.get('task');
     return task && TASK.test(task) ? { id, task } : null;
+  }
+  if ((WITH_DEPT as readonly string[]).includes(id)) {
+    const dept = q.get('dept');
+    return dept && DEPT.test(dept) ? { id, dept } : null;
   }
   return { id };
 }

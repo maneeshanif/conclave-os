@@ -19,7 +19,7 @@ export const toMap = (facts: OfficeFacts): OfficeMap => ({ ...facts.map, walls: 
  * The office as a world you can walk about (SPEC 12). Phaser is loaded only here, only in the browser, so the server render and
  * the plain list never pull it in. A hidden tab stops the drawing; a phone gets a smaller canvas (the list below is the main way in).
  */
-export function OfficeWorld({ client, onOpen, onPanel }: { client: OfficeClient; onOpen: (agentId: string | null) => void; onPanel: (id: string) => void }) {
+export function OfficeWorld({ client, onOpen, onPanel }: { client: OfficeClient; onOpen: (agentId: string | null) => void; onPanel: (id: string, ctx?: { dept?: string }) => void }) {
   const box = useRef<HTMLDivElement>(null);
   const [failed, setFailed] = useState<string | null>(null);
   const [view, setView] = useState<WorldController | null>(null);

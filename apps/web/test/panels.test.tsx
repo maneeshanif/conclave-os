@@ -9,7 +9,7 @@ afterEach(cleanup);
 
 describe('the list of panels and their addresses (S6-12a)', () => {
   it('has a panel for each page that used to be a route, a tasks panel and a run log', () => {
-    expect([...PANEL_IDS].sort()).toEqual(['approvals', 'brief', 'campaigns', 'goals', 'health', 'ideas', 'inbox', 'needs-you', 'pipeline', 'run-log', 'signals', 'tasks']);
+    expect([...PANEL_IDS].sort()).toEqual(['approvals', 'brief', 'campaigns', 'department-board', 'department-meeting', 'goals', 'health', 'ideas', 'inbox', 'needs-you', 'pipeline', 'run-log', 'signals', 'tasks']);
     for (const id of PANEL_IDS) expect(PANEL_LABELS[id].length, id).toBeGreaterThan(2);
   });
 
@@ -23,6 +23,17 @@ describe('the list of panels and their addresses (S6-12a)', () => {
     expect(panelHref({ id: 'run-log', task: '123e4567-e89b-12d3-a456-426614174000' })).toBe('/?panel=run-log&task=123e4567-e89b-12d3-a456-426614174000');
     expect(panelHref('goals', '/office')).toBe('/office?panel=goals');
     expect(panelHref({ id: 'goals', task: '123e4567-e89b-12d3-a456-426614174000' })).toBe('/?panel=goals'); // only the run log takes a task
+  });
+
+  it('names the department in the address for a department board or channel', () => {
+    expect(panelHref({ id: 'department-board', dept: 'lead-gen' })).toBe('/?panel=department-board&dept=lead-gen');
+    expect(panelHref({ id: 'department-meeting', dept: 'outreach' }, '/office')).toBe('/office?panel=department-meeting&dept=outreach');
+    expect(panelHref({ id: 'goals', dept: 'outreach' })).toBe('/?panel=goals'); // only these two take a department
+    expect(parsePanel('?panel=department-board&dept=lead-gen')).toEqual({ id: 'department-board', dept: 'lead-gen' });
+    expect(parsePanel('?panel=department-meeting&dept=outreach')).toEqual({ id: 'department-meeting', dept: 'outreach' });
+    expect(parsePanel('?panel=department-board')).toBeNull(); // a department panel needs a department
+    expect(parsePanel('?panel=department-board&dept=<x>')).toBeNull();
+    expect(parsePanel('?panel=department-board&dept=Bad Key')).toBeNull();
   });
 
   it('reads the open panel back from an address, and nothing else', () => {

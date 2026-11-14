@@ -23,15 +23,20 @@ vi.mock('../components/OfficeWorld', () => ({
 }));
 vi.mock('../components/OfficeView', () => ({
   realOfficeClient: {},
-  OfficeView: ({ onPanel }: { onPanel?: (id: string) => void }) => (
-    <button type="button" onClick={() => onPanel?.('goals')}>
-      goal ladder (list)
-    </button>
+  OfficeView: ({ onPanel }: { onPanel?: (id: string, ctx?: { dept?: string }) => void }) => (
+    <>
+      <button type="button" onClick={() => onPanel?.('goals')}>
+        goal ladder (list)
+      </button>
+      <button type="button" onClick={() => onPanel?.('department-board', { dept: 'outreach' })}>
+        outreach board (list)
+      </button>
+    </>
   ),
 }));
 const tasks = vi.fn();
 vi.mock('../lib/api', () => ({ api: { tasks: () => tasks() } }));
-vi.mock('../components/PanelContent', () => ({ PanelContent: (s: { id: string; task?: string }) => <p>the {s.id} panel{s.task ? ` for ${s.task}` : ''}</p> }));
+vi.mock('../components/PanelContent', () => ({ PanelContent: (s: { id: string; task?: string; dept?: string }) => <p>the {s.id} panel{s.task ? ` for ${s.task}` : ''}{s.dept ? ` of ${s.dept}` : ''}</p> }));
 
 import { OfficeScreen } from '../components/OfficeScreen';
 
@@ -54,6 +59,12 @@ describe('the office with its panels (S6-12a)', () => {
     expect(push).toHaveBeenLastCalledWith('/office?panel=approvals');
     fireEvent.click(screen.getByRole('button', { name: /goal ladder/ }));
     expect(push).toHaveBeenLastCalledWith('/office?panel=goals');
+  });
+
+  it('opens a department\'s board for the department the object is in', () => {
+    render(<OfficeScreen base="/office" />);
+    fireEvent.click(screen.getByRole('button', { name: /outreach board/ }));
+    expect(push).toHaveBeenLastCalledWith('/office?panel=department-board&dept=outreach');
   });
 
   it('shows the panel the address asks for, so a link or a reload opens it', () => {

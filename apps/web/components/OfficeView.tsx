@@ -25,7 +25,7 @@ export const WHERE: Record<string, string> = { desk: 'At its desk', approvals: '
  * The plain office (SPEC 12): the same rooms, agents and objects as the world, as a list. It works on a phone, with a screen
  * reader and with no canvas, and it uses the same panel registry as the world, so the two always agree.
  */
-export function OfficeView({ client = realOfficeClient, openId = null, onPanel }: { client?: OfficeClient; /** An agent the world has walked up to; its drawer opens here. */ openId?: string | null; /** Called with a panel id when one of the things in the office is used. */ onPanel?: (id: string) => void }) {
+export function OfficeView({ client = realOfficeClient, openId = null, onPanel }: { client?: OfficeClient; /** An agent the world has walked up to; its drawer opens here. */ openId?: string | null; /** Called with a panel id when one of the things in the office is used. */ onPanel?: (id: string, ctx?: { dept?: string }) => void }) {
   const [facts, setFacts] = useState<OfficeFacts | null>(null);
   const [places, setPlaces] = useState<OfficePlace[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -112,7 +112,8 @@ export function OfficeView({ client = realOfficeClient, openId = null, onPanel }
         {facts.map.objects.map((o, i) => {
           const panel = panelFor(o.type);
           if (!panel) return null;
-          // Something every room has (a board, a table) is listed once, not once for each room.
+          // A board and a table belong to a room, so they are in the room's own part below, not in this row.
+          if (o.type === 'dept-board' || o.type === 'dept-table') return null;
           if (facts.map.objects.findIndex((x) => panelFor(x.type)?.panel === panel.panel) !== i) return null;
           return panel.ready ? (
             <button key={`${o.type}-${o.name}`} type="button" onClick={() => onPanel?.(panel.panel)} className="rounded-md border border-neutral-300 px-3 py-1.5 text-sm hover:bg-neutral-50">
@@ -135,7 +136,19 @@ export function OfficeView({ client = realOfficeClient, openId = null, onPanel }
 
       {facts.map.rooms.map((r) => (
         <section key={r.name} className="space-y-2">
-          <h2 className="text-sm font-semibold text-neutral-700">{r.name}</h2>
+          <div className="flex items-center gap-2">
+            <h2 className="text-sm font-semibold text-neutral-700">{r.name}</h2>
+            {r.department ? (
+              <>
+                <button type="button" onClick={() => onPanel?.('department-board', { dept: r.department! })} className="rounded-md border border-neutral-300 px-2 py-0.5 text-xs hover:bg-neutral-50">
+                  Board
+                </button>
+                <button type="button" onClick={() => onPanel?.('department-meeting', { dept: r.department! })} className="rounded-md border border-neutral-300 px-2 py-0.5 text-xs hover:bg-neutral-50">
+                  Channel
+                </button>
+              </>
+            ) : null}
+          </div>
           {roomAgents(r).length ? <ul className="space-y-1">{roomAgents(r).map(agentButton)}</ul> : <p className="text-sm text-neutral-400">Nobody here.</p>}
         </section>
       ))}

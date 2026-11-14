@@ -6,6 +6,7 @@ import { ActionItems } from './ActionItems';
 import { ApprovalsInbox } from './ApprovalsInbox';
 import { BriefView } from './BriefView';
 import { CampaignsView } from './CampaignsView';
+import { DepartmentBoard, DepartmentChannel } from './DepartmentPanels';
 import { GoalsView } from './GoalsView';
 import { HealthView } from './HealthView';
 import { IdeasView } from './IdeasView';
@@ -22,6 +23,10 @@ export function PanelContent(state: PanelState): ReactNode {
       return <TasksView />;
     case 'run-log':
       return <TasksView taskId={state.task} only />;
+    case 'department-board':
+      return <DepartmentBoard dept={state.dept ?? ''} />;
+    case 'department-meeting':
+      return <DepartmentChannel dept={state.dept ?? ''} />;
     case 'approvals':
       return <ApprovalsInbox />;
     case 'needs-you':

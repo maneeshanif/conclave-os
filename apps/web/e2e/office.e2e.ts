@@ -97,6 +97,8 @@ async function stub(context: BrowserContext) {
       made = true;
       return route.fulfill({ status: 201, headers: cors, body: JSON.stringify({ id: COMPANY_B, slug: 'new-one', name: 'New One', isDefault: false }) });
     }
+    if (url.pathname === '/api/departments/chief-of-staff/board') return route.fulfill({ status: 200, headers: cors, body: JSON.stringify({ department: { key: 'chief-of-staff', name: 'Chief of Staff' }, agents: [{ key: 'scout', name: 'Scout', status: 'active' }], tasks: [{ id: 't1', title: 'Plan the week', status: 'in_progress', priority: 3, blocked_reason: null, created_at: '2026-11-15T10:00:00Z', assignee_key: 'scout', assignee_name: 'Scout' }] }) });
+    if (url.pathname === '/api/departments/chief-of-staff/channel') return route.fulfill({ status: 200, headers: cors, body: JSON.stringify({ messages: [{ id: 'm1', author: 'agent:scout', body: 'Starting on the plan.', created_at: '2026-11-15T10:00:00Z' }] }) });
     if (url.pathname === '/api/office/agent-templates') return route.fulfill({ status: 200, headers: cors, body: JSON.stringify({ templates: ['researcher', 'writer'] }) });
     if (url.pathname === '/api/office/agent-proposals' && req.method() === 'POST') {
       agentProposed.push(JSON.parse(req.postData() ?? '{}') as { department: string; template: string });
@@ -228,6 +230,19 @@ describe('the office page in a real browser (S6-8b)', () => {
       expect(agentProposed[0]!.template).toBe('researcher');
       await agentDialog.getByRole('button', { name: /open approvals/i }).click();
       await page.getByRole('dialog', { name: 'Approvals' }).waitFor();
+      await page.keyboard.press('Escape');
+      await page.getByRole('dialog').waitFor({ state: 'detached' });
+      // Each department room has its own board and channel, opened for that department.
+      const room = page.getByRole('heading', { name: 'Chief of Staff', exact: true }).locator('xpath=ancestor::section[1]');
+      await room.getByRole('button', { name: 'Board', exact: true }).click();
+      const boardPanel = page.getByRole('dialog', { name: 'Department board' });
+      await boardPanel.getByText('Plan the week').waitFor();
+      expect(page.url()).toMatch(/panel=department-board&dept=chief-of-staff/);
+      writeFileSync(path.join(SHOTS, `office-${name}-board.png`), await page.screenshot());
+      await page.keyboard.press('Escape');
+      await page.getByRole('dialog').waitFor({ state: 'detached' });
+      await room.getByRole('button', { name: 'Channel', exact: true }).click();
+      await page.getByRole('dialog', { name: 'Department channel' }).getByText('Starting on the plan.').waitFor();
       await page.keyboard.press('Escape');
       await page.getByRole('dialog').waitFor({ state: 'detached' });
       // Using an object opens its panel over the office: beside the world on a desktop, the whole screen on a phone.

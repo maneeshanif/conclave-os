@@ -43,9 +43,9 @@ describe('what each object opens (S6-7, S6-12b)', () => {
     expect(panelFor('__proto__')).toBeNull();
   });
 
-  it('is ready for every panel that exists, and says "coming" only for the Talent room, the Boardroom and the department boards and tables', () => {
+  it('is ready for every panel that exists, and says "coming" only for the Talent room and the Boardroom', () => {
     const coming = OBJECT_TYPES.filter((t) => !OBJECT_PANELS[t].ready).sort();
-    expect(coming).toEqual(['boardroom-table', 'dept-board', 'dept-table', 'jobboard']);
+    expect(coming).toEqual(['boardroom-table', 'jobboard']);
   });
 
   it('gives every panel a label a person can read', () => {

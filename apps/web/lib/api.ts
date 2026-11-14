@@ -4,6 +4,15 @@ export const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://127.0.0.1:3100';
 import type { OfficeMap, Placed } from '@conclave/shared';
 import { currentCompany } from './company';
 
+export interface DepartmentBoardData {
+  department: { key: string; name: string };
+  agents: { key: string; name: string; status: string }[];
+  tasks: { id: string; title: string; status: string; priority: number; blocked_reason: string | null; created_at: string; assignee_key: string | null; assignee_name: string | null }[];
+}
+export interface DepartmentChannelData {
+  messages: { id: string; author: string; body: string; created_at: string }[];
+}
+
 export interface CompanySummary {
   id: string;
   slug: string;
@@ -340,6 +349,9 @@ export const api = {
   pushKey: () => call<{ publicKey: string }>('/api/push/key'),
   pushSubscribe: (sub: unknown) => call<{ subscribed: true }>('/api/push/subscribe', { method: 'POST', body: JSON.stringify(sub) }),
   pushUnsubscribe: (endpoint: string) => call<{ subscribed: false }>('/api/push/subscribe', { method: 'DELETE', body: JSON.stringify({ endpoint }) }),
+  departmentBoard: (dept: string) => call<DepartmentBoardData>(`/api/departments/${encodeURIComponent(dept)}/board`),
+  departmentChannel: (dept: string) => call<DepartmentChannelData>(`/api/departments/${encodeURIComponent(dept)}/channel`),
+  departmentSay: (dept: string, body: string) => call<{ id: string }>(`/api/departments/${encodeURIComponent(dept)}/channel`, { method: 'POST', body: JSON.stringify({ body }) }),
   agentTemplates: async () => (await call<{ templates: string[] }>('/api/office/agent-templates')).templates,
   proposeAgent: (p: { department: string; template: string; name?: string }) => call<{ approvalId: string; id: string }>('/api/office/agent-proposals', { method: 'POST', body: JSON.stringify(p) }),
   addDepartment: (name: string) => call<{ key: string; name: string; room: number }>('/api/departments', { method: 'POST', body: JSON.stringify({ name }) }),

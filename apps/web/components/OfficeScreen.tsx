@@ -20,9 +20,9 @@ export function OfficeScreen({ base = '/' }: { base?: string }) {
   const params = useSearchParams();
   const state = parsePanel(params);
   const show = useCallback(
-    (id: string) => {
+    (id: string, ctx?: { dept?: string }) => {
       if (!(PANEL_IDS as readonly string[]).includes(id)) return;
-      if (id !== 'run-log') return router.push(panelHref(id as PanelId, base));
+      if (id !== 'run-log') return router.push(panelHref({ id: id as PanelId, ...(ctx?.dept ? { dept: ctx.dept } : {}) }, base));
       // The terminal: show the run log of the newest task that has run, or the tasks panel if nothing has run (or the server is down).
       void api
         .tasks()
