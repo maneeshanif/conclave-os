@@ -3,7 +3,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import path from 'node:path';
 import { chromium, type Browser, type BrowserContext } from 'playwright-core';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { readOfficeMap, type OfficeMapJson } from '@conclave/shared';
 
 /**
@@ -56,6 +56,7 @@ const COMPANY_A = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const COMPANY_B = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
 let made = false;
 const officeCompany: (string | null)[] = [];
+const departmentPosted: { name: string }[] = [];
 let server: ChildProcess;
 let browser: Browser;
 
@@ -94,6 +95,10 @@ async function stub(context: BrowserContext) {
     if (url.pathname === '/api/companies' && req.method() === 'POST') {
       made = true;
       return route.fulfill({ status: 201, headers: cors, body: JSON.stringify({ id: COMPANY_B, slug: 'new-one', name: 'New One', isDefault: false }) });
+    }
+    if (url.pathname === '/api/departments' && req.method() === 'POST') {
+      departmentPosted.push(JSON.parse(req.postData() ?? '{}') as { name: string });
+      return route.fulfill({ status: 201, headers: cors, body: JSON.stringify({ key: 'sales', name: 'Sales', room: 20 }) });
     }
     if (url.pathname === '/api/office') officeCompany.push(req.headers()['x-company'] ?? null);
     if (url.pathname === '/api/office') return route.fulfill({ status: 200, headers: cors, body: JSON.stringify(facts) });
@@ -194,6 +199,16 @@ describe('the office page in a real browser (S6-8b)', () => {
       await page.evaluate(() => localStorage.removeItem('conclave.company'));
       await page.reload();
       await page.getByRole('button', { name: /company: first co/i }).waitFor({ timeout: 15_000 });
+      // A department can be added from the Tools menu.
+      departmentPosted.length = 0;
+      await page.getByRole('button', { name: /tools/i }).click();
+      await page.getByRole('menuitem', { name: /add a department/i }).click();
+      const adding = page.getByRole('dialog', { name: 'Add a department' });
+      await adding.getByLabel('Name').fill('Sales');
+      writeFileSync(path.join(SHOTS, `office-${name}-add-department.png`), await page.screenshot());
+      await adding.getByRole('button', { name: 'Create', exact: true }).click();
+      await vi.waitFor(() => expect(departmentPosted).toEqual([{ name: 'Sales' }]), { timeout: 15_000 });
+      await page.getByRole('button', { name: /people/i }).waitFor({ timeout: 15_000 }); // the page reloads to show the new room
       // Using an object opens its panel over the office: beside the world on a desktop, the whole screen on a phone.
       await page.getByRole('button', { name: 'Approvals inbox' }).click();
       const panel = page.getByRole('dialog', { name: 'Approvals' });

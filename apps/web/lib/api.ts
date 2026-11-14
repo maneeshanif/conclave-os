@@ -340,6 +340,7 @@ export const api = {
   pushKey: () => call<{ publicKey: string }>('/api/push/key'),
   pushSubscribe: (sub: unknown) => call<{ subscribed: true }>('/api/push/subscribe', { method: 'POST', body: JSON.stringify(sub) }),
   pushUnsubscribe: (endpoint: string) => call<{ subscribed: false }>('/api/push/subscribe', { method: 'DELETE', body: JSON.stringify({ endpoint }) }),
+  addDepartment: (name: string) => call<{ key: string; name: string; room: number }>('/api/departments', { method: 'POST', body: JSON.stringify({ name }) }),
   companies: () => call<CompanyList>('/api/companies'),
   createCompany: (c: { name: string; template: string }) => call<CompanySummary>('/api/companies', { method: 'POST', body: JSON.stringify(c) }),
   office: async () => {

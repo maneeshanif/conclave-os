@@ -21,7 +21,7 @@ const item = 'flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text
  * The bar over the world: who is here, a tools menu and your status. Floating groups on a desktop; on a phone the same controls
  * sit along the bottom edge. It only reports what you chose; the page decides what to do (SPEC 12).
  */
-export function OfficeBar(props: { people: Person[]; availability: Availability; onAvailability: (a: Availability) => void; onOpenAgent: (id: string) => void; onOverview: () => void; /** More controls next to the people button (the company switcher). */ extra?: ReactNode }) {
+export function OfficeBar(props: { people: Person[]; availability: Availability; onAvailability: (a: Availability) => void; onOpenAgent: (id: string) => void; onOverview: () => void; /** More controls next to the people button (the company switcher). */ extra?: ReactNode; /** Called from the Tools menu: the page shows the add-a-department dialog. */ onAddDepartment?: () => void }) {
   const [menu, setMenu] = useState<'tools' | 'status' | null>(null);
   const [panel, setPanel] = useState(false);
   const current = STATUS.find((s) => s.id === props.availability)!;
@@ -56,6 +56,19 @@ export function OfficeBar(props: { people: Person[]; availability: Availability;
                 >
                   See the whole office
                 </button>
+                {props.onAddDepartment ? (
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className={item}
+                    onClick={() => {
+                      props.onAddDepartment?.();
+                      setMenu(null);
+                    }}
+                  >
+                    Add a department…
+                  </button>
+                ) : null}
               </div>
             ) : null}
           </div>

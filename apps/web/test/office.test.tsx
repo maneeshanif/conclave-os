@@ -76,6 +76,13 @@ describe('the plain office (S6-8)', () => {
     expect(screen.getByText(/Boardroom$/, { selector: 'span' }).textContent).toMatch(/coming/i);
   });
 
+  it('shows an object that every room has (a board, a table) once, not once for each room', async () => {
+    const twice = { ...facts, map: { ...facts.map, objects: [...facts.map.objects, { type: 'dept-board' as const, name: 'A board', x: 1, y: 2 }, { type: 'dept-board' as const, name: 'B board', x: 3, y: 2 }] } };
+    render(<OfficeView client={client({ office: vi.fn(async () => twice) })} />);
+    await screen.findByRole('heading', { name: 'Outreach' });
+    expect(screen.getAllByText(/Department board/)).toHaveLength(1);
+  });
+
   it('opens the drawer for an agent: its run, its open tasks, and a box that sends a message', async () => {
     const c = client();
     render(<OfficeView client={c} />);

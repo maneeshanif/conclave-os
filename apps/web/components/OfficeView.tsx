@@ -109,9 +109,11 @@ export function OfficeView({ client = realOfficeClient, openId = null, onPanel }
     <div className="space-y-6">
       {error ? <p className="rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-800">{error}</p> : null}
       <section aria-label="Things in the office" className="flex flex-wrap gap-2">
-        {facts.map.objects.map((o) => {
+        {facts.map.objects.map((o, i) => {
           const panel = panelFor(o.type);
           if (!panel) return null;
+          // Something every room has (a board, a table) is listed once, not once for each room.
+          if (facts.map.objects.findIndex((x) => panelFor(x.type)?.panel === panel.panel) !== i) return null;
           return panel.ready ? (
             <button key={`${o.type}-${o.name}`} type="button" onClick={() => onPanel?.(panel.panel)} className="rounded-md border border-neutral-300 px-3 py-1.5 text-sm hover:bg-neutral-50">
               {panel.label}

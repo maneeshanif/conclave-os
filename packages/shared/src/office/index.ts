@@ -204,3 +204,4 @@ export * from './walk';
 export * from './zones';
 export * from './proximity';
 export * from './objects';
+export * from './stamp';

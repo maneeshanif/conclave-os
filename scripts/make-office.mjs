@@ -143,6 +143,8 @@ const objects = [
   obj('Signal radio', 'signal-radio', 33, 9),
   obj('Idea wall', 'idea-wall', 36, 9),
   obj('Terminal', 'terminal', 21, 20),
+  // Every department room has a board and a meeting table (S6-13b).
+  ...top.flatMap(([name, , x]) => [obj(`${name} board`, 'dept-board', x + 2, 8), obj(`${name} table`, 'dept-table', x + 5, 8)]),
 ];
 for (const o of objects) floor[at(o.x / T, o.y / T)] = THING;
 const entries = [obj('door', '', 19, 22), obj('lounge', '', 30, 19), obj('boardroom', '', 7, 20)];

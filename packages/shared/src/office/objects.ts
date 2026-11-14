@@ -1,4 +1,4 @@
-export const OBJECT_TYPES = ['approvals-desk', 'whiteboard', 'screen', 'mailbox', 'jobboard', 'boardroom-table', 'task-board', 'needs-you-board', 'brief-desk', 'pipeline-board', 'campaign-board', 'signal-radio', 'idea-wall', 'terminal'] as const;
+export const OBJECT_TYPES = ['approvals-desk', 'whiteboard', 'screen', 'mailbox', 'jobboard', 'boardroom-table', 'task-board', 'needs-you-board', 'brief-desk', 'pipeline-board', 'campaign-board', 'signal-radio', 'idea-wall', 'terminal', 'dept-board', 'dept-table'] as const;
 export type ObjectType = (typeof OBJECT_TYPES)[number];
 
 /**
@@ -27,6 +27,9 @@ export const OBJECT_PANELS: Record<ObjectType, ObjectPanel> = {
   'campaign-board': { panel: 'campaigns', label: 'Campaigns', href: '/campaigns', ready: true },
   'signal-radio': { panel: 'signals', label: 'Signals', href: '/signals', ready: true },
   'idea-wall': { panel: 'ideas', label: 'Ideas', href: '/ideas', ready: true },
+  // Every department room has one of each (S6-13b). Their panels come with S6-13d.
+  'dept-board': { panel: 'department-board', label: 'Department board', href: '/?panel=department-board', ready: false },
+  'dept-table': { panel: 'department-meeting', label: 'Meeting table', href: '/?panel=department-meeting', ready: false },
   terminal: { panel: 'run-log', label: 'Run logs', href: '/?panel=run-log', ready: true },
 };
 

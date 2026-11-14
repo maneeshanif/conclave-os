@@ -517,7 +517,7 @@ The office is the whole app. Everything below is allowed in slice 6 because slic
   Added after S6-13a. A new company's data, panels and office work, but the things that act on a company's behalf are still wired to the one company the server was started for: the approval executors and email transport, the scheduler tick, the reaper, the daily brief and backup, the notifier and the run loop's folders. Each must act for every company in the list, with the company's own folder and workspace, and nothing may cross. The real-sending switches stay off.
   *Test:* an approval made in a second company is claimed once and executed (with the outbox transport) in that company only; the scheduler wakes an agent in a second company and runs it with that company's agent folder; the reaper fails a stale run in each company; a second company's approvals, runs and briefs never show in the first, and the tenancy test still lists every table.
 
-- [ ] **S6-13b Departments from the world.** SPEC 3, 12.
+- [x] **S6-13b Departments from the world.** SPEC 3, 12.
   Creating a department claims a free plot on the map and stamps a room into it: desks, a board (shared tasks), a meeting table and a door, and adds the department to the company's `departments.yaml`. The map has reserved plots for this. A department with no free plot is told so, and nothing is half made.
   *Test:* a new department gets a room with its desks, board and meeting table, reachable from the door; the map still passes the reader; two departments never share a plot; no free plot is a clear refusal and changes nothing.
 

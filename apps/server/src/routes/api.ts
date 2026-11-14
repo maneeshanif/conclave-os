@@ -1,5 +1,5 @@
 import { Hono, type Context } from 'hono';
-import type { QueryResultRow } from 'pg';
+import type { Pool, QueryResultRow } from 'pg';
 import { z } from 'zod';
 import type { AppEnv } from '../app';
 import type { Bus } from '../bus';
@@ -17,6 +17,7 @@ import type { ReaperStatus } from '../health';
 import { healthRoutes } from './health';
 import { pauseRoutes } from './pauses';
 import { settingsRoutes } from './settings';
+import { departmentRoutes } from './departments';
 import { officeRoutes } from './office';
 import { signalRoutes } from './signals';
 import { videoIdeaRoutes } from './video-ideas';
@@ -36,6 +37,8 @@ export function apiRoutes(deps: { workspaceId: string; dispatcher: Dispatcher; b
   companyRoot?: string;
   /** What the last reaper pass did, for the Health screen (S3-7). */
   reaperStatus?: ReaperStatus;
+  /** For adding a department, which copies the company folder into the database (S6-13b). */
+  pool?: Pool;
 }) {
   const r = new Hono<AppEnv>();
   const ws = deps.workspaceId;
@@ -74,6 +77,7 @@ export function apiRoutes(deps: { workspaceId: string; dispatcher: Dispatcher; b
   r.route('/suppression', suppressionRoutes({ workspaceId: ws }));
   r.route('/signals', signalRoutes({ workspaceId: ws, bus: deps.bus }));
   if (deps.companyRoot) r.route('/office', officeRoutes({ workspaceId: ws, companyRoot: deps.companyRoot, bus: deps.bus, dispatcher: deps.dispatcher }));
+  if (deps.companyRoot) r.route('/departments', departmentRoutes({ workspaceId: ws, companyRoot: deps.companyRoot, bus: deps.bus, ...(deps.pool ? { pool: deps.pool } : {}) }));
   r.route('/video-ideas', videoIdeaRoutes({ workspaceId: ws, bus: deps.bus }));
   r.route('/settings', settingsRoutes({ workspaceId: ws, bus: deps.bus, onKillSwitch: deps.onKillSwitch, onReleaseHeld: deps.onReleaseHeld }));
 

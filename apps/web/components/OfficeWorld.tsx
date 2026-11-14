@@ -2,10 +2,11 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { zoneNotice, type OfficeMap } from '@conclave/shared';
-import { API, type OfficeFacts, type OfficePlace } from '../lib/api';
+import { API, api, type OfficeFacts, type OfficePlace } from '../lib/api';
 import { WorldController } from '../office/controller';
 import { applyPresence, type Member } from '../office/presence';
 import type { Who } from '../office/scene';
+import { AddDepartment } from './AddDepartment';
 import { CompanySwitcher } from './CompanySwitcher';
 import { OfficeBar, WelcomeCard, ZonePill, type Availability, type Person } from './OfficeBar';
 import { WHERE, type OfficeClient } from './OfficeView';
@@ -27,6 +28,7 @@ export function OfficeWorld({ client, onOpen, onPanel }: { client: OfficeClient;
   const mine = useRef<Availability>('available');
   const tellRef = useRef<(() => void) | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [adding, setAdding] = useState(false);
   const [availability, setAvailability] = useState<Availability>(() => {
     try {
       const v = localStorage.getItem('conclave.office.availability');
@@ -115,12 +117,14 @@ export function OfficeWorld({ client, onOpen, onPanel }: { client: OfficeClient;
           onAvailability={choose}
           onOpenAgent={onOpen}
           extra={<CompanySwitcher onSwitch={() => window.location.reload()} />}
+          onAddDepartment={() => setAdding(true)}
           onOverview={() => {
             view.overview(!whole);
             setWhole(!whole);
           }}
         />
       ) : null}
+      {adding ? <AddDepartment add={api.addDepartment} onDone={() => window.location.reload()} onCancel={() => setAdding(false)} /> : null}
       <WelcomeCard />
       {view ? (
         <div className="absolute bottom-16 right-3 flex flex-col gap-1.5 sm:bottom-3">

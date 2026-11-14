@@ -27,7 +27,7 @@
  ],
  "layers": [
   {
-   "id": 41,
+   "id": 49,
    "name": "floor",
    "type": "tilelayer",
    "width": 40,
@@ -360,40 +360,40 @@
     2,
     3,
     3,
+    8,
     3,
     3,
-    3,
-    3,
-    3,
-    3,
-    3,
-    2,
-    3,
-    3,
-    3,
-    3,
-    3,
-    3,
+    8,
     3,
     3,
     3,
     2,
     3,
     3,
+    8,
     3,
     3,
-    3,
-    3,
+    8,
     3,
     3,
     3,
     2,
     3,
     3,
+    8,
+    3,
+    3,
+    8,
     3,
     3,
     3,
+    2,
     3,
+    3,
+    8,
+    3,
+    3,
+    8,
     3,
     3,
     2,
@@ -1000,7 +1000,7 @@
    ]
   },
   {
-   "id": 42,
+   "id": 50,
    "name": "collision",
    "type": "tilelayer",
    "width": 40,
@@ -1973,7 +1973,7 @@
    ]
   },
   {
-   "id": 43,
+   "id": 51,
    "name": "rooms",
    "type": "objectgroup",
    "draworder": "topdown",
@@ -2141,7 +2141,7 @@
    ]
   },
   {
-   "id": 44,
+   "id": 52,
    "name": "desks",
    "type": "objectgroup",
    "draworder": "topdown",
@@ -2505,7 +2505,7 @@
    ]
   },
   {
-   "id": 45,
+   "id": 53,
    "name": "objects",
    "type": "objectgroup",
    "draworder": "topdown",
@@ -2653,11 +2653,91 @@
      "point": true,
      "rotation": 0,
      "visible": true
+    },
+    {
+     "id": 38,
+     "name": "Chief of Staff board",
+     "type": "dept-board",
+     "x": 96,
+     "y": 256,
+     "point": true,
+     "rotation": 0,
+     "visible": true
+    },
+    {
+     "id": 39,
+     "name": "Chief of Staff table",
+     "type": "dept-table",
+     "x": 192,
+     "y": 256,
+     "point": true,
+     "rotation": 0,
+     "visible": true
+    },
+    {
+     "id": 40,
+     "name": "Lead Gen board",
+     "type": "dept-board",
+     "x": 416,
+     "y": 256,
+     "point": true,
+     "rotation": 0,
+     "visible": true
+    },
+    {
+     "id": 41,
+     "name": "Lead Gen table",
+     "type": "dept-table",
+     "x": 512,
+     "y": 256,
+     "point": true,
+     "rotation": 0,
+     "visible": true
+    },
+    {
+     "id": 42,
+     "name": "Outreach board",
+     "type": "dept-board",
+     "x": 736,
+     "y": 256,
+     "point": true,
+     "rotation": 0,
+     "visible": true
+    },
+    {
+     "id": 43,
+     "name": "Outreach table",
+     "type": "dept-table",
+     "x": 832,
+     "y": 256,
+     "point": true,
+     "rotation": 0,
+     "visible": true
+    },
+    {
+     "id": 44,
+     "name": "Research board",
+     "type": "dept-board",
+     "x": 1056,
+     "y": 256,
+     "point": true,
+     "rotation": 0,
+     "visible": true
+    },
+    {
+     "id": 45,
+     "name": "Research table",
+     "type": "dept-table",
+     "x": 1152,
+     "y": 256,
+     "point": true,
+     "rotation": 0,
+     "visible": true
     }
    ]
   },
   {
-   "id": 46,
+   "id": 54,
    "name": "entries",
    "type": "objectgroup",
    "draworder": "topdown",
@@ -2667,7 +2747,7 @@
    "y": 0,
    "objects": [
     {
-     "id": 38,
+     "id": 46,
      "name": "door",
      "type": "",
      "x": 608,
@@ -2677,7 +2757,7 @@
      "visible": true
     },
     {
-     "id": 39,
+     "id": 47,
      "name": "lounge",
      "type": "",
      "x": 960,
@@ -2687,7 +2767,7 @@
      "visible": true
     },
     {
-     "id": 40,
+     "id": 48,
      "name": "boardroom",
      "type": "",
      "x": 224,
@@ -2699,6 +2779,6 @@
    ]
   }
  ],
- "nextlayerid": 48,
- "nextobjectid": 48
+ "nextlayerid": 56,
+ "nextobjectid": 56
 }

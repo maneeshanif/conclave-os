@@ -60,8 +60,8 @@ describe('the starter office map (S6-1)', () => {
 
   it('has every kind of object the office needs, each on open floor with a name', () => {
     const m = read();
-    for (const t of OBJECT_TYPES) expect(m.objects.filter((o) => o.type === t), t).toHaveLength(1);
-    expect(OBJECT_TYPES).toEqual(expect.arrayContaining(['approvals-desk', 'whiteboard', 'screen', 'mailbox', 'jobboard', 'boardroom-table', 'task-board', 'needs-you-board', 'brief-desk', 'pipeline-board', 'campaign-board', 'signal-radio', 'idea-wall', 'terminal']));
+    for (const t of OBJECT_TYPES) expect(m.objects.filter((o) => o.type === t), t).toHaveLength(t === 'dept-board' || t === 'dept-table' ? 4 : 1); // a board and a table in each of the four department rooms
+    expect(OBJECT_TYPES).toEqual(expect.arrayContaining(['approvals-desk', 'whiteboard', 'screen', 'mailbox', 'jobboard', 'boardroom-table', 'task-board', 'needs-you-board', 'brief-desk', 'pipeline-board', 'campaign-board', 'signal-radio', 'idea-wall', 'terminal', 'dept-board', 'dept-table']));
     for (const o of m.objects) expect(m.walls[o.y]![o.x], o.name).toBe(false);
   });
 
