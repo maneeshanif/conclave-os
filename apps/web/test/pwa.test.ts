@@ -15,10 +15,10 @@ const png = (p: string) => {
 describe('the installable app: manifest (S1-11)', () => {
   const m = manifest();
 
-  it('names the app and opens on the approvals page, standalone', () => {
+  it('names the app and opens on the office, standalone', () => {
     expect(m.name).toBe('Conclave OS');
     expect(m.short_name).toBe('Conclave');
-    expect(m.start_url).toBe('/approvals');
+    expect(m.start_url).toBe('/');
     expect(m.scope).toBe('/');
     expect(m.display).toBe('standalone');
     expect(m.theme_color).toMatch(/^#[0-9a-f]{6}$/i);

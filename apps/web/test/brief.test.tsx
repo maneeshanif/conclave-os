@@ -109,7 +109,7 @@ describe('signals in the brief (S4-8)', () => {
     expect(await screen.findByText('Signals waiting (4)')).toBeTruthy();
     expect(screen.getByText('u/dana_clinic')).toBeTruthy();
     expect(screen.getByText(/Need a booking page rebuilt/)).toBeTruthy();
-    expect((screen.getByRole('link', { name: /review the signals/i }) as HTMLAnchorElement).getAttribute('href')).toBe('/signals');
+    expect((screen.getByRole('link', { name: /review the signals/i }) as HTMLAnchorElement).getAttribute('href')).toBe('/?panel=signals');
     cleanup();
     render(<BriefView client={client(brief())} />); // an older brief has no signals part at all
     await screen.findByText('4 new leads (2 scored, 2 qualified).');

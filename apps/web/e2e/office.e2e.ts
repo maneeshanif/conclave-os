@@ -139,7 +139,7 @@ describe('the office page in a real browser (S6-8b)', () => {
       const page = await context.newPage();
       const errors: string[] = [];
       page.on('pageerror', (e) => errors.push(e.message));
-      await page.goto(`${ORIGIN}/office`);
+      await page.goto(`${ORIGIN}/`);
       await page.locator('[data-testid="office-world"] canvas').waitFor({ timeout: 30_000 });
       await page.waitForTimeout(1500); // a few frames
       // The welcome card shows the first time, and skipping it leaves the bar.
@@ -187,12 +187,18 @@ describe('the office page in a real browser (S6-8b)', () => {
       await page.getByRole('dialog').waitFor({ state: 'detached' });
       expect(page.url()).not.toMatch(/panel=/);
       // A link with the panel in it opens the panel on load.
-      await page.goto(`${ORIGIN}/office?panel=goals`);
+      await page.goto(`${ORIGIN}/?panel=goals`);
       await page.getByRole('dialog', { name: 'Goals' }).waitFor({ timeout: 10_000 }).catch(async () => {
         throw new Error(`no Goals panel. url=${page.url()} errors=${errors.join(' | ')} text=${(await page.locator('body').innerText()).slice(0, 300)}`);
       });
       await page.getByRole('button', { name: 'Close', exact: true }).click();
       await page.getByRole('dialog').waitFor({ state: 'detached' });
+      // Nothing outside the office: no link to another page on the home page, and an old route leads back here with its panel open.
+      expect(await page.locator('a[href]').count()).toBe(0);
+      await page.goto(`${ORIGIN}/approvals`);
+      await page.getByRole('dialog', { name: 'Approvals' }).waitFor({ timeout: 15_000 });
+      expect(new URL(page.url()).pathname).toBe('/');
+      expect(page.url()).toMatch(/panel=approvals/);
       writeFileSync(path.join(SHOTS, `office-${name}.png`), await page.screenshot({ fullPage: true }));
       expect(errors).toEqual([]);
       await context.close();

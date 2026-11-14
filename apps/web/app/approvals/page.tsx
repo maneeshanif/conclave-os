@@ -1,18 +1,6 @@
-import Link from 'next/link';
-import { ApprovalsInbox } from '../../components/ApprovalsInbox';
+import { redirect } from 'next/navigation';
 
-export const metadata = { title: 'Approvals · Conclave OS' };
-
-/** What is waiting for the founder's yes (SPEC 6, 12). */
-export default function ApprovalsPage() {
-  return (
-    <main className="mx-auto max-w-3xl p-4 sm:p-6">
-      <nav className="mb-6 text-sm">
-        <Link href="/" className="text-neutral-500 hover:text-neutral-900">
-          ← Tasks
-        </Link>
-      </nav>
-      <ApprovalsInbox />
-    </main>
-  );
+/** The old route. The page is a panel over the office now (S6-12c); this only leads there, so old links and bookmarks still work. */
+export default function Page(): never {
+  redirect('/?panel=approvals');
 }

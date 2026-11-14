@@ -130,7 +130,7 @@ export function BriefView({ client = real }: { client?: BriefClient }) {
           {c.signals && c.signals.waiting > 0 && (
             <Part title={`Signals waiting (${c.signals.waiting})`}>
               <List items={c.signals.items.map((s) => <span key={s.id}><strong>{s.author ?? s.source}</strong>{s.score !== null ? ` · ${s.score}` : ''}{s.excerpt ? ` · ${s.excerpt}` : ''}</span>)} />
-              <a href="/signals" className="text-sm underline">Review the signals</a>
+              <a href="/?panel=signals" className="text-sm underline">Review the signals</a>
             </Part>
           )}
           {c.goals.rungs.length > 0 && (

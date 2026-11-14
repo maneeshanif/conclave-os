@@ -505,7 +505,7 @@ The office is the whole app. Everything below is allowed in slice 6 because slic
   New object types on the map with a registered panel each (a task board, a brief desk, a pipeline board, a campaign board, a needs-you board, a terminal for run logs), added to `OBJECT_TYPES`, the map script and `OBJECT_PANELS`. Using an object, in the world or from the plain list, opens its panel. Every panel in the registry has a place on the map, and the map reader still refuses an unknown type.
   *Test:* every panel has exactly one object type that opens it; the map has at least one of each type and all are reachable from the door; using each opens the right panel; the plain list has a button for each.
 
-- [ ] **S6-12c The office is home.** SPEC 12.
+- [x] **S6-12c The office is home.** SPEC 12.
   `/` is the office. There is no top link bar on any page. The old routes (`/approvals`, `/brief`, `/inbox`, `/pipeline`, `/campaigns`, `/goals`, `/health`, `/signals`, `/ideas`, `/action-items`) redirect to `/?panel=<id>` and nothing else. A run log opens from a task in the tasks panel and from the terminal.
   *Test:* the home page has no navigation links outside the office; each old route redirects to the office with that panel open; a Playwright run at desktop and Android sizes walks to an object, clicks it, sees the panel, closes it, and loads a deep link.
 

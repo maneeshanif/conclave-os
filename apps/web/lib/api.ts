@@ -327,8 +327,16 @@ export const api = {
   pushKey: () => call<{ publicKey: string }>('/api/push/key'),
   pushSubscribe: (sub: unknown) => call<{ subscribed: true }>('/api/push/subscribe', { method: 'POST', body: JSON.stringify(sub) }),
   pushUnsubscribe: (endpoint: string) => call<{ subscribed: false }>('/api/push/subscribe', { method: 'DELETE', body: JSON.stringify({ endpoint }) }),
-  office: () => call<OfficeFacts>('/api/office'),
-  officeState: async () => (await call<{ places: OfficePlace[] }>('/api/office/state')).places,
+  office: async () => {
+    const f = await call<OfficeFacts>('/api/office');
+    if (!f || typeof f !== 'object' || !f.map || !Array.isArray(f.map.rooms) || !Array.isArray(f.agents)) throw new Error('The office answered with something unexpected.');
+    return f;
+  },
+  officeState: async () => {
+    const r = await call<{ places: OfficePlace[] }>('/api/office/state');
+    if (!r || !Array.isArray(r.places)) throw new Error('The office answered with something unexpected.');
+    return r.places;
+  },
   officeDrawer: (id: string) => call<AgentDrawer>(`/api/office/agents/${id}`),
   officeMessage: async (id: string, text: string) => {
     await call(`/api/office/agents/${id}/message`, { method: 'POST', body: JSON.stringify({ text }) });

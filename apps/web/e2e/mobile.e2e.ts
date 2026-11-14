@@ -138,7 +138,7 @@ describe('the approvals page on an Android phone (S1-11)', () => {
     const href = await page.locator('link[rel="manifest"]').getAttribute('href');
     expect(href).toBeTruthy();
     const manifest = (await (await fetch(new URL(href!, ORIGIN))).json()) as { start_url: string; display: string };
-    expect(manifest).toMatchObject({ start_url: '/approvals', display: 'standalone' });
+    expect(manifest).toMatchObject({ start_url: '/', display: 'standalone' });
     const active = await page.evaluate(async () => (await navigator.serviceWorker.ready).active?.scriptURL);
     expect(active).toBe(`${ORIGIN}/sw.js`);
     expect(await page.locator('meta[name="theme-color"]').getAttribute('content')).toBe('#171717');

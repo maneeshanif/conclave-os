@@ -1,12 +1,12 @@
 import type { MetadataRoute } from 'next';
 
-/** The installable app (S1-11). It opens on the approvals page, the thing a phone is mostly for. */
+/** The installable app (S1-11). It opens on the office (S6-12c): the office is the whole app, and a notification still opens the approvals panel. */
 export default function manifest(): MetadataRoute.Manifest {
   return {
     name: 'Conclave OS',
     short_name: 'Conclave',
     description: 'Your company of AI agents. Approve, reject and answer from anywhere.',
-    start_url: '/approvals',
+    start_url: '/',
     scope: '/',
     display: 'standalone',
     orientation: 'portrait',
