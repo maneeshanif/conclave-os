@@ -19,7 +19,7 @@ export interface OfficeClient {
 
 export const realOfficeClient: OfficeClient = { office: api.office, state: api.officeState, drawer: api.officeDrawer, message: api.officeMessage, live: socketEvents, presence: openSocket };
 
-export const WHERE: Record<string, string> = { desk: 'At its desk', approvals: 'At the approvals desk', boardroom: 'In the Boardroom', lounge: 'In the lounge' };
+export const WHERE: Record<string, string> = { desk: 'At its desk', approvals: 'At the approvals desk', boardroom: 'In the Boardroom', lounge: 'In the lounge', handoff: 'Handing over a task' };
 
 /**
  * The plain office (SPEC 12): the same rooms, agents and objects as the world, as a list. It works on a phone, with a screen
@@ -87,7 +87,15 @@ export function OfficeView({ client = realOfficeClient, openId = null, onPanel }
 
   const placeOf = (agentId: string) => places.find((p) => p.agentId === agentId);
   const roomOf = (agentId: string) => facts.agents.find((a) => a.id === agentId)?.room ?? null;
-  const here = (room: string) => facts.agents.filter((a) => (placeOf(a.id)?.place === 'desk' ? roomOf(a.id) === room : false));
+  const rect = (name: string) => facts.map.rooms.find((r) => r.name === name);
+  // At its desk (in the room it sits in), or standing beside a colleague's desk during a handoff (in the room that tile is in).
+  const here = (room: string) =>
+    facts.agents.filter((a) => {
+      const p = placeOf(a.id);
+      if (p?.place === 'desk') return roomOf(a.id) === room;
+      const r = rect(room);
+      return p?.place === 'handoff' && !!r && p.x >= r.x && p.x < r.x + r.w && p.y >= r.y && p.y < r.y + r.h;
+    });
   const elsewhere = (place: string) => facts.agents.filter((a) => placeOf(a.id)?.place === place);
   const agentButton = (a: OfficeFacts['agents'][number]) => (
     <li key={a.id}>

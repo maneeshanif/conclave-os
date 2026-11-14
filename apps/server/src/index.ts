@@ -59,6 +59,8 @@ const store = new DbOsStore(
   (workspaceId, taskId) => bus.publish({ kind: 'task.changed', workspaceId, taskId }),
   sys.companyRoot,
   (workspaceId, approvalId) => proposalQueued(workspaceId, approvalId),
+  // A handoff moves an agent in the office (S6-13d2).
+  (workspaceId) => bus.publish({ kind: 'office.changed', workspaceId }),
 );
 
 // The email side: the transport (the outbox unless both real-sending settings are set) and the executors.

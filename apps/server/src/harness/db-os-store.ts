@@ -23,6 +23,8 @@ export class DbOsStore implements OsStore {
     /** Where COMPANY.md lives, for the blocked-claims check on proposals. */
     private readonly companyRoot?: string,
     private readonly onApproval: (workspaceId: string, approvalId: string) => void = () => undefined,
+    /** Something moved in the office (a handoff): the office should look again (S6-13d2). */
+    private readonly onOffice: (workspaceId: string) => void = () => undefined,
   ) {}
 
   async autonomy(scope: RunScope): Promise<number> {
@@ -413,6 +415,7 @@ export class DbOsStore implements OsStore {
       await c.query("update tasks set assignee_id = $2, status = 'todo', locked_by = null, session_id = null, blocked_reason = null where id = $1", [taskId, them.id]);
       await c.query('insert into messages (workspace_id, task_id, from_id, to_id, body) values ($1, $2, $3, $4, $5)', [scope.workspaceId, taskId, `agent:${key}`, `agent:${to}`, note]);
     });
+    this.onOffice(scope.workspaceId);
   }
 
   async comment(scope: RunScope, text: string) {

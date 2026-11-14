@@ -76,6 +76,14 @@ describe('the plain office (S6-8)', () => {
     expect(screen.getByText(/Boardroom$/, { selector: 'span' }).textContent).toMatch(/coming/i);
   });
 
+  it('says an agent that is handing a task on is doing so, and lists it under the room of the desk it is standing at', async () => {
+    const handing: OfficePlace[] = [{ agentId: 'a1', key: 'scout', place: 'handoff', reason: 'Handing a task to Closer.', x: 2, y: 2 }, places[1]!];
+    render(<OfficeView client={client({ state: vi.fn(async () => handing) })} />);
+    const scout = await screen.findByRole('button', { name: /Scout/ });
+    expect(scout.textContent).toMatch(/Handing over a task/);
+    expect(scout.textContent).toMatch(/Handing a task to Closer/);
+  });
+
   it('gives each department room a Board and a Channel button for that department, and leaves them out of the row of things', async () => {
     const open = vi.fn();
     const rooms = { ...facts, map: { ...facts.map, objects: [...facts.map.objects, { type: 'dept-board' as const, name: 'Outreach board', x: 1, y: 2 }, { type: 'dept-table' as const, name: 'Outreach table', x: 3, y: 2 }] } };

@@ -91,3 +91,53 @@ describe('where an agent stands (S6-3)', () => {
     for (const p of placed) expect(inRoom('Boardroom', p)).toBe(true);
   });
 });
+
+describe('handing a task to a colleague (S6-13d2)', () => {
+  const desk = (room: string, slot: number) => map.desks.find((d) => d.room === room && d.slot === slot)!;
+  const visit = (id: string, to: string, name = 'Closer'): Partial<AgentFacts> => ({ handoff: { toAgentId: to, toName: name } });
+  const adjacent = (a: { x: number; y: number }, b: { x: number; y: number }) => Math.abs(a.x - b.x) + Math.abs(a.y - b.y) === 1;
+
+  it('stands beside the receiver\'s desk, on open floor, with the reason', () => {
+    const p = placeAgents(map, [agent('a', { desk: 1, ...visit('a', 'b') }), agent('b', { desk: 2, running: true })]).find((x) => x.agentId === 'a')!;
+    expect(p.place).toBe('handoff');
+    expect(p.reason).toBe('Handing a task to Closer.');
+    expect(adjacent(p, desk('Outreach', 2))).toBe(true);
+    expect(map.walls[p.y]![p.x]).toBe(false);
+    expect(map.desks.some((d) => d.x === p.x && d.y === p.y)).toBe(false);
+    expect(map.objects.some((o) => o.x === p.x && o.y === p.y)).toBe(false);
+  });
+
+  it('wins over working, waiting and idling: it is the thing to show for a little while', () => {
+    for (const over of [{ running: true }, { waitingForYou: true }, { inDiscussion: true }, {}]) {
+      const p = placeAgents(map, [agent('a', { desk: 1, ...visit('a', 'b'), ...over }), agent('b', { desk: 2 })]).find((x) => x.agentId === 'a')!;
+      expect(p.place, JSON.stringify(over)).toBe('handoff');
+    }
+  });
+
+  it('does nothing when the receiver has no desk or is not in the office, and the giver carries on as before', () => {
+    const lounge = placeAgents(map, [agent('a', visit('a', 'b')), agent('b', { room: 'Lounge', desk: null })]).find((x) => x.agentId === 'a')!;
+    expect(lounge.place).toBe('lounge');
+    const gone = placeAgents(map, [agent('a', { running: true, ...visit('a', 'nobody') })])[0]!;
+    expect(gone.place).toBe('desk');
+  });
+
+  it('never puts two visitors on one tile, or a visitor on a tile where someone is working', () => {
+    const facts = [
+      agent('a', { desk: 1, ...visit('a', 'z') }),
+      agent('b', { desk: 3, ...visit('b', 'z') }),
+      agent('c', { desk: 4, ...visit('c', 'z') }),
+      agent('z', { desk: 2, running: true }),
+    ];
+    const out = placeAgents(map, facts);
+    const visitors = out.filter((p) => p.place === 'handoff');
+    expect(visitors).toHaveLength(3);
+    const tiles = out.map((p) => `${p.x},${p.y}`);
+    expect(new Set(tiles).size).toBe(tiles.length);
+    for (const v of visitors) expect(Math.abs(v.x - desk('Outreach', 2).x) + Math.abs(v.y - desk('Outreach', 2).y)).toBeLessThanOrEqual(3);
+  });
+
+  it('puts everyone in the same place however the list is ordered', () => {
+    const facts = [agent('a', { desk: 1, ...visit('a', 'z') }), agent('b', { desk: 3, ...visit('b', 'z') }), agent('z', { desk: 2, running: true })];
+    expect(placeAgents(map, [...facts].reverse())).toEqual(placeAgents(map, facts).slice().sort((p, q) => p.agentId.localeCompare(q.agentId)).map((p) => p));
+  });
+});

@@ -89,7 +89,7 @@ describe('picking the picture (S6-8c3)', () => {
   });
 
   it('colours the status dot from where the agent is, and from your availability', () => {
-    expect(new Set(['desk', 'approvals', 'boardroom', 'lounge'].map(placeColour)).size).toBe(4);
+    expect(new Set(['desk', 'approvals', 'boardroom', 'lounge', 'handoff'].map(placeColour)).size).toBe(5);
     expect(new Set((['available', 'busy', 'away'] as const).map(availabilityColour)).size).toBe(3);
     expect(placeColour('somewhere new')).toMatch(/^#/);
   });

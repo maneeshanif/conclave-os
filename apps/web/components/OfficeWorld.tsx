@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { zoneNotice, type OfficeMap } from '@conclave/shared';
 import { API, api, type OfficeFacts, type OfficePlace } from '../lib/api';
 import { WorldController } from '../office/controller';
+import { handoffRefreshMs } from '../office/places-refresh';
 import { applyPresence, type Member } from '../office/presence';
 import type { Who } from '../office/scene';
 import { AddAgent } from './AddAgent';
@@ -60,7 +61,12 @@ export function OfficeWorld({ client, onOpen, onPanel }: { client: OfficeClient;
         if (cancelled || !box.current) return;
         const ctl = new WorldController(toMap(facts));
         setDepartments(facts.map.rooms.flatMap((r) => (r.department ? [{ key: r.department, name: r.name }] : [])));
+        // While someone is handing a task on they stand beside a colleague's desk; they go back by themselves, so look again soon.
+        let again: ReturnType<typeof setTimeout> | undefined;
         const apply = (places: OfficePlace[]) => {
+          if (again) clearTimeout(again);
+          const ms = handoffRefreshMs(places);
+          if (ms) again = setTimeout(() => void client.state().then(apply).catch(() => undefined), ms);
           ctl.setAgents(places.map((p) => ({ agentId: p.agentId, x: p.x, y: p.y })));
           who.current = new Map(facts.agents.map((a) => [a.id, { name: a.name, key: a.key, place: places.find((p) => p.agentId === a.id)?.place ?? 'lounge' }]));
           setPeople(facts.agents.map((a) => ({ id: a.id, name: a.name, where: WHERE[places.find((p) => p.agentId === a.id)?.place ?? 'lounge'] ?? '' })));
@@ -94,6 +100,7 @@ export function OfficeWorld({ client, onOpen, onPanel }: { client: OfficeClient;
           document.removeEventListener('visibilitychange', onVis);
           unlive();
           clearTimeout(hello);
+          if (again) clearTimeout(again);
           tellRef.current = null;
           link?.stop();
           world.destroy();

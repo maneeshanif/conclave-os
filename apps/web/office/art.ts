@@ -37,7 +37,7 @@ export function frameIndex(look: number, dir: Facing, frame: number): number {
   return ROWS.indexOf(dir) * PER_ROW + look * 3 + frame;
 }
 
-const PLACE: Record<string, string> = { desk: '#22c55e', approvals: '#f59e0b', boardroom: '#a855f7', lounge: '#94a3b8' };
+const PLACE: Record<string, string> = { desk: '#22c55e', approvals: '#f59e0b', boardroom: '#a855f7', lounge: '#94a3b8', handoff: '#06b6d4' };
 /** The dot on an agent's name: working, waiting for you, in a discussion, or idle. */
 export const placeColour = (place: string): string => PLACE[place] ?? '#94a3b8';
 

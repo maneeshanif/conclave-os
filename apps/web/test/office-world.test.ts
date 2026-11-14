@@ -238,3 +238,14 @@ describe('other people in the office (S6-9)', () => {
     expect(new Set(sent.map((t) => `${t.x},${t.y}`)).size).toBe(sent.length);
   });
 });
+
+describe('looking again while someone is handing over (S6-13d2)', () => {
+  it('asks again soon while any agent is on a handoff, and not otherwise', async () => {
+    const { handoffRefreshMs } = await import('../office/places-refresh');
+    expect(handoffRefreshMs([])).toBeNull();
+    expect(handoffRefreshMs([{ place: 'desk' }, { place: 'lounge' }])).toBeNull();
+    const ms = handoffRefreshMs([{ place: 'lounge' }, { place: 'handoff' }]);
+    expect(ms).toBeGreaterThan(0);
+    expect(ms).toBeLessThanOrEqual(15_000);
+  });
+});

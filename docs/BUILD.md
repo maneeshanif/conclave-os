@@ -527,10 +527,9 @@ The office is the whole app. Everything below is allowed in slice 6 because slic
 
 - [x] **S6-13d1 A department board and channel.** SPEC 4, 12. (Split from S6-13d.) Each department room's board lists its open tasks by state with who has each; its channel is a short message list for its agents and you (table `department_messages`, forced RLS); two agent tools, `department_say` and `hand_off_task` (autonomy 1, same department only); the Board and Channel buttons for each room, and the board and table objects in the world, open them for that department. Done: `department-work.test.ts`, `department-panels.test.tsx`, the tenancy test.
 
-- [ ] **S6-13d2 Handoffs walk.** SPEC 12. When an agent hands a task to a colleague (`hand_off_task`, recorded as a message from one agent to the other on the task), the giver is shown walking to the receiver's desk for a short while and then back.
+- [x] **S6-13d2 Handoffs walk.** SPEC 12. When an agent hands a task to a colleague (`hand_off_task`, recorded as a message from one agent to the other on the task), the giver is shown walking to the receiver's desk for a short while and then back.
   *Test:* a handoff message in the last half minute puts the giver at a free tile beside the receiver's desk, with the reason; after that it is back where it was; two handoffs at once never put two agents on one tile; a handoff to an agent with no desk (the lounge) does nothing.
-
-- [x] **(Original text of S6-13d)** A department works together. SPEC 4, 12.
+ SPEC 4, 12.
   Agents in a department share its board; when a task passes from one agent to another the first is shown walking to the other's desk; each department has a channel (a short message list) for its agents and the owner. Tables carry `workspace_id` and forced RLS.
   *Test:* a handoff changes the place of the giver to the receiver's desk for a while and then back; the board lists the department's open tasks and nobody else's; a channel message is saved, shown newest last and never visible from another company.
 
