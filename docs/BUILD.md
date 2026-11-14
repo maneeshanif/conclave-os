@@ -537,7 +537,19 @@ The office is the whole app. Everything below is allowed in slice 6 because slic
   Find the `jsm-hq` repo and check who made it. If it cannot be found, ask in NEEDS-YOU and go on with WorkAdventure only. Clone it outside this repo (under `DATA_DIR/reference/`). Read its LICENSE before anything else and record the result in DECISIONS. Reuse of images, assets and code is allowed only if the licence allows it, with the LICENSE kept and a line in `docs/CREDITS.md`; otherwise study only and use our own or Kenney CC0 art. Find which library runs its world. Phaser stays ours: if it differs, write a short decision on whether switching is worth it and ask. Run it as a guest if it can be run, install nothing from it with scripts enabled, click every part, keep screenshots in `.reference/`, and write `docs/JSM-REFERENCE.md` in my own words: layout, interactions, what opens on a click, how rooms and objects work, the library and how it is wired, then the gaps against our `/office`.
   *Test:* `docs/JSM-REFERENCE.md` and the DECISIONS licence entry exist and name the licence; nothing from the clone is inside this repo (a check lists the repo's files against the clone's); `.reference/` and the clone are git-ignored or outside the repo.
 
-- [ ] **S6-14b Build to match it.** WORLD-BRIEF.
+- [ ] **S6-14b Build to match it.** WORLD-BRIEF. Split from the gap list in `docs/JSM-REFERENCE.md` (the gaps left after S6-12 and S6-13: panels beside the world, rooms from departments, handoffs, adding agents and companies are done). Tasks:
+
+- [ ] **S6-14b1 Hover tooltips.** A tooltip on every agent, object and room in the world: title and one line (an agent: name and role, where it is and why; an object: what it opens and whether it is ready; a room: its name and who is in it, and a note if it is locked, quiet or limited). The words come from one pure function so the world and the list say the same.
+  *Test:* the function gives the right title and line for each kind from the same facts the list uses; the tooltip shows on hover and not while dragging or over a panel; it is dismissed on leaving; one browser check.
+
+- [ ] **S6-14b2 The team cards.** Cards for the agents beside the world (in the People panel): portrait colour, name and role, a state chip (working, waiting for you, blocked, in a discussion, handing over, idle), how long, the task it is on, and "N for you" for approvals waiting on it. Clicking a card opens its drawer.
+  *Test:* the state and the counts come from the same data as the world's placement; a card for each active agent; the "for you" count is that agent's pending approvals; clicking opens the drawer.
+
+- [ ] **S6-14b3 The activity feed.** A short live list (latest 20) of what just happened: a run started or ended, an approval asked or decided, a task handed on, a channel message, an agent added. Served by `GET /api/office/activity` from the tables and kept current by the live socket.
+  *Test:* each kind of event appears once, newest first, with a plain sentence; nothing from another company; the list follows live events; an empty office says so.
+
+- [ ] **S6-14b4 A panel you can resize.** The edge of the side panel can be dragged (and double-clicked to reset); the width is remembered in the browser; limits keep it usable.
+  *Test:* dragging changes the width within limits; double-click resets; the width survives a reload; at phone width there is no handle (it is full screen). WORLD-BRIEF.
   Close the gaps listed in `docs/JSM-REFERENCE.md`: rooms, objects, click-to-open panels and department zones, with everything from S6-12 and S6-13 inside them. Tasks are drafted here from the study's gap list before any code.
   *Test:* one test per gap that was listed, written first.
 
