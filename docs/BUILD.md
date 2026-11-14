@@ -497,7 +497,7 @@ From `docs/BORROW-AUDIT.md`. Each goes into its slice's task list when that slic
 
 The office is the whole app. Everything below is allowed in slice 6 because slice 6 is the office. **Order from here:** S6-14a (study, read only) → S6-12 → S6-13 → S6-14b (build to match what the study found) → S6-10 (the Boardroom is the meeting table in the world) → S6-15 → S6-11 (end to end, then the full suite and the tag). Hard rules still hold: Phaser only in `apps/web/office`; nothing about Conclave in `apps/`; `propose_*` only; forced RLS with `workspace_id`; claim-once executors.
 
-- [ ] **S6-12a Panels over the world.** SPEC 12.
+- [x] **S6-12a Panels over the world.** SPEC 12.
   A panel host that opens one registered panel over the world: a side panel on a desktop, full screen at phone width, closed with a button or Escape. The panel is in the address (`?panel=<id>`) so it can be linked to and survives a reload. One registry holds every panel: approvals, needs you, brief, inbox, pipeline, campaigns, goals, tasks (the old home page), signals, ideas, health, and a run log for one task. The existing page components are reused as they are.
   *Test:* each panel id opens its component and closes again; the address follows the open panel; a link with `?panel=` opens it on load; an unknown id leaves nothing open; at 390 px wide the panel is full screen and at 1280 px it is a side panel and the world stays visible.
 

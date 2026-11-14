@@ -15,6 +15,13 @@ Newest first. One entry per decision: what, why, and what it replaced.
 - **One test file, `slice3-e2e.test.ts`, runs the three "Done when" checks** on the real run loop, reaper, pause table and eval gate, with a scripted model: (1) a run killed halfway (its process lost, heartbeat stopped) is failed by the reaper, its task goes back to todo still holding the session id, and the next run starts from that session and finishes; (2) a plan limit pauses the runtime for every agent on it while an agent on the other runtime keeps working, the queued tasks wait, the pause lifts only at the reset time and wakes exactly the agents with work, who then finish; (3) the unchanged skill scores at the baseline, and a change that makes the 20 sample drafts long and hyped fails the gate with all 20 leads named.
 - **Slice 3 is tagged `slice-3-done`.** Not done and recorded rather than hidden: the eval set is 20 made-up leads and its baseline is the reference drafter's (real leads and a real-agent drafter are in NEEDS-YOU); breakers cover the os tools only until connectors are live; the lite-mode canvas switch waits for slice 6.
 
+## 2026-11-15 (S6-12a: panels over the world)
+
+- **`lib/panels.ts`** (pure) names the twelve panels (tasks, approvals, needs you, brief, inbox, pipeline, campaigns, goals, signals, ideas, health, run log), turns one into an address (`/office?panel=approvals`; `base` becomes `/` when the office is home in S6-12c) and reads it back. An unknown name, or a run log without a proper task id, opens nothing. The old routes are listed in `LEGACY_ROUTES` for the redirects in S6-12c.
+- **`PanelHost`** shows the open panel: the whole screen below 640 px, and from there up a panel pinned to the right (about 42 rem, or wider with Maximize), so the world stays beside it. It closes with its button or Escape, and takes keyboard focus when it opens.
+- **The old home page became `TasksView`** (the same code), used for the Tasks panel and, with a task id, for the Run log panel (no form or list, just that task's thread and run). `PanelContent` maps each panel id to the existing view components unchanged.
+- **Objects open panels, not links.** Using an object in the world or the list calls `onPanel(id)`, and `OfficeScreen` puts it in the address with `router.push`; closing goes back to the office with nothing open. The browser check covers it at desktop and Android sizes (side panel versus full screen, Escape, a deep link).
+
 ## 2026-11-14 (S6-14a: jsm-hq, licence and library)
 
 - **Found:** `jsmastery-pro/jsm-hq` (JavaScript Mastery's own organisation, 95 stars, last commit 2026-11-09). Cloned outside this repo, to `DATA_DIR/reference/jsm-hq`, shallow, never inside `conclave-os`.

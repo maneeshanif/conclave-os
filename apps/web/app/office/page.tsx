@@ -1,25 +1,15 @@
-import Link from 'next/link';
+import { Suspense } from 'react';
 import { OfficeScreen } from '../../components/OfficeScreen';
 
 export const metadata = { title: 'Office · Conclave OS' };
 
-/** The office (SPEC 12). The plain version: rooms, agents and objects as a list. The world sits above it. */
+/** The office (SPEC 12): the world, the plain list under it, and the panels over it. */
 export default function OfficePage() {
   return (
     <main className="mx-auto max-w-3xl p-4 sm:p-6">
-      <nav className="mb-6 flex gap-4 text-sm">
-        <Link href="/" className="text-neutral-500 hover:text-neutral-900">
-          ← Tasks
-        </Link>
-        <Link href="/approvals" className="text-neutral-500 hover:text-neutral-900">
-          Approvals
-        </Link>
-        <Link href="/health" className="text-neutral-500 hover:text-neutral-900">
-          Health
-        </Link>
-      </nav>
-      <h1 className="mb-4 text-xl font-semibold">Office</h1>
-      <OfficeScreen />
+      <Suspense fallback={null}>
+        <OfficeScreen base="/office" />
+      </Suspense>
     </main>
   );
 }

@@ -89,6 +89,7 @@ async function stub(context: BrowserContext) {
     if (url.pathname === '/api/office') return route.fulfill({ status: 200, headers: cors, body: JSON.stringify(facts) });
     if (url.pathname === '/api/office/state') return route.fulfill({ status: 200, headers: cors, body: JSON.stringify(places) });
     if (url.pathname === '/api/office/map') return route.fulfill({ status: 200, headers: cors, body: tmj });
+    if (url.pathname === '/api/goals') return route.fulfill({ status: 200, headers: cors, body: JSON.stringify({ current_rung: null, rungs: [], departments: [] }) });
     if (url.pathname.startsWith('/api/office/agents/')) return route.fulfill({ status: 200, headers: cors, body: JSON.stringify({ agent: { ...facts.agents[0], id: facts.agents[0]!.id }, run: { id: 'r1', status: 'running' }, tasks: [{ id: 't1', title: 'Find leads', status: 'todo' }] }) });
     return route.fulfill({ status: 200, headers: cors, body: '[]' });
   });
@@ -169,6 +170,29 @@ describe('the office page in a real browser (S6-8b)', () => {
       await page.getByRole('button', { name: /Scout/ }).waitFor();
       // No sideways scroll on a phone.
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
+      // Using an object opens its panel over the office: beside the world on a desktop, the whole screen on a phone.
+      await page.getByRole('button', { name: 'Approvals inbox' }).click();
+      const panel = page.getByRole('dialog', { name: 'Approvals' });
+      await panel.waitFor();
+      const box = (await panel.boundingBox())!;
+      const vp = page.viewportSize()!;
+      if (name === 'android') expect(box.width).toBeGreaterThanOrEqual(vp.width - 1);
+      else {
+        expect(box.width).toBeLessThan(vp.width * 0.7);
+        expect((await page.locator('[data-testid="office-world"]').boundingBox())!.width).toBeGreaterThan(100); // the world is still there
+      }
+      expect(page.url()).toMatch(/panel=approvals/);
+      writeFileSync(path.join(SHOTS, `office-${name}-panel.png`), await page.screenshot());
+      await page.keyboard.press('Escape');
+      await page.getByRole('dialog').waitFor({ state: 'detached' });
+      expect(page.url()).not.toMatch(/panel=/);
+      // A link with the panel in it opens the panel on load.
+      await page.goto(`${ORIGIN}/office?panel=goals`);
+      await page.getByRole('dialog', { name: 'Goals' }).waitFor({ timeout: 10_000 }).catch(async () => {
+        throw new Error(`no Goals panel. url=${page.url()} errors=${errors.join(' | ')} text=${(await page.locator('body').innerText()).slice(0, 300)}`);
+      });
+      await page.getByRole('button', { name: 'Close', exact: true }).click();
+      await page.getByRole('dialog').waitFor({ state: 'detached' });
       writeFileSync(path.join(SHOTS, `office-${name}.png`), await page.screenshot({ fullPage: true }));
       expect(errors).toEqual([]);
       await context.close();

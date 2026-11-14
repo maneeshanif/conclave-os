@@ -1,6 +1,5 @@
 'use client';
 
-import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { panelFor } from '@conclave/shared';
 import { API, api, type AgentDrawer, type OfficeFacts, type OfficePlace } from '../lib/api';
@@ -26,7 +25,7 @@ export const WHERE: Record<string, string> = { desk: 'At its desk', approvals: '
  * The plain office (SPEC 12): the same rooms, agents and objects as the world, as a list. It works on a phone, with a screen
  * reader and with no canvas, and it uses the same panel registry as the world, so the two always agree.
  */
-export function OfficeView({ client = realOfficeClient, openId = null }: { client?: OfficeClient; /** An agent the world has walked up to; its drawer opens here. */ openId?: string | null }) {
+export function OfficeView({ client = realOfficeClient, openId = null, onPanel }: { client?: OfficeClient; /** An agent the world has walked up to; its drawer opens here. */ openId?: string | null; /** Called with a panel id when one of the things in the office is used. */ onPanel?: (id: string) => void }) {
   const [facts, setFacts] = useState<OfficeFacts | null>(null);
   const [places, setPlaces] = useState<OfficePlace[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -114,9 +113,9 @@ export function OfficeView({ client = realOfficeClient, openId = null }: { clien
           const panel = panelFor(o.type);
           if (!panel) return null;
           return panel.ready ? (
-            <Link key={`${o.type}-${o.name}`} href={panel.href} className="rounded-md border border-neutral-300 px-3 py-1.5 text-sm hover:bg-neutral-50">
+            <button key={`${o.type}-${o.name}`} type="button" onClick={() => onPanel?.(panel.panel)} className="rounded-md border border-neutral-300 px-3 py-1.5 text-sm hover:bg-neutral-50">
               {panel.label}
-            </Link>
+            </button>
           ) : (
             <span key={`${o.type}-${o.name}`} className="rounded-md border border-dashed border-neutral-300 px-3 py-1.5 text-sm text-neutral-500">
               {panel.label} <span className="text-xs">(coming)</span>

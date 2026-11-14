@@ -32,7 +32,8 @@ export function startWorld(opts: {
   ctl: WorldController;
   who: () => Map<string, Who>;
   myStatus: () => Availability;
-  onUseObject: (href: string) => void;
+  /** Called with the panel an object opens. */
+  onUseObject: (panel: string) => void;
 }): WorldHandle {
   const { ctl, facts } = opts;
   ctl.setViewport(opts.parent.clientWidth, opts.parent.clientHeight);
@@ -123,7 +124,7 @@ export function startWorld(opts: {
         this.add.text(o.x * TILE + TILE / 2, o.y * TILE - 2, panel.label, { fontSize: '9px', color: '#0f172a' }).setOrigin(0.5, 1).setDepth(3);
         box.on('pointerdown', (_p: unknown, _x: unknown, _y: unknown, e: Phaser.Types.Input.EventData) => {
           e.stopPropagation();
-          if (panel.ready) opts.onUseObject(panel.href);
+          if (panel.ready) opts.onUseObject(panel.panel);
         });
       }
       this.me = new Figure(this, lookFor(null));

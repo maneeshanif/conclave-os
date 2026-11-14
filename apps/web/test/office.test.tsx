@@ -57,14 +57,21 @@ describe('the plain office (S6-8)', () => {
     expect(screen.getByRole('button', { name: /Closer/ }).textContent).toMatch(/Waiting for you to decide/);
   });
 
-  it('gives every object a button to its panel, and says "coming" for one with no page yet', async () => {
-    render(<OfficeView client={client()} />);
+  it('gives every object a button that opens its panel, and says "coming" for one with no page yet', async () => {
+    const open = vi.fn();
+    render(<OfficeView client={client()} onPanel={open} />);
     await screen.findByRole('heading', { name: 'Outreach' });
-    expect(screen.getByRole('link', { name: /Approvals inbox/ }).getAttribute('href')).toBe('/approvals');
-    expect(screen.getByRole('link', { name: /Goal ladder/ }).getAttribute('href')).toBe('/goals');
-    expect(screen.getByRole('link', { name: /Health dashboard/ }).getAttribute('href')).toBe('/health');
-    expect(screen.getByRole('link', { name: /Inbox/ }).getAttribute('href')).toBe('/inbox');
-    expect(screen.queryByRole('link', { name: /Talent room/ })).toBeNull();
+    for (const [name, id] of [
+      [/Approvals inbox/, 'approvals'],
+      [/Goal ladder/, 'goals'],
+      [/Health dashboard/, 'health'],
+      [/^Inbox$/, 'inbox'],
+    ] as const) {
+      fireEvent.click(screen.getByRole('button', { name }));
+      expect(open).toHaveBeenLastCalledWith(id);
+    }
+    expect(open).toHaveBeenCalledTimes(4);
+    expect(screen.queryByRole('button', { name: /Talent room/ })).toBeNull();
     expect(screen.getByText(/Talent room/).textContent).toMatch(/coming/i);
     expect(screen.getByText(/Boardroom$/, { selector: 'span' }).textContent).toMatch(/coming/i);
   });

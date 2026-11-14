@@ -1,6 +1,5 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import { zoneNotice, type OfficeMap } from '@conclave/shared';
 import { API, type OfficeFacts, type OfficePlace } from '../lib/api';
@@ -17,9 +16,8 @@ export const toMap = (facts: OfficeFacts): OfficeMap => ({ ...facts.map, walls: 
  * The office as a world you can walk about (SPEC 12). Phaser is loaded only here, only in the browser, so the server render and
  * the plain list never pull it in. A hidden tab stops the drawing; a phone gets a smaller canvas (the list below is the main way in).
  */
-export function OfficeWorld({ client, onOpen }: { client: OfficeClient; onOpen: (agentId: string | null) => void }) {
+export function OfficeWorld({ client, onOpen, onPanel }: { client: OfficeClient; onOpen: (agentId: string | null) => void; onPanel: (id: string) => void }) {
   const box = useRef<HTMLDivElement>(null);
-  const router = useRouter();
   const [failed, setFailed] = useState<string | null>(null);
   const [view, setView] = useState<WorldController | null>(null);
   const [whole, setWhole] = useState(false);
@@ -65,7 +63,7 @@ export function OfficeWorld({ client, onOpen }: { client: OfficeClient; onOpen: 
         ctl.onDrawer((e) => onOpen(e.kind === 'open' ? e.id : null));
         const { startWorld } = await import('../office/scene');
         if (cancelled || !box.current) return;
-        const world = startWorld({ parent: box.current, mapUrl: `${API}/api/office/map`, tilesUrl: '/office/tiles.png', peopleUrl: '/office/people.png', furnitureUrl: '/office/furniture.png', facts, ctl, who: () => who.current, myStatus: () => mine.current, onUseObject: (href) => router.push(href) });
+        const world = startWorld({ parent: box.current, mapUrl: `${API}/api/office/map`, tilesUrl: '/office/tiles.png', peopleUrl: '/office/people.png', furnitureUrl: '/office/furniture.png', facts, ctl, who: () => who.current, myStatus: () => mine.current, onUseObject: onPanel });
         setView(ctl);
         const watch = new ResizeObserver(() => world.resize());
         watch.observe(box.current);
@@ -101,7 +99,7 @@ export function OfficeWorld({ client, onOpen }: { client: OfficeClient; onOpen: 
       cancelled = true;
       stop();
     };
-  }, [client, onOpen, router]);
+  }, [client, onOpen, onPanel]);
 
   if (failed) return <p className="text-sm text-neutral-500">The world could not start ({failed}). The list below has everything.</p>;
   const btn = 'flex h-9 w-9 items-center justify-center rounded-md bg-neutral-900/80 text-lg text-white hover:bg-neutral-900';
