@@ -521,7 +521,7 @@ The office is the whole app. Everything below is allowed in slice 6 because slic
   Creating a department claims a free plot on the map and stamps a room into it: desks, a board (shared tasks), a meeting table and a door, and adds the department to the company's `departments.yaml`. The map has reserved plots for this. A department with no free plot is told so, and nothing is half made.
   *Test:* a new department gets a room with its desks, board and meeting table, reachable from the door; the map still passes the reader; two departments never share a plot; no free plot is a clear refusal and changes nothing.
 
-- [ ] **S6-13c Adding an agent.** SPEC 5, 6, 7.
+- [x] **S6-13c Adding an agent.** SPEC 5, 6, 7.
   From the world: pick a department and a template and propose an agent. A person approves the proposal; only then does the executor run the same logic as `pnpm agent:new`. No code per agent. The executor claims the approval once, and the agent gets a desk in its department's room.
   *Test:* the proposal creates nothing until approved; approving creates exactly one agent and one desk; approving twice, or after a rejection, creates no second; a rejected proposal creates nothing; the agent appears in its room.
 

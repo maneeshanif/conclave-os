@@ -35,6 +35,8 @@ export interface ExecutorDeps {
   generator?: GenerationConnector;
   /** Where generated assets are stored, by key. */
   dataDir?: string;
+  /** Makes an agent from a template, the same way `pnpm agent:new` does (S6-13c). Without one, an approved agent proposal is refused. */
+  agentFactory?: (o: { template: string; department: string; id: string; name?: string }) => Promise<{ id: string }>;
   companyRoot: string;
   from: string;
   bus?: Bus;

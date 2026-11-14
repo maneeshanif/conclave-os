@@ -1,5 +1,6 @@
 import type pg from 'pg';
 import { createExecutors, type Executors } from './actions';
+import type { ExecutorDeps } from './actions/email';
 import { browserPostTransport, outboxDmTransport, outboxPostTransport } from './actions/post-transport';
 import { playwrightDriver } from './browser/driver';
 import { playwrightPageOpener } from './browser/playwright';
@@ -16,6 +17,8 @@ export interface OutreachDeps {
   companyRoot: string;
   bus?: Bus;
   env: Record<string, string | undefined>;
+  /** Adds an agent from a template, as `pnpm agent:new` does, for an approved agent proposal (S6-13c). */
+  agentFactory?: ExecutorDeps['agentFactory'];
 }
 
 /**
@@ -41,6 +44,7 @@ export function createOutreach(d: OutreachDeps): { transport: EmailTransport; ex
     // Used only for an account a person has logged in to by hand and switched to the browser (S5-3).
     browserPostTransport: browserPostTransport(d.dataDir, playwrightDriver(playwrightPageOpener(d.dataDir, d.env))),
     bus: d.bus,
+    ...(d.agentFactory ? { agentFactory: d.agentFactory } : {}),
   });
   return { transport, executors };
 }

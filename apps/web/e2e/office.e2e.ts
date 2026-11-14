@@ -57,6 +57,7 @@ const COMPANY_B = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
 let made = false;
 const officeCompany: (string | null)[] = [];
 const departmentPosted: { name: string }[] = [];
+const agentProposed: { department: string; template: string }[] = [];
 let server: ChildProcess;
 let browser: Browser;
 
@@ -95,6 +96,11 @@ async function stub(context: BrowserContext) {
     if (url.pathname === '/api/companies' && req.method() === 'POST') {
       made = true;
       return route.fulfill({ status: 201, headers: cors, body: JSON.stringify({ id: COMPANY_B, slug: 'new-one', name: 'New One', isDefault: false }) });
+    }
+    if (url.pathname === '/api/office/agent-templates') return route.fulfill({ status: 200, headers: cors, body: JSON.stringify({ templates: ['researcher', 'writer'] }) });
+    if (url.pathname === '/api/office/agent-proposals' && req.method() === 'POST') {
+      agentProposed.push(JSON.parse(req.postData() ?? '{}') as { department: string; template: string });
+      return route.fulfill({ status: 201, headers: cors, body: JSON.stringify({ approvalId: 'ap1', id: 'outreach-researcher' }) });
     }
     if (url.pathname === '/api/departments' && req.method() === 'POST') {
       departmentPosted.push(JSON.parse(req.postData() ?? '{}') as { name: string });
@@ -209,6 +215,21 @@ describe('the office page in a real browser (S6-8b)', () => {
       await adding.getByRole('button', { name: 'Create', exact: true }).click();
       await vi.waitFor(() => expect(departmentPosted).toEqual([{ name: 'Sales' }]), { timeout: 15_000 });
       await page.getByRole('button', { name: /people/i }).waitFor({ timeout: 15_000 }); // the page reloads to show the new room
+      // An agent can be proposed from the Tools menu; it waits for approval, and the dialog leads to Approvals.
+      agentProposed.length = 0;
+      await page.getByRole('button', { name: /tools/i }).click();
+      await page.getByRole('menuitem', { name: /add an agent/i }).click();
+      const agentDialog = page.getByRole('dialog', { name: 'Add an agent' });
+      await agentDialog.getByRole('option', { name: 'researcher' }).waitFor({ state: 'attached' });
+      writeFileSync(path.join(SHOTS, `office-${name}-add-agent.png`), await page.screenshot());
+      await agentDialog.getByRole('button', { name: 'Propose', exact: true }).click();
+      await agentDialog.getByText(/waiting for your approval/i).waitFor();
+      expect(agentProposed).toHaveLength(1);
+      expect(agentProposed[0]!.template).toBe('researcher');
+      await agentDialog.getByRole('button', { name: /open approvals/i }).click();
+      await page.getByRole('dialog', { name: 'Approvals' }).waitFor();
+      await page.keyboard.press('Escape');
+      await page.getByRole('dialog').waitFor({ state: 'detached' });
       // Using an object opens its panel over the office: beside the world on a desktop, the whole screen on a phone.
       await page.getByRole('button', { name: 'Approvals inbox' }).click();
       const panel = page.getByRole('dialog', { name: 'Approvals' });

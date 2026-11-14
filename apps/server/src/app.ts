@@ -66,6 +66,8 @@ export interface AppDeps {
   reaperStatus?: ReaperStatus;
   /** Where company/ is: the office map lives there (S6-2). */
   companyRoot?: string;
+  /** Where the agent and company templates are (S6-13). */
+  templatesRoot?: string;
   /** Push notifications (S5-10): the notifier and the public key the browser subscribes with. */
   push?: { notifier: Notifier; publicKey: string };
   /** Circuit breakers for the os tools (S3-6). */
@@ -163,7 +165,7 @@ export function createApp(deps?: AppDeps) {
   if (deps.companies) app.route('/api/companies', companyRoutes({ companies: deps.companies }));
   if (deps.breakers) app.route('/api/breakers', breakerRoutes({ breakers: deps.breakers }));
   if (deps.bus && deps.dispatcher) {
-    app.route('/api', apiRoutes({ workspaceId: deps.workspaceId, dispatcher: deps.dispatcher, bus: deps.bus, onApprovalDecided: deps.onApprovalDecided, onKillSwitch: deps.onKillSwitch, onReleaseHeld: deps.onReleaseHeld, ...(deps.onCompanyReload ? { onCompanyReload: deps.onCompanyReload } : {}), ...(deps.reaperStatus ? { reaperStatus: deps.reaperStatus } : {}), ...(deps.companyRoot ? { companyRoot: deps.companyRoot } : {}), pool: deps.pool }));
+    app.route('/api', apiRoutes({ workspaceId: deps.workspaceId, dispatcher: deps.dispatcher, bus: deps.bus, onApprovalDecided: deps.onApprovalDecided, onKillSwitch: deps.onKillSwitch, onReleaseHeld: deps.onReleaseHeld, ...(deps.onCompanyReload ? { onCompanyReload: deps.onCompanyReload } : {}), ...(deps.reaperStatus ? { reaperStatus: deps.reaperStatus } : {}), ...(deps.companyRoot ? { companyRoot: deps.companyRoot } : {}), ...(deps.templatesRoot ? { templatesRoot: deps.templatesRoot } : {}), pool: deps.pool }));
   }
   if (deps.tokens && deps.store) app.route('/mcp', mcpRoutes({ tokens: deps.tokens, store: deps.store, ...(deps.breakers ? { breakers: deps.breakers } : {}) }));
   if (deps.inngestHandler) app.on(['GET', 'POST', 'PUT'], '/inngest', deps.inngestHandler);

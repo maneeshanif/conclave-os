@@ -1,4 +1,5 @@
-import { readFile } from 'node:fs/promises';
+import { existsSync } from 'node:fs';
+import { readFile, readdir } from 'node:fs/promises';
 import path from 'node:path';
 import { Hono } from 'hono';
 import { z } from 'zod';
@@ -9,7 +10,7 @@ import { assignDesks, loadOffice } from '../office/desks';
 import { officeState } from '../office/state';
 
 /** The office (SPEC 12): the map's facts and where each agent sits. The drawing reads the map file itself from /office/map. */
-export function officeRoutes(deps: { workspaceId: string; companyRoot: string; bus?: Bus; dispatcher?: Dispatcher; /** The agents in an open discussion; the Boardroom supplies it (S6-10). */ discussing?: (c: import('pg').PoolClient) => Promise<Set<string>> }) {
+export function officeRoutes(deps: { workspaceId: string; companyRoot: string; /** For the agent templates (S6-13c). */ templatesRoot?: string; bus?: Bus; dispatcher?: Dispatcher; /** The agents in an open discussion; the Boardroom supplies it (S6-10). */ discussing?: (c: import('pg').PoolClient) => Promise<Set<string>> }) {
   const r = new Hono<AppEnv>();
 
   r.get('/', async (c) => {
@@ -85,6 +86,40 @@ export function officeRoutes(deps: { workspaceId: string; companyRoot: string; b
       await deps.dispatcher?.request({ workspaceId: deps.workspaceId, agentId: id, trigger: 'task_assigned' });
     });
     return c.json({ id: taskId }, 201);
+  });
+
+  const templateNames = async () => {
+    if (!deps.templatesRoot) return [];
+    const dir = path.join(deps.templatesRoot, 'agents');
+    const entries = await readdir(dir, { withFileTypes: true }).catch(() => []);
+    return entries.filter((e) => e.isDirectory() && /^[a-z0-9][a-z0-9-]*$/.test(e.name) && existsSync(path.join(dir, e.name, 'template.yaml'))).map((e) => e.name).sort();
+  };
+
+  r.get('/agent-templates', async (c) => c.json({ templates: await templateNames() }));
+
+  // Proposing an agent (S6-13c). Nothing is created here: it is a proposal that a person approves, and then the executor adds the agent.
+  const Proposal = z.object({ department: z.string().min(1).max(60), template: z.string().regex(/^[a-z0-9][a-z0-9-]*$/), name: z.string().trim().min(1).max(60).optional() });
+  r.post('/agent-proposals', async (c) => {
+    const parsed = Proposal.safeParse(await c.req.json().catch(() => null));
+    if (!parsed.success) return c.json({ error: 'Choose a department and a template, and give a name of at most 60 characters if you want one.' }, 400);
+    const { department, template, name } = parsed.data;
+    const tx = c.get('tx').client;
+    if (!(await tx.query('select 1 from departments where key = $1', [department])).rows[0]) return c.json({ error: `There is no department "${department}".` }, 400);
+    if (!(await templateNames()).includes(template)) return c.json({ error: `There is no agent template "${template}".` }, 400);
+    // The agent's id is chosen now, and not one that an agent or any earlier proposal already uses.
+    const used = new Set<string>([
+      ...(await tx.query<{ key: string }>('select key from agents')).rows.map((a) => a.key),
+      ...(await tx.query<{ dedupe_key: string }>("select dedupe_key from approvals where kind = 'agent.create'")).rows.map((a) => a.dedupe_key.replace(/^agent:/, '')),
+    ]);
+    let id = `${department}-${template}`;
+    for (let n = 2; used.has(id); n++) id = `${department}-${template}-${n}`;
+    const row = await tx.query<{ id: string }>(
+      "insert into approvals (workspace_id, kind, dedupe_key, payload) values ($1, 'agent.create', $2, $3) returning id",
+      [deps.workspaceId, `agent:${id}`, JSON.stringify({ department, template, id, ...(name ? { name } : {}) })],
+    );
+    const approvalId = row.rows[0]!.id;
+    c.get('after').push(async () => deps.bus?.publish({ kind: 'approval.changed', workspaceId: deps.workspaceId, approvalId, status: 'pending' }));
+    return c.json({ approvalId, id }, 201);
   });
 
   r.get('/map', async (c) => {

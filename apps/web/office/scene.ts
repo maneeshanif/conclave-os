@@ -124,7 +124,7 @@ export function startWorld(opts: {
         this.add.text(o.x * TILE + TILE / 2, o.y * TILE - 2, panel.label, { fontSize: '9px', color: '#0f172a' }).setOrigin(0.5, 1).setDepth(3);
         box.on('pointerdown', (_p: unknown, _x: unknown, _y: unknown, e: Phaser.Types.Input.EventData) => {
           e.stopPropagation();
-          if (panel.ready) opts.onUseObject(panel.panel);
+          if (panel.ready && this.input.activePointer.downElement === this.game.canvas) opts.onUseObject(panel.panel);
         });
       }
       this.me = new Figure(this, lookFor(null));
@@ -132,7 +132,8 @@ export function startWorld(opts: {
       this.cameras.main.setBounds(0, 0, facts.map.width * TILE, facts.map.height * TILE);
       this.cameras.main.startFollow(this.me.box, true, 0.15, 0.15);
       this.cursors = this.input.keyboard?.createCursorKeys();
-      this.input.on('pointerdown', (p: Phaser.Input.Pointer) => ctl.click({ x: Math.floor(p.worldX / TILE), y: Math.floor(p.worldY / TILE) }));
+      // A press that began on something over the canvas (the bar, a dialog) is not a click on the world.
+      this.input.on('pointerdown', (p: Phaser.Input.Pointer) => p.downElement === this.game.canvas && ctl.click({ x: Math.floor(p.worldX / TILE), y: Math.floor(p.worldY / TILE) }));
     }
 
     update(_time: number, delta: number) {
@@ -188,6 +189,8 @@ export function startWorld(opts: {
     parent: opts.parent,
     backgroundColor: '#f8fafc',
     scale: { mode: Phaser.Scale.RESIZE },
+    // Only presses on the canvas itself count; the bar and the dialogs over it are not the world.
+    input: { windowEvents: false },
     scene: OfficeScene,
   });
 

@@ -6,6 +6,7 @@ import { API, api, type OfficeFacts, type OfficePlace } from '../lib/api';
 import { WorldController } from '../office/controller';
 import { applyPresence, type Member } from '../office/presence';
 import type { Who } from '../office/scene';
+import { AddAgent } from './AddAgent';
 import { AddDepartment } from './AddDepartment';
 import { CompanySwitcher } from './CompanySwitcher';
 import { OfficeBar, WelcomeCard, ZonePill, type Availability, type Person } from './OfficeBar';
@@ -29,6 +30,8 @@ export function OfficeWorld({ client, onOpen, onPanel }: { client: OfficeClient;
   const tellRef = useRef<(() => void) | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
+  const [addingAgent, setAddingAgent] = useState(false);
+  const [departments, setDepartments] = useState<{ key: string; name: string }[]>([]);
   const [availability, setAvailability] = useState<Availability>(() => {
     try {
       const v = localStorage.getItem('conclave.office.availability');
@@ -56,6 +59,7 @@ export function OfficeWorld({ client, onOpen, onPanel }: { client: OfficeClient;
         const facts = await client.office();
         if (cancelled || !box.current) return;
         const ctl = new WorldController(toMap(facts));
+        setDepartments(facts.map.rooms.flatMap((r) => (r.department ? [{ key: r.department, name: r.name }] : [])));
         const apply = (places: OfficePlace[]) => {
           ctl.setAgents(places.map((p) => ({ agentId: p.agentId, x: p.x, y: p.y })));
           who.current = new Map(facts.agents.map((a) => [a.id, { name: a.name, key: a.key, place: places.find((p) => p.agentId === a.id)?.place ?? 'lounge' }]));
@@ -118,9 +122,20 @@ export function OfficeWorld({ client, onOpen, onPanel }: { client: OfficeClient;
           onOpenAgent={onOpen}
           extra={<CompanySwitcher onSwitch={() => window.location.reload()} />}
           onAddDepartment={() => setAdding(true)}
+          onAddAgent={() => setAddingAgent(true)}
           onOverview={() => {
             view.overview(!whole);
             setWhole(!whole);
+          }}
+        />
+      ) : null}
+      {addingAgent ? (
+        <AddAgent
+          departments={departments}
+          onCancel={() => setAddingAgent(false)}
+          onOpenApprovals={() => {
+            setAddingAgent(false);
+            onPanel('approvals');
           }}
         />
       ) : null}

@@ -127,6 +127,43 @@ function PlainCard({ approval, onDecide }: { approval: Approval; onDecide: (id: 
   );
 }
 
+/** A proposal to add an agent (S6-13c), in plain words. It can be approved or rejected as it stands; approving is what adds the agent. */
+function AgentCard({ approval, onDecide }: { approval: Approval; onDecide: (id: string, body: DecisionBody) => Promise<void> }) {
+  const [busy, setBusy] = useState(false);
+  const inFlight = useRef(false);
+  const p = approval.payload as { department?: string; template?: string; name?: string; id?: string };
+  async function decide(approved: boolean) {
+    if (inFlight.current) return;
+    inFlight.current = true;
+    setBusy(true);
+    try {
+      await onDecide(approval.id, { approved });
+    } finally {
+      inFlight.current = false;
+      setBusy(false);
+    }
+  }
+  return (
+    <div className="space-y-3 rounded-md border border-neutral-200 p-4">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <h2 className="text-base font-semibold">Add an agent</h2>
+        <p className="text-xs text-neutral-500">proposed by you · {new Date(approval.created_at).toLocaleString()}</p>
+      </div>
+      <p className="text-sm">
+        Add <strong>{p.name ?? p.id}</strong> to the <strong>{p.department}</strong> department, from the <strong>{p.template}</strong> template. Nothing is added until you approve.
+      </p>
+      <div className="flex gap-2">
+        <Button onClick={() => void decide(true)} disabled={busy}>
+          Approve
+        </Button>
+        <Button variant="outline" onClick={() => void decide(false)} disabled={busy}>
+          Reject
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 /**
  * The approvals inbox (SPEC 6, 12): what is waiting for a decision. Nothing here sends anything; a decision goes to the
  * server, and the executor, plain code, acts on it. The list follows the server's live updates and a decided card leaves it.
@@ -197,7 +234,7 @@ export function ApprovalsInbox({
       {items && items.length > 0 && (
         <ul aria-label="pending approvals" className="space-y-4">
           {items.map((a) => (
-            <li key={a.id}>{a.kind === 'email.send' ? <EmailCard approval={a} onDecide={onDecide} /> : <PlainCard approval={a} onDecide={onDecide} />}</li>
+            <li key={a.id}>{a.kind === 'email.send' ? <EmailCard approval={a} onDecide={onDecide} /> : a.kind === 'agent.create' ? <AgentCard approval={a} onDecide={onDecide} /> : <PlainCard approval={a} onDecide={onDecide} />}</li>
           ))}
         </ul>
       )}

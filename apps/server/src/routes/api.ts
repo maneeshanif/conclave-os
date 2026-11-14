@@ -39,6 +39,8 @@ export function apiRoutes(deps: { workspaceId: string; dispatcher: Dispatcher; b
   reaperStatus?: ReaperStatus;
   /** For adding a department, which copies the company folder into the database (S6-13b). */
   pool?: Pool;
+  /** Where the agent templates are (S6-13c). */
+  templatesRoot?: string;
 }) {
   const r = new Hono<AppEnv>();
   const ws = deps.workspaceId;
@@ -76,7 +78,7 @@ export function apiRoutes(deps: { workspaceId: string; dispatcher: Dispatcher; b
   r.route('/action-items', actionItemRoutes({ workspaceId: ws, bus: deps.bus }));
   r.route('/suppression', suppressionRoutes({ workspaceId: ws }));
   r.route('/signals', signalRoutes({ workspaceId: ws, bus: deps.bus }));
-  if (deps.companyRoot) r.route('/office', officeRoutes({ workspaceId: ws, companyRoot: deps.companyRoot, bus: deps.bus, dispatcher: deps.dispatcher }));
+  if (deps.companyRoot) r.route('/office', officeRoutes({ workspaceId: ws, companyRoot: deps.companyRoot, bus: deps.bus, dispatcher: deps.dispatcher, ...(deps.templatesRoot ? { templatesRoot: deps.templatesRoot } : {}) }));
   if (deps.companyRoot) r.route('/departments', departmentRoutes({ workspaceId: ws, companyRoot: deps.companyRoot, bus: deps.bus, ...(deps.pool ? { pool: deps.pool } : {}) }));
   r.route('/video-ideas', videoIdeaRoutes({ workspaceId: ws, bus: deps.bus }));
   r.route('/settings', settingsRoutes({ workspaceId: ws, bus: deps.bus, onKillSwitch: deps.onKillSwitch, onReleaseHeld: deps.onReleaseHeld }));

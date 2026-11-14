@@ -7,7 +7,7 @@ import { Companies } from './companies';
 import { serve as inngestServe } from 'inngest/hono';
 import { createApp } from './app';
 import { Bus } from './bus';
-import { renderAll, renderOne } from './commands/agent-new';
+import { agentNew, renderAll, renderOne } from './commands/agent-new';
 import { createAuth, resolveAuthSecret } from './auth';
 import { loadCompany } from './company/loader';
 import { syncCompany } from './company/sync';
@@ -69,6 +69,7 @@ const { transport, executors } = createOutreach({
   companyRoot: sys.companyRoot,
   bus,
   env: process.env,
+  agentFactory: (o) => agentNew(sys, o),
 });
 console.log(`email transport: ${transport.name}${transport.name === 'outbox' ? ` (files in ${path.join(sys.dataDir, 'outbox')}, nothing leaves this machine)` : ''}`);
 if (!process.env.OUTREACH_FROM?.trim()) console.warn('OUTREACH_FROM is not set: approved emails will be refused until it is (see .env.example).');
@@ -211,6 +212,7 @@ shell.route(
     push: { notifier, publicKey: vapid.publicKey },
     reaperStatus,
     companyRoot: sys.companyRoot,
+    templatesRoot: sys.templatesRoot,
     companies: new Companies({ dataDir: sys.dataDir, templatesRoot: sys.templatesRoot, pool: sys.app, defaultCompany: { id: sys.workspace.id, slug: sys.workspace.slug, root: sys.companyRoot } }),
     bus,
     dispatcher,
