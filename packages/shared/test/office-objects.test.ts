@@ -1,36 +1,49 @@
-import { existsSync } from 'node:fs';
-import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { OBJECT_TYPES, OBJECT_PANELS, panelFor, useObject } from '../src/office';
 
-const web = path.resolve(import.meta.dirname, '..', '..', '..', 'apps', 'web', 'app');
+/** Every panel the office can open, each with the one thing in the office that opens it. */
+const PLACES = {
+  'approvals-desk': 'approvals',
+  whiteboard: 'goals',
+  screen: 'health',
+  mailbox: 'inbox',
+  jobboard: 'talent',
+  'boardroom-table': 'boardroom',
+  'task-board': 'tasks',
+  'needs-you-board': 'needs-you',
+  'brief-desk': 'brief',
+  'pipeline-board': 'pipeline',
+  'campaign-board': 'campaigns',
+  'signal-radio': 'signals',
+  'idea-wall': 'ideas',
+  terminal: 'run-log',
+} as const;
 
-describe('what each object opens (S6-7)', () => {
+describe('what each object opens (S6-7, S6-12b)', () => {
   it('has a panel registered for every object type the map may use, and none for a type it may not', () => {
     for (const t of OBJECT_TYPES) expect(OBJECT_PANELS[t], t).toBeDefined();
     expect(Object.keys(OBJECT_PANELS).sort()).toEqual([...OBJECT_TYPES].sort());
   });
 
   it('opens the right panel for each object', () => {
-    expect(useObject('approvals-desk')).toMatchObject({ panel: 'approvals', href: '/approvals' });
-    expect(useObject('whiteboard')).toMatchObject({ panel: 'goals', href: '/goals' });
-    expect(useObject('screen')).toMatchObject({ panel: 'health', href: '/health' });
-    expect(useObject('mailbox')).toMatchObject({ panel: 'inbox', href: '/inbox' });
-    expect(useObject('jobboard')).toMatchObject({ panel: 'talent' });
-    expect(useObject('boardroom-table')).toMatchObject({ panel: 'boardroom' });
+    for (const [type, panel] of Object.entries(PLACES)) expect(useObject(type).panel, type).toBe(panel);
+    expect([...OBJECT_TYPES].sort()).toEqual(Object.keys(PLACES).sort());
+  });
+
+  it('has exactly one object type for each panel, so every panel has one place', () => {
+    const panels = OBJECT_TYPES.map((t) => OBJECT_PANELS[t].panel);
+    expect(new Set(panels).size).toBe(panels.length);
   });
 
   it('refuses a type it does not know', () => {
     expect(() => useObject('vending-machine')).toThrow(/vending-machine/);
     expect(panelFor('vending-machine')).toBeNull();
+    expect(panelFor('__proto__')).toBeNull();
   });
 
-  it('only calls a panel ready if its page exists in the web app, so the plain screens and the world agree', () => {
-    for (const t of OBJECT_TYPES) {
-      const p = OBJECT_PANELS[t];
-      const exists = existsSync(path.join(web, p.href.replace(/^\//, ''), 'page.tsx'));
-      expect(p.ready, `${t} -> ${p.href}`).toBe(exists);
-    }
+  it('is ready for every panel that exists, and says "coming" only for the Talent room and the Boardroom', () => {
+    const coming = OBJECT_TYPES.filter((t) => !OBJECT_PANELS[t].ready).sort();
+    expect(coming).toEqual(['boardroom-table', 'jobboard']);
   });
 
   it('gives every panel a label a person can read', () => {

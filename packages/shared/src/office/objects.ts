@@ -1,4 +1,4 @@
-export const OBJECT_TYPES = ['approvals-desk', 'whiteboard', 'screen', 'mailbox', 'jobboard', 'boardroom-table'] as const;
+export const OBJECT_TYPES = ['approvals-desk', 'whiteboard', 'screen', 'mailbox', 'jobboard', 'boardroom-table', 'task-board', 'needs-you-board', 'brief-desk', 'pipeline-board', 'campaign-board', 'signal-radio', 'idea-wall', 'terminal'] as const;
 export type ObjectType = (typeof OBJECT_TYPES)[number];
 
 /**
@@ -20,6 +20,14 @@ export const OBJECT_PANELS: Record<ObjectType, ObjectPanel> = {
   mailbox: { panel: 'inbox', label: 'Inbox', href: '/inbox', ready: true },
   jobboard: { panel: 'talent', label: 'Talent room', href: '/talent', ready: false },
   'boardroom-table': { panel: 'boardroom', label: 'Boardroom', href: '/boardroom', ready: false },
+  'task-board': { panel: 'tasks', label: 'Task board', href: '/?panel=tasks', ready: true },
+  'needs-you-board': { panel: 'needs-you', label: 'Needs you', href: '/action-items', ready: true },
+  'brief-desk': { panel: 'brief', label: 'Morning brief', href: '/brief', ready: true },
+  'pipeline-board': { panel: 'pipeline', label: 'Pipeline', href: '/pipeline', ready: true },
+  'campaign-board': { panel: 'campaigns', label: 'Campaigns', href: '/campaigns', ready: true },
+  'signal-radio': { panel: 'signals', label: 'Signals', href: '/signals', ready: true },
+  'idea-wall': { panel: 'ideas', label: 'Ideas', href: '/ideas', ready: true },
+  terminal: { panel: 'run-log', label: 'Run logs', href: '/?panel=run-log', ready: true },
 };
 
 /** The panel for an object type, or null for a type we do not know. */

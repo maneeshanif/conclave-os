@@ -134,6 +134,15 @@ const objects = [
   obj('Mailbox', 'mailbox', 22, 20),
   obj('Job board', 'jobboard', 27, 17),
   obj('Boardroom table', 'boardroom-table', 7, 18),
+  // Where the working pages live: the planning ones in Chief of Staff, the pipeline and campaigns in their own rooms, signals and ideas in Research, run logs in the hall.
+  obj('Brief desk', 'brief-desk', 3, 9),
+  obj('Task board', 'task-board', 5, 9),
+  obj('Needs you board', 'needs-you-board', 7, 9),
+  obj('Pipeline board', 'pipeline-board', 15, 9),
+  obj('Campaign board', 'campaign-board', 25, 9),
+  obj('Signal radio', 'signal-radio', 33, 9),
+  obj('Idea wall', 'idea-wall', 36, 9),
+  obj('Terminal', 'terminal', 21, 20),
 ];
 for (const o of objects) floor[at(o.x / T, o.y / T)] = THING;
 const entries = [obj('door', '', 19, 22), obj('lounge', '', 30, 19), obj('boardroom', '', 7, 20)];

@@ -501,7 +501,7 @@ The office is the whole app. Everything below is allowed in slice 6 because slic
   A panel host that opens one registered panel over the world: a side panel on a desktop, full screen at phone width, closed with a button or Escape. The panel is in the address (`?panel=<id>`) so it can be linked to and survives a reload. One registry holds every panel: approvals, needs you, brief, inbox, pipeline, campaigns, goals, tasks (the old home page), signals, ideas, health, and a run log for one task. The existing page components are reused as they are.
   *Test:* each panel id opens its component and closes again; the address follows the open panel; a link with `?panel=` opens it on load; an unknown id leaves nothing open; at 390 px wide the panel is full screen and at 1280 px it is a side panel and the world stays visible.
 
-- [ ] **S6-12b A place for every panel.** SPEC 12.
+- [x] **S6-12b A place for every panel.** SPEC 12.
   New object types on the map with a registered panel each (a task board, a brief desk, a pipeline board, a campaign board, a needs-you board, a terminal for run logs), added to `OBJECT_TYPES`, the map script and `OBJECT_PANELS`. Using an object, in the world or from the plain list, opens its panel. Every panel in the registry has a place on the map, and the map reader still refuses an unknown type.
   *Test:* every panel has exactly one object type that opens it; the map has at least one of each type and all are reachable from the door; using each opens the right panel; the plain list has a button for each.
 

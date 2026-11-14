@@ -2,6 +2,7 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { PanelHost } from '../components/PanelHost';
+import { OBJECT_PANELS, OBJECT_TYPES } from '@conclave/shared';
 import { LEGACY_ROUTES, PANEL_IDS, PANEL_LABELS, panelHref, parsePanel } from '../lib/panels';
 
 afterEach(cleanup);
@@ -10,6 +11,11 @@ describe('the list of panels and their addresses (S6-12a)', () => {
   it('has a panel for each page that used to be a route, a tasks panel and a run log', () => {
     expect([...PANEL_IDS].sort()).toEqual(['approvals', 'brief', 'campaigns', 'goals', 'health', 'ideas', 'inbox', 'needs-you', 'pipeline', 'run-log', 'signals', 'tasks']);
     for (const id of PANEL_IDS) expect(PANEL_LABELS[id].length, id).toBeGreaterThan(2);
+  });
+
+  it('has a place in the office for every panel, and every ready object opens a panel that exists', () => {
+    const opened = OBJECT_TYPES.filter((t) => OBJECT_PANELS[t].ready).map((t) => OBJECT_PANELS[t].panel);
+    expect([...opened].sort()).toEqual([...PANEL_IDS].sort());
   });
 
   it('puts the open panel in the address, so it can be linked to', () => {

@@ -27,7 +27,7 @@
  ],
  "layers": [
   {
-   "id": 33,
+   "id": 41,
    "name": "floor",
    "type": "tilelayer",
    "width": 40,
@@ -400,9 +400,19 @@
     2,
     3,
     3,
+    8,
+    3,
+    8,
+    3,
+    8,
+    3,
+    3,
+    2,
     3,
     3,
     3,
+    3,
+    8,
     3,
     3,
     3,
@@ -412,17 +422,7 @@
     3,
     3,
     3,
-    3,
-    3,
-    3,
-    3,
-    3,
-    2,
-    3,
-    3,
-    3,
-    3,
-    3,
+    8,
     3,
     3,
     3,
@@ -430,10 +430,10 @@
     2,
     3,
     3,
+    8,
     3,
     3,
-    3,
-    3,
+    8,
     3,
     3,
     2,
@@ -858,7 +858,7 @@
     1,
     1,
     1,
-    1,
+    8,
     8,
     1,
     2,
@@ -1000,7 +1000,7 @@
    ]
   },
   {
-   "id": 34,
+   "id": 42,
    "name": "collision",
    "type": "tilelayer",
    "width": 40,
@@ -1973,7 +1973,7 @@
    ]
   },
   {
-   "id": 35,
+   "id": 43,
    "name": "rooms",
    "type": "objectgroup",
    "draworder": "topdown",
@@ -2141,7 +2141,7 @@
    ]
   },
   {
-   "id": 36,
+   "id": 44,
    "name": "desks",
    "type": "objectgroup",
    "draworder": "topdown",
@@ -2505,7 +2505,7 @@
    ]
   },
   {
-   "id": 37,
+   "id": 45,
    "name": "objects",
    "type": "objectgroup",
    "draworder": "topdown",
@@ -2573,11 +2573,91 @@
      "point": true,
      "rotation": 0,
      "visible": true
+    },
+    {
+     "id": 30,
+     "name": "Brief desk",
+     "type": "brief-desk",
+     "x": 96,
+     "y": 288,
+     "point": true,
+     "rotation": 0,
+     "visible": true
+    },
+    {
+     "id": 31,
+     "name": "Task board",
+     "type": "task-board",
+     "x": 160,
+     "y": 288,
+     "point": true,
+     "rotation": 0,
+     "visible": true
+    },
+    {
+     "id": 32,
+     "name": "Needs you board",
+     "type": "needs-you-board",
+     "x": 224,
+     "y": 288,
+     "point": true,
+     "rotation": 0,
+     "visible": true
+    },
+    {
+     "id": 33,
+     "name": "Pipeline board",
+     "type": "pipeline-board",
+     "x": 480,
+     "y": 288,
+     "point": true,
+     "rotation": 0,
+     "visible": true
+    },
+    {
+     "id": 34,
+     "name": "Campaign board",
+     "type": "campaign-board",
+     "x": 800,
+     "y": 288,
+     "point": true,
+     "rotation": 0,
+     "visible": true
+    },
+    {
+     "id": 35,
+     "name": "Signal radio",
+     "type": "signal-radio",
+     "x": 1056,
+     "y": 288,
+     "point": true,
+     "rotation": 0,
+     "visible": true
+    },
+    {
+     "id": 36,
+     "name": "Idea wall",
+     "type": "idea-wall",
+     "x": 1152,
+     "y": 288,
+     "point": true,
+     "rotation": 0,
+     "visible": true
+    },
+    {
+     "id": 37,
+     "name": "Terminal",
+     "type": "terminal",
+     "x": 672,
+     "y": 640,
+     "point": true,
+     "rotation": 0,
+     "visible": true
     }
    ]
   },
   {
-   "id": 38,
+   "id": 46,
    "name": "entries",
    "type": "objectgroup",
    "draworder": "topdown",
@@ -2587,7 +2667,7 @@
    "y": 0,
    "objects": [
     {
-     "id": 30,
+     "id": 38,
      "name": "door",
      "type": "",
      "x": 608,
@@ -2597,7 +2677,7 @@
      "visible": true
     },
     {
-     "id": 31,
+     "id": 39,
      "name": "lounge",
      "type": "",
      "x": 960,
@@ -2607,7 +2687,7 @@
      "visible": true
     },
     {
-     "id": 32,
+     "id": 40,
      "name": "boardroom",
      "type": "",
      "x": 224,
@@ -2619,6 +2699,6 @@
    ]
   }
  ],
- "nextlayerid": 40,
- "nextobjectid": 40
+ "nextlayerid": 48,
+ "nextobjectid": 48
 }

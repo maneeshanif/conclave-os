@@ -11,9 +11,14 @@ vi.mock('next/navigation', () => ({
 // The world needs a canvas and the list needs the server: stand in for both, and keep what this test is about.
 vi.mock('../components/OfficeWorld', () => ({
   OfficeWorld: ({ onPanel }: { onPanel: (id: string) => void }) => (
-    <button type="button" onClick={() => onPanel('approvals')}>
-      use the approvals desk
-    </button>
+    <>
+      <button type="button" onClick={() => onPanel('approvals')}>
+        use the approvals desk
+      </button>
+      <button type="button" onClick={() => onPanel('run-log')}>
+        use the terminal
+      </button>
+    </>
   ),
 }));
 vi.mock('../components/OfficeView', () => ({
@@ -24,12 +29,15 @@ vi.mock('../components/OfficeView', () => ({
     </button>
   ),
 }));
+const tasks = vi.fn();
+vi.mock('../lib/api', () => ({ api: { tasks: () => tasks() } }));
 vi.mock('../components/PanelContent', () => ({ PanelContent: (s: { id: string; task?: string }) => <p>the {s.id} panel{s.task ? ` for ${s.task}` : ''}</p> }));
 
 import { OfficeScreen } from '../components/OfficeScreen';
 
 beforeEach(() => {
   push.mockReset();
+  tasks.mockReset();
   query = '';
 });
 afterEach(cleanup);
@@ -71,6 +79,28 @@ describe('the office with its panels (S6-12a)', () => {
     render(<OfficeScreen base="/office" />);
     fireEvent.click(screen.getByRole('button', { name: /close/i }));
     expect(push).toHaveBeenLastCalledWith('/office');
+  });
+
+  it('opens the run log of the latest task that has a run when the terminal is used', async () => {
+    tasks.mockResolvedValue([
+      { id: '11111111-1111-4111-8111-111111111111', last_run_id: null },
+      { id: '22222222-2222-4222-8222-222222222222', last_run_id: 'r1' },
+      { id: '33333333-3333-4333-8333-333333333333', last_run_id: 'r2' },
+    ]);
+    render(<OfficeScreen base="/office" />);
+    fireEvent.click(screen.getByRole('button', { name: /use the terminal/ }));
+    await vi.waitFor(() => expect(push).toHaveBeenLastCalledWith('/office?panel=run-log&task=22222222-2222-4222-8222-222222222222'));
+  });
+
+  it('opens the tasks panel instead when the terminal is used and nothing has run yet, or the server cannot be reached', async () => {
+    tasks.mockResolvedValue([{ id: '11111111-1111-4111-8111-111111111111', last_run_id: null }]);
+    render(<OfficeScreen base="/office" />);
+    fireEvent.click(screen.getByRole('button', { name: /use the terminal/ }));
+    await vi.waitFor(() => expect(push).toHaveBeenLastCalledWith('/office?panel=tasks'));
+    tasks.mockRejectedValue(new Error('down'));
+    fireEvent.click(screen.getByRole('button', { name: /use the terminal/ }));
+    await vi.waitFor(() => expect(push).toHaveBeenCalledTimes(2));
+    expect(push).toHaveBeenLastCalledWith('/office?panel=tasks');
   });
 
   it('ignores an object that has no panel here', () => {
