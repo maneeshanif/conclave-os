@@ -412,14 +412,14 @@ Recorded 2026-11-13. Nothing here is built ahead of its slice (CLAUDE.md, Stack)
 
 From `docs/BORROW-AUDIT.md`. Each goes into its slice's task list when that slice is drafted. Keep them in this order of value.
 
-- [ ] **A1 Low-trust agents.** (Scheduled as S5-5a; done.) Slice 5, before any social scout. A `trust: standard or low` field on an agent. Low-trust agents read untrusted input (inbound replies, scraped pages, Reddit), cannot edit their own config or skills, and cannot hand raw untrusted text to a higher-trust agent as instructions; a missing scope refuses. *Test:* a low-trust run cannot change its role file or call a tool outside its allow list, and a higher-trust agent given its output sees it labelled as data.
-- [ ] **A2 Silent-run watchdog.** (Scheduled as S5-5b; done.) Slice 5 or 6. Flag and stop a run that is alive but silent past a threshold, separate from the 15 minute timeout. *Test:* a fake runtime that hangs after its first event is stopped at the threshold with a distinct error kind.
+- [x] **A1 Low-trust agents.** (Scheduled as S5-5a; done.) Slice 5, before any social scout. A `trust: standard or low` field on an agent. Low-trust agents read untrusted input (inbound replies, scraped pages, Reddit), cannot edit their own config or skills, and cannot hand raw untrusted text to a higher-trust agent as instructions; a missing scope refuses. *Test:* a low-trust run cannot change its role file or call a tool outside its allow list, and a higher-trust agent given its output sees it labelled as data.
+- [x] **A2 Silent-run watchdog.** (Scheduled as S5-5b; done.) Slice 5 or 6. Flag and stop a run that is alive but silent past a threshold, separate from the 15 minute timeout. *Test:* a fake runtime that hangs after its first event is stopped at the threshold with a distinct error kind.
 - [ ] **A3 Tool risk classes and a call log.** Slice 8, before the slice 10 connectors. Each os tool and connector tool gets a risk class, and every call is logged with its decision. *Test:* a high-risk tool called without approval is refused and logged.
 - [ ] **A4 Agent `verifying` step.** Slice 8, with hiring. A new or changed agent runs a tiny probe on its rendered folder before it goes active. *Test:* an agent whose folder fails the probe never becomes active.
 - [ ] **A5 Hand-off test, one alternative attempt, spend correction.** Small checks from P6 to P8, in slice 5 or 6.
 - [ ] **A6 Release channels.** Slice 9.
 - [ ] **A7 Task watchdog (optional).** Slice 8, only if Anees wants it.
-- [ ] **A8 The world, in detail.** (Scheduled as S6-4 to S6-6.) Slice 6. The WorkAdventure-style features listed in `docs/BORROW-AUDIT.md`: Tiled maps, proximity bubbles, zones with behaviour (meeting, lockable, silent, max users, focusable), entry and walk-to, availability and raise hand. Our own property names, our own or CC0 art.
+- [x] **A8 The world, in detail.** (Scheduled as S6-4 to S6-6.) Slice 6. The WorkAdventure-style features listed in `docs/BORROW-AUDIT.md`: Tiled maps, proximity bubbles, zones with behaviour (meeting, lockable, silent, max users, focusable), entry and walk-to, availability and raise hand. Our own property names, our own or CC0 art.
 
 ## Slice 6: The office
 
@@ -553,9 +553,16 @@ The office is the whole app. Everything below is allowed in slice 6 because slic
   Close the gaps listed in `docs/JSM-REFERENCE.md`: rooms, objects, click-to-open panels and department zones, with everything from S6-12 and S6-13 inside them. Tasks are drafted here from the study's gap list before any code.
   *Test:* one test per gap that was listed, written first.
 
-- [ ] **S6-15 The WorkAdventure look, second pass.** WORLD-BRIEF, `docs/WORLD-REFERENCE.md`.
-  Restyle to that look and feel with our own or reusable art: the bottom bar, avatars and a simple avatar picker, proximity bubbles with a text chat (no video), a chat panel, the user list, and the phone layout. Ideas only; nothing copied.
-  *Test:* walking near someone opens a bubble with a text box and moving away closes it; a sent message reaches the other person and no one else; the picker changes your look and it is kept; the browser check at desktop and Android sizes passes with screenshots.
+- [ ] **S6-15 The WorkAdventure look, second pass.** WORLD-BRIEF, `docs/WORLD-REFERENCE.md`. Anees said the office page is not what he asked for: the office is the whole app, so the world fills the screen with controls floating over it, as in WorkAdventure, not a small canvas in a page with a long list under it. Split:
+
+- [ ] **S6-15a The world is the screen.** The world fills the whole viewport (no page margins, no list below it). Over it: the floating bar at the top (company, people, tools, your status) and, on a phone, along the bottom; the zoom buttons at the edge; the panels over it as now. The plain list (rooms, agents, objects with their buttons, drawer) is kept for keyboard and screen-reader use and for a phone, as a "Rooms and agents" panel opened from the bar and shown as the page on a browser with no canvas. The camera starts close on you.
+  *Test:* the world's box is the viewport size and nothing else takes room on the page; the list is reachable from the bar and has every room, agent and object button the page had; the bar sits over the world; a phone gets the bottom row; the browser check at desktop and Android sizes with screenshots.
+
+- [ ] **S6-15b Your avatar.** A simple picker for your look (the six looks), kept in the browser and sent in presence so others see it; a name over your head that you can change.
+  *Test:* choosing a look changes your figure and is remembered; presence carries a look from 0 to 5 and nothing else new; a look outside that range is ignored; the name is trimmed and short.
+
+- [ ] **S6-15c Talking to someone near you.** When another person is within a few tiles a speech bubble opens with a text box; what you send reaches the people near you and nobody else (no video, no audio); messages show over the sender for a few seconds and in a chat list; moving away closes it.
+  *Test:* a message reaches only members within range and not the sender twice; none reaches someone far away or signed out; messages are rate limited and cut short; the bubble opens and closes with distance (with hysteresis).
 
 ## Opening the next slice
   
