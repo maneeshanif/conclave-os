@@ -7,6 +7,7 @@ import type { AppEnv } from '../app';
 import type { Bus } from '../bus';
 import type { Dispatcher } from '../workflows/dispatch';
 import { assignDesks, loadOffice } from '../office/desks';
+import { activityFeed } from '../office/activity';
 import { officeState, teamCards } from '../office/state';
 
 /** The office (SPEC 12): the map's facts and where each agent sits. The drawing reads the map file itself from /office/map. */
@@ -121,6 +122,8 @@ export function officeRoutes(deps: { workspaceId: string; companyRoot: string; /
     c.get('after').push(async () => deps.bus?.publish({ kind: 'approval.changed', workspaceId: deps.workspaceId, approvalId, status: 'pending' }));
     return c.json({ approvalId, id }, 201);
   });
+
+  r.get('/activity', async (c) => c.json({ events: await activityFeed(c.get('tx').client) }));
 
   r.get('/team', async (c) => {
     let office;

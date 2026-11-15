@@ -545,7 +545,7 @@ The office is the whole app. Everything below is allowed in slice 6 because slic
 - [x] **S6-14b2 The team cards.** Cards for the agents beside the world (in the People panel): portrait colour, name and role, a state chip (working, waiting for you, blocked, in a discussion, handing over, idle), how long, the task it is on, and "N for you" for approvals waiting on it. Clicking a card opens its drawer.
   *Test:* the state and the counts come from the same data as the world's placement; a card for each active agent; the "for you" count is that agent's pending approvals; clicking opens the drawer.
 
-- [ ] **S6-14b3 The activity feed.** A short live list (latest 20) of what just happened: a run started or ended, an approval asked or decided, a task handed on, a channel message, an agent added. Served by `GET /api/office/activity` from the tables and kept current by the live socket.
+- [x] **S6-14b3 The activity feed.** A short live list (latest 20) of what just happened: a run started or ended, an approval asked or decided, a task handed on, a channel message, an agent added. Served by `GET /api/office/activity` from the tables and kept current by the live socket.
   *Test:* each kind of event appears once, newest first, with a plain sentence; nothing from another company; the list follows live events; an empty office says so.
 
 - [ ] **S6-14b4 A panel you can resize.** The edge of the side panel can be dragged (and double-clicked to reset); the width is remembered in the browser; limits keep it usable.

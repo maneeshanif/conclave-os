@@ -31,6 +31,7 @@ export function OfficeWorld({ client, onOpen, onPanel }: { client: OfficeClient;
   const mine = useRef<Availability>('available');
   const tellRef = useRef<(() => void) | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [activity, setActivity] = useState<{ id: string; at: string; text: string }[] | undefined>(undefined);
   const [adding, setAdding] = useState(false);
   const [hover, setHover] = useState<{ thing: Thing; x: number; y: number } | null>(null);
   const factsRef = useRef<OfficeFacts | null>(null);
@@ -73,7 +74,10 @@ export function OfficeWorld({ client, onOpen, onPanel }: { client: OfficeClient;
           client.team?.().then((team) =>
             setPeople(team.map((t) => ({ id: t.id, name: t.name, where: WHERE[who.current.get(t.id)?.place ?? 'lounge'] ?? '', state: t.state, since: t.since, task: t.task, forYou: t.forYou }))),
           ).catch(() => undefined);
+        const loadActivity = () => client.activity?.().then(setActivity).catch(() => undefined);
+        void loadActivity();
         const apply = (places: OfficePlace[]) => {
+          void loadActivity();
           if (again) clearTimeout(again);
           const ms = handoffRefreshMs(places);
           if (ms) again = setTimeout(() => void client.state().then(apply).catch(() => undefined), ms);
@@ -100,6 +104,7 @@ export function OfficeWorld({ client, onOpen, onPanel }: { client: OfficeClient;
         document.addEventListener('visibilitychange', onVis);
         const unlive = client.live((m) => {
           if (m.kind === 'office.changed') void client.state().then(apply);
+          if (m.kind === 'department.changed' || m.kind === 'approval.changed') void loadActivity();
         });
         // Presence: tell the others where you are, and draw the ones who are here. Only a signed-in session is sent anything.
         let others: Member[] = [];
@@ -140,6 +145,7 @@ export function OfficeWorld({ client, onOpen, onPanel }: { client: OfficeClient;
       {view ? (
         <OfficeBar
           people={people}
+          activity={activity}
           availability={availability}
           onAvailability={choose}
           onOpenAgent={onOpen}

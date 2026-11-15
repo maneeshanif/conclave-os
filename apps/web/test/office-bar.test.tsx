@@ -135,3 +135,27 @@ describe('how long ago (S6-14b2)', () => {
     expect(ago('nonsense', now)).toBe('');
   });
 });
+
+describe('the activity feed in the People panel (S6-14b3)', () => {
+  const events = Array.from({ length: 12 }, (_, i) => ({ id: `e${i}`, at: new Date(Date.now() - (i + 1) * 60_000).toISOString(), kind: 'run.started', text: `Event ${i}.` }));
+  const open = (activity?: typeof events) => {
+    render(<OfficeBar people={[]} activity={activity} availability="available" onAvailability={() => undefined} onOpenAgent={() => undefined} onOverview={() => undefined} />);
+    fireEvent.click(screen.getByRole('button', { name: /people/i }));
+    return screen.getByRole('region', { name: /people/i });
+  };
+
+  it('lists the latest events, newest first, each with how long ago, and no more than eight', () => {
+    const feed = within(open(events)).getByRole('list', { name: /activity/i });
+    const items = within(feed).getAllByRole('listitem');
+    expect(items).toHaveLength(8);
+    expect(items[0]!.textContent).toMatch(/Event 0\./);
+    expect(items[0]!.textContent).toMatch(/1 min/);
+    expect(items[7]!.textContent).toMatch(/Event 7\./);
+  });
+
+  it('says so when nothing has happened, and shows no feed at all for a client without one', () => {
+    expect(within(open([])).getByText(/nothing has happened yet/i)).toBeTruthy();
+    cleanup();
+    expect(within(open(undefined)).queryByText(/activity/i)).toBeNull();
+  });
+});

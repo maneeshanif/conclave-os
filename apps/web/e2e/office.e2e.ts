@@ -99,6 +99,7 @@ async function stub(context: BrowserContext) {
     }
     if (url.pathname === '/api/departments/chief-of-staff/board') return route.fulfill({ status: 200, headers: cors, body: JSON.stringify({ department: { key: 'chief-of-staff', name: 'Chief of Staff' }, agents: [{ key: 'scout', name: 'Scout', status: 'active' }], tasks: [{ id: 't1', title: 'Plan the week', status: 'in_progress', priority: 3, blocked_reason: null, created_at: '2026-11-15T10:00:00Z', assignee_key: 'scout', assignee_name: 'Scout' }] }) });
     if (url.pathname === '/api/departments/chief-of-staff/channel') return route.fulfill({ status: 200, headers: cors, body: JSON.stringify({ messages: [{ id: 'm1', author: 'agent:scout', body: 'Starting on the plan.', created_at: '2026-11-15T10:00:00Z' }] }) });
+    if (url.pathname === '/api/office/activity') return route.fulfill({ status: 200, headers: cors, body: JSON.stringify({ events: [{ id: 'e1', at: new Date(Date.now() - 120_000).toISOString(), kind: 'run.started', text: 'Scout started a run.' }] }) });
     if (url.pathname === '/api/office/team') return route.fulfill({ status: 200, headers: cors, body: JSON.stringify({ team: [{ id: facts.agents[0]!.id, key: 'scout', name: 'Scout', department: null, state: 'working', since: new Date(Date.now() - 180_000).toISOString(), task: 'Plan the week', forYou: 2 }, { id: facts.agents[1]!.id, key: 'closer', name: 'Closer', department: null, state: 'idle', since: null, task: null, forYou: 0 }] }) });
     if (url.pathname === '/api/office/agent-templates') return route.fulfill({ status: 200, headers: cors, body: JSON.stringify({ templates: ['researcher', 'writer'] }) });
     if (url.pathname === '/api/office/agent-proposals' && req.method() === 'POST') {
@@ -191,10 +192,11 @@ describe('the office page in a real browser (S6-8b)', () => {
       else expect(at.y).toBeLessThan(world!.y + world!.height / 2);
       await people.click();
       const peoplePanel = page.getByRole('region', { name: 'People' });
-      await peoplePanel.getByText('Scout').waitFor();
+      await peoplePanel.getByText('Scout', { exact: true }).waitFor();
       await peoplePanel.getByText(/Working/).waitFor();
       await peoplePanel.getByText('Plan the week').waitFor();
       await peoplePanel.getByText('2 for you').waitFor();
+      await peoplePanel.getByRole('list', { name: 'Activity' }).getByText(/Scout started a run./).waitFor();
       writeFileSync(path.join(SHOTS, `office-${name}-team.png`), await page.screenshot());
       await page.getByRole('button', { name: /close people/i }).click();
       await page.getByRole('button', { name: /your status/i }).click();

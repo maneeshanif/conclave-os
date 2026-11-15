@@ -30,7 +30,7 @@ const item = 'flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text
  * The bar over the world: who is here, a tools menu and your status. Floating groups on a desktop; on a phone the same controls
  * sit along the bottom edge. It only reports what you chose; the page decides what to do (SPEC 12).
  */
-export function OfficeBar(props: { people: Person[]; availability: Availability; onAvailability: (a: Availability) => void; onOpenAgent: (id: string) => void; onOverview: () => void; /** More controls next to the people button (the company switcher). */ extra?: ReactNode; /** Called from the Tools menu: the page shows the add-a-department dialog. */ onAddDepartment?: () => void; /** Called from the Tools menu: the page shows the add-an-agent dialog. */ onAddAgent?: () => void }) {
+export function OfficeBar(props: { people: Person[]; /** What just happened, newest first (S6-14b3). Left out, the panel has no feed. */ activity?: { id: string; at: string; text: string }[] | undefined; availability: Availability; onAvailability: (a: Availability) => void; onOpenAgent: (id: string) => void; onOverview: () => void; /** More controls next to the people button (the company switcher). */ extra?: ReactNode; /** Called from the Tools menu: the page shows the add-a-department dialog. */ onAddDepartment?: () => void; /** Called from the Tools menu: the page shows the add-an-agent dialog. */ onAddAgent?: () => void }) {
   const [menu, setMenu] = useState<'tools' | 'status' | null>(null);
   const [panel, setPanel] = useState(false);
   const current = STATUS.find((s) => s.id === props.availability)!;
@@ -152,6 +152,22 @@ export function OfficeBar(props: { people: Person[]; availability: Availability;
               </li>
             ))}
           </ul>
+          {props.activity ? (
+            <div className="mt-2 border-t border-white/10 px-2 pt-2">
+              <h4 className="mb-1 text-xs font-semibold uppercase tracking-wide text-neutral-300">Activity</h4>
+              {props.activity.length === 0 ? (
+                <p className="text-xs text-neutral-400">Nothing has happened yet.</p>
+              ) : (
+                <ul aria-label="Activity" className="space-y-1">
+                  {props.activity.slice(0, 8).map((e) => (
+                    <li key={e.id} className="text-xs text-neutral-200">
+                      {e.text} <span className="text-neutral-400">{ago(e.at)}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          ) : null}
         </section>
       ) : null}
     </>

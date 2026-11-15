@@ -33,3 +33,14 @@ describe('the team client (S6-14b2)', () => {
     }
   });
 });
+
+describe('the activity client (S6-14b3)', () => {
+  it('passes on a proper answer and refuses one that is not a list', async () => {
+    answer({ events: [{ id: 'a', at: '2026-11-16T10:00:00Z', kind: 'run.started', text: 'X started a run.' }] });
+    expect((await api.officeActivity())[0]!.text).toBe('X started a run.');
+    for (const body of [[], {}, { events: 'no' }, null]) {
+      answer(body);
+      await expect(api.officeActivity(), JSON.stringify(body)).rejects.toThrow(/unexpected/i);
+    }
+  });
+});

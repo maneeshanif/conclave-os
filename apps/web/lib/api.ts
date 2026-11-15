@@ -30,6 +30,12 @@ export interface OfficeFacts {
   agents: { id: string; key: string; name: string; department: string | null; status: string; room: string | null; desk: number | null }[];
 }
 export type OfficePlace = Pick<Placed, 'agentId' | 'place' | 'reason' | 'x' | 'y'> & { key: string };
+export interface ActivityEvent {
+  id: string;
+  at: string;
+  kind: string;
+  text: string;
+}
 export interface TeamCard {
   id: string;
   key: string;
@@ -376,6 +382,11 @@ export const api = {
     const r = await call<{ places: OfficePlace[] }>('/api/office/state');
     if (!r || !Array.isArray(r.places)) throw new Error('The office answered with something unexpected.');
     return r.places;
+  },
+  officeActivity: async () => {
+    const r = await call<{ events: ActivityEvent[] }>('/api/office/activity');
+    if (!r || !Array.isArray(r.events)) throw new Error('The office answered with something unexpected.');
+    return r.events;
   },
   officeTeam: async () => {
     const r = await call<{ team: TeamCard[] }>('/api/office/team');
