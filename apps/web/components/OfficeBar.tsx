@@ -1,13 +1,22 @@
 'use client';
 
 import { useEffect, useState, type ReactNode } from 'react';
+import { ago } from '../office/ago';
 
 export type Availability = 'available' | 'busy' | 'away';
 export interface Person {
   id: string;
   name: string;
   where: string;
+  /** From the team card (S6-14b2): working, waiting, blocked, discussion, handoff or idle. */
+  state?: string;
+  since?: string | null;
+  task?: string | null;
+  forYou?: number;
 }
+
+const STATE_LABEL: Record<string, string> = { working: 'Working', waiting: 'Waiting for you', blocked: 'Blocked', discussion: 'In a discussion', handoff: 'Handing over', idle: 'Idle' };
+const STATE_DOT: Record<string, string> = { working: 'bg-green-400', waiting: 'bg-amber-400', blocked: 'bg-red-400', discussion: 'bg-purple-400', handoff: 'bg-cyan-400', idle: 'bg-neutral-400' };
 
 const STATUS: { id: Availability; label: string; dot: string }[] = [
   { id: 'available', label: 'Available', dot: 'bg-green-500' },
@@ -124,9 +133,21 @@ export function OfficeBar(props: { people: Person[]; availability: Availability;
           <ul>
             {props.people.map((p) => (
               <li key={p.id}>
-                <button type="button" className={item} onClick={() => props.onOpenAgent(p.id)}>
-                  <span className="font-medium">{p.name}</span>
-                  <span className="text-xs text-neutral-300">{p.where}</span>
+                <button type="button" className={`${item} flex-col items-start`} onClick={() => props.onOpenAgent(p.id)}>
+                  <span className="flex w-full items-center gap-2">
+                    <span className="font-medium">{p.name}</span>
+                    {p.state ? (
+                      <span className="flex items-center gap-1 text-xs text-neutral-200">
+                        <span className={`h-2 w-2 rounded-full ${STATE_DOT[p.state] ?? 'bg-neutral-400'}`} />
+                        {STATE_LABEL[p.state] ?? p.state}
+                        {p.since ? ` · ${ago(p.since)}` : ''}
+                      </span>
+                    ) : (
+                      <span className="text-xs text-neutral-300">{p.where}</span>
+                    )}
+                    {p.forYou ? <span className="ml-auto rounded-full bg-amber-500 px-2 py-0.5 text-xs font-medium text-neutral-900">{p.forYou} for you</span> : null}
+                  </span>
+                  {p.task ? <span className="text-xs text-neutral-300">{p.task}</span> : null}
                 </button>
               </li>
             ))}

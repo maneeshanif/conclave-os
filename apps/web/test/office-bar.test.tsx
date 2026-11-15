@@ -82,3 +82,56 @@ describe('the welcome card (S6-8c2)', () => {
     expect(screen.queryByRole('dialog')).toBeNull();
   });
 });
+
+describe('the team cards in the People panel (S6-14b2)', () => {
+  const cards = [
+    { id: 'a1', name: 'Scout', where: 'At its desk', state: 'working', since: new Date(Date.now() - 3 * 60_000).toISOString(), task: 'Write the follow-up', forYou: 0 },
+    { id: 'a2', name: 'Closer', where: 'At the approvals desk', state: 'waiting', since: new Date(Date.now() - 2 * 3_600_000).toISOString(), task: null, forYou: 2 },
+    { id: 'a3', name: 'Ranger', where: 'In the lounge', state: 'blocked', since: null, task: 'Needs a price', forYou: 0 },
+    { id: 'a4', name: 'Idler', where: 'In the lounge', state: 'idle', since: null, task: null, forYou: 0 },
+  ];
+  const open = () => {
+    render(<OfficeBar people={cards} availability="available" onAvailability={() => undefined} onOpenAgent={() => undefined} onOverview={() => undefined} />);
+    fireEvent.click(screen.getByRole('button', { name: /people/i }));
+    return screen.getByRole('region', { name: /people/i });
+  };
+
+  it('shows each agent\'s state, how long, and what it is on', () => {
+    const panel = open();
+    const scout = within(panel).getByRole('button', { name: /Scout/ });
+    expect(scout.textContent).toMatch(/Working/);
+    expect(scout.textContent).toMatch(/3 min/);
+    expect(scout.textContent).toMatch(/Write the follow-up/);
+    expect(within(panel).getByRole('button', { name: /Ranger/ }).textContent).toMatch(/Blocked.*Needs a price|Needs a price.*Blocked/s);
+    expect(within(panel).getByRole('button', { name: /Idler/ }).textContent).toMatch(/Idle/);
+  });
+
+  it('says how many things are waiting for you from an agent, and only when there are some', () => {
+    const panel = open();
+    const closer = within(panel).getByRole('button', { name: /Closer/ });
+    expect(closer.textContent).toMatch(/Waiting for you/);
+    expect(closer.textContent).toMatch(/2 for you/);
+    expect(closer.textContent).toMatch(/2 h/);
+    expect(within(panel).getByRole('button', { name: /Scout/ }).textContent).not.toMatch(/for you/);
+  });
+
+  it('still lists someone with only a name and a place, as before', () => {
+    render(<OfficeBar people={[{ id: 'x', name: 'Plain', where: 'In the lounge' }]} availability="available" onAvailability={() => undefined} onOpenAgent={() => undefined} onOverview={() => undefined} />);
+    fireEvent.click(screen.getByRole('button', { name: /people/i }));
+    expect(within(screen.getByRole('region', { name: /people/i })).getByRole('button', { name: /Plain/ }).textContent).toMatch(/In the lounge/);
+  });
+});
+
+describe('how long ago (S6-14b2)', () => {
+  it('says it plainly, in the largest sensible unit', async () => {
+    const { ago } = await import('../office/ago');
+    const now = Date.parse('2026-11-16T12:00:00Z');
+    expect(ago('2026-11-16T11:59:58Z', now)).toBe('just now');
+    expect(ago('2026-11-16T11:59:15Z', now)).toBe('45 s');
+    expect(ago('2026-11-16T11:57:00Z', now)).toBe('3 min');
+    expect(ago('2026-11-16T10:00:00Z', now)).toBe('2 h');
+    expect(ago('2026-11-14T12:00:00Z', now)).toBe('2 d');
+    expect(ago('2026-11-16T12:05:00Z', now)).toBe('just now'); // a clock a little ahead is not "-5 min"
+    expect(ago('nonsense', now)).toBe('');
+  });
+});

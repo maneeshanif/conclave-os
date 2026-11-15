@@ -22,3 +22,14 @@ describe('the office client (S6-12c)', () => {
     await expect(api.officeState()).rejects.toThrow(/unexpected/i);
   });
 });
+
+describe('the team client (S6-14b2)', () => {
+  it('passes on a proper answer and refuses one that is not a list', async () => {
+    answer({ team: [{ id: 'a', key: 'k', name: 'N', department: null, state: 'idle', since: null, task: null, forYou: 0 }] });
+    expect((await api.officeTeam())[0]!.state).toBe('idle');
+    for (const body of [[], {}, { team: 'no' }, null]) {
+      answer(body);
+      await expect(api.officeTeam(), JSON.stringify(body)).rejects.toThrow(/unexpected/i);
+    }
+  });
+});

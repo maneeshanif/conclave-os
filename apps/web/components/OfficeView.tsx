@@ -2,13 +2,15 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { panelFor } from '@conclave/shared';
-import { API, api, type AgentDrawer, type OfficeFacts, type OfficePlace } from '../lib/api';
+import { API, api, type AgentDrawer, type OfficeFacts, type OfficePlace, type TeamCard } from '../lib/api';
 import { openSocket, socketEvents, type LiveMessage } from '../lib/live';
 import { Button } from './ui/button';
 
 export interface OfficeClient {
   office(): Promise<OfficeFacts>;
   state(): Promise<OfficePlace[]>;
+  /** A card for each agent (S6-14b2). Not every client has one. */
+  team?(): Promise<TeamCard[]>;
   drawer(id: string): Promise<AgentDrawer>;
   message(id: string, text: string): Promise<void>;
   /** Listens for live updates; returns the function that stops listening. */
@@ -17,7 +19,7 @@ export interface OfficeClient {
   presence?(onMessage: (m: LiveMessage) => void): { send: (m: unknown) => void; stop: () => void };
 }
 
-export const realOfficeClient: OfficeClient = { office: api.office, state: api.officeState, drawer: api.officeDrawer, message: api.officeMessage, live: socketEvents, presence: openSocket };
+export const realOfficeClient: OfficeClient = { office: api.office, state: api.officeState, team: api.officeTeam, drawer: api.officeDrawer, message: api.officeMessage, live: socketEvents, presence: openSocket };
 
 import { WHERE } from '../office/tooltips';
 export { WHERE };

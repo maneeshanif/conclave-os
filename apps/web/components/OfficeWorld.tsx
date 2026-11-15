@@ -68,6 +68,11 @@ export function OfficeWorld({ client, onOpen, onPanel }: { client: OfficeClient;
         setDepartments(facts.map.rooms.flatMap((r) => (r.department ? [{ key: r.department, name: r.name }] : [])));
         // While someone is handing a task on they stand beside a colleague's desk; they go back by themselves, so look again soon.
         let again: ReturnType<typeof setTimeout> | undefined;
+        // The cards (state, how long, task, what waits for you) come from the server's own reading, the same one the world's placement uses.
+        const loadTeam = () =>
+          client.team?.().then((team) =>
+            setPeople(team.map((t) => ({ id: t.id, name: t.name, where: WHERE[who.current.get(t.id)?.place ?? 'lounge'] ?? '', state: t.state, since: t.since, task: t.task, forYou: t.forYou }))),
+          ).catch(() => undefined);
         const apply = (places: OfficePlace[]) => {
           if (again) clearTimeout(again);
           const ms = handoffRefreshMs(places);
@@ -79,7 +84,8 @@ export function OfficeWorld({ client, onOpen, onPanel }: { client: OfficeClient;
             if (!r) return [];
             return facts.agents.filter((a) => { const p = places.find((q) => q.agentId === a.id); return !!p && p.x >= r.x && p.x < r.x + r.w && p.y >= r.y && p.y < r.y + r.h; }).map((a) => a.name);
           };
-          setPeople(facts.agents.map((a) => ({ id: a.id, name: a.name, where: WHERE[places.find((p) => p.agentId === a.id)?.place ?? 'lounge'] ?? '' })));
+          void loadTeam();
+          setPeople((cur) => (cur.some((p) => p.state) ? cur : facts.agents.map((a) => ({ id: a.id, name: a.name, where: WHERE[places.find((p) => p.agentId === a.id)?.place ?? 'lounge'] ?? '' }))));
         };
         ctl.onZone((room) => setNotice(zoneNotice(room)));
         apply(await client.state());

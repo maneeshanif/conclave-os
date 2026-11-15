@@ -30,6 +30,16 @@ export interface OfficeFacts {
   agents: { id: string; key: string; name: string; department: string | null; status: string; room: string | null; desk: number | null }[];
 }
 export type OfficePlace = Pick<Placed, 'agentId' | 'place' | 'reason' | 'x' | 'y'> & { key: string };
+export interface TeamCard {
+  id: string;
+  key: string;
+  name: string;
+  department: string | null;
+  state: string;
+  since: string | null;
+  task: string | null;
+  forYou: number;
+}
 export interface AgentDrawer {
   agent: { id: string; key: string; name: string; department: string | null; status: string };
   run: { id: string; status: string } | null;
@@ -366,6 +376,11 @@ export const api = {
     const r = await call<{ places: OfficePlace[] }>('/api/office/state');
     if (!r || !Array.isArray(r.places)) throw new Error('The office answered with something unexpected.');
     return r.places;
+  },
+  officeTeam: async () => {
+    const r = await call<{ team: TeamCard[] }>('/api/office/team');
+    if (!r || !Array.isArray(r.team)) throw new Error('The office answered with something unexpected.');
+    return r.team;
   },
   officeDrawer: (id: string) => call<AgentDrawer>(`/api/office/agents/${id}`),
   officeMessage: async (id: string, text: string) => {

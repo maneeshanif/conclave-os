@@ -7,7 +7,7 @@ import type { AppEnv } from '../app';
 import type { Bus } from '../bus';
 import type { Dispatcher } from '../workflows/dispatch';
 import { assignDesks, loadOffice } from '../office/desks';
-import { officeState } from '../office/state';
+import { officeState, teamCards } from '../office/state';
 
 /** The office (SPEC 12): the map's facts and where each agent sits. The drawing reads the map file itself from /office/map. */
 export function officeRoutes(deps: { workspaceId: string; companyRoot: string; /** For the agent templates (S6-13c). */ templatesRoot?: string; bus?: Bus; dispatcher?: Dispatcher; /** The agents in an open discussion; the Boardroom supplies it (S6-10). */ discussing?: (c: import('pg').PoolClient) => Promise<Set<string>> }) {
@@ -120,6 +120,17 @@ export function officeRoutes(deps: { workspaceId: string; companyRoot: string; /
     const approvalId = row.rows[0]!.id;
     c.get('after').push(async () => deps.bus?.publish({ kind: 'approval.changed', workspaceId: deps.workspaceId, approvalId, status: 'pending' }));
     return c.json({ approvalId, id }, 201);
+  });
+
+  r.get('/team', async (c) => {
+    let office;
+    try {
+      office = await loadOffice(deps.companyRoot);
+    } catch (err) {
+      return c.json({ error: (err as Error).message }, 422);
+    }
+    const tx = c.get('tx').client;
+    return c.json({ team: await teamCards(tx, deps.workspaceId, office.map, deps.discussing ? await deps.discussing(tx) : undefined) });
   });
 
   r.get('/map', async (c) => {
