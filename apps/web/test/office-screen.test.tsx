@@ -10,8 +10,20 @@ vi.mock('next/navigation', () => ({
 }));
 // The world needs a canvas and the list needs the server: stand in for both, and keep what this test is about.
 vi.mock('../components/OfficeWorld', () => ({
-  OfficeWorld: ({ onPanel }: { onPanel: (id: string) => void }) => (
+  OfficeWorld: ({ onPanel, onOpen, onOpenList, onFail }: { onPanel: (id: string) => void; onOpen: (id: string | null) => void; onOpenList?: () => void; onFail?: () => void }) => (
     <>
+      <button type="button" onClick={() => onOpenList?.()}>
+        open the list
+      </button>
+      <button type="button" onClick={() => onOpen('11111111-1111-4111-8111-111111111111')}>
+        walk up to an agent
+      </button>
+      <button type="button" onClick={() => onOpen(null)}>
+        walk away
+      </button>
+      <button type="button" onClick={() => onFail?.()}>
+        the world cannot start
+      </button>
       <button type="button" onClick={() => onPanel('approvals')}>
         use the approvals desk
       </button>
@@ -57,14 +69,56 @@ describe('the office with its panels (S6-12a)', () => {
     render(<OfficeScreen base="/office" />);
     fireEvent.click(screen.getByRole('button', { name: /approvals desk/ }));
     expect(push).toHaveBeenLastCalledWith('/office?panel=approvals');
+    cleanup();
+    query = 'panel=rooms'; // the list is a panel now
+    render(<OfficeScreen base="/office" />);
     fireEvent.click(screen.getByRole('button', { name: /goal ladder/ }));
     expect(push).toHaveBeenLastCalledWith('/office?panel=goals');
   });
 
   it('opens a department\'s board for the department the object is in', () => {
+    query = 'panel=rooms';
     render(<OfficeScreen base="/office" />);
     fireEvent.click(screen.getByRole('button', { name: /outreach board/ }));
     expect(push).toHaveBeenLastCalledWith('/office?panel=department-board&dept=outreach');
+  });
+
+  it('opens the list of rooms and agents from the world\'s bar, as a panel with its own address', () => {
+    render(<OfficeScreen base="/office" />);
+    fireEvent.click(screen.getByRole('button', { name: /open the list/ }));
+    expect(push).toHaveBeenLastCalledWith('/office?panel=rooms');
+  });
+
+  it('opens the list on an agent when you walk up to it, and closes it again when you walk away', () => {
+    render(<OfficeScreen base="/office" />);
+    fireEvent.click(screen.getByRole('button', { name: /walk up to an agent/ }));
+    expect(push).toHaveBeenLastCalledWith('/office?panel=rooms&agent=11111111-1111-4111-8111-111111111111');
+    cleanup();
+    query = 'panel=rooms&agent=11111111-1111-4111-8111-111111111111';
+    render(<OfficeScreen base="/office" />);
+    fireEvent.click(screen.getByRole('button', { name: /walk away/ }));
+    expect(push).toHaveBeenLastCalledWith('/office');
+  });
+
+  it('does not close a panel you opened yourself when you walk away from an agent', () => {
+    query = 'panel=goals';
+    render(<OfficeScreen base="/office" />);
+    push.mockReset();
+    fireEvent.click(screen.getByRole('button', { name: /walk away/ }));
+    expect(push).not.toHaveBeenCalled();
+  });
+
+  it('shows the list as the page when the world cannot start, so the office is never only the canvas', () => {
+    render(<OfficeScreen base="/office" />);
+    expect(screen.queryByRole('region', { name: /rooms and agents/i })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: /the world cannot start/ }));
+    expect(screen.getByRole('region', { name: /rooms and agents/i })).toBeTruthy();
+  });
+
+  it('fills the screen with the world: nothing else takes room on the page', () => {
+    const { container } = render(<OfficeScreen base="/office" />);
+    expect((container.firstElementChild as HTMLElement).className).toMatch(/fixed|h-dvh|h-screen/);
+    expect((container.firstElementChild as HTMLElement).className).toMatch(/inset-0|w-screen|w-full/);
   });
 
   it('shows the panel the address asks for, so a link or a reload opens it', () => {

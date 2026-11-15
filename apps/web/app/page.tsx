@@ -7,7 +7,7 @@ import { OfficeScreen } from '../components/OfficeScreen';
  */
 export default function Home() {
   return (
-    <main className="mx-auto max-w-3xl p-4 sm:p-6">
+    <main>
       <Suspense fallback={null}>
         <OfficeScreen base="/" />
       </Suspense>

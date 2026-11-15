@@ -3,7 +3,7 @@
  * panel now, and the open one is kept in the address (`/?panel=approvals`) so it can be linked to and survives a reload.
  * Pure: it only turns ids and addresses into each other.
  */
-export const PANEL_IDS = ['tasks', 'approvals', 'needs-you', 'brief', 'inbox', 'pipeline', 'campaigns', 'goals', 'signals', 'ideas', 'health', 'run-log', 'department-board', 'department-meeting', 'boardroom'] as const;
+export const PANEL_IDS = ['tasks', 'approvals', 'needs-you', 'brief', 'inbox', 'pipeline', 'campaigns', 'goals', 'signals', 'ideas', 'health', 'run-log', 'department-board', 'department-meeting', 'boardroom', 'rooms'] as const;
 export type PanelId = (typeof PANEL_IDS)[number];
 
 export const PANEL_LABELS: Record<PanelId, string> = {
@@ -22,6 +22,7 @@ export const PANEL_LABELS: Record<PanelId, string> = {
   'department-board': 'Department board',
   'department-meeting': 'Department channel',
   boardroom: 'Boardroom',
+  rooms: 'Rooms and agents',
 };
 
 export interface PanelState {
@@ -30,6 +31,8 @@ export interface PanelState {
   task?: string;
   /** Only a department board or channel takes one: the department's key. */
   dept?: string;
+  /** Only the list of rooms and agents takes one: the agent whose drawer is open. */
+  agent?: string;
 }
 
 const WITH_DEPT = ['department-board', 'department-meeting'] as const;
@@ -56,6 +59,7 @@ const known = (v: string | null): v is PanelId => v !== null && (PANEL_IDS as re
 export function panelHref(p: PanelId | PanelState, base = '/'): string {
   const s: PanelState = typeof p === 'string' ? { id: p } : p;
   if (s.id === 'run-log' && s.task) return `${base}?panel=run-log&task=${s.task}`;
+  if (s.id === 'rooms' && s.agent) return `${base}?panel=rooms&agent=${s.agent}`;
   if ((WITH_DEPT as readonly string[]).includes(s.id) && s.dept) return `${base}?panel=${s.id}&dept=${s.dept}`;
   return `${base}?panel=${s.id}`;
 }
@@ -68,6 +72,10 @@ export function parsePanel(search: string | URLSearchParams): PanelState | null 
   if (id === 'run-log') {
     const task = q.get('task');
     return task && TASK.test(task) ? { id, task } : null;
+  }
+  if (id === 'rooms') {
+    const agent = q.get('agent');
+    return agent && TASK.test(agent) ? { id, agent } : { id };
   }
   if ((WITH_DEPT as readonly string[]).includes(id)) {
     const dept = q.get('dept');

@@ -21,9 +21,11 @@ export const toMap = (facts: OfficeFacts): OfficeMap => ({ ...facts.map, walls: 
  * The office as a world you can walk about (SPEC 12). Phaser is loaded only here, only in the browser, so the server render and
  * the plain list never pull it in. A hidden tab stops the drawing; a phone gets a smaller canvas (the list below is the main way in).
  */
-export function OfficeWorld({ client, onOpen, onPanel }: { client: OfficeClient; onOpen: (agentId: string | null) => void; onPanel: (id: string, ctx?: { dept?: string }) => void }) {
+export function OfficeWorld({ client, onOpen, onPanel, onOpenList, onFail }: { client: OfficeClient; onOpen: (agentId: string | null) => void; onPanel: (id: string, ctx?: { dept?: string }) => void; onOpenList?: () => void; onFail?: () => void }) {
   const box = useRef<HTMLDivElement>(null);
   const [failed, setFailed] = useState<string | null>(null);
+  const failRef = useRef(onFail);
+  failRef.current = onFail;
   const [view, setView] = useState<WorldController | null>(null);
   const [whole, setWhole] = useState(false);
   const [people, setPeople] = useState<Person[]>([]);
@@ -128,6 +130,7 @@ export function OfficeWorld({ client, onOpen, onPanel }: { client: OfficeClient;
         };
       } catch (err) {
         setFailed((err as Error).message);
+        failRef.current?.();
       }
     })();
     return () => {
@@ -136,11 +139,12 @@ export function OfficeWorld({ client, onOpen, onPanel }: { client: OfficeClient;
     };
   }, [client, onOpen, onPanel]);
 
-  if (failed) return <p className="text-sm text-neutral-500">The world could not start ({failed}). The list below has everything.</p>;
+  // The world could not start: the page shows the list of rooms and agents instead (S6-15a).
+  if (failed) return null;
   const btn = 'flex h-9 w-9 items-center justify-center rounded-md bg-neutral-900/80 text-lg text-white hover:bg-neutral-900';
   return (
-    <div className="relative">
-      <div ref={box} data-testid="office-world" aria-hidden="true" className="h-60 w-full overflow-hidden rounded-md border border-neutral-200 sm:h-96" />
+    <div className="absolute inset-0">
+      <div ref={box} data-testid="office-world" aria-hidden="true" className="h-full w-full overflow-hidden" />
       <ZonePill text={notice} />
       {view ? (
         <OfficeBar
@@ -152,6 +156,7 @@ export function OfficeWorld({ client, onOpen, onPanel }: { client: OfficeClient;
           extra={<CompanySwitcher onSwitch={() => window.location.reload()} />}
           onAddDepartment={() => setAdding(true)}
           onAddAgent={() => setAddingAgent(true)}
+          onOpenList={onOpenList}
           onOverview={() => {
             view.overview(!whole);
             setWhole(!whole);

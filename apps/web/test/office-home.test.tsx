@@ -34,6 +34,9 @@ describe('the office is home (S6-12c)', () => {
     expect(screen.getByText('the office at /')).toBeTruthy();
     expect(screen.queryByRole('link')).toBeNull();
     expect(screen.queryByRole('navigation')).toBeNull();
+    // No margins or width limit: the office is the screen.
+    const main = screen.getByRole('main');
+    expect(main.className).not.toMatch(/max-w|\bp-\d|mx-auto/);
   });
 
   it('sends each old route to the office with that panel open, and nothing else', async () => {

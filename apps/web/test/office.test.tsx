@@ -66,14 +66,14 @@ describe('the plain office (S6-8)', () => {
       [/Goal ladder/, 'goals'],
       [/Health dashboard/, 'health'],
       [/^Inbox$/, 'inbox'],
+      [/^Boardroom$/, 'boardroom'],
     ] as const) {
       fireEvent.click(screen.getByRole('button', { name }));
       expect(open).toHaveBeenLastCalledWith(id);
     }
-    expect(open).toHaveBeenCalledTimes(4);
+    expect(open).toHaveBeenCalledTimes(5);
     expect(screen.queryByRole('button', { name: /Talent room/ })).toBeNull();
     expect(screen.getByText(/Talent room/).textContent).toMatch(/coming/i);
-    expect(screen.getByText(/Boardroom$/, { selector: 'span' }).textContent).toMatch(/coming/i);
   });
 
   it('says an agent that is handing a task on is doing so, and lists it under the room of the desk it is standing at', async () => {

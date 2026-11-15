@@ -30,6 +30,8 @@ export function PanelContent(state: PanelState): ReactNode {
       return <DepartmentChannel dept={state.dept ?? ''} />;
     case 'boardroom':
       return <BoardroomView />;
+    case 'rooms':
+      return null; // the list is drawn by the office screen, which owns the world, the drawer and the panels
     case 'approvals':
       return <ApprovalsInbox />;
     case 'needs-you':

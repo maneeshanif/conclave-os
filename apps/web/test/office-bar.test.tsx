@@ -83,6 +83,20 @@ describe('the welcome card (S6-8c2)', () => {
   });
 });
 
+describe('the list of rooms and agents from the bar (S6-15a)', () => {
+  it('has a button for it, next to the people button, that tells the page to open it', () => {
+    const open = vi.fn();
+    render(<OfficeBar people={[]} availability="available" onAvailability={() => undefined} onOpenAgent={() => undefined} onOverview={() => undefined} onOpenList={open} />);
+    fireEvent.click(screen.getByRole('button', { name: /rooms and agents/i }));
+    expect(open).toHaveBeenCalled();
+  });
+
+  it('is left out when the page has no list to open', () => {
+    render(<OfficeBar people={[]} availability="available" onAvailability={() => undefined} onOpenAgent={() => undefined} onOverview={() => undefined} />);
+    expect(screen.queryByRole('button', { name: /rooms and agents/i })).toBeNull();
+  });
+});
+
 describe('the team cards in the People panel (S6-14b2)', () => {
   const cards = [
     { id: 'a1', name: 'Scout', where: 'At its desk', state: 'working', since: new Date(Date.now() - 3 * 60_000).toISOString(), task: 'Write the follow-up', forYou: 0 },

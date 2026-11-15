@@ -73,6 +73,12 @@ function stopServer() {
   }
 }
 
+/** The list of rooms and agents is a panel over the world, opened from the bar. */
+async function openList(page: import('playwright-core').Page) {
+  await page.getByRole('button', { name: 'Rooms and agents' }).click();
+  await page.getByRole('dialog', { name: 'Rooms and agents' }).waitFor();
+}
+
 async function waitFor(url: string, ms = 60_000) {
   const end = Date.now() + ms;
   while (Date.now() < end) {
@@ -206,9 +212,16 @@ describe('the office page in a real browser (S6-8b)', () => {
       await page.keyboard.press('Escape');
       await page.getByRole('button', { name: /your status/i }).click();
       writeFileSync(path.join(SHOTS, `office-${name}-bar.png`), await page.screenshot());
-      // The plain list is there too.
+      // The world fills the window, and the plain list is one button away.
+      const stage0 = (await page.locator('[data-testid="office-world"]').boundingBox())!;
+      expect(stage0.width).toBeGreaterThanOrEqual(page.viewportSize()!.width - 2);
+      expect(stage0.height).toBeGreaterThanOrEqual(page.viewportSize()!.height - 2);
+      await openList(page);
       await page.getByRole('heading', { name: lounge.name }).waitFor();
       await page.getByRole('button', { name: /Scout/ }).waitFor();
+      writeFileSync(path.join(SHOTS, `office-${name}-list.png`), await page.screenshot());
+      await page.keyboard.press('Escape');
+      await page.getByRole('dialog').waitFor({ state: 'detached' });
       // No sideways scroll on a phone.
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
       // The company you are in is shown, and a new one can be made and switched to: after that every request names it.
@@ -251,6 +264,7 @@ describe('the office page in a real browser (S6-8b)', () => {
       await page.keyboard.press('Escape');
       await page.getByRole('dialog').waitFor({ state: 'detached' });
       // Each department room has its own board and channel, opened for that department.
+      await openList(page);
       const room = page.getByRole('heading', { name: 'Chief of Staff', exact: true }).locator('xpath=ancestor::section[1]');
       await room.getByRole('button', { name: 'Board', exact: true }).click();
       const boardPanel = page.getByRole('dialog', { name: 'Department board' });
@@ -259,11 +273,13 @@ describe('the office page in a real browser (S6-8b)', () => {
       writeFileSync(path.join(SHOTS, `office-${name}-board.png`), await page.screenshot());
       await page.keyboard.press('Escape');
       await page.getByRole('dialog').waitFor({ state: 'detached' });
+      await openList(page);
       await room.getByRole('button', { name: 'Channel', exact: true }).click();
       await page.getByRole('dialog', { name: 'Department channel' }).getByText('Starting on the plan.').waitFor();
       await page.keyboard.press('Escape');
       await page.getByRole('dialog').waitFor({ state: 'detached' });
       // Using an object opens its panel over the office: beside the world on a desktop, the whole screen on a phone.
+      await openList(page);
       await page.getByRole('button', { name: 'Approvals inbox' }).click();
       const panel = page.getByRole('dialog', { name: 'Approvals' });
       await panel.waitFor();
