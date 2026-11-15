@@ -171,6 +171,16 @@ describe('the office page in a real browser (S6-8b)', () => {
       await page.getByRole('button', { name: /skip tutorial/i }).click();
       expect(await page.getByRole('dialog').count()).toBe(0);
       expect(await colours(page)).toBeGreaterThan(3);
+      // Hovering over the world says what is under the pointer (the wording for each thing is covered by the unit tests).
+      const stage = (await page.locator('[data-testid="office-world"]').boundingBox())!;
+      await page.mouse.move(stage.x + stage.width / 2 - 20, stage.y + stage.height / 2 - 20);
+      await page.mouse.move(stage.x + stage.width / 2, stage.y + stage.height / 2);
+      await page.getByRole('tooltip').waitFor({ timeout: 10_000 }).catch(async (e) => {
+        writeFileSync(path.join(SHOTS, `office-${name}-tooltip-fail.png`), await page.screenshot());
+        throw e;
+      });
+      writeFileSync(path.join(SHOTS, `office-${name}-tooltip.png`), await page.screenshot());
+      await page.mouse.move(2, 2);
       const people = page.getByRole('button', { name: /people, 2 here/i });
       await people.waitFor();
       const world = await page.locator('[data-testid="office-world"]').boundingBox();

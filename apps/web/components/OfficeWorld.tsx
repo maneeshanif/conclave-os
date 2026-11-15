@@ -5,6 +5,7 @@ import { zoneNotice, type OfficeMap } from '@conclave/shared';
 import { API, api, type OfficeFacts, type OfficePlace } from '../lib/api';
 import { WorldController } from '../office/controller';
 import { handoffRefreshMs } from '../office/places-refresh';
+import { describeThing, placeTooltip, type Thing } from '../office/tooltips';
 import { applyPresence, type Member } from '../office/presence';
 import type { Who } from '../office/scene';
 import { AddAgent } from './AddAgent';
@@ -31,6 +32,9 @@ export function OfficeWorld({ client, onOpen, onPanel }: { client: OfficeClient;
   const tellRef = useRef<(() => void) | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
+  const [hover, setHover] = useState<{ thing: Thing; x: number; y: number } | null>(null);
+  const factsRef = useRef<OfficeFacts | null>(null);
+  const inRoom = useRef<(room: string) => string[]>(() => []);
   const [addingAgent, setAddingAgent] = useState(false);
   const [departments, setDepartments] = useState<{ key: string; name: string }[]>([]);
   const [availability, setAvailability] = useState<Availability>(() => {
@@ -59,6 +63,7 @@ export function OfficeWorld({ client, onOpen, onPanel }: { client: OfficeClient;
       try {
         const facts = await client.office();
         if (cancelled || !box.current) return;
+        factsRef.current = facts;
         const ctl = new WorldController(toMap(facts));
         setDepartments(facts.map.rooms.flatMap((r) => (r.department ? [{ key: r.department, name: r.name }] : [])));
         // While someone is handing a task on they stand beside a colleague's desk; they go back by themselves, so look again soon.
@@ -68,7 +73,12 @@ export function OfficeWorld({ client, onOpen, onPanel }: { client: OfficeClient;
           const ms = handoffRefreshMs(places);
           if (ms) again = setTimeout(() => void client.state().then(apply).catch(() => undefined), ms);
           ctl.setAgents(places.map((p) => ({ agentId: p.agentId, x: p.x, y: p.y })));
-          who.current = new Map(facts.agents.map((a) => [a.id, { name: a.name, key: a.key, place: places.find((p) => p.agentId === a.id)?.place ?? 'lounge' }]));
+          who.current = new Map(facts.agents.map((a) => [a.id, { name: a.name, key: a.key, place: places.find((p) => p.agentId === a.id)?.place ?? 'lounge', reason: places.find((p) => p.agentId === a.id)?.reason, room: a.room }]));
+          inRoom.current = (room) => {
+            const r = facts.map.rooms.find((x) => x.name === room);
+            if (!r) return [];
+            return facts.agents.filter((a) => { const p = places.find((q) => q.agentId === a.id); return !!p && p.x >= r.x && p.x < r.x + r.w && p.y >= r.y && p.y < r.y + r.h; }).map((a) => a.name);
+          };
           setPeople(facts.agents.map((a) => ({ id: a.id, name: a.name, where: WHERE[places.find((p) => p.agentId === a.id)?.place ?? 'lounge'] ?? '' })));
         };
         ctl.onZone((room) => setNotice(zoneNotice(room)));
@@ -76,7 +86,7 @@ export function OfficeWorld({ client, onOpen, onPanel }: { client: OfficeClient;
         ctl.onDrawer((e) => onOpen(e.kind === 'open' ? e.id : null));
         const { startWorld } = await import('../office/scene');
         if (cancelled || !box.current) return;
-        const world = startWorld({ parent: box.current, mapUrl: `${API}/api/office/map`, tilesUrl: '/office/tiles.png', peopleUrl: '/office/people.png', furnitureUrl: '/office/furniture.png', facts, ctl, who: () => who.current, myStatus: () => mine.current, onUseObject: onPanel });
+        const world = startWorld({ parent: box.current, mapUrl: `${API}/api/office/map`, tilesUrl: '/office/tiles.png', peopleUrl: '/office/people.png', furnitureUrl: '/office/furniture.png', facts, ctl, who: () => who.current, myStatus: () => mine.current, onUseObject: onPanel, onHover: setHover });
         setView(ctl);
         const watch = new ResizeObserver(() => world.resize());
         watch.observe(box.current);
@@ -147,6 +157,7 @@ export function OfficeWorld({ client, onOpen, onPanel }: { client: OfficeClient;
         />
       ) : null}
       {adding ? <AddDepartment add={api.addDepartment} onDone={() => window.location.reload()} onCancel={() => setAdding(false)} /> : null}
+      {hover && factsRef.current ? <Tooltip hover={hover} facts={factsRef.current} who={who.current} hereIn={inRoom.current} status={mine.current} box={box.current} /> : null}
       <WelcomeCard />
       {view ? (
         <div className="absolute bottom-16 right-3 flex flex-col gap-1.5 sm:bottom-3">
@@ -170,6 +181,19 @@ export function OfficeWorld({ client, onOpen, onPanel }: { client: OfficeClient;
           </button>
         </div>
       ) : null}
+    </div>
+  );
+}
+
+/** The tooltip over the world (S6-14b1): what the pointer is on, in the same words the list uses. */
+function Tooltip({ hover, facts, who, hereIn, status, box }: { hover: { thing: Thing; x: number; y: number }; facts: OfficeFacts; who: Map<string, Who>; hereIn: (room: string) => string[]; status: Availability; box: HTMLElement | null }) {
+  const text = describeThing(hover.thing, { facts, who, hereIn, myStatus: status });
+  if (!text) return null;
+  const at = placeTooltip(hover.x, hover.y, 220, 56, box?.clientWidth ?? 640, box?.clientHeight ?? 384);
+  return (
+    <div role="tooltip" style={{ left: at.left, top: at.top }} className="pointer-events-none absolute z-20 max-w-[220px] rounded-lg bg-neutral-900/95 px-3 py-2 text-xs text-white shadow-lg">
+      <p className="font-semibold">{text.title}</p>
+      <p className="text-neutral-200">{text.line}</p>
     </div>
   );
 }

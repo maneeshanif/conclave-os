@@ -539,7 +539,7 @@ The office is the whole app. Everything below is allowed in slice 6 because slic
 
 - [ ] **S6-14b Build to match it.** WORLD-BRIEF. Split from the gap list in `docs/JSM-REFERENCE.md` (the gaps left after S6-12 and S6-13: panels beside the world, rooms from departments, handoffs, adding agents and companies are done). Tasks:
 
-- [ ] **S6-14b1 Hover tooltips.** A tooltip on every agent, object and room in the world: title and one line (an agent: name and role, where it is and why; an object: what it opens and whether it is ready; a room: its name and who is in it, and a note if it is locked, quiet or limited). The words come from one pure function so the world and the list say the same.
+- [x] **S6-14b1 Hover tooltips.** A tooltip on every agent, object and room in the world: title and one line (an agent: name and role, where it is and why; an object: what it opens and whether it is ready; a room: its name and who is in it, and a note if it is locked, quiet or limited). The words come from one pure function so the world and the list say the same.
   *Test:* the function gives the right title and line for each kind from the same facts the list uses; the tooltip shows on hover and not while dragging or over a panel; it is dismissed on leaving; one browser check.
 
 - [ ] **S6-14b2 The team cards.** Cards for the agents beside the world (in the People panel): portrait colour, name and role, a state chip (working, waiting for you, blocked, in a discussion, handing over, idle), how long, the task it is on, and "N for you" for approvals waiting on it. Clicking a card opens its drawer.

@@ -3,6 +3,7 @@ import { panelFor } from '@conclave/shared';
 import type { OfficeFacts } from '../lib/api';
 import { FRAME, availabilityColour, directionOf, frameIndex, lookFor, placeColour, pose, roomTint, type Availability, type Facing } from './art';
 import type { WorldController } from './controller';
+import { thingAt, type Thing } from './tooltips';
 
 /**
  * The drawing (SPEC 12). A thin Phaser skin over `WorldController`: it loads the Tiled map and our own art, draws the floor, rooms,
@@ -18,6 +19,8 @@ export interface Who {
   name: string;
   key: string;
   place: string;
+  reason?: string;
+  room?: string | null;
 }
 
 const TILE = 32;
@@ -34,6 +37,8 @@ export function startWorld(opts: {
   myStatus: () => Availability;
   /** Called with the panel an object opens. */
   onUseObject: (panel: string, ctx?: { dept?: string }) => void;
+  /** What is under the pointer, with where it is on the screen (null when nothing, or the pointer left the canvas). */
+  onHover?: (t: { thing: Thing; x: number; y: number } | null) => void;
 }): WorldHandle {
   const { ctl, facts } = opts;
   ctl.setViewport(opts.parent.clientWidth, opts.parent.clientHeight);
@@ -137,6 +142,12 @@ export function startWorld(opts: {
       this.cameras.main.startFollow(this.me.box, true, 0.15, 0.15);
       this.cursors = this.input.keyboard?.createCursorKeys();
       // A press that began on something over the canvas (the bar, a dialog) is not a click on the world.
+      // What is under the pointer, for the tooltip. Only while the pointer is over the canvas itself.
+      this.input.on('pointermove', (p: Phaser.Input.Pointer) => {
+        const thing = thingAt(facts, ctl.agents(), ctl.me.position, p.worldX, p.worldY);
+        opts.onHover?.(thing ? { thing, x: p.x, y: p.y } : null);
+      });
+      this.input.on('gameout', () => opts.onHover?.(null));
       this.input.on('pointerdown', (p: Phaser.Input.Pointer) => p.downElement === this.game.canvas && ctl.click({ x: Math.floor(p.worldX / TILE), y: Math.floor(p.worldY / TILE) }));
     }
 
