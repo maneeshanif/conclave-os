@@ -89,16 +89,17 @@ describe('the panel over the world (S6-12a)', () => {
     const cls = screen.getByRole('dialog').className;
     expect(cls).toMatch(/\binset-0\b/); // phone: the whole screen
     expect(cls).toMatch(/sm:left-auto/); // wider: pinned to the right edge
-    expect(cls).toMatch(/sm:w-/); // wider: a width, not the whole screen
+    expect(cls).toMatch(/sm:w-/); // wider: a width, not the whole screen (set from the style, so it can be dragged)
   });
 
   it('can be made wider and narrower again', () => {
     render(<PanelHost state={{ id: 'goals' }} onClose={() => undefined} render={(s) => render_(s.id)} />);
-    const before = screen.getByRole('dialog').className;
+    const style = () => screen.getByRole('dialog').getAttribute('style');
+    const before = style();
     fireEvent.click(screen.getByRole('button', { name: /maximi[sz]e/i }));
-    expect(screen.getByRole('dialog').className).not.toBe(before);
+    expect(style()).not.toBe(before);
     fireEvent.click(screen.getByRole('button', { name: /restore|smaller/i }));
-    expect(screen.getByRole('dialog').className).toBe(before);
+    expect(style()).toBe(before);
   });
 
   it('puts the keyboard focus in the panel when it opens', () => {

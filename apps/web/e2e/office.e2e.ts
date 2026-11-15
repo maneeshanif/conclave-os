@@ -276,6 +276,17 @@ describe('the office page in a real browser (S6-8b)', () => {
       }
       expect(page.url()).toMatch(/panel=approvals/);
       writeFileSync(path.join(SHOTS, `office-${name}-panel.png`), await page.screenshot());
+      // On a desktop the left edge of the panel can be dragged to make it wider.
+      if (name === 'desktop') {
+        const edge = page.getByRole('separator', { name: /resize panel/i });
+        const eb = (await edge.boundingBox())!;
+        await page.mouse.move(eb.x + eb.width / 2, eb.y + 200);
+        await page.mouse.down();
+        await page.mouse.move(eb.x + eb.width / 2 - 150, eb.y + 200, { steps: 5 });
+        await page.mouse.up();
+        const wider = (await page.getByRole('dialog', { name: 'Approvals' }).boundingBox())!;
+        expect(wider.width).toBeGreaterThan(box.width + 100);
+      }
       await page.keyboard.press('Escape');
       await page.getByRole('dialog').waitFor({ state: 'detached' });
       expect(page.url()).not.toMatch(/panel=/);
