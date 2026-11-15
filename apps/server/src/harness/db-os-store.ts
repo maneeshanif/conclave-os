@@ -9,6 +9,7 @@ import { checkHook } from '../hooks';
 import { checkBrief, estimateCredits, type Shot } from '../video/briefs';
 import { normalizeUrl } from '../signals';
 import { labelUntrusted } from './trust';
+import { checkEvidence } from '../boardroom/evidence';
 import { checkDm, dmEligible, dmSuppressed, isDmChannel, normalizeHandle } from '../dms';
 import { checkPost, hashText, isPostPlatform } from '../posts';
 import { addSignal, cleanExcerpt, looksLikeInstructions } from '../signals';
@@ -401,6 +402,44 @@ export class DbOsStore implements OsStore {
       // What a low-trust agent wrote reaches a reader as data, in a label, never as plain text that could pass for an instruction (A1).
       return { ...t.rows[0], comments: m.rows.map((r) => ({ from: r.from_id, body: r.low ? labelUntrusted(r.from_id.replace(/^agent:/, ''), r.body) : r.body, at: r.created_at.toISOString() })) };
     });
+  }
+
+  async openDiscussion(scope: RunScope, d: { kind: 'standup' | 'weekly' | 'adhoc'; question: string; participants: string[] }): Promise<string> {
+    const id = await withWorkspace(this.pool, scope.workspaceId, async ({ client: c }) => {
+      const me = (await c.query<{ key: string }>('select key from agents where id = $1', [scope.agentId])).rows[0];
+      for (const k of d.participants) if (!(await c.query("select 1 from agents where key = $1 and status = 'active'", [k])).rows[0]) throw new ToolError(`There is no active agent "${k}" to include. Use an agent's key.`);
+      const r = await c.query<{ id: string }>('insert into discussions (workspace_id, kind, question, opened_by, participants) values ($1, $2, $3, $4, $5::jsonb) returning id', [scope.workspaceId, d.kind, d.question, `agent:${me?.key ?? scope.agentId}`, JSON.stringify(d.participants)]);
+      return r.rows[0]!.id;
+    });
+    this.onOffice(scope.workspaceId);
+    return id;
+  }
+
+  async addTurn(scope: RunScope, t: { discussionId: string; round: number; body: string; evidence: unknown[]; summary: boolean; disagreements?: string | undefined }) {
+    await withWorkspace(this.pool, scope.workspaceId, async ({ client: c }) => {
+      const me = (await c.query<{ key: string }>('select key from agents where id = $1', [scope.agentId])).rows[0];
+      const speaker = me?.key ?? scope.agentId;
+      const d = (await c.query<{ status: string; participants: string[] }>('select status, participants from discussions where id = $1 for update', [t.discussionId])).rows[0];
+      if (!d) throw new ToolError('There is no such discussion.');
+      if (d.status !== 'open') throw new ToolError('That discussion is closed.');
+      if (d.participants.length && !d.participants.includes(speaker)) throw new ToolError('You are not one of the agents this discussion is for.');
+      if ((await c.query('select 1 from discussion_turns where discussion_id = $1 and speaker = $2 and round = $3', [t.discussionId, speaker, t.round])).rows[0]) throw new ToolError(`You have already taken your turn in round ${t.round}.`);
+      if (t.summary && !t.disagreements) throw new ToolError('A summary must say where the leads disagree. Write "None." if they do not.');
+      // The rule that makes the Boardroom useful, in code: no evidence, or evidence the tables do not bear out, and the turn is not kept.
+      if (t.evidence.length === 0) throw new ToolError('A turn must cite evidence: a count or a record the OS can check against its tables.');
+      const checked = await checkEvidence(c, t.evidence);
+      if (!checked.ok) throw new ToolError(`Refused: ${checked.reasons.join('; ')}. Cite what the tables show and add your turn again.`);
+      await c.query('insert into discussion_turns (workspace_id, discussion_id, speaker, round, body, evidence, disagreements) values ($1, $2, $3, $4, $5, $6::jsonb, $7)', [scope.workspaceId, t.discussionId, speaker, t.round, t.body, JSON.stringify(t.evidence), t.disagreements ?? null]);
+    });
+    this.onOffice(scope.workspaceId);
+  }
+
+  async getDecisions(scope: RunScope): Promise<string> {
+    const rows = await withWorkspace(this.pool, scope.workspaceId, ({ client: c }) =>
+      c.query<{ title: string; decision: string; owner: string | null; due: string | null; decided_at: Date }>("select title, decision, owner, to_char(due, 'YYYY-MM-DD') as due, decided_at from decisions order by decided_at desc, id desc limit 20"),
+    );
+    if (!rows.rows.length) return 'No decisions have been recorded yet.';
+    return rows.rows.map((r) => `- ${new Date(r.decided_at).toISOString().slice(0, 10)} ${r.title}: ${r.decision}${r.owner ? ` (owner: ${r.owner}${r.due ? `, by ${r.due}` : ''})` : ''}`).join('\n');
   }
 
   async departmentSay(scope: RunScope, text: string) {

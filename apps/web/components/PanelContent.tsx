@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 import type { PanelState } from '../lib/panels';
 import { ActionItems } from './ActionItems';
 import { ApprovalsInbox } from './ApprovalsInbox';
+import { BoardroomView } from './BoardroomView';
 import { BriefView } from './BriefView';
 import { CampaignsView } from './CampaignsView';
 import { DepartmentBoard, DepartmentChannel } from './DepartmentPanels';
@@ -27,6 +28,8 @@ export function PanelContent(state: PanelState): ReactNode {
       return <DepartmentBoard dept={state.dept ?? ''} />;
     case 'department-meeting':
       return <DepartmentChannel dept={state.dept ?? ''} />;
+    case 'boardroom':
+      return <BoardroomView />;
     case 'approvals':
       return <ApprovalsInbox />;
     case 'needs-you':

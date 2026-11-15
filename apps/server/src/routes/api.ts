@@ -17,6 +17,7 @@ import type { ReaperStatus } from '../health';
 import { healthRoutes } from './health';
 import { pauseRoutes } from './pauses';
 import { settingsRoutes } from './settings';
+import { agentsInDiscussion, decisionRoutes, discussionRoutes } from './boardroom';
 import { departmentRoutes } from './departments';
 import { officeRoutes } from './office';
 import { signalRoutes } from './signals';
@@ -78,7 +79,9 @@ export function apiRoutes(deps: { workspaceId: string; dispatcher: Dispatcher; b
   r.route('/action-items', actionItemRoutes({ workspaceId: ws, bus: deps.bus }));
   r.route('/suppression', suppressionRoutes({ workspaceId: ws }));
   r.route('/signals', signalRoutes({ workspaceId: ws, bus: deps.bus }));
-  if (deps.companyRoot) r.route('/office', officeRoutes({ workspaceId: ws, companyRoot: deps.companyRoot, bus: deps.bus, dispatcher: deps.dispatcher, ...(deps.templatesRoot ? { templatesRoot: deps.templatesRoot } : {}) }));
+  if (deps.companyRoot) r.route('/office', officeRoutes({ workspaceId: ws, companyRoot: deps.companyRoot, bus: deps.bus, dispatcher: deps.dispatcher, discussing: agentsInDiscussion, ...(deps.templatesRoot ? { templatesRoot: deps.templatesRoot } : {}) }));
+  r.route('/discussions', discussionRoutes({ workspaceId: ws, bus: deps.bus }));
+  r.route('/decisions', decisionRoutes({ workspaceId: ws, bus: deps.bus }));
   if (deps.companyRoot) r.route('/departments', departmentRoutes({ workspaceId: ws, companyRoot: deps.companyRoot, bus: deps.bus, ...(deps.pool ? { pool: deps.pool } : {}) }));
   r.route('/video-ideas', videoIdeaRoutes({ workspaceId: ws, bus: deps.bus }));
   r.route('/settings', settingsRoutes({ workspaceId: ws, bus: deps.bus, onKillSwitch: deps.onKillSwitch, onReleaseHeld: deps.onReleaseHeld }));

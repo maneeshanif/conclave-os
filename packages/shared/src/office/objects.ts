@@ -19,7 +19,7 @@ export const OBJECT_PANELS: Record<ObjectType, ObjectPanel> = {
   screen: { panel: 'health', label: 'Health dashboard', href: '/health', ready: true },
   mailbox: { panel: 'inbox', label: 'Inbox', href: '/inbox', ready: true },
   jobboard: { panel: 'talent', label: 'Talent room', href: '/talent', ready: false },
-  'boardroom-table': { panel: 'boardroom', label: 'Boardroom', href: '/boardroom', ready: false },
+  'boardroom-table': { panel: 'boardroom', label: 'Boardroom', href: '/?panel=boardroom', ready: true },
   'task-board': { panel: 'tasks', label: 'Task board', href: '/?panel=tasks', ready: true },
   'needs-you-board': { panel: 'needs-you', label: 'Needs you', href: '/action-items', ready: true },
   'brief-desk': { panel: 'brief', label: 'Morning brief', href: '/brief', ready: true },

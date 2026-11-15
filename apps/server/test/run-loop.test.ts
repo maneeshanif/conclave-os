@@ -104,6 +104,15 @@ class LateStore implements OsStore {
   comment(s: RunScope, t: string) {
     return this.inner.comment(s, t);
   }
+  openDiscussion(s: RunScope, d: Parameters<OsStore['openDiscussion']>[1]) {
+    return this.inner.openDiscussion(s, d);
+  }
+  addTurn(s: RunScope, t: Parameters<OsStore['addTurn']>[1]) {
+    return this.inner.addTurn(s, t);
+  }
+  getDecisions(s: RunScope) {
+    return this.inner.getDecisions(s);
+  }
   departmentSay(s: RunScope, t: string) {
     return this.inner.departmentSay(s, t);
   }

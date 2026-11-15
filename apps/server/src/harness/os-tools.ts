@@ -37,6 +37,12 @@ export interface OsStore {
   addBriefNote(scope: RunScope, text: string): Promise<{ day: string }>;
   /** Queues an email for approval. Never sends. Returns the approval id and whether it already existed. */
   proposeEmail(scope: RunScope, p: ProposedEmail): Promise<{ approvalId: string; existed: boolean }>;
+  /** Opens a Boardroom discussion (autonomy 1). Returns its id. */
+  openDiscussion(scope: RunScope, d: { kind: 'standup' | 'weekly' | 'adhoc'; question: string; participants: string[] }): Promise<string>;
+  /** Adds a turn to a discussion (autonomy 1). Refused unless its evidence checks out against the tables. */
+  addTurn(scope: RunScope, t: { discussionId: string; round: number; body: string; evidence: unknown[]; summary: boolean; disagreements?: string | undefined }): Promise<void>;
+  /** The decision log, newest first (autonomy 0: reading is for everyone). */
+  getDecisions(scope: RunScope): Promise<string>;
   /** Posts to the calling agent's own department channel (autonomy 1). */
   departmentSay(scope: RunScope, text: string): Promise<void>;
   /** Gives the current task to a colleague in the same department, with a note (autonomy 1). The task goes back to todo for them. */
@@ -216,6 +222,42 @@ export const osTools = {
     async run(store: OsStore, scope: RunScope, args: { text: string }) {
       await store.comment(scope, args.text);
       return 'Comment added.';
+    },
+  },
+  open_discussion: {
+    minAutonomy: 1,
+    description: 'Open a Boardroom discussion: a question, and optionally the agents (by key) it is for. Each of them answers in turn with evidence from the tables, for up to three rounds. Use get_decisions first, so you do not reopen something already decided.',
+    input: z.object({ kind: z.enum(['standup', 'weekly', 'adhoc']), question: z.string().trim().min(1).max(2000), participants: z.array(z.string().trim().min(1).max(100)).max(20).optional() }).strict(),
+    async run(store: OsStore, scope: RunScope, args: { kind: 'standup' | 'weekly' | 'adhoc'; question: string; participants?: string[] | undefined }) {
+      const id = await store.openDiscussion(scope, { kind: args.kind, question: args.question, participants: args.participants ?? [] });
+      return `Discussion opened as ${id}.`;
+    },
+  },
+  add_turn: {
+    minAutonomy: 1,
+    description:
+      'Add your turn to a Boardroom discussion. Every claim must cite evidence the OS can check: a count ({"type":"count","table":"tasks","where":{"column":"status","value":"todo"},"claimed":12}) or a record ({"type":"record","table":"leads","id":"..."}). A turn whose figure the tables do not show is refused. One turn each round, rounds 1 to 3. A summary turn must also say where the leads disagree.',
+    input: z
+      .object({
+        discussionId: z.uuid(),
+        round: z.number().int().min(1).max(3),
+        body: z.string().trim().min(1).max(4000),
+        evidence: z.array(z.unknown()).max(8),
+        summary: z.boolean().optional(),
+        disagreements: z.string().trim().min(1).max(2000).optional(),
+      })
+      .strict(),
+    async run(store: OsStore, scope: RunScope, args: { discussionId: string; round: number; body: string; evidence: unknown[]; summary?: boolean | undefined; disagreements?: string | undefined }) {
+      await store.addTurn(scope, { discussionId: args.discussionId, round: args.round, body: args.body, evidence: args.evidence, summary: args.summary ?? false, disagreements: args.disagreements });
+      return 'Turn added.';
+    },
+  },
+  get_decisions: {
+    minAutonomy: 0,
+    description: 'Read the decision log: what the founder has decided, newest first. Read it before proposing something that may already have been decided.',
+    input: NoInput,
+    async run(store: OsStore, scope: RunScope) {
+      return store.getDecisions(scope);
     },
   },
   department_say: {
@@ -486,6 +528,15 @@ export class MemoryOsStore implements OsStore {
   }
   async scoreSignal(): Promise<{ qualified: boolean }> {
     throw new ToolError('Signals need the database store.');
+  }
+  async openDiscussion(): Promise<string> {
+    throw new ToolError('The Boardroom needs the database store.');
+  }
+  async addTurn(): Promise<void> {
+    throw new ToolError('The Boardroom needs the database store.');
+  }
+  async getDecisions(): Promise<string> {
+    throw new ToolError('The Boardroom needs the database store.');
   }
   async departmentSay(): Promise<void> {
     throw new ToolError('The department channel needs the database store.');

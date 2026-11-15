@@ -4,6 +4,36 @@ export const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://127.0.0.1:3100';
 import type { OfficeMap, Placed } from '@conclave/shared';
 import { currentCompany } from './company';
 
+export interface BoardroomDiscussion {
+  id: string;
+  kind: string;
+  question: string;
+  status: string;
+  opened_by: string;
+  participants: string[];
+  opened_at: string;
+  closed_at: string | null;
+  turns: number;
+}
+export interface BoardroomTurn {
+  id: string;
+  speaker: string;
+  round: number;
+  body: string;
+  evidence: unknown[];
+  disagreements: string | null;
+  at: string;
+}
+export interface BoardroomDecision {
+  id: string;
+  discussion_id: string | null;
+  title: string;
+  decision: string;
+  owner: string | null;
+  due: string | null;
+  decided_by: string;
+  decided_at: string;
+}
 export interface DepartmentBoardData {
   department: { key: string; name: string };
   agents: { key: string; name: string; status: string }[];
@@ -365,6 +395,12 @@ export const api = {
   pushKey: () => call<{ publicKey: string }>('/api/push/key'),
   pushSubscribe: (sub: unknown) => call<{ subscribed: true }>('/api/push/subscribe', { method: 'POST', body: JSON.stringify(sub) }),
   pushUnsubscribe: (endpoint: string) => call<{ subscribed: false }>('/api/push/subscribe', { method: 'DELETE', body: JSON.stringify({ endpoint }) }),
+  boardroomDiscussions: () => call<{ discussions: BoardroomDiscussion[] }>('/api/discussions'),
+  boardroomDiscussion: (id: string) => call<{ discussion: BoardroomDiscussion; turns: BoardroomTurn[] }>(`/api/discussions/${id}`),
+  boardroomOpen: (b: { kind: string; question: string; participants?: string[] }) => call<{ id: string }>('/api/discussions', { method: 'POST', body: JSON.stringify(b) }),
+  boardroomClose: (id: string) => call<{ ok: true }>(`/api/discussions/${id}/close`, { method: 'POST', body: '{}' }),
+  boardroomDecisions: () => call<{ decisions: BoardroomDecision[] }>('/api/decisions'),
+  boardroomDecide: (b: { title: string; decision: string; owner?: string; due?: string; discussionId?: string }) => call<{ id: string }>('/api/decisions', { method: 'POST', body: JSON.stringify(b) }),
   departmentBoard: (dept: string) => call<DepartmentBoardData>(`/api/departments/${encodeURIComponent(dept)}/board`),
   departmentChannel: (dept: string) => call<DepartmentChannelData>(`/api/departments/${encodeURIComponent(dept)}/channel`),
   departmentSay: (dept: string, body: string) => call<{ id: string }>(`/api/departments/${encodeURIComponent(dept)}/channel`, { method: 'POST', body: JSON.stringify({ body }) }),

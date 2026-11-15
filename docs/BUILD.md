@@ -485,7 +485,7 @@ From `docs/BORROW-AUDIT.md`. Each goes into its slice's task list when that slic
   Live presence over the existing socket for signed-in members: position, availability, raised hand; rate-limited; nothing but presence is sent; an owner and a co-founder see each other; a person who is not signed in sees nothing.
   *Test:* two clients see each other's moves; position updates are rate-limited; a signed-out socket gets no presence; leaving removes the avatar.
 
-- [ ] **S6-10 The Boardroom.** SPEC 4, 11.
+- [x] **S6-10 The Boardroom.** SPEC 4, 11.
   Tables \`discussions\`, \`discussion_turns\`, \`decisions\`; stand-up posts, the weekly review, open discussions and the decision log. \`open_discussion\` and \`add_turn\` as \`os\` tools; every turn must cite numbers the OS can check against its own tables, or it is refused. Decisions are recorded by a person through the API. A page for it.
   *Test:* a turn with no evidence, or a figure the tables do not show, is refused; a turn citing a real count is accepted; only a person records a decision; the decision log lists them newest first; the page renders each part and the empty state.
 

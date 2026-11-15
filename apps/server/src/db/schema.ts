@@ -773,6 +773,69 @@ export const departmentMessages = pgTable(
   ],
 );
 
+/** The Boardroom (SPEC 4, S6-10): a stored thread. A stand-up, a weekly review or a discussion someone opened. */
+export const discussions = pgTable(
+  'discussions',
+  {
+    id: id(),
+    workspaceId: workspaceId(),
+    kind: text('kind').notNull(), // standup | weekly | adhoc
+    question: text('question').notNull(),
+    status: text('status').notNull().default('open'), // open | closed
+    openedBy: text('opened_by').notNull(), // 'founder' or 'agent:<key>'
+    participants: jsonb('participants').notNull().default(sql`'[]'::jsonb`), // agent keys; empty means any agent of the company
+    openedAt: timestamp('opened_at', { withTimezone: true }).notNull().defaultNow(),
+    closedAt: timestamp('closed_at', { withTimezone: true }),
+  },
+  (t) => [
+    unique('discussions_ws_id_uq').on(t.workspaceId, t.id),
+    check('discussions_kind_ck', sql`${t.kind} in ('standup', 'weekly', 'adhoc')`),
+    check('discussions_status_ck', sql`${t.status} in ('open', 'closed')`),
+  ],
+);
+
+/** One turn in a discussion. A turn must carry evidence the OS has checked against its own tables (S6-10). */
+export const discussionTurns = pgTable(
+  'discussion_turns',
+  {
+    id: id(),
+    workspaceId: workspaceId(),
+    discussionId: uuid('discussion_id').notNull(),
+    speaker: text('speaker').notNull(), // an agent key
+    round: smallint('round').notNull(),
+    body: text('body').notNull(),
+    evidence: jsonb('evidence').notNull().default(sql`'[]'::jsonb`),
+    disagreements: text('disagreements'), // a summary turn says where the leads disagree
+    at: timestamp('at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    unique('discussion_turns_ws_id_uq').on(t.workspaceId, t.id),
+    unique('discussion_turns_once_uq').on(t.workspaceId, t.discussionId, t.speaker, t.round),
+    check('discussion_turns_round_ck', sql`${t.round} between 1 and 3`),
+    foreignKey({ name: 'discussion_turns_discussion_fk', columns: [t.workspaceId, t.discussionId], foreignColumns: [discussions.workspaceId, discussions.id] }).onDelete('cascade'),
+  ],
+);
+
+/** The decision log (S6-10). Only a person records a decision; agents read the log before proposing something already rejected. */
+export const decisions = pgTable(
+  'decisions',
+  {
+    id: id(),
+    workspaceId: workspaceId(),
+    discussionId: uuid('discussion_id'),
+    title: text('title').notNull(),
+    decision: text('decision').notNull(),
+    owner: text('owner'),
+    due: date('due'),
+    decidedBy: text('decided_by').notNull().default('founder'),
+    decidedAt: timestamp('decided_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    unique('decisions_ws_id_uq').on(t.workspaceId, t.id),
+    foreignKey({ name: 'decisions_discussion_fk', columns: [t.workspaceId, t.discussionId], foreignColumns: [discussions.workspaceId, discussions.id] }),
+  ],
+);
+
 /** A device that asked for push notifications (S5-10). Stored once per endpoint. */
 export const pushSubscriptions = pgTable(
   'push_subscriptions',
