@@ -513,7 +513,7 @@ The office is the whole app. Everything below is allowed in slice 6 because slic
   From inside the world: a list of companies, switch company, and create one from a company template (`templates/companies/`). Each company is its own workspace with its own company folder outside this repo (under `DATA_DIR`), and every request names which one it is for; the server checks that the signed-in owner may use it. The current company shows in the bar.
   *Test:* creating from a template makes a workspace, its folder and its departments; switching changes what every panel shows; nothing from one company is readable while in another (the tenancy test covers every table); an unknown or foreign company id is refused.
 
-- [ ] **S6-13e Every company runs.** SPEC 6, 14.
+- [x] **S6-13e Every company runs.** SPEC 6, 14.
   Added after S6-13a. A new company's data, panels and office work, but the things that act on a company's behalf are still wired to the one company the server was started for: the approval executors and email transport, the scheduler tick, the reaper, the daily brief and backup, the notifier and the run loop's folders. Each must act for every company in the list, with the company's own folder and workspace, and nothing may cross. The real-sending switches stay off.
   *Test:* an approval made in a second company is claimed once and executed (with the outbox transport) in that company only; the scheduler wakes an agent in a second company and runs it with that company's agent folder; the reaper fails a stale run in each company; a second company's approvals, runs and briefs never show in the first, and the tenancy test still lists every table.
 

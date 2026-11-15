@@ -4,38 +4,32 @@ import { serve } from '@hono/node-server';
 import { createNodeWebSocket } from '@hono/node-ws';
 import { Hono, type Context } from 'hono';
 import { Companies } from './companies';
+import { CompanyRuntimes, runCompanyMinute } from './company-runtime';
 import { serve as inngestServe } from 'inngest/hono';
 import { createApp } from './app';
 import { Bus } from './bus';
-import { agentNew, renderAll, renderOne } from './commands/agent-new';
+import { agentNew, renderAll } from './commands/agent-new';
 import { createAuth, resolveAuthSecret } from './auth';
 import { loadCompany } from './company/loader';
 import { syncCompany } from './company/sync';
 import { dispatchLimit, resolveAuthConfig, resolveLite, resolvePgPort } from './config';
 import { singleFlight } from './workflows/single-flight';
 import { ensureDailyBackup, type DailyState } from './backup';
-import { companyMarkdown } from './actions/policy';
-import { assembleGenerated } from './video/assemble';
 import { attachOfficeEvents } from './office/live';
 import { createNotifier, ensureVapidKeys, webPushSender } from './push';
-import { ensureDailyBrief } from './brief/build';
 import { DbOsStore } from './harness/db-os-store';
 import { stopEverything } from './harness/kill-switch';
-import { approvalHooks, createOutreach } from './outreach';
+import { createOutreach } from './outreach';
 import { cancelAllRuns, executeRun, isRunActive, reapStaleRuns, type LoopDeps } from './harness/loop';
 import { Breakers } from './harness/breakers';
 import { ReaperStatus } from './health';
-import { closeBudgetItems } from './harness/budget';
-import { liftExpiredPauses } from './harness/pauses';
-import { reapRuns } from './harness/reaper';
 import { RunTokens } from './harness/run-tokens';
 import { createCliRuntime } from './runtimes/cli';
 import { createOpenAIAgentsRuntime } from './runtimes/openai-agents';
-import { openSystem, ownerAccess } from './system';
-import { LocalDispatcher, tick, type Dispatcher, type RunRequestEvent } from './workflows/dispatch';
+import { companyName, openSystem, ownerAccess } from './system';
+import { LocalDispatcher, type Dispatcher, type RunRequestEvent } from './workflows/dispatch';
 import { createInngestGate, gateOps, LocalApprovalGate, type ApprovalGate } from './workflows/approval-gate';
 import { createWorkflows } from './workflows/inngest';
-import { runSequences } from './workflows/sequences';
 
 const sys = await openSystem();
 
@@ -52,12 +46,16 @@ if (!sys.ownsDatabase) {
 }
 const bus = new Bus();
 const tokens = new RunTokens();
+// Every company on the list (S6-13a). Each has its own executors, approval gate, run loop view and scheduled work (S6-13e).
+const companies = new Companies({ dataDir: sys.dataDir, templatesRoot: sys.templatesRoot, pool: sys.app, defaultCompany: { id: sys.workspace.id, slug: sys.workspace.slug, root: sys.companyRoot } });
+const runtimes = new CompanyRuntimes({ sys, companies, bus, env: process.env });
 // A proposal asks the approval gate to start waiting. The gate is built below, so this is bound late.
 let proposalQueued: (workspaceId: string, approvalId: string) => void = () => undefined;
 const store = new DbOsStore(
   sys.app,
   (workspaceId, taskId) => bus.publish({ kind: 'task.changed', workspaceId, taskId }),
-  sys.companyRoot,
+  // The folder of the company a run belongs to, for the blocked-claims check on its proposals.
+  (workspaceId) => runtimes.rootFor(workspaceId),
   (workspaceId, approvalId) => proposalQueued(workspaceId, approvalId),
   // A handoff moves an agent in the office (S6-13d2).
   (workspaceId) => bus.publish({ kind: 'office.changed', workspaceId }),
@@ -82,21 +80,19 @@ for (const r of await renderAll(sys)) console.log(`agent ${r.id}: ${r.runtime} f
 const reaped = await reapStaleRuns(sys.app, sys.workspace.id);
 if (reaped) console.log(`${reaped} run(s) from a previous server were marked failed`);
 
-const loop: LoopDeps = {
+const loopBase: Omit<LoopDeps, 'workspaceSlug' | 'prepare'> = {
   pool: sys.app,
   tokens,
   bus,
   runtimes: { 'claude-cli': createCliRuntime('claude-cli'), opencode: createCliRuntime('opencode'), 'openai-agents': createOpenAIAgentsRuntime({ osUrl: sys.osUrl }) },
   dataDir: sys.dataDir,
-  workspaceSlug: sys.workspace.slug,
   templatesRoot: sys.templatesRoot,
   // A run that says nothing for this long is stopped (A2). RUN_SILENCE_MINUTES changes it; 0 turns it off.
   silenceMs: Number(process.env.RUN_SILENCE_MINUTES ?? 5) * 60_000,
   // A transient model error is retried after 5 seconds, 20 seconds and a minute, then once on the agent's fallback model (S3-2).
   retry: { delaysMs: [5_000, 20_000, 60_000] },
-  prepare: (agentKey, over) => renderOne(sys, agentKey, over),
 };
-const execute = (e: RunRequestEvent) => executeRun(loop, e.workspaceId, e.agentId, e.trigger);
+const execute = async (e: RunRequestEvent) => executeRun(await runtimes.loop(loopBase, e.workspaceId), e.workspaceId, e.agentId, e.trigger);
 
 /**
  * Workflows run on Inngest when its dev server or a cloud key is configured (SPEC 11), and otherwise on
@@ -112,16 +108,39 @@ const asked = new Map<string, Date>();
 // Each minute: wake agents whose heartbeat is due (S0-13), and let the sequence runner make tasks for people whose next
 // step is due (S2-5). The runner is idempotent, so running it every minute is cheap and safe.
 const lite = resolveLite(); // LITE=1: one run at a time and no scheduled task overlapping itself (S3-10)
+// Companies that have been got ready (S6-13e): a company made while the server runs is got ready the first time it is seen.
+const started = new Set<string>([sys.workspace.id]);
 const runEveryMinute = async () => {
   const tz = process.env.COMPANY_TIMEZONE?.trim() || undefined; // schedules are read in the company's time zone; unset means this machine's
-  const woken = await tick(sys.app, sys.workspace.id, dispatcher, new Date(), asked, tz ? { tz } : {});
-  const briefTime = process.env.BRIEF_TIME?.trim() || '06:30'; // HH:MM in the company's time zone
-  const brief = await ensureDailyBrief({ pool: sys.app, workspaceId: sys.workspace.id, tz, after: briefTime });
-  if (brief) {
-    console.log(`morning brief for ${brief.day} is ready`);
-    void notifier.notify('brief', brief.day).catch((err) => console.error('push:', err));
+  const woken: string[] = [];
+  for (const rt of await runtimes.all()) {
+    try {
+      if (!started.has(rt.company.id)) {
+        started.add(rt.company.id);
+        const r = await runtimes.start(rt);
+        console.log(`company ${rt.company.name}: ${r.agents} agent folder(s) ready`);
+      }
+      woken.push(
+        ...(await runCompanyMinute(rt, {
+          dispatcher,
+          asked,
+          bus,
+          isRunActive,
+          tz,
+          briefTime: process.env.BRIEF_TIME?.trim() || '06:30', // HH:MM in the company's time zone
+          // The notifier speaks for the owner's one phone; a brief of another company is not pushed to it.
+          onBrief: (day, company) => {
+            if (company.isDefault) void notifier.notify('brief', day).catch((err) => console.error('push:', err));
+          },
+          recordReaped: (r) => reaperStatus.record(r),
+          log: (line) => console.log(line),
+        })),
+      );
+    } catch (err) {
+      console.error(`scheduled work for ${rt.company.name}:`, err);
+    }
   }
-  // The daily backup: a database dump beside the data, the last 14 kept, and a commit of the company folder (S3-9).
+  // The daily backup: a database dump beside the data (it holds every company), the last 14 kept, and a commit of the company folder (S3-9).
   const backed = await ensureDailyBackup({
     withOwner: ownerAccess(sys.dataDir, resolvePgPort()),
     pool: sys.app,
@@ -134,23 +153,6 @@ const runEveryMinute = async () => {
   });
   if (backed?.ok) console.log(`backup: wrote ${backed.file} (${backed.rows} rows)${backed.committed ? '; company folder committed' : ''}`);
   else if (backed) console.error(`backup failed: ${backed.error}`);
-  // Briefs whose assets were just generated are laid out and reviewed (S5-9).
-  const assembled = await assembleGenerated(sys.app, sys.workspace.id, await companyMarkdown(sys.companyRoot));
-  if (assembled.ready.length || assembled.failed.length) console.log(`video: ${assembled.ready.length} plan(s) ready, ${assembled.failed.length} failed review`);
-  // Runs whose process has gone quiet for good are failed and their tasks put back (S3-1). Nothing here needs a person.
-  const reaped = await reapRuns({ pool: sys.app, workspaceId: sys.workspace.id, isActive: isRunActive });
-  reaperStatus.record(reaped);
-  for (const t of reaped.requeued) void dispatcher.request({ workspaceId: sys.workspace.id, agentId: t.agentId, trigger: 'task_assigned' });
-  if (reaped.reaped.length) console.log(`reaper: failed ${reaped.reaped.length} silent run(s); ${reaped.requeued.length} task(s) put back, ${reaped.blocked.length} blocked`);
-  // A runtime whose plan limit has reset is let go, and the agents with work waiting are woken (S3-3).
-  const lifted = await liftExpiredPauses({ pool: sys.app, workspaceId: sys.workspace.id });
-  for (const agentId of lifted.agentsWithWork) void dispatcher.request({ workspaceId: sys.workspace.id, agentId, trigger: 'task_assigned' });
-  if (lifted.lifted.length) console.log(`plan limit reset: ${lifted.lifted.join(', ')} can run again`);
-  // An agent that is back under its budget (a raised budget, a new month) is let go and woken if it has work (S3-4).
-  const budgets = await closeBudgetItems({ pool: sys.app, workspaceId: sys.workspace.id });
-  for (const agentId of budgets.agentsWithWork) void dispatcher.request({ workspaceId: sys.workspace.id, agentId, trigger: 'task_assigned' });
-  const seq = await runSequences({ pool: sys.app, workspaceId: sys.workspace.id, bus });
-  if (seq.created) console.log(`sequences: made ${seq.created} step task(s)`);
   return woken;
 };
 const everyMinute = lite ? singleFlight(runEveryMinute, [] as string[]) : runEveryMinute;
@@ -174,9 +176,12 @@ if (useInngest) {
   );
 }
 
-const hooks = approvalHooks(gate);
+// The default company's parts are the ones built above; every other company's are made when first needed.
+runtimes.adopt({ company: { id: sys.workspace.id, slug: sys.workspace.slug, name: await companyName(sys.companyRoot), root: sys.companyRoot, isDefault: true }, executors, gate, transport, pool: sys.app });
+const gateOf = async (workspaceId: string) => (await runtimes.runtime(workspaceId))?.gate;
+const onGateError = (err: unknown) => console.error('approval gate:', err);
 proposalQueued = (w, id) => {
-  hooks.onApprovalRequested(w, id);
+  void gateOf(w).then((g) => g?.requested(id)).catch(onGateError);
   bus.publish({ kind: 'approval.changed', workspaceId: w, approvalId: id, status: 'pending' });
   void notifier.notify('approval_waiting', id).catch((err) => console.error('push:', err));
 };
@@ -215,18 +220,24 @@ shell.route(
     reaperStatus,
     companyRoot: sys.companyRoot,
     templatesRoot: sys.templatesRoot,
-    companies: new Companies({ dataDir: sys.dataDir, templatesRoot: sys.templatesRoot, pool: sys.app, defaultCompany: { id: sys.workspace.id, slug: sys.workspace.slug, root: sys.companyRoot } }),
+    companies,
     bus,
     dispatcher,
     upgradeWebSocket,
     hosts: [`127.0.0.1:${sys.serverPort}`, `localhost:${sys.serverPort}`, new URL(authConfig.apiOrigin).host, `${authConfig.host}:${sys.serverPort}`],
     ...(auth ? { auth } : {}),
-    onApprovalDecided: hooks.onApprovalDecided,
+    onApprovalDecided: async (d) => {
+      await (await gateOf(d.workspaceId))?.decided(d);
+    },
     onCompanyReload: async () => {
       const synced = await syncCompany(sys.app, sys.workspace.id, await loadCompany(sys.companyRoot));
       return { departments: synced.departments, agents: synced.agents, funnels: synced.funnels, goals: synced.goals };
     },
-    onReleaseHeld: hooks.onReleaseHeld,
+    onReleaseHeld: async () => {
+      let sent = 0;
+      for (const rt of await runtimes.all()) sent += (await rt.gate.release()).released;
+      return sent;
+    },
     // Turning the kill switch on stops what is running and drops what is queued (S1-5).
     onKillSwitch: async (on) => {
       if (!on) return;
@@ -247,6 +258,18 @@ shell.route(
   }
 }
 
+// The other companies are got ready too: their folders copied in, their agent folders made, their stopped runs failed, their decided approvals carried out.
+for (const rt of await runtimes.all()) {
+  if (rt.company.isDefault) continue;
+  started.add(rt.company.id);
+  try {
+    const r = await runtimes.start(rt);
+    console.log(`company ${rt.company.name}: ${r.agents} agent folder(s) ready`);
+  } catch (err) {
+    console.error(`company ${rt.company.name} could not be started:`, err);
+  }
+}
+
 const server = serve({ fetch: shell.fetch, port: sys.serverPort, hostname: authConfig.host }, (info) => {
   console.log(`conclave server listening on http://${authConfig.host}:${info.port} (workflows: ${dispatcher.name})`);
 });
@@ -260,7 +283,7 @@ async function shutdown() {
   if (stopping) return;
   stopping = true;
   if (ticker) clearInterval(ticker);
-  if (gate instanceof LocalApprovalGate) gate.stop();
+  runtimes.stop();
   const n = await cancelAllRuns();
   if (n) console.log(`cancelled ${n} run(s)`);
   // Give the cancelled runs a moment to write their final state.

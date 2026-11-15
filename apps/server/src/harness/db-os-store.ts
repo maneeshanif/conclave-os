@@ -20,12 +20,18 @@ export class DbOsStore implements OsStore {
   constructor(
     private readonly pool: pg.Pool,
     private readonly onChange: (workspaceId: string, taskId: string) => void = () => undefined,
-    /** Where COMPANY.md lives, for the blocked-claims check on proposals. */
-    private readonly companyRoot?: string,
+    /** Where COMPANY.md lives, for the blocked-claims check on proposals: one folder, or a way to find the folder of the company a run belongs to (S6-13e). */
+    private readonly companyRoot?: string | ((workspaceId: string) => string | undefined),
     private readonly onApproval: (workspaceId: string, approvalId: string) => void = () => undefined,
     /** Something moved in the office (a handoff): the office should look again (S6-13d2). */
     private readonly onOffice: (workspaceId: string) => void = () => undefined,
   ) {}
+
+  /** The text of the COMPANY.md of the company this run belongs to, or nothing if its folder is not known. */
+  private async companyText(workspaceId: string): Promise<string> {
+    const root = typeof this.companyRoot === 'function' ? this.companyRoot(workspaceId) : this.companyRoot;
+    return root ? companyMarkdown(root) : '';
+  }
 
   async autonomy(scope: RunScope): Promise<number> {
     const r = await withWorkspace(this.pool, scope.workspaceId, ({ client: c }) =>
@@ -178,7 +184,7 @@ export class DbOsStore implements OsStore {
    * and the text makes no blocked claim (CLAUDE.md rules 1, 7). It never sends.
    */
   async proposeEmail(scope: RunScope, p: ProposedEmail): Promise<{ approvalId: string; existed: boolean }> {
-    const companyMd = this.companyRoot ? await companyMarkdown(this.companyRoot) : '';
+    const companyMd = await this.companyText(scope.workspaceId);
     const claims = checkClaims(`${p.subject}\n${p.body}`, companyMd);
     if (!claims.ok) throw new ToolError(`Refused: ${claims.reasons.join('; ')}. Rewrite without it and propose again.`);
     const out = await withWorkspace(this.pool, scope.workspaceId, async ({ client: c }) => {
@@ -222,7 +228,7 @@ export class DbOsStore implements OsStore {
   }
 
   async proposeVideoBrief(scope: RunScope, b: { ideaId: string; title: string; script: string; shots: Shot[] }): Promise<{ approvalId: string; existed: boolean; credits: number }> {
-    const companyMd = this.companyRoot ? await companyMarkdown(this.companyRoot) : '';
+    const companyMd = await this.companyText(scope.workspaceId);
     const check = checkBrief(b, companyMd);
     if (!check.ok) throw new ToolError(`Refused: ${check.reasons.join('; ')}. Rewrite without it and propose again.`);
     const credits = estimateCredits(b.shots);
@@ -280,7 +286,7 @@ export class DbOsStore implements OsStore {
   async proposeDm(scope: RunScope, p: { accountId: string; leadId: string; recipient: string; text: string }): Promise<{ approvalId: string; existed: boolean }> {
     const text = p.text.trim();
     const recipient = normalizeHandle(p.recipient);
-    const companyMd = this.companyRoot ? await companyMarkdown(this.companyRoot) : '';
+    const companyMd = await this.companyText(scope.workspaceId);
     const out = await withWorkspace(this.pool, scope.workspaceId, async ({ client: c }) => {
       const acct = (await c.query<{ id: string; channel: string; handle: string; health: string }>('select id, channel, handle, health from channel_accounts where id = $1', [p.accountId])).rows[0];
       if (!acct) throw new ToolError('No such account.');
@@ -318,7 +324,7 @@ export class DbOsStore implements OsStore {
 
   async proposePost(scope: RunScope, p: { accountId: string; text: string; briefId?: string | undefined }): Promise<{ approvalId: string; existed: boolean }> {
     const text = p.text.trim();
-    const companyMd = this.companyRoot ? await companyMarkdown(this.companyRoot) : '';
+    const companyMd = await this.companyText(scope.workspaceId);
     const out = await withWorkspace(this.pool, scope.workspaceId, async ({ client: c }) => {
       const acct = (await c.query<{ id: string; channel: string; handle: string; health: string }>('select id, channel, handle, health from channel_accounts where id = $1', [p.accountId])).rows[0];
       if (!acct) throw new ToolError('No such account.');
