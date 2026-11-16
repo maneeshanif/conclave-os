@@ -1,6 +1,7 @@
 import * as Phaser from 'phaser';
 import { panelFor } from '@conclave/shared';
 import type { OfficeFacts } from '../lib/api';
+import { OBJECT_TYPES } from '@conclave/shared';
 import { FRAME, availabilityColour, directionOf, frameIndex, lookFor, placeColour, pose, roomTint, type Availability, type Facing } from './art';
 import type { WorldController } from './controller';
 import { thingAt, type Thing } from './tooltips';
@@ -31,6 +32,8 @@ export function startWorld(opts: {
   tilesUrl: string;
   peopleUrl: string;
   furnitureUrl: string;
+  /** One picture for each object type, in the order of OBJECT_TYPES. */
+  objectsUrl?: string;
   facts: OfficeFacts;
   ctl: WorldController;
   who: () => Map<string, Who>;
@@ -107,6 +110,7 @@ export function startWorld(opts: {
       this.load.image('tiles', opts.tilesUrl);
       this.load.spritesheet('people', opts.peopleUrl, { frameWidth: FRAME, frameHeight: FRAME });
       this.load.spritesheet('furniture', opts.furnitureUrl, { frameWidth: FRAME, frameHeight: FRAME });
+      if (opts.objectsUrl) this.load.spritesheet('objects', opts.objectsUrl, { frameWidth: FRAME, frameHeight: FRAME });
     }
 
     create() {
@@ -134,7 +138,12 @@ export function startWorld(opts: {
       for (const o of facts.map.objects) {
         const panel = panelFor(o.type);
         if (!panel) continue;
-        const box = this.add.rectangle(o.x * TILE + TILE / 2, o.y * TILE + TILE / 2, TILE - 6, TILE - 6, panel.ready ? 0x0f766e : 0x94a3b8).setDepth(3).setInteractive({ useHandCursor: panel.ready });
+        // Its own picture if the sheet has one; otherwise the plain square.
+        const frame = OBJECT_TYPES.indexOf(o.type as (typeof OBJECT_TYPES)[number]);
+        const box: Phaser.GameObjects.Shape | Phaser.GameObjects.Sprite =
+          opts.objectsUrl && frame >= 0
+            ? this.add.sprite(o.x * TILE + TILE / 2, o.y * TILE + TILE / 2, 'objects', frame).setDepth(3).setAlpha(panel.ready ? 1 : 0.5).setInteractive({ useHandCursor: panel.ready })
+            : this.add.rectangle(o.x * TILE + TILE / 2, o.y * TILE + TILE / 2, TILE - 6, TILE - 6, panel.ready ? 0x0f766e : 0x94a3b8).setDepth(3).setInteractive({ useHandCursor: panel.ready });
         this.add.text(o.x * TILE + TILE / 2, o.y * TILE - 2, panel.label, { fontSize: '9px', color: '#0f172a' }).setOrigin(0.5, 1).setDepth(3);
         box.on('pointerdown', (_p: unknown, _x: unknown, _y: unknown, e: Phaser.Types.Input.EventData) => {
           e.stopPropagation();
@@ -214,6 +223,9 @@ export function startWorld(opts: {
     type: Phaser.AUTO,
     parent: opts.parent,
     backgroundColor: '#f8fafc',
+    // Crisp pixels at any zoom: no smoothing between them.
+    pixelArt: true,
+    roundPixels: true,
     scale: { mode: Phaser.Scale.RESIZE },
     // Only presses on the canvas itself count; the bar and the dialogs over it are not the world.
     input: { windowEvents: false },

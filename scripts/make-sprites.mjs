@@ -133,6 +133,104 @@ function furniture() {
   return c;
 }
 
+// objects.png: one 32 by 32 picture for each object type, in the order of OBJECT_TYPES (packages/shared/src/office/objects.ts).
+// Pixel art drawn from rectangles here, so it is ours. Boards are notes on a frame, desks have things on them, and so on.
+const board = (c, ox, frame, notes) => {
+  c.rect(ox + 3, 3, 26, 21, '#6b4f33'); // frame
+  c.rect(ox + 4, 4, 24, 19, frame);
+  notes.forEach(([x, y, col], i) => c.rect(ox + 6 + x, 6 + y, 6, 5, col, 255 - (i % 2) * 20));
+  c.rect(ox + 9, 24, 14, 2, '#00000040'.slice(0, 7), 70); // its shadow on the floor
+  c.rect(ox + 8, 24, 3, 6, '#4b3a27');
+  c.rect(ox + 21, 24, 3, 6, '#4b3a27');
+};
+const deskWith = (c, ox, top, item) => {
+  c.rect(ox + 1, 12, 30, 13, top);
+  c.rect(ox + 1, 12, 30, 3, '#ffffff', 45);
+  c.rect(ox + 2, 25, 3, 5, '#4b3a27');
+  c.rect(ox + 27, 25, 3, 5, '#4b3a27');
+  item(c, ox);
+};
+const monitor = (c, ox, x, screen) => {
+  c.rect(ox + x, 2, 14, 10, '#111827');
+  c.rect(ox + x + 1, 3, 12, 7, screen);
+  c.rect(ox + x + 5, 12, 4, 2, '#111827');
+};
+function objects() {
+  const c = canvas(F * 16, F);
+  const O = (i) => i * F;
+  // 0 approvals-desk: a desk with an in-tray and a stamp.
+  deskWith(c, O(0), '#8a6b4a', (c, ox) => {
+    c.rect(ox + 5, 6, 12, 7, '#e5e7eb');
+    c.rect(ox + 5, 6, 12, 2, '#f59e0b');
+    c.rect(ox + 20, 8, 6, 5, '#dc2626');
+    c.rect(ox + 22, 5, 2, 4, '#7f1d1d');
+  });
+  // 1 whiteboard: goals ladder, three steps.
+  board(c, O(1), '#f8fafc', [[0, 12, '#86efac'], [7, 6, '#fde047'], [14, 0, '#93c5fd']]);
+  // 2 screen: a wall monitor with a green line chart.
+  c.rect(O(2) + 2, 4, 28, 18, '#111827');
+  c.rect(O(2) + 4, 6, 24, 14, '#0f172a');
+  for (const [x, y] of [[6, 16], [10, 13], [14, 15], [18, 10], [22, 11], [25, 8]]) c.rect(O(2) + x, y, 3, 3, '#4ade80');
+  c.rect(O(2) + 12, 22, 8, 3, '#374151');
+  c.rect(O(2) + 8, 25, 16, 3, '#1f2937');
+  // 3 mailbox: a post box with a flag.
+  c.rect(O(3) + 7, 6, 18, 14, '#2563eb');
+  c.rect(O(3) + 7, 6, 18, 3, '#60a5fa');
+  c.rect(O(3) + 10, 12, 12, 2, '#1e3a8a');
+  c.rect(O(3) + 24, 4, 2, 9, '#dc2626');
+  c.rect(O(3) + 14, 20, 4, 10, '#6b7280');
+  c.rect(O(3) + 10, 29, 12, 2, '#4b5563');
+  // 4 jobboard: a board of cards, greyed because the room is not built yet.
+  board(c, O(4), '#d6c8a6', [[0, 0, '#fca5a5'], [8, 3, '#a5b4fc'], [0, 8, '#fcd34d'], [9, 10, '#86efac']]);
+  // 5 boardroom-table: a long dark table with chairs.
+  c.rect(O(5) + 2, 10, 28, 12, '#5b3f2a');
+  c.rect(O(5) + 2, 10, 28, 3, '#7a5738');
+  for (const x of [4, 12, 20, 26]) c.rect(O(5) + x, 5, 5, 5, '#334155');
+  for (const x of [4, 12, 20, 26]) c.rect(O(5) + x, 23, 5, 5, '#334155');
+  c.rect(O(5) + 13, 14, 6, 4, '#e5e7eb');
+  // 6 task-board: three columns of cards.
+  board(c, O(6), '#e2e8f0', [[0, 0, '#fde047'], [0, 7, '#fde047'], [9, 3, '#93c5fd'], [17, 0, '#86efac'], [17, 8, '#86efac']]);
+  // 7 needs-you-board: red notes, urgent.
+  board(c, O(7), '#fee2e2', [[0, 0, '#ef4444'], [9, 4, '#f97316'], [3, 9, '#ef4444'], [15, 8, '#f59e0b']]);
+  // 8 brief-desk: a desk with a coffee and a paper.
+  deskWith(c, O(8), '#a8845c', (c, ox) => {
+    c.rect(ox + 5, 7, 11, 6, '#f8fafc');
+    c.rect(ox + 7, 9, 7, 1, '#94a3b8');
+    c.rect(ox + 21, 8, 5, 5, '#f8fafc');
+    c.rect(ox + 22, 6, 3, 2, '#92400e');
+  });
+  // 9 pipeline-board: a funnel of stages.
+  board(c, O(9), '#ecfeff', [[0, 0, '#67e8f9'], [3, 6, '#22d3ee'], [6, 12, '#06b6d4']]);
+  // 10 campaign-board: a megaphone-orange board.
+  board(c, O(10), '#fff7ed', [[0, 0, '#fb923c'], [9, 0, '#fdba74'], [0, 8, '#fdba74'], [9, 8, '#fb923c']]);
+  // 11 signal-radio: a radio with an aerial.
+  c.rect(O(11) + 6, 12, 20, 13, '#475569');
+  c.rect(O(11) + 6, 12, 20, 3, '#64748b');
+  c.rect(O(11) + 9, 17, 8, 6, '#0f172a');
+  c.rect(O(11) + 20, 17, 3, 3, '#fbbf24');
+  c.rect(O(11) + 22, 3, 2, 10, '#94a3b8');
+  c.rect(O(11) + 21, 2, 4, 2, '#ef4444');
+  // 12 idea-wall: a wall of coloured notes.
+  board(c, O(12), '#fef9c3', [[0, 0, '#f472b6'], [8, 2, '#a78bfa'], [16, 0, '#34d399'], [2, 9, '#60a5fa'], [11, 10, '#fbbf24']]);
+  // 13 terminal: a computer with a green prompt.
+  deskWith(c, O(13), '#475569', (c, ox) => {
+    monitor(c, ox, 9, '#052e16');
+    c.rect(ox + 12, 5, 4, 1, '#4ade80');
+    c.rect(ox + 12, 7, 7, 1, '#4ade80');
+    c.rect(ox + 8, 15, 16, 3, '#cbd5e1');
+  });
+  // 14 dept-board: the department's own task board, with a coloured top rail.
+  board(c, O(14), '#f1f5f9', [[0, 3, '#a5b4fc'], [9, 0, '#fde047'], [9, 8, '#86efac'], [17, 4, '#f9a8d4']]);
+  c.rect(O(14) + 4, 4, 24, 3, '#6366f1');
+  // 15 dept-table: a round meeting table with four stools.
+  c.rect(O(15) + 7, 9, 18, 14, '#d6b88a');
+  c.rect(O(15) + 9, 7, 14, 3, '#e7cfa6');
+  c.rect(O(15) + 3, 13, 4, 6, '#64748b');
+  c.rect(O(15) + 25, 13, 4, 6, '#64748b');
+  c.rect(O(15) + 12, 23, 8, 4, '#64748b');
+  return c;
+}
+
 function png(c) {
   const raw = Buffer.alloc((c.w * 4 + 1) * c.h);
   for (let y = 0; y < c.h; y++) {
@@ -158,4 +256,5 @@ function png(c) {
 mkdirSync(out, { recursive: true });
 writeFileSync(path.join(out, 'people.png'), png(people()));
 writeFileSync(path.join(out, 'furniture.png'), png(furniture()));
-process.stdout.write('wrote people.png and furniture.png\n');
+writeFileSync(path.join(out, 'objects.png'), png(objects()));
+process.stdout.write('wrote people.png, furniture.png and objects.png\n');

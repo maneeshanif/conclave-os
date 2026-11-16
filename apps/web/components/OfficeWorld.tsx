@@ -120,7 +120,7 @@ export function OfficeWorld({ client, onOpen, onPanel, onOpenList, onFail }: { c
         ctl.onDrawer((e) => onOpen(e.kind === 'open' ? e.id : null));
         const { startWorld } = await import('../office/scene');
         if (cancelled || !box.current) return;
-        const world = startWorld({ parent: box.current, mapUrl: `${API}/api/office/map`, tilesUrl: '/office/tiles.png', peopleUrl: '/office/people.png', furnitureUrl: '/office/furniture.png', facts, ctl, who: () => who.current, myStatus: () => mine.current, myLook: () => profileRef.current.look, myName: () => profileRef.current.name, onUseObject: onPanel, onHover: setHover });
+        const world = startWorld({ parent: box.current, mapUrl: `${API}/api/office/map`, tilesUrl: '/office/tiles.png', peopleUrl: '/office/people.png', furnitureUrl: '/office/furniture.png', objectsUrl: '/office/objects.png', facts, ctl, who: () => who.current, myStatus: () => mine.current, myLook: () => profileRef.current.look, myName: () => profileRef.current.name, onUseObject: onPanel, onHover: setHover });
         setView(ctl);
         const watch = new ResizeObserver(() => world.resize());
         watch.observe(box.current);

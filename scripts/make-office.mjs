@@ -14,7 +14,40 @@ const H = 24;
 
 // ---- The tiles: eight 32 by 32 squares in one row ----
 const FLOOR = 1, WALL = 2, CARPET = 3, WOOD = 4, LOUNGE = 5, DOOR = 6, DESK = 7, THING = 8;
-const colours = { [FLOOR]: [232, 228, 218], [WALL]: [59, 63, 74], [CARPET]: [201, 214, 232], [WOOD]: [216, 185, 138], [LOUNGE]: [207, 227, 196], [DOOR]: [242, 225, 168], [DESK]: [138, 107, 74], [THING]: [224, 160, 48] };
+const colours = { [FLOOR]: [232, 228, 218], [WALL]: [59, 63, 74], [CARPET]: [201, 214, 232], [WOOD]: [216, 185, 138], [LOUNGE]: [207, 227, 196], [DOOR]: [242, 225, 168], [DESK]: [216, 185, 138], [THING]: [232, 228, 218] };
+// A little deterministic grain, so a floor is not one flat colour. Same on every run.
+const grain = (x, y, id) => {
+  let h = (x * 374761393 + y * 668265263 + id * 2147483647) >>> 0;
+  h = Math.imul(h ^ (h >>> 13), 1274126177) >>> 0;
+  return ((h ^ (h >>> 16)) & 255) / 255;
+};
+const shade = ([r, g, b], k) => [Math.max(0, Math.min(255, Math.round(r * k))), Math.max(0, Math.min(255, Math.round(g * k))), Math.max(0, Math.min(255, Math.round(b * k)))];
+/** One pixel of one tile. Tiles are drawn so neighbours join with no seam: patterns repeat every 8 or 16 pixels, never a border. */
+const texel = (id, x, y) => {
+  const base = colours[id];
+  const n = grain(x, y, id);
+  switch (id) {
+    case WOOD:
+    case DESK: {
+      const plank = Math.floor(y / 8);
+      const seam = (x + plank * 13) % 32 === 0; // a plank end, staggered row to row
+      if (y % 8 === 7 || seam) return shade(base, 0.82);
+      return shade(base, 0.96 + n * 0.08 + (plank % 2) * 0.03);
+    }
+    case CARPET:
+      return shade(base, ((x >> 1) + (y >> 1)) % 2 === 0 ? 0.97 : 1.02 + n * 0.02);
+    case LOUNGE:
+      return shade(base, 0.97 + n * 0.06);
+    case WALL:
+      if (y < 5) return shade(base, 1.55); // the lit top edge
+      if (y > 26) return shade(base, 0.7); // the shadow it casts
+      return shade(base, (y % 8 === 7 || (x + (Math.floor(y / 8) % 2) * 8) % 16 === 0 ? 0.88 : 1) + n * 0.04);
+    case DOOR:
+      return (y >> 2) % 2 === 0 ? shade(base, 1) : shade(base, 0.95);
+    default: // FLOOR, THING
+      return shade(base, 0.985 + n * 0.03 + (((x >> 4) + (y >> 4)) % 2) * 0.012);
+  }
+};
 const png = (w, h, rgb) => {
   const raw = Buffer.alloc((w * 3 + 1) * h);
   for (let y = 0; y < h; y++) {
@@ -46,11 +79,7 @@ mkdirSync(path.join(root, 'apps/web/public/office'), { recursive: true });
 writeFileSync(
   path.join(root, 'apps/web/public/office/tiles.png'),
   png(T * 8, T, (x, y) => {
-    const id = Math.floor(x / T) + 1;
-    const [r, g, b] = colours[id];
-    const edge = x % T === 0 || y % T === 0 || x % T === T - 1 || y % T === T - 1;
-    const k = edge ? 0.88 : 1;
-    return [Math.round(r * k), Math.round(g * k), Math.round(b * k)];
+    return texel(Math.floor(x / T) + 1, x % T, y);
   }),
 );
 

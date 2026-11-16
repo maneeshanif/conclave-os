@@ -51,3 +51,25 @@ Next concrete actions (pending user OK)
 Still blocked until the user answers
 - Exact meaning of "use that images and all worlds" — I am proceeding on the study-only interpretation, but I should confirm I am not crossing the line the user intended.
 - Which image-gen "google flow mcp server" to use — confirm before any integration.
+
+---
+
+## Claude Code session, 2026-11-17 (after the weekly limit reset; the other CLI's notes above are kept as they were)
+
+What I did, in order. Every item is a commit on `dev`, so `git log` shows the same list.
+
+1. Read the notes above (`OPENPUFF-CLI.md`, this file, `JSM-HQ-WORKLOG.md`, the two reference docs) and committed them unchanged with S6-15b (244f575).
+2. Finished S6-10 (the Boardroom, 4220cf0) and S0-15 (the e2e leaves the repo alone, 35bc042), which were old open tasks, before any new look work.
+3. S6-15a (1c77aeb): the world is now the whole screen. No page margins; the bar, zoom buttons and panels float over it. The list of rooms and agents is a panel (`?panel=rooms`) opened from a new button in the bar.
+4. S6-15b (244f575): your avatar. A picker in the bar with a name box and the six looks, kept in this browser; presence carries `look` (0 to 5) so others see your choice.
+5. S6-15d (this commit): the office art. Floors with grain and no grid lines, walls with a lit edge and shadow, a drawn sheet of sixteen furniture pieces (one per object type), crisp pixel scaling. All drawn in `scripts/make-office.mjs` and `scripts/make-sprites.mjs`, so the art is ours.
+
+Tools used
+- **Playwright MCP server**: started on `http://127.0.0.1:8931/mcp` (loopback only, headless, `npx @playwright/mcp`). This Claude Code session has no connection to it, so for the browser work I used `playwright-core` (the same engine, already in the repo) in short scripts, plus the repo's own `pnpm run e2e:mobile` (8 tests, desktop and Android sizes). Screenshots from the e2e are in `e2e-output/`; reference screenshots are in `.reference/` (git-ignored).
+- **jsm-hq**: the clone in `~/.conclave-os/reference/jsm-hq` ran on `http://127.0.0.1:5173/` (its own Vite dev server) and I took a screenshot. Its 2D approach (ASCII-art rows to canvas to nearest-neighbour texture, a two-layer draw, a tiny bitmap font) is what the art above follows, in our own code and palette.
+- **WorkAdventure**: look only. Nothing from it (code, tiles, sprites, maps, icons, fonts, text) is in this repo. CLAUDE.md and WORLD-BRIEF forbid it.
+
+Not done, on purpose
+- "Use all the character images of that server": I did not take images from WorkAdventure or jsm-hq. Our six characters are drawn in `make-sprites.mjs`. If you want more looks, the way is to draw more in that script, or to generate our own with the image tool and commit them with their source noted in ART.md.
+
+Still to do in S6-15: talking to someone near you (S6-15c), then S6-11 (slice end to end, full `pnpm test`, tag `slice-6-done`).
