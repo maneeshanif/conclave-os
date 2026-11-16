@@ -564,6 +564,11 @@ The office is the whole app. Everything below is allowed in slice 6 because slic
 - [x] **S6-15d The office art, our own.** Drawn here with palettes and rectangles (the technique jsm-hq's notes describe, none of its files): floors with grain and no grid lines (planks, carpet, lounge, brick-style walls with a lit top edge and a shadow), a sheet of sixteen drawn pieces of furniture, one per object type (`objects.png`), used in the world in place of the teal squares (a not-ready one is faded), and crisp pixel scaling.
   *Test:* `node scripts/make-sprites.mjs` and `make-office.mjs` run clean and leave `company/office.tmj` unchanged; the browser check at desktop and Android sizes passes with screenshots.
 
+- [x] **S6-15e Characters from Google Flow, and the pixel look for drawers and pop-ups.** Anees, 2026-11-17: use the Google Flow tool for the characters, and make every drawer and pop-up look like the pixel-office reference. Six looks generated in Flow (art-source/flow), sliced into people.png by `scripts/import-flow-looks.mjs`; drawers, bars and dialogs share a flat, thick-bordered, hard-shadow style (`.px-*` classes in globals.css).
+  *Test:* the importer runs on all six sheets; web and shared tests pass (369); the browser run passes 8 of 8 with screenshots.
+
+- [ ] **S6-15f WorkAdventure floor, tree and table art, only with the permission on record.** Anees says WorkAdventure gave written permission by email. Paste it into `docs/PERMISSIONS.md` (who, date, exact words, which files), then copy only the files it covers, listing each in ART.md. Not started: nothing from WorkAdventure is in the repo.
+
 - [x] **S6-15c Talking to someone near you.** (Unit tests for the server, the pure rules and the bubble; the browser check with two people is in S6-11.) When another person is within a few tiles a speech bubble opens with a text box; what you send reaches the people near you and nobody else (no video, no audio); messages show over the sender for a few seconds and in a chat list; moving away closes it.
   *Test:* a message reaches only members within range and not the sender twice; none reaches someone far away or signed out; messages are rate limited and cut short; the bubble opens and closes with distance (with hysteresis).
 
