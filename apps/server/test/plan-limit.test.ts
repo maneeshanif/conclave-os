@@ -165,7 +165,8 @@ describe('a plan limit pauses the runtime, not the work (S3-3)', () => {
 
   it('can be lifted early by a person, which also closes the item; lifting twice is harmless', async () => {
     await addTask(a1);
-    await executeRun(deps(new Scripted('claude-cli', limited(new Date(Date.now() + 5 * 3_600_000)))), ws(), a1, 'manual');
+    const real = () => new Date(); // the pauses list is read against the real clock, so this test runs on it too
+    await executeRun(deps(new Scripted('claude-cli', limited(new Date(Date.now() + 5 * 3_600_000))), undefined, real), ws(), a1, 'manual');
     const list = (await (await call('GET', '/runtime-pauses')).json()) as { runtime: string }[];
     expect(list.map((p) => p.runtime)).toEqual(['claude-cli']);
     expect((await call('POST', '/runtime-pauses/claude-cli/lift', {})).status).toBe(200);

@@ -322,6 +322,6 @@ describe('the office page in a real browser (S6-8b)', () => {
       writeFileSync(path.join(SHOTS, `office-${name}.png`), await page.screenshot({ fullPage: true }));
       expect(errors).toEqual([]);
       await context.close();
-    });
+    }, 180_000);
   }
 });

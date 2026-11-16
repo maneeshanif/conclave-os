@@ -489,7 +489,7 @@ From `docs/BORROW-AUDIT.md`. Each goes into its slice's task list when that slic
   Tables \`discussions\`, \`discussion_turns\`, \`decisions\`; stand-up posts, the weekly review, open discussions and the decision log. \`open_discussion\` and \`add_turn\` as \`os\` tools; every turn must cite numbers the OS can check against its own tables, or it is refused. Decisions are recorded by a person through the API. A page for it.
   *Test:* a turn with no evidence, or a figure the tables do not show, is refused; a turn citing a real count is accepted; only a person records a decision; the decision log lists them newest first; the page renders each part and the empty state.
 
-- [ ] **S6-11 Slice 6 end to end.** SPEC 18, row 6. (Last: after S6-12 to S6-15.)
+- [x] **S6-11 Slice 6 end to end.** SPEC 18, row 6. (Last: after S6-12 to S6-15.)
   One test: from the door, the avatar walks to the Outreach room (the zone event fires and its panel opens), walks up to the outreach agent (its drawer opens with its run), walks to the approvals desk and uses it (the inbox opens), and an approval is approved there and executed; a panel opened from an object and from a deep link; a Playwright check of the real canvas at desktop and Android sizes. The full suite runs once here. Tag \`slice-6-done\`.
   *Test:* all of it in one run.
 

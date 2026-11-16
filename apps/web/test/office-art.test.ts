@@ -48,7 +48,7 @@ describe('the art we draw (S6-8c3)', () => {
   it('keeps a licence file that names every art file and where it came from', () => {
     const notes = readFileSync(path.join(dir, 'ART.md'), 'utf8');
     const files = readdirSync(dir).filter((f) => f !== 'ART.md');
-    expect(files.sort()).toEqual(['furniture.png', 'people.png', 'tiles.png']);
+    expect(files.sort()).toEqual(['furniture.png', 'objects.png', 'people.png', 'tiles.png']);
     for (const f of files) expect(notes, f).toContain(f);
     expect(notes).toMatch(/drawn here/i);
     expect(notes).toMatch(/no third-party/i);

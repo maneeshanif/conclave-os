@@ -4,8 +4,9 @@ Everything here is drawn here, by a script in this repo. There are no third-part
 
 | File | What it is | Made by |
 | --- | --- | --- |
-| `tiles.png` | The eight floor, wall, carpet and door tiles the map uses. Flat colours. | `scripts/make-office.mjs` |
+| `tiles.png` | The eight floor, wall, carpet and door tiles the map uses, with a little grain and no grid lines. | `scripts/make-office.mjs` |
 | `people.png` | You and the agents: six looks, three frames each (stand, step, step), four directions. 32 by 32 frames. | `scripts/make-sprites.mjs` |
+| `objects.png` | One piece of furniture for each kind of object in the office (boards, desks, a monitor, a mailbox, a radio, tables), in the order of `OBJECT_TYPES`. 32 by 32 pieces in one row. | `scripts/make-sprites.mjs` |
 | `furniture.png` | A desk, a chair, a plant, a sofa and a table. 32 by 32 pieces in one row. | `scripts/make-sprites.mjs` |
 
 To use other art (for example Kenney, CC0): replace a PNG with a sheet of the same layout and add a row here naming the file, its source and its licence. A test fails if a file is in this folder and not listed here.
