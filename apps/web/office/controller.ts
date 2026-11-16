@@ -14,6 +14,8 @@ export interface AgentSpot {
 export interface Other {
   id: string;
   name: string;
+  /** 0 to 5. */
+  look: number;
   x: number;
   y: number;
   availability: 'available' | 'busy' | 'away';

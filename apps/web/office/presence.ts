@@ -6,6 +6,8 @@ export type Availability = 'available' | 'busy' | 'away';
 export interface Member {
   id: string;
   name: string;
+  /** 0 to 5. */
+  look: number;
   x: number;
   y: number;
   availability: Availability;
@@ -15,7 +17,7 @@ export interface Member {
 const isMember = (v: unknown): v is Member => {
   if (!v || typeof v !== 'object') return false;
   const m = v as Record<string, unknown>;
-  return typeof m.id === 'string' && typeof m.name === 'string' && Number.isInteger(m.x) && Number.isInteger(m.y) && (m.availability === 'available' || m.availability === 'busy' || m.availability === 'away') && typeof m.handRaised === 'boolean';
+  return typeof m.id === 'string' && typeof m.name === 'string' && Number.isInteger(m.look) && (m.look as number) >= 0 && (m.look as number) <= 5 && Number.isInteger(m.x) && Number.isInteger(m.y) && (m.availability === 'available' || m.availability === 'busy' || m.availability === 'away') && typeof m.handRaised === 'boolean';
 };
 
 export function applyPresence(list: Member[], msg: { kind: string; [key: string]: unknown }): Member[] {

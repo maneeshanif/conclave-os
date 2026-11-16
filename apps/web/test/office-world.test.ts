@@ -206,7 +206,7 @@ describe('telling you which room you are in (S6-8c2)', () => {
 });
 
 describe('other people in the office (S6-9)', () => {
-  const them = (x: number, y: number, over = {}) => ({ id: 'p1', name: 'Dana', x, y, availability: 'busy' as const, handRaised: false, ...over });
+  const them = (x: number, y: number, over = {}) => ({ id: 'p1', name: 'Dana', look: 2, x, y, availability: 'busy' as const, handRaised: false, ...over });
 
   it('puts someone on their tile when first seen, and walks them when they move', () => {
     const w = new WorldController(map, { agentSpeed: 4 });

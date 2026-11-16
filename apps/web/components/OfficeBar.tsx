@@ -2,6 +2,9 @@
 
 import { useEffect, useState, type ReactNode } from 'react';
 import { ago } from '../office/ago';
+import { cleanName, type Profile } from '../office/profile';
+
+const LOOK_COUNT = 6;
 
 export type Availability = 'available' | 'busy' | 'away';
 export interface Person {
@@ -13,6 +16,12 @@ export interface Person {
   since?: string | null;
   task?: string | null;
   forYou?: number;
+}
+
+/** One look from the sprite sheet (the figure facing you, standing still), drawn with CSS so there is no second picture to load. */
+function LookFace({ look, size }: { look: number; size: number }) {
+  const scale = size / 32;
+  return <span aria-hidden className="inline-block" style={{ width: size, height: size, backgroundImage: 'url(/office/people.png)', backgroundRepeat: 'no-repeat', backgroundSize: `${576 * scale}px auto`, backgroundPosition: `-${look * 3 * 32 * scale}px 0`, imageRendering: 'pixelated' }} />;
 }
 
 const STATE_LABEL: Record<string, string> = { working: 'Working', waiting: 'Waiting for you', blocked: 'Blocked', discussion: 'In a discussion', handoff: 'Handing over', idle: 'Idle' };
@@ -30,9 +39,11 @@ const item = 'flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text
  * The bar over the world: who is here, a tools menu and your status. Floating groups on a desktop; on a phone the same controls
  * sit along the bottom edge. It only reports what you chose; the page decides what to do (SPEC 12).
  */
-export function OfficeBar(props: { people: Person[]; /** What just happened, newest first (S6-14b3). Left out, the panel has no feed. */ activity?: { id: string; at: string; text: string }[] | undefined; availability: Availability; onAvailability: (a: Availability) => void; onOpenAgent: (id: string) => void; onOverview: () => void; /** More controls next to the people button (the company switcher). */ extra?: ReactNode; /** Called from the Tools menu: the page shows the add-a-department dialog. */ onAddDepartment?: () => void; /** Called from the Tools menu: the page shows the add-an-agent dialog. */ onAddAgent?: () => void; /** Opens the list of rooms and agents, for keyboard and screen-reader use and for a phone (S6-15a). */ onOpenList?: () => void }) {
+export function OfficeBar(props: { people: Person[]; /** What just happened, newest first (S6-14b3). Left out, the panel has no feed. */ activity?: { id: string; at: string; text: string }[] | undefined; availability: Availability; onAvailability: (a: Availability) => void; onOpenAgent: (id: string) => void; onOverview: () => void; /** More controls next to the people button (the company switcher). */ extra?: ReactNode; /** Called from the Tools menu: the page shows the add-a-department dialog. */ onAddDepartment?: () => void; /** Called from the Tools menu: the page shows the add-an-agent dialog. */ onAddAgent?: () => void; /** Opens the list of rooms and agents, for keyboard and screen-reader use and for a phone (S6-15a). */ onOpenList?: () => void; /** Your name and look, and what to do when you change them (S6-15b). Left out, there is no picker. */ profile?: Profile; onProfile?: (p: Profile) => void }) {
   const [menu, setMenu] = useState<'tools' | 'status' | null>(null);
   const [panel, setPanel] = useState(false);
+  const [picker, setPicker] = useState(false);
+  const [typed, setTyped] = useState<string | null>(null);
   const current = STATUS.find((s) => s.id === props.availability)!;
 
   return (
@@ -45,6 +56,41 @@ export function OfficeBar(props: { people: Person[]; /** What just happened, new
               <span>{props.people.length}</span>
             </button>
           </div>
+          {props.profile && props.onProfile ? (
+            <div className={`relative flex ${pill}`}>
+              <button type="button" aria-label="Your look" title="Your look" aria-expanded={picker} onClick={() => setPicker(!picker)} className="flex items-center px-2 py-1.5">
+                <LookFace look={props.profile.look} size={28} />
+              </button>
+              {picker ? (
+                <div role="dialog" aria-label="Your look" className="absolute left-0 top-full z-20 mt-2 w-64 rounded-xl bg-neutral-900/95 p-3 text-sm text-white shadow-lg">
+                  <label className="block text-xs text-neutral-300">
+                    Name
+                    <input
+                      value={typed ?? props.profile.name}
+                      maxLength={30}
+                      onChange={(e) => setTyped(e.target.value)}
+                      onBlur={() => {
+                        if (typed !== null) props.onProfile?.({ name: cleanName(typed), look: props.profile!.look });
+                        setTyped(null);
+                      }}
+                      className="mt-1 w-full rounded-md border border-white/20 bg-white/10 px-2 py-1.5 text-sm text-white"
+                    />
+                  </label>
+                  <fieldset className="mt-3">
+                    <legend className="text-xs text-neutral-300">Look</legend>
+                    <div className="mt-1 grid grid-cols-6 gap-1">
+                      {Array.from({ length: LOOK_COUNT }, (_, i) => (
+                        <label key={i} className={`flex cursor-pointer items-center justify-center rounded-md p-1 ${props.profile!.look === i ? 'bg-white/25 ring-2 ring-white' : 'hover:bg-white/10'}`}>
+                          <input type="radio" name="look" aria-label={`Look ${i + 1}`} checked={props.profile!.look === i} onChange={() => props.onProfile?.({ name: props.profile!.name, look: i })} className="sr-only" />
+                          <LookFace look={i} size={32} />
+                        </label>
+                      ))}
+                    </div>
+                  </fieldset>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
           {props.extra}
           {props.onOpenList ? (
             <div className={`flex ${pill}`}>

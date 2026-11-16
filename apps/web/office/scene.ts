@@ -35,6 +35,9 @@ export function startWorld(opts: {
   ctl: WorldController;
   who: () => Map<string, Who>;
   myStatus: () => Availability;
+  /** Your look (0 to 5) and name, read each frame so the picker takes effect at once. */
+  myLook?: () => number;
+  myName?: () => string;
   /** Called with the panel an object opens. */
   onUseObject: (panel: string, ctx?: { dept?: string }) => void;
   /** What is under the pointer, with where it is on the screen (null when nothing, or the pointer left the canvas). */
@@ -55,12 +58,18 @@ export function startWorld(opts: {
 
     constructor(
       scene: Phaser.Scene,
-      private readonly look: number,
+      private look: number,
     ) {
       this.sprite = scene.add.sprite(0, -2, 'people', frameIndex(look, 'down', 0));
       this.dot = scene.add.circle(0, 0, 4, 0x94a3b8).setStrokeStyle(1, 0xffffff);
       this.text = scene.add.text(0, 0, '', { fontSize: '10px', color: '#ffffff', backgroundColor: 'rgba(15,23,42,0.75)', padding: { x: 4, y: 1 } }).setOrigin(0, 0.5);
       this.box = scene.add.container(0, 0, [this.sprite, this.dot, this.text]).setDepth(5);
+    }
+
+    setLook(look: number): void {
+      if (look === this.look) return;
+      this.look = look;
+      this.sprite.setFrame(frameIndex(look, this.facing, 0));
     }
 
     label(name: string, colour: string): void {
@@ -136,7 +145,7 @@ export function startWorld(opts: {
           }
         });
       }
-      this.me = new Figure(this, lookFor(null));
+      this.me = new Figure(this, opts.myLook?.() ?? lookFor(null));
       this.me.box.setDepth(6);
       this.cameras.main.setBounds(0, 0, facts.map.width * TILE, facts.map.height * TILE);
       this.cameras.main.startFollow(this.me.box, true, 0.15, 0.15);
@@ -165,7 +174,8 @@ export function startWorld(opts: {
       const p = ctl.me.position;
       const status = opts.myStatus();
       this.me?.moveTo(p.x, p.y);
-      this.me?.label('You', availabilityColour(status));
+      this.me?.setLook(opts.myLook?.() ?? 0);
+      this.me?.label(opts.myName?.() ?? 'You', availabilityColour(status));
       const who = opts.who();
       const live = new Set<string>();
       for (const a of ctl.agents()) {
@@ -184,9 +194,10 @@ export function startWorld(opts: {
         live.add(id);
         let f = this.figures.get(id);
         if (!f) {
-          f = new Figure(this, lookFor(o.id));
+          f = new Figure(this, o.look);
           this.figures.set(id, f);
         }
+        f.setLook(o.look);
         f.moveTo(o.position.x, o.position.y);
         f.label(o.handRaised ? `${o.name} ✋` : o.name, availabilityColour(o.availability));
       }

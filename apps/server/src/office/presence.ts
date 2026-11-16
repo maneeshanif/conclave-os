@@ -9,11 +9,14 @@ export type Availability = 'available' | 'busy' | 'away';
 export interface PresenceMember {
   id: string;
   name: string;
+  /** Which of the six looks, 0 to 5. */
+  look: number;
   x: number;
   y: number;
   availability: Availability;
   handRaised: boolean;
 }
+export const LOOKS = 6;
 export type PresenceMessage = { kind: 'presence'; member: PresenceMember } | { kind: 'presence.all'; members: PresenceMember[] } | { kind: 'presence.leave'; id: string };
 
 const MAX_TILE = 500;
@@ -25,7 +28,10 @@ const Move = z.object({
   availability: z.enum(['available', 'busy', 'away']),
   handRaised: z.boolean(),
   name: z.string().optional(),
+  // Not checked here: a bad look keeps the last good one instead of dropping the whole move.
+  look: z.unknown().optional(),
 });
+const goodLook = (v: unknown): v is number => typeof v === 'number' && Number.isInteger(v) && v >= 0 && v < LOOKS;
 
 const cleanName = (raw: string | undefined, was: string): string => {
   if (raw === undefined) return was;
@@ -86,7 +92,7 @@ export class PresenceHub {
     const t = this.now();
     if (conn.last !== null && t - conn.last < this.minIntervalMs) return; // too soon: the next one will say where they are
     conn.last = t;
-    conn.member = { id: conn.id, name: cleanName(m.data.name, conn.member?.name ?? 'Guest'), x: m.data.x, y: m.data.y, availability: m.data.availability, handRaised: m.data.handRaised };
+    conn.member = { id: conn.id, name: cleanName(m.data.name, conn.member?.name ?? 'Guest'), look: goodLook(m.data.look) ? m.data.look : (conn.member?.look ?? 0), x: m.data.x, y: m.data.y, availability: m.data.availability, handRaised: m.data.handRaised };
     this.tell({ kind: 'presence', member: { ...conn.member } }, conn);
   }
 

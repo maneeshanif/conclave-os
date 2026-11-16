@@ -1,70 +1,90 @@
-# The world: what a WorkAdventure-style office looks like and does
+# WorkAdventure — own-words reference
 
-Written 2026-11-14 for the WORLD-BRIEF look-first pass. **Notes in my own words from looking at the public demo as a guest.** Nothing here is copied: no code, tiles, sprites, maps, icons, fonts, sounds or text from that product is in this repo. The screenshots are in `.reference/` (git-ignored, never committed). Our art is Kenney (CC0) or drawn here; our map property names are our own.
+Date: 2026-11-15
+Source: `/c/Users/HP/.conclave-os/reference/workadventure` (shallow clone, `maps/starter` inspected).
+License (binding): `play/LICENSE.txt` = GNU AGPL v3 **with the Commons Clause**, plus a separate
+commercial Enterprise edition. README also advertises a hosted SaaS.
 
-How I looked: a clean browser profile, the public demo from the project's own README, entry as a guest (a name only, no account, no password). I did not chat, react, or talk to anyone. Headless software rendering would not draw the map, so the pass used a visible browser window with the real GPU. 1440x900 and 390x844 (phone, touch).
+Hard rule (never break): WorkAdventure is AGPL v3 + Commons Clause → for Conclave this is
+**read-only look**. Do NOT copy sprites, skins, tilesets, maps, map assets, audio, video, logos,
+or any code into Conclave. Notes + screenshots only, written in our own words, saved in
+`.reference/` (git-ignored) and `docs/`. Our own art must be Kenney CC0 or drawn here (SPEC 12).
 
-## The way in (guest)
+## What is in the repo (inventory — for "do not touch" awareness)
 
-1. **Name.** One field, "enter your name", one Continue button, and a line about terms. The blurred world shows behind it, so you see where you are going.
-2. **Avatar.** A card with a large preview of the character and a small refresh button, a "pick one at random" button, a grid of ready-made characters, and two buttons: build your own, and Continue.
-3. **Camera and microphone.** A page with a card each for microphone (with a live level bar), camera (with a live preview) and sound output, each with an "edit" button and a green tick on the active device, and one Save button. Skippable in spirit: nothing is forced.
-4. **Loading.** The product's name over a thin progress bar on the blurred world.
-5. **A welcome card** over the dimmed world: a title, one paragraph, and two buttons, "Let's go!" for a short tour and "Skip tutorial".
+- **Bundled map assets** (in-repo, AGPL+Commons): `maps/assets/tileset1.png`, `tileset1-repositioning.png`,
+  `tileset5_export.png`, `tileset6_export.png`, `Special_Zones.png`; `maps/assets/skins/*.png`
+  (skin-blue/green/yellow — these are avatar skins); `maps/assets/audio/campfire.ogg`.
+- **Starter world def** under `maps/starter/`: `map.json` (the Tiled/map descriptor), `bots.json`,
+  `chatzone.json`, `script.js`. This is the "world" data a WA server serves.
+- **Static front assets** under `play/public/static/`: logos, avatars (`yoda-avatar.png`,
+  `default-companion.png`), bubbles (`say-bubble.png`, `think-bubble.png`), toolbar icons, GIFs,
+  MP4s (screen share etc.), MP3. These are WorkAdventure's own brand/UI art — do not reuse.
+- Docs images under `docs/map-building/images`, `docs/user/images`, `docs/developer/map-scripting/images`
+  — screenshots/illustrations, not ours.
 
-## The world
+## What a WorkAdventure office world looks like (own words, from README + repo shape)
 
-- **Zoomed in.** The map is large and you see a small part of it at roughly twice our scale. The camera follows your avatar and eases into position.
-- **You start on a welcome mat**, a floor panel with the word on it. It is also a silent zone: the mat itself shows muted-microphone and muted-camera icons and the words "silent zone", and a red notice pill appears under the top bar saying nobody can talk to you here and that your microphone and camera are off.
-- **A hint pill** in the middle of the screen: "Want to talk? Just move with the arrow keys and come meet us!" It goes away once you move.
-- **Name tag** over each avatar: a small dark rounded label with a coloured status dot (red in a silent zone, green when online) and the name.
-- **Rooms and areas are painted on the floor** with big faint words ("MEETING ROOM", "OFFICE"), tinted patches, furniture, plants, signs, arcade cabinets. Some floor areas are zones (the welcome mat is the silent one).
-- **Moving.** Arrow keys walk smoothly in a held direction (not one tile per press). A click walks you to that spot along a path. The avatar has a walking animation in four directions.
-- **Bottom right, a small column:** zoom in, zoom out, and "explore the room" (an overview of the whole map).
+- Virtual office / virtual spaces as **customizable collaborative virtual worlds** ("metaverse").
+- You have an **avatar** (the `skins/*.png` + `default-companion.png` line = per-user avatar art;
+  default companions exist). The repo ships example avatar skins, which is exactly the kind of asset
+  Conclave must NOT copy.
+- **Proximity-based interaction**: video chat is triggered when you approach someone (README states
+  this; docs include proximity-bubble, meetings, screen-sharing, picture-in-picture, phone-chat,
+  say-think bubbles, raise-hand). So the "feel" is: walk around, get close, talk/video.
+- **World = a map** (Tiled-style map descriptor `map.json` + tilesets + special zones), served by a
+  WA map/maps/storage backend. Worlds are configurable; the `maps/starter` set is an example world.
+- **Zones / objects**: `Special_Zones.png`, `chatzone.json`, `bots.json`, `script.js` suggest zoning
+  (click spaces, meeting zones, teleport, scripted objects) on top of the tile map.
+- **UI surface** (from README + docs): top bar, user list, availability status, global messages,
+  notifications, phone chat, meetings (Jitsi/BigBlueButton-style), raise-hand, screen sharing, PiP.
+- **Demo / hosted**: README points to a live demo and to a hosted SaaS. Public demo is the right place
+  to do a look pass if we want screenshots — via Playwright, guest only.
 
-## The top bar (desktop)
+## Look-pass plan (our own words + screenshots only)
 
-Floating rounded groups on a dark translucent background, not a full-width bar:
+1. Use the WA public demo (guest, no login) via Playwright. Save screenshots into `.reference/`
+   (git-ignored), not into the repo as assets.
+2. Write own-words notes into `docs/WORLD-REFERENCE.md`: top bar, panels, walking, avatar, name tags,
+   zones, phone/meeting layout, proximity chat feel.
+3. Build a small gap table against Conclave's current `/office`.
+4. Do NOT download, copy, or reference any WA sprite/skin/tileset/map/video/audio in Conclave code,
+   prompts, or generated images.
 
-- **Far left:** a chat button and a people button (the people button shows who is online).
-- **Centre:** an emoji reaction button, an apps/actions grid button, microphone and camera toggles (each with a small red dot when off).
-- **Right:** a Share button and a bright Login button; a Tools drop-down (explore the room, room list); and a profile drop-down showing a small face, the name and the status dot.
-- **Profile menu** (opens down from the name): connect an outside account (two buttons), "change your status" (a list with a tick on the current one), profile (edit your name, customise your avatar, add a companion), settings (edit camera and microphone, report an issue, all settings, help and tips).
-- **Left panel** (opens from the chat or people button, pushes the map over): a header with the number of users online, a "sign in to read the chat" card when you are a guest, and a list below it starting with the proximity chat (the chat with whoever is near you). A close button sits at the top of the map side.
+## "Use that images and all worlds" — interpretation + why it can't mean reuse
 
-## The phone layout (390 wide)
+User instruction (from this session): after jsm-hq "code first", clone WorkAdventure and "use that
+images and all worlds", then make more prompts from those images, then use a "google flow mcp server"
+to create our own ones.
 
-- The map fills the screen. The top bar is gone.
-- **A bottom row of big rounded buttons:** chat on the left; microphone and camera with a small expander above them; Login; and a menu (three lines) on the right.
-- Zoom controls stay at the right edge, above the bottom row. Notices (the silent zone one) sit as a pill just above the bottom row.
-- Touch: tapping the map walks you there.
+Interpretation I am operating under (confirm with user):
+- "Use" = **study** the worlds and the look, then generate **our own** images/prompts. Not "import WA
+  sprites into Conclave". That would breach AGPL + Commons Clause and Conclave's own SPEC 12 / CLAUDE.md
+  rules.
+- The "all worlds" part = learn how WA defines a world (map.json + tilesets + zones + script), so we
+  can design our own world representation. We do not import WA's `maps/starter/map.json` or its tilesets.
+- "More prompt from that images" = write image-generation prompts inspired by the look (our own wording,
+  our own subject), not prompts that reproduce WA's sprites.
+- "google flow mcp server" = an image-generation flow (likely DALL-E / GPT-image / an image-gen MCP
+  server the user already has). I will not wire it until the user confirms which one and that any
+  generated art is ours to use (CC0 / owned). Especially: do not prompt-for + reuse WA sprite likeness.
 
-## Not seen (and why)
+## What we can legitimately learn (techniques/concepts, in our own code)
 
-- **The bubble when you are near someone**, a meeting zone's behaviour, and emoji reactions: nobody was near, and the brief says not to talk to or react at people. Written from the brief and the docs instead: when two avatars are close, a bubble opens with their video; walking away closes it; a meeting zone can be locked, limited and so on (the same ideas as S6-5).
-- **The chat itself**: it needs a sign-in, so it was not opened beyond the sign-in card.
+- Proximity-driven interaction model (get close → talk/video) — as a UX idea for Conclave's office,
+  implemented in our own code on top of our own map/state.
+- World-as-map-with-zones concept — our own Tiled/own-map representation; Conclave already uses Tiled
+  (SPEC 12), so align to that rather than importing WA's map format.
+- Zones/objects/scripted interactions as a concept — our own object model (Conclave already has an
+  object/place model in `packages/shared/src/office/`); extend that, don't import WA's.
+- The general "open-plan office with desks + common areas + a plan board" spatial layout idea — ours
+  to design.
 
-## Our `/office` today (S6-8a, S6-8b) against that
+## What NOT to do
 
-| Part | Them | Us now | Gap |
-| --- | --- | --- | --- |
-| Camera | Zoomed in, follows you, zoom buttons, overview button | Whole map shrunk to fit, follows you | Zoom in by default; zoom and overview controls |
-| Walking | Smooth held-key walking, click to walk, animated four-way sprite | One tile per key press, click to walk, a red dot | Held-key repeat; sprite with walking frames |
-| Avatar | Character sprites, picker at entry | Red dot; blue dots with initials for agents | Our own or Kenney CC0 sprites; a simple picker |
-| Name tags | Label with status dot over each avatar | Initials in the dot only | Name label with availability dot |
-| Floor | Dense, furnished, painted room names | Flat tiles, a text label | Room names on the floor, tinted zones, furniture from CC0 tiles |
-| Zone notices | A pill when you enter a zone (silent) | None | A pill from the room's own properties (S6-5) |
-| First visit | Welcome card with a tour and skip | None | One short card, skippable, shown once |
-| Top bar | Floating groups: people, tools, status, profile | A plain nav and a heading | Floating bar: people, tools (explore, rooms), availability menu |
-| Side panel | People list and chat, pushes the map | Plain list below the map; the agent drawer in the list | A left panel with who is here, and the agent drawer in it |
-| Phone | Bottom row of big buttons, zoom at the edge | Small canvas, then the list | Bottom row (people, status, menu), zoom at the edge |
-| Meeting | Proximity bubble with video | Not in scope (no video) | Proximity bubble as a text drawer only (already S6-6) |
-
-Things we deliberately do not copy: video and microphone (out of scope), outside account links, the sign-in wall, the Login button.
-
-## Plan to close the gaps (added to docs/BUILD.md as S6-8c)
-
-1. **S6-8c1, camera and walking.** Default zoom around 2x, zoom in and out, overview; held-key walking at a steady speed; click to walk. Logic in the controller with tests; the scene only draws.
-2. **S6-8c2, the bar and panels.** Floating bar, people panel, tools menu, availability menu (from S6-5), the left panel with the agent drawer, zone notice pills, the one-time welcome card, the phone bottom row. Tested as components, and checked in the browser at both sizes.
-3. **S6-8c3, art.** Kenney CC0 tiles and character sprites, or our own drawn ones; name labels with availability dots; room names painted on the floor; tinted zones. Licence file kept with the art.
-4. Then S6-9 (a second person in the same office), S6-10 and S6-11 as planned.
+- Do not copy `maps/assets/skins/*.png`, `default-companion.png`, `yoda-avatar*.png`, tilesets,
+  `Special_Zones.png`, `play/public/static/images/*`, audio, video, or any `maps/starter/*` file into
+  Conclave — not as assets, not as base layers for prompts, not inside generated images that reproduce
+  them.
+- Do not import WA's map format or server code.
+- Do not treat the WA look as a spec to match pixel-for-pixel; treat it as inspiration for our own look.

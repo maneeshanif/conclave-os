@@ -97,6 +97,29 @@ describe('the list of rooms and agents from the bar (S6-15a)', () => {
   });
 });
 
+describe('your name and look from the bar (S6-15b)', () => {
+  const base = { people: [], availability: 'available' as const, onAvailability: () => undefined, onOpenAgent: () => undefined, onOverview: () => undefined };
+
+  it('opens a picker with a name box and the six looks, and reports a change', () => {
+    const change = vi.fn();
+    render(<OfficeBar {...base} profile={{ name: 'Guest', look: 0 }} onProfile={change} />);
+    fireEvent.click(screen.getByRole('button', { name: /your look/i }));
+    const dialog = screen.getByRole('dialog', { name: /your look/i });
+    expect(within(dialog).getAllByRole('radio')).toHaveLength(6);
+    expect((within(dialog).getAllByRole('radio')[0] as HTMLInputElement).checked).toBe(true);
+    fireEvent.click(within(dialog).getAllByRole('radio')[3]!);
+    expect(change).toHaveBeenLastCalledWith({ name: 'Guest', look: 3 });
+    fireEvent.change(within(dialog).getByLabelText(/name/i), { target: { value: '  Sam ' } });
+    fireEvent.blur(within(dialog).getByLabelText(/name/i));
+    expect(change).toHaveBeenLastCalledWith({ name: 'Sam', look: 0 });
+  });
+
+  it('is left out when the page has no profile to change', () => {
+    render(<OfficeBar {...base} />);
+    expect(screen.queryByRole('button', { name: /your look/i })).toBeNull();
+  });
+});
+
 describe('the team cards in the People panel (S6-14b2)', () => {
   const cards = [
     { id: 'a1', name: 'Scout', where: 'At its desk', state: 'working', since: new Date(Date.now() - 3 * 60_000).toISOString(), task: 'Write the follow-up', forYou: 0 },

@@ -7,6 +7,7 @@ import { WorldController } from '../office/controller';
 import { handoffRefreshMs } from '../office/places-refresh';
 import { describeThing, placeTooltip, type Thing } from '../office/tooltips';
 import { applyPresence, type Member } from '../office/presence';
+import { readProfile, writeProfile, type Profile } from '../office/profile';
 import type { Who } from '../office/scene';
 import { AddAgent } from './AddAgent';
 import { AddDepartment } from './AddDepartment';
@@ -31,6 +32,27 @@ export function OfficeWorld({ client, onOpen, onPanel, onOpenList, onFail }: { c
   const [people, setPeople] = useState<Person[]>([]);
   const who = useRef(new Map<string, Who>());
   const mine = useRef<Availability>('available');
+  const [profile, setProfile] = useState<Profile>({ name: 'Guest', look: 0 });
+  const profileRef = useRef(profile);
+  useEffect(() => {
+    try {
+      const p = readProfile(localStorage);
+      profileRef.current = p;
+      setProfile(p);
+    } catch {
+      // Not readable: the defaults stand.
+    }
+  }, []);
+  const changeProfile = (p: Profile) => {
+    profileRef.current = p;
+    setProfile(p);
+    try {
+      writeProfile(localStorage, p);
+    } catch {
+      // Not saved: it resets next visit.
+    }
+    tellRef.current?.();
+  };
   const tellRef = useRef<(() => void) | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [activity, setActivity] = useState<{ id: string; at: string; text: string }[] | undefined>(undefined);
@@ -98,7 +120,7 @@ export function OfficeWorld({ client, onOpen, onPanel, onOpenList, onFail }: { c
         ctl.onDrawer((e) => onOpen(e.kind === 'open' ? e.id : null));
         const { startWorld } = await import('../office/scene');
         if (cancelled || !box.current) return;
-        const world = startWorld({ parent: box.current, mapUrl: `${API}/api/office/map`, tilesUrl: '/office/tiles.png', peopleUrl: '/office/people.png', furnitureUrl: '/office/furniture.png', facts, ctl, who: () => who.current, myStatus: () => mine.current, onUseObject: onPanel, onHover: setHover });
+        const world = startWorld({ parent: box.current, mapUrl: `${API}/api/office/map`, tilesUrl: '/office/tiles.png', peopleUrl: '/office/people.png', furnitureUrl: '/office/furniture.png', facts, ctl, who: () => who.current, myStatus: () => mine.current, myLook: () => profileRef.current.look, myName: () => profileRef.current.name, onUseObject: onPanel, onHover: setHover });
         setView(ctl);
         const watch = new ResizeObserver(() => world.resize());
         watch.observe(box.current);
@@ -114,7 +136,7 @@ export function OfficeWorld({ client, onOpen, onPanel, onOpenList, onFail }: { c
           others = applyPresence(others, m);
           ctl.setOthers(others);
         });
-        const tell = () => link?.send({ type: 'presence', x: ctl.me.tile.x, y: ctl.me.tile.y, availability: mine.current, handRaised: false });
+        const tell = () => link?.send({ type: 'presence', x: ctl.me.tile.x, y: ctl.me.tile.y, availability: mine.current, handRaised: false, name: profileRef.current.name, look: profileRef.current.look });
         ctl.onMove(tell);
         tellRef.current = tell;
         const hello = setTimeout(tell, 500);
@@ -156,6 +178,8 @@ export function OfficeWorld({ client, onOpen, onPanel, onOpenList, onFail }: { c
           extra={<CompanySwitcher onSwitch={() => window.location.reload()} />}
           onAddDepartment={() => setAdding(true)}
           onAddAgent={() => setAddingAgent(true)}
+          profile={profile}
+          onProfile={changeProfile}
           onOpenList={onOpenList}
           onOverview={() => {
             view.overview(!whole);

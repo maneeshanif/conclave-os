@@ -59,10 +59,10 @@ describe('presence over the socket (S6-9)', () => {
     const owner = await open('u1', 'a');
     const cofounder = await open('u2', 'b');
     owner.say(move(5, 6));
-    expect(presence(cofounder.s)).toEqual([{ kind: 'presence', member: { id: 'a', name: 'Guest', x: 5, y: 6, availability: 'available', handRaised: false } }]);
+    expect(presence(cofounder.s)).toEqual([{ kind: 'presence', member: { id: 'a', name: 'Guest', look: 0, x: 5, y: 6, availability: 'available', handRaised: false } }]);
     expect(presence(owner.s)).toEqual([]);
     cofounder.say(move(9, 9, { availability: 'busy', handRaised: true, name: 'Dana' }));
-    expect(presence(owner.s)).toEqual([{ kind: 'presence', member: { id: 'b', name: 'Dana', x: 9, y: 9, availability: 'busy', handRaised: true } }]);
+    expect(presence(owner.s)).toEqual([{ kind: 'presence', member: { id: 'b', name: 'Dana', look: 0, x: 9, y: 9, availability: 'busy', handRaised: true } }]);
   });
 
   it('tells someone who arrives later who is already here', async () => {
@@ -70,7 +70,7 @@ describe('presence over the socket (S6-9)', () => {
     const a = await open('u1', 'a');
     a.say(move(1, 1));
     const b = await open('u2', 'b');
-    expect(presence(b.s)).toEqual([{ kind: 'presence.all', members: [{ id: 'a', name: 'Guest', x: 1, y: 1, availability: 'available', handRaised: false }] }]);
+    expect(presence(b.s)).toEqual([{ kind: 'presence.all', members: [{ id: 'a', name: 'Guest', look: 0, x: 1, y: 1, availability: 'available', handRaised: false }] }]);
   });
 
   it('shows the same person on two devices as two avatars', async () => {
@@ -95,6 +95,23 @@ describe('presence over the socket (S6-9)', () => {
     const { open, hub } = setup();
     await open('u1', 'a');
     expect(hub.members()).toEqual([]);
+  });
+
+  it('carries a look from 0 to 5 and keeps the last good one when a bad one comes (S6-15b)', async () => {
+    let t = 0;
+    const { open } = setup({ hub: new PresenceHub({ minIntervalMs: 0, now: () => (t += 1) }) });
+    const a = await open('u1', 'a');
+    const b = await open('u2', 'b');
+    a.say(move(1, 1));
+    expect((presence(b.s).at(-1) as { member: { look: number } }).member.look).toBe(0); // none sent: the first look
+    a.say(move(1, 1, { look: 4 }));
+    expect((presence(b.s).at(-1) as { member: { look: number } }).member.look).toBe(4);
+    for (const bad of [6, -1, 2.5, 'x', null]) {
+      a.say(move(2, 2, { look: bad }));
+      expect((presence(b.s).at(-1) as { member: { look: number } }).member.look).toBe(4);
+    }
+    a.say(move(3, 3)); // nothing sent: the last look stays
+    expect((presence(b.s).at(-1) as { member: { look: number } }).member.look).toBe(4);
   });
 
   it('is rate limited: a burst of moves gets through once, and the next is allowed after the pause', async () => {
