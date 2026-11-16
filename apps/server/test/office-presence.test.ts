@@ -53,6 +53,88 @@ function setup(opts: { signedIn?: boolean; hub?: PresenceHub } = {}) {
 const move = (x: number, y: number, extra: Record<string, unknown> = {}) => ({ type: 'presence', x, y, availability: 'available', handRaised: false, ...extra });
 const presence = (s: Socket) => s.sent.filter((m) => String(m.kind).startsWith('presence'));
 
+const chats = (s: Socket) => s.sent.filter((m) => m.kind === 'chat') as { kind: 'chat'; id: string; name: string; text: string; at: number }[];
+
+describe('talking to someone near you (S6-15c)', () => {
+  const ticking = () => {
+    let t = 0;
+    return new PresenceHub({ minIntervalMs: 0, chatIntervalMs: 500, now: () => (t += 1000) });
+  };
+
+  it('reaches only the people within range, not the sender and not anyone far away', async () => {
+    const { open } = setup({ hub: ticking() });
+    const a = await open('u1', 'a');
+    const near = await open('u2', 'b');
+    const far = await open('u3', 'c');
+    a.say(move(10, 10, { name: 'Ana' }));
+    near.say(move(12, 11));
+    far.say(move(30, 20));
+    a.say({ type: 'chat', text: 'hello there' });
+    expect(chats(near.s)).toMatchObject([{ id: 'a', name: 'Ana', text: 'hello there' }]);
+    expect(chats(far.s)).toEqual([]);
+    expect(chats(a.s)).toEqual([]);
+  });
+
+  it('ignores a message from someone who has not said where they are, and signed-out sockets never hear anything', async () => {
+    const { open } = setup({ hub: ticking() });
+    const a = await open('u1', 'a');
+    const b = await open('u2', 'b');
+    b.say(move(1, 1));
+    a.say({ type: 'chat', text: 'where am i' }); // a never sent a position
+    expect(chats(b.s)).toEqual([]);
+    // With no login in front of the socket, nothing is shared at all.
+    const off = setup({ signedIn: false });
+    await off.app.request('/events');
+    const h = off.handlers[0]!;
+    const sock = socket();
+    h.onOpen?.({}, sock);
+    h.onMessage?.({ data: JSON.stringify(move(1, 1)) }, sock);
+    h.onMessage?.({ data: JSON.stringify({ type: 'chat', text: 'hi' }) }, sock);
+    expect(off.hub.members()).toEqual([]);
+    expect(chats(sock)).toEqual([]);
+  });
+
+  it('cuts a long message short, strips control characters and markup brackets, and drops an empty one', async () => {
+    const { open } = setup({ hub: ticking() });
+    const a = await open('u1', 'a');
+    const b = await open('u2', 'b');
+    a.say(move(5, 5));
+    b.say(move(5, 6));
+    a.say({ type: 'chat', text: 'x'.repeat(900) });
+    a.say({ type: 'chat', text: '<b>hi</b>\u0007  there' });
+    a.say({ type: 'chat', text: '    ' });
+    a.say({ type: 'chat', text: 42 });
+    const got = chats(b.s);
+    expect(got).toHaveLength(2);
+    expect(got[0]!.text).toHaveLength(300);
+    expect(got[1]!.text).toBe('bhi/b there');
+  });
+
+  it('is rate limited per person, and the next message is allowed after the pause', async () => {
+    let t = 1000;
+    const { open } = setup({ hub: new PresenceHub({ minIntervalMs: 0, chatIntervalMs: 500, now: () => t }) });
+    const a = await open('u1', 'a');
+    const b = await open('u2', 'b');
+    a.say(move(5, 5));
+    b.say(move(5, 6));
+    for (let i = 0; i < 10; i++) a.say({ type: 'chat', text: `m${i}` });
+    expect(chats(b.s)).toHaveLength(1);
+    t += 600;
+    a.say({ type: 'chat', text: 'later' });
+    expect(chats(b.s).map((c) => c.text)).toEqual(['m0', 'later']);
+  });
+
+  it('forwards the text and who it is from, and nothing else a client adds', async () => {
+    const { open } = setup({ hub: ticking() });
+    const a = await open('u1', 'a');
+    const b = await open('u2', 'b');
+    a.say(move(5, 5));
+    b.say(move(5, 6));
+    a.say({ type: 'chat', text: 'hi', secret: 'tok', to: 'everyone' });
+    expect(JSON.stringify(chats(b.s))).not.toMatch(/tok|everyone/);
+  });
+});
+
 describe('presence over the socket (S6-9)', () => {
   it('lets two signed-in people see each other move, and not see themselves', async () => {
     const { open } = setup();

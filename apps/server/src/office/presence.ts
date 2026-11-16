@@ -17,7 +17,18 @@ export interface PresenceMember {
   handRaised: boolean;
 }
 export const LOOKS = 6;
-export type PresenceMessage = { kind: 'presence'; member: PresenceMember } | { kind: 'presence.all'; members: PresenceMember[] } | { kind: 'presence.leave'; id: string };
+export interface ChatMessage {
+  kind: 'chat';
+  id: string;
+  name: string;
+  text: string;
+  at: number;
+}
+export type PresenceMessage = { kind: 'presence'; member: PresenceMember } | { kind: 'presence.all'; members: PresenceMember[] } | { kind: 'presence.leave'; id: string } | ChatMessage;
+
+/** Text reaches only the people this many tiles from the sender (S6-15c). No audio, no video. */
+export const CHAT_RANGE = 5;
+const MAX_CHAT = 300;
 
 const MAX_TILE = 500;
 // Zod drops any key it does not list, so nothing else a client adds can be forwarded.
@@ -33,6 +44,11 @@ const Move = z.object({
 });
 const goodLook = (v: unknown): v is number => typeof v === 'number' && Number.isInteger(v) && v >= 0 && v < LOOKS;
 
+const Chat = z.object({ type: z.literal('chat'), text: z.string() });
+const cleanText = (raw: string): string =>
+  // eslint-disable-next-line no-control-regex
+  raw.replace(/[\u0000-\u001f<>]/g, '').replace(/\s+/g, ' ').trim().slice(0, MAX_CHAT);
+
 const cleanName = (raw: string | undefined, was: string): string => {
   if (raw === undefined) return was;
   // eslint-disable-next-line no-control-regex
@@ -45,15 +61,18 @@ interface Connection {
   send: (m: PresenceMessage) => void;
   member: PresenceMember | null;
   last: number | null;
+  lastChat: number | null;
 }
 
 export class PresenceHub {
   private readonly conns = new Set<Connection>();
   private readonly minIntervalMs: number;
+  private readonly chatIntervalMs: number;
   private readonly now: () => number;
 
-  constructor(opts: { minIntervalMs?: number; now?: () => number } = {}) {
+  constructor(opts: { minIntervalMs?: number; chatIntervalMs?: number; now?: () => number } = {}) {
     this.minIntervalMs = opts.minIntervalMs ?? 100;
+    this.chatIntervalMs = opts.chatIntervalMs ?? 500;
     this.now = opts.now ?? Date.now;
   }
 
@@ -67,7 +86,7 @@ export class PresenceHub {
     const taken = new Set([...this.conns].map((c) => c.id));
     let id = sessionId;
     for (let n = 2; taken.has(id); n++) id = `${sessionId}~${n}`;
-    const conn: Connection = { id, send, member: null, last: null };
+    const conn: Connection = { id, send, member: null, last: null, lastChat: null };
     const here = this.members();
     this.conns.add(conn);
     if (here.length) send({ kind: 'presence.all', members: here });
@@ -87,6 +106,8 @@ export class PresenceHub {
     } catch {
       return;
     }
+    const chat = Chat.safeParse(parsed);
+    if (chat.success) return this.say(conn, chat.data.text);
     const m = Move.safeParse(parsed);
     if (!m.success) return;
     const t = this.now();
@@ -94,6 +115,22 @@ export class PresenceHub {
     conn.last = t;
     conn.member = { id: conn.id, name: cleanName(m.data.name, conn.member?.name ?? 'Guest'), look: goodLook(m.data.look) ? m.data.look : (conn.member?.look ?? 0), x: m.data.x, y: m.data.y, availability: m.data.availability, handRaised: m.data.handRaised };
     this.tell({ kind: 'presence', member: { ...conn.member } }, conn);
+  }
+
+  /** A line of text from someone who has said where they are: only people within range hear it, and never the sender. */
+  private say(conn: Connection, raw: string): void {
+    const from = conn.member;
+    if (!from) return;
+    const text = cleanText(raw);
+    if (!text) return;
+    const t = this.now();
+    if (conn.lastChat !== null && t - conn.lastChat < this.chatIntervalMs) return;
+    conn.lastChat = t;
+    const msg: ChatMessage = { kind: 'chat', id: from.id, name: from.name, text, at: t };
+    for (const c of this.conns) {
+      if (c === conn || !c.member) continue;
+      if (Math.hypot(c.member.x - from.x, c.member.y - from.y) <= CHAT_RANGE) c.send(msg);
+    }
   }
 
   private tell(m: PresenceMessage, except: Connection): void {

@@ -73,3 +73,5 @@ Not done, on purpose
 - "Use all the character images of that server": I did not take images from WorkAdventure or jsm-hq. Our six characters are drawn in `make-sprites.mjs`. If you want more looks, the way is to draw more in that script, or to generate our own with the image tool and commit them with their source noted in ART.md.
 
 Still to do in S6-15: talking to someone near you (S6-15c), then S6-11 (slice end to end, full `pnpm test`, tag `slice-6-done`).
+
+6. S6-15c (talking to someone near you): text-only chat to people within 5 tiles over the existing presence socket (server limits: 300 characters, one line per half second, nothing stored), and a bubble in the world that opens within 4 tiles and closes past 5. Tests: `office-presence.test.ts`, `office-chat.test.ts`, `chat-bubble.test.tsx`.

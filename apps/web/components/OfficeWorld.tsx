@@ -7,6 +7,8 @@ import { WorldController } from '../office/controller';
 import { handoffRefreshMs } from '../office/places-refresh';
 import { describeThing, placeTooltip, type Thing } from '../office/tooltips';
 import { applyPresence, type Member } from '../office/presence';
+import { addChat, nearbyPeople, type ChatLine } from '../office/chat';
+import { ChatBubble } from './ChatBubble';
 import { readProfile, writeProfile, type Profile } from '../office/profile';
 import type { Who } from '../office/scene';
 import { AddAgent } from './AddAgent';
@@ -32,6 +34,9 @@ export function OfficeWorld({ client, onOpen, onPanel, onOpenList, onFail }: { c
   const [people, setPeople] = useState<Person[]>([]);
   const who = useRef(new Map<string, Who>());
   const mine = useRef<Availability>('available');
+  const [near, setNear] = useState<{ id: string; name: string }[]>([]);
+  const [lines, setLines] = useState<ChatLine[]>([]);
+  const sendChat = useRef<(text: string) => void>(() => undefined);
   const [profile, setProfile] = useState<Profile>({ name: 'Guest', look: 0 });
   const profileRef = useRef(profile);
   useEffect(() => {
@@ -132,10 +137,24 @@ export function OfficeWorld({ client, onOpen, onPanel, onOpenList, onFail }: { c
         });
         // Presence: tell the others where you are, and draw the ones who are here. Only a signed-in session is sent anything.
         let others: Member[] = [];
+        const watchNear = () => {
+          const people = ctl.others();
+          setNear((was) => {
+            const ids = nearbyPeople(ctl.me.position, people, was.map((n) => n.id));
+            return ids.length === was.length && ids.every((id, i) => id === was[i]!.id) ? was : ids.map((id) => ({ id, name: people.find((p) => p.id === id)?.name ?? 'Guest' }));
+          });
+        };
         const link = client.presence?.((m) => {
           others = applyPresence(others, m);
           ctl.setOthers(others);
+          setLines((cur) => addChat(cur, m));
+          watchNear();
         });
+        const nearTimer = setInterval(watchNear, 300);
+        sendChat.current = (text) => {
+          link?.send({ type: 'chat', text });
+          setLines((cur) => addChat(cur, { kind: 'chat', id: 'me', name: profileRef.current.name, text, at: Date.now() }, true));
+        };
         const tell = () => link?.send({ type: 'presence', x: ctl.me.tile.x, y: ctl.me.tile.y, availability: mine.current, handRaised: false, name: profileRef.current.name, look: profileRef.current.look });
         ctl.onMove(tell);
         tellRef.current = tell;
@@ -145,6 +164,7 @@ export function OfficeWorld({ client, onOpen, onPanel, onOpenList, onFail }: { c
           document.removeEventListener('visibilitychange', onVis);
           unlive();
           clearTimeout(hello);
+          clearInterval(nearTimer);
           if (again) clearTimeout(again);
           tellRef.current = null;
           link?.stop();
@@ -199,6 +219,7 @@ export function OfficeWorld({ client, onOpen, onPanel, onOpenList, onFail }: { c
       ) : null}
       {adding ? <AddDepartment add={api.addDepartment} onDone={() => window.location.reload()} onCancel={() => setAdding(false)} /> : null}
       {hover && factsRef.current ? <Tooltip hover={hover} facts={factsRef.current} who={who.current} hereIn={inRoom.current} status={mine.current} box={box.current} /> : null}
+      <ChatBubble near={near} lines={lines} onSend={(t) => sendChat.current(t)} />
       <WelcomeCard />
       {view ? (
         <div className="absolute bottom-16 right-3 flex flex-col gap-1.5 sm:bottom-3">
