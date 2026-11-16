@@ -15,6 +15,12 @@ Newest first. One entry per decision: what, why, and what it replaced.
 - **One test file, `slice3-e2e.test.ts`, runs the three "Done when" checks** on the real run loop, reaper, pause table and eval gate, with a scripted model: (1) a run killed halfway (its process lost, heartbeat stopped) is failed by the reaper, its task goes back to todo still holding the session id, and the next run starts from that session and finishes; (2) a plan limit pauses the runtime for every agent on it while an agent on the other runtime keeps working, the queued tasks wait, the pause lifts only at the reset time and wakes exactly the agents with work, who then finish; (3) the unchanged skill scores at the baseline, and a change that makes the 20 sample drafts long and hyped fails the gate with all 20 leads named.
 - **Slice 3 is tagged `slice-3-done`.** Not done and recorded rather than hidden: the eval set is 20 made-up leads and its baseline is the reference drafter's (real leads and a real-agent drafter are in NEEDS-YOU); breakers cover the os tools only until connectors are live; the lite-mode canvas switch waits for slice 6.
 
+## 2026-11-17 (S6-15f: all world art from Google Flow)
+
+- Anees asked for everything WorkAdventure-like to be made with Google Flow instead. So the tiles, the sixteen object pictures, and the furniture and tree are generated sheets (our prompts, Nano Banana 2) sliced by two importers. **The WorkAdventure permission question is now moot:** nothing is copied from it, the CLAUDE.md rule stands, and `docs/PERMISSIONS.md` stays only as a template if that ever changes.
+- Run order to rebuild the art: `node scripts/make-sprites.mjs`, `node scripts/make-office.mjs`, then `import-flow-looks.mjs`, `import-flow-objects.mjs`, `import-flow-tiles.mjs`. `make-office.mjs` leaves `company/office.tmj` unchanged.
+- The Flow images are shrunk to 32 pixels, so fine detail is lost; larger sprites (more than one tile) would need map and scene changes and are not part of this task. Check Google Flow's terms for commercial use before shipping to customers.
+
 ## 2026-11-17 (S6-15e: Flow characters, pixel look for pop-ups; S6-15f gated)
 
 - **Characters from Google Flow.** Six sheets generated on Anees's Flow account (Nano Banana 2) from our own prompts; `scripts/import-flow-looks.mjs` slices them (background removed, one shared scale, nearest neighbour, right-facing row mirrored) into `people.png`. Sources and the licence note are in `art-source/flow/README.md`. No reference sprite was used. `sharp` is a root dev dependency for the importer.

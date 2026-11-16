@@ -129,7 +129,7 @@ export function startWorld(opts: {
         this.add.text((r.x + r.w / 2) * TILE, (r.y + r.h / 2) * TILE, r.name.toUpperCase(), { fontSize: '20px', color: '#1e293b', fontStyle: 'bold' }).setOrigin(0.5).setAlpha(0.22).setDepth(2);
         // A plant in the top right corner of a room, where nothing else is.
         const corner = { x: r.x + r.w - 1, y: r.y };
-        if (r.kind !== 'hall' && open(corner.x, corner.y) && !taken.has(`${corner.x},${corner.y}`)) this.add.sprite(corner.x * TILE + TILE / 2, corner.y * TILE + TILE / 2, 'furniture', 2).setDepth(3);
+        if (r.kind !== 'hall' && open(corner.x, corner.y) && !taken.has(`${corner.x},${corner.y}`)) this.add.sprite(corner.x * TILE + TILE / 2, corner.y * TILE + TILE / 2, 'furniture', r.kind === 'lounge' && this.textures.get('furniture').frameTotal > 6 ? 5 : 2).setDepth(3);
       }
       for (const d of facts.map.desks) {
         if (open(d.x, d.y - 1) && !taken.has(`${d.x},${d.y - 1}`)) this.add.sprite(d.x * TILE + TILE / 2, (d.y - 1) * TILE + TILE / 2, 'furniture', 0).setDepth(3);

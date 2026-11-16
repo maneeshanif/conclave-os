@@ -39,10 +39,10 @@ describe('the art we draw (S6-8c3)', () => {
     for (let r = 0; r < 4; r++) for (let c = 0; c < 18; c++) expect(cellHasArt(img, c * 32, r * 32), `row ${r} col ${c}`).toBe(true);
   });
 
-  it('has a furniture strip of five pieces, each drawn', () => {
+  it('has a furniture strip of six pieces (desk, chair, plant, sofa, table, tree), each drawn', () => {
     const img = decode('furniture.png');
-    expect([img.w, img.h]).toEqual([32 * 5, 32]);
-    for (let c = 0; c < 5; c++) expect(cellHasArt(img, c * 32, 0), `piece ${c}`).toBe(true);
+    expect([img.w, img.h]).toEqual([32 * 6, 32]);
+    for (let c = 0; c < 6; c++) expect(cellHasArt(img, c * 32, 0), `piece ${c}`).toBe(true);
   });
 
   it('keeps a licence file that names every art file and where it came from', () => {
