@@ -10,7 +10,7 @@ export interface CompanyClient {
 }
 const real: CompanyClient = { list: api.companies, create: api.createCompany };
 
-const pill = 'rounded-xl bg-neutral-900/85 text-white shadow backdrop-blur';
+const pill = 'px-pill px-font';
 const item = 'flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm hover:bg-white/10';
 
 /**
@@ -96,7 +96,7 @@ export function CompanySwitcher({ client = real, onSwitch }: { client?: CompanyC
         </div>
       ) : null}
       {form ? (
-        <div role="dialog" aria-label="New company" className="absolute left-0 top-full z-40 mt-2 w-72 space-y-3 rounded-xl bg-neutral-900 p-4 text-white shadow-xl">
+        <div role="dialog" aria-label="New company" className="px-pop px-font absolute left-0 top-full z-40 mt-2 w-72 space-y-3 p-4">
           <h3 className="text-sm font-semibold">New company</h3>
           <label className="block text-xs text-neutral-300">
             Name
@@ -117,7 +117,7 @@ export function CompanySwitcher({ client = real, onSwitch }: { client?: CompanyC
             <button type="button" className="px-3 py-1.5 text-sm text-neutral-300" onClick={() => setForm(false)}>
               Cancel
             </button>
-            <button type="button" disabled={!name.trim() || busy} onClick={() => void create()} className="rounded-lg bg-indigo-500 px-3 py-1.5 text-sm font-medium disabled:opacity-50">
+            <button type="button" disabled={!name.trim() || busy} onClick={() => void create()} className="px-btn px-3 py-1.5 text-sm">
               Create
             </button>
           </div>

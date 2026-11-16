@@ -22,7 +22,7 @@ export function ChatBubble({ near, lines, onSend }: { near: { id: string; name: 
     setText('');
   };
   return (
-    <section role="region" aria-label="Chat" className="pointer-events-auto absolute bottom-16 left-1/2 z-10 w-[min(22rem,calc(100%-1rem))] -translate-x-1/2 rounded-xl bg-neutral-900/90 p-3 text-sm text-white shadow-lg backdrop-blur sm:bottom-4">
+    <section role="region" aria-label="Chat" className="px-pop px-font pointer-events-auto absolute bottom-16 left-1/2 z-10 w-[min(22rem,calc(100%-1rem))] -translate-x-1/2 p-3 text-sm sm:bottom-4">
       <p className="mb-2 text-xs text-neutral-300">Talking with {near.map((n) => n.name).join(', ')}</p>
       <div role="log" aria-live="polite" className="mb-2 max-h-32 space-y-1 overflow-auto">
         {lines.slice(-20).map((l, i) => (
@@ -43,7 +43,7 @@ export function ChatBubble({ near, lines, onSend }: { near: { id: string; name: 
           className="min-w-0 flex-1 rounded-md border border-white/20 bg-white/10 px-2 py-1.5 text-white placeholder:text-neutral-400"
           placeholder="Say something"
         />
-        <button type="submit" className="rounded-md bg-white/20 px-3 py-1.5 hover:bg-white/30">
+        <button type="submit" className="px-btn px-3 py-1.5">
           Send
         </button>
       </form>

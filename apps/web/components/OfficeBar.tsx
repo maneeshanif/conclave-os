@@ -32,7 +32,7 @@ const STATUS: { id: Availability; label: string; dot: string }[] = [
   { id: 'busy', label: 'Busy', dot: 'bg-red-500' },
   { id: 'away', label: 'Away', dot: 'bg-amber-400' },
 ];
-const pill = 'rounded-xl bg-neutral-900/85 text-white shadow backdrop-blur';
+const pill = 'px-pill px-font';
 const item = 'flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm hover:bg-white/10';
 
 /**
@@ -62,7 +62,7 @@ export function OfficeBar(props: { people: Person[]; /** What just happened, new
                 <LookFace look={props.profile.look} size={28} />
               </button>
               {picker ? (
-                <div role="dialog" aria-label="Your look" className="absolute left-0 top-full z-20 mt-2 w-64 rounded-xl bg-neutral-900/95 p-3 text-sm text-white shadow-lg">
+                <div role="dialog" aria-label="Your look" className="px-pop px-font absolute left-0 top-full z-20 mt-2 w-64 p-3 text-sm">
                   <label className="block text-xs text-neutral-300">
                     Name
                     <input
@@ -268,7 +268,7 @@ export function WelcomeCard() {
   };
   return (
     <div role="dialog" aria-label="Welcome to the office" className="absolute inset-0 z-30 flex items-center justify-center bg-neutral-900/60 p-4">
-      <div className="max-w-sm space-y-3 rounded-2xl bg-neutral-900 p-5 text-center text-white shadow-xl">
+      <div className="px-pop px-font max-w-sm space-y-3 p-5 text-center">
         <h2 className="text-lg font-semibold">Welcome to the office</h2>
         {tour ? (
           <>
@@ -278,7 +278,7 @@ export function WelcomeCard() {
               <li>Click an object (the approvals desk, the whiteboard) to open its page.</li>
               <li>The buttons at the edge zoom in and out.</li>
             </ul>
-            <button type="button" onClick={close} className="rounded-lg bg-indigo-500 px-4 py-2 text-sm font-medium">
+            <button type="button" onClick={close} className="px-btn px-4 py-2 text-sm">
               Got it
             </button>
           </>
@@ -286,7 +286,7 @@ export function WelcomeCard() {
           <>
             <p className="text-sm text-neutral-300">Your agents work here. See who is busy, who is waiting for you, and walk up to talk to one.</p>
             <div className="flex justify-center gap-3">
-              <button type="button" onClick={() => setTour(true)} className="rounded-lg bg-indigo-500 px-4 py-2 text-sm font-medium">
+              <button type="button" onClick={() => setTour(true)} className="px-btn px-4 py-2 text-sm">
                 Let&apos;s go!
               </button>
               <button type="button" onClick={close} className="px-4 py-2 text-sm text-neutral-300">

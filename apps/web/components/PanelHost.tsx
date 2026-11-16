@@ -65,7 +65,7 @@ export function PanelHost({ state, onClose, render }: { state: PanelState | null
       aria-label={PANEL_LABELS[state.id]}
       tabIndex={-1}
       style={{ '--panel-w': `${shown}px` } as React.CSSProperties}
-      className="fixed inset-0 z-40 flex flex-col overflow-hidden bg-white shadow-2xl outline-none sm:left-auto sm:w-[var(--panel-w)] sm:border-l sm:border-neutral-200"
+      className="px-drawer px-font fixed inset-0 z-40 flex flex-col overflow-hidden outline-none sm:left-auto sm:w-[var(--panel-w)]"
     >
       <div
         role="separator"
@@ -79,8 +79,8 @@ export function PanelHost({ state, onClose, render }: { state: PanelState | null
         onPointerCancel={up}
         onDoubleClick={reset}
       />
-      <header className="flex items-center justify-between gap-2 border-b border-neutral-200 px-4 py-2">
-        <h2 className="text-base font-semibold">{PANEL_LABELS[state.id]}</h2>
+      <header className="px-drawer-head flex items-center justify-between gap-2 px-4 py-2">
+        <h2 className="text-base font-bold uppercase tracking-wide">{PANEL_LABELS[state.id]}</h2>
         <div className="flex gap-2">
           <Button type="button" variant="outline" className="hidden h-8 px-2 text-xs sm:inline-flex" onClick={() => (wide ? reset() : setWide(true))}>
             {wide ? 'Restore size' : 'Maximize'}

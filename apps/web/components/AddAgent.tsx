@@ -64,7 +64,7 @@ export function AddAgent({
 
   const field = 'mt-1 w-full rounded-md bg-neutral-800 px-2 py-1.5 text-sm text-white';
   return (
-    <div role="dialog" aria-label="Add an agent" className="absolute inset-x-3 top-14 z-40 mx-auto max-w-sm space-y-3 rounded-xl bg-neutral-900 p-4 text-white shadow-xl">
+    <div role="dialog" aria-label="Add an agent" className="px-pop px-font absolute inset-x-3 top-14 z-40 mx-auto max-w-sm space-y-3 p-4">
       <h3 className="text-sm font-semibold">Add an agent</h3>
       {sent ? (
         <>
@@ -73,7 +73,7 @@ export function AddAgent({
             <button type="button" className="px-3 py-1.5 text-sm text-neutral-300" onClick={onCancel}>
               Close
             </button>
-            <button type="button" className="rounded-lg bg-indigo-500 px-3 py-1.5 text-sm font-medium" onClick={onOpenApprovals}>
+            <button type="button" className="px-btn px-3 py-1.5 text-sm" onClick={onOpenApprovals}>
               Open approvals
             </button>
           </div>
@@ -110,7 +110,7 @@ export function AddAgent({
             <button type="button" className="px-3 py-1.5 text-sm text-neutral-300" onClick={onCancel}>
               Cancel
             </button>
-            <button type="button" disabled={busy || !department || !template} onClick={() => void propose()} className="rounded-lg bg-indigo-500 px-3 py-1.5 text-sm font-medium disabled:opacity-50">
+            <button type="button" disabled={busy || !department || !template} onClick={() => void propose()} className="px-btn px-3 py-1.5 text-sm">
               Propose
             </button>
           </div>
