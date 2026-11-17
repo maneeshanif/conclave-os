@@ -35,6 +35,8 @@ export interface OsStore {
   getBrief(scope: RunScope): Promise<BriefView | null>;
   /** Sets the agent's paragraph on today's brief, building the brief first if needed (autonomy 1). */
   addBriefNote(scope: RunScope, text: string): Promise<{ day: string }>;
+  /** Queues a pull request for approval (autonomy 2). The server runs the project's tests in the task's worktree first. Never pushes. */
+  proposePr(scope: RunScope, p: { title: string; summary: string }): Promise<{ approvalId: string; existed: boolean }>;
   /** Queues an email for approval. Never sends. Returns the approval id and whether it already existed. */
   proposeEmail(scope: RunScope, p: ProposedEmail): Promise<{ approvalId: string; existed: boolean }>;
   /** Opens a Boardroom discussion (autonomy 1). Returns its id. */
@@ -459,6 +461,18 @@ export const osTools = {
       return `Added to the brief for ${r.day}.`;
     },
   },
+  propose_pr: {
+    minAutonomy: 2,
+    description:
+      "Propose your committed work as a pull request for the founder to approve. The server runs the project's tests in your worktree itself and refuses if they fail, if there is no test command, or if anything is uncommitted. It does NOT push or merge. Call it once when your work is committed and the tests pass.",
+    input: z.object({ title: z.string().min(1).max(200), summary: z.string().min(1).max(3000) }).strict(),
+    async run(store: OsStore, scope: RunScope, args: { title: string; summary: string }) {
+      const r = await store.proposePr(scope, args);
+      return r.existed
+        ? `Already queued as ${r.approvalId}. Do not propose it again.`
+        : `Queued for approval as ${r.approvalId}. Nothing has been pushed. Do not retry; finish your task.`;
+    },
+  },
   propose_email: {
     minAutonomy: 2,
     description:
@@ -498,6 +512,9 @@ export class MemoryOsStore implements OsStore {
   }
   async getLead(): Promise<LeadView | null> {
     return null;
+  }
+  async proposePr(): Promise<{ approvalId: string; existed: boolean }> {
+    throw new ToolError('Proposals need the database store.');
   }
   async proposeEmail(): Promise<{ approvalId: string; existed: boolean }> {
     throw new ToolError('Proposals need the database store.');

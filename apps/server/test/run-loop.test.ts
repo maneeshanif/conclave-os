@@ -56,6 +56,9 @@ class LateStore implements OsStore {
   getLead(s: RunScope, id: string) {
     return this.inner.getLead(s, id);
   }
+  proposePr(s: RunScope, p: { title: string; summary: string }) {
+    return this.inner.proposePr(s, p);
+  }
   proposeEmail(s: RunScope, p: ProposedEmail) {
     return this.inner.proposeEmail(s, p);
   }

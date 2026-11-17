@@ -1190,3 +1190,27 @@ export const codeProjects = pgTable(
   },
   (t) => [unique('code_projects_ws_id_uq').on(t.workspaceId, t.id), unique('code_projects_ws_key_uq').on(t.workspaceId, t.key), unique('code_projects_ws_path_uq').on(t.workspaceId, t.path)],
 );
+
+/** A coding task's git worktree (S7-5): where it works, on which branch, cut from which. One per task; closed when the task is done. */
+export const codeWorktrees = pgTable(
+  'code_worktrees',
+  {
+    id: id(),
+    workspaceId: workspaceId(),
+    taskId: uuid('task_id').notNull(),
+    projectId: uuid('project_id').notNull(),
+    path: text('path').notNull(),
+    branch: text('branch').notNull(),
+    baseBranch: text('base_branch').notNull(),
+    status: text('status').notNull().default('open'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    closedAt: timestamp('closed_at', { withTimezone: true }),
+  },
+  (t) => [
+    unique('code_worktrees_ws_id_uq').on(t.workspaceId, t.id),
+    unique('code_worktrees_ws_task_uq').on(t.workspaceId, t.taskId),
+    foreignKey({ name: 'code_worktrees_task_fk', columns: [t.workspaceId, t.taskId], foreignColumns: [tasks.workspaceId, tasks.id] }),
+    foreignKey({ name: 'code_worktrees_project_fk', columns: [t.workspaceId, t.projectId], foreignColumns: [codeProjects.workspaceId, codeProjects.id] }),
+    check('code_worktrees_status_ck', sql`${t.status} in ('open','closed')`),
+  ],
+);

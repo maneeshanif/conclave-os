@@ -8,6 +8,7 @@ import { ingestLead } from '../leads/ingest';
 import { checkHook } from '../hooks';
 import { checkBrief, estimateCredits, type Shot } from '../video/briefs';
 import { normalizeUrl } from '../signals';
+import { branchFacts, PrError, runTests } from '../projects/pr';
 import { labelUntrusted } from './trust';
 import { checkEvidence } from '../boardroom/evidence';
 import { checkDm, dmEligible, dmSuppressed, isDmChannel, normalizeHandle } from '../dms';
@@ -223,6 +224,52 @@ export class DbOsStore implements OsStore {
         [scope.workspaceId, p.leadId, p.step, l.email, p.subject, p.body, ins.rows[0].id, p.campaignId ?? null, campaign?.channel_account_id ?? null],
       );
       return { approvalId: ins.rows[0].id, existed: false };
+    });
+    if (!out.existed) this.onApproval(scope.workspaceId, out.approvalId);
+    return out;
+  }
+
+  /**
+   * The pull-request proposal (S7-5, SPEC 6). The server finds the task's worktree, refuses uncommitted work and an empty branch, and runs the
+   * project's test command itself with a clean environment. A proposal the tests do not back is refused; nothing is pushed.
+   */
+  async proposePr(scope: RunScope, p: { title: string; summary: string }): Promise<{ approvalId: string; existed: boolean }> {
+    const companyMd = await this.companyText(scope.workspaceId);
+    const claims = checkClaims(`${p.title}
+${p.summary}`, companyMd);
+    if (!claims.ok) throw new ToolError(`Refused: ${claims.reasons.join('; ')}. Rewrite without it and propose again.`);
+    if (!scope.taskId) throw new ToolError('A pull request belongs to a task.');
+    const wt = await withWorkspace(this.pool, scope.workspaceId, async ({ client: c }) =>
+      (
+        await c.query<{ path: string; branch: string; base_branch: string; key: string; test_cmd: string | null }>(
+          "select w.path, w.branch, w.base_branch, p.key, p.test_cmd from code_worktrees w join code_projects p on p.id = w.project_id and p.workspace_id = w.workspace_id where w.task_id = $1 and w.status = 'open'",
+          [scope.taskId],
+        )
+      ).rows[0],
+    );
+    if (!wt) throw new ToolError('This task has no worktree, so there is nothing to propose.');
+    if (!wt.test_cmd) throw new ToolError(`The project "${wt.key}" has no test command, so a change to it cannot be proposed. Block the task and say so.`);
+    let facts;
+    try {
+      facts = await branchFacts(wt.path, wt.base_branch);
+    } catch (err) {
+      if (err instanceof PrError) throw new ToolError(err.message);
+      throw err;
+    }
+    const dedupe = `pr:${scope.taskId}:${facts.head}`;
+    const found = await withWorkspace(this.pool, scope.workspaceId, async ({ client: c }) => (await c.query<{ id: string }>("select id from approvals where kind = 'pr.open' and dedupe_key = $1", [dedupe])).rows[0]);
+    if (found) return { approvalId: found.id, existed: true };
+    const tests = await runTests(wt.path, wt.test_cmd);
+    if (!tests.ok) throw new ToolError(`The tests failed${tests.timedOut ? ' (they timed out)' : ''}, so nothing was proposed. Fix them and propose again.
+${tests.output}`);
+    const payload = { taskId: scope.taskId, projectKey: wt.key, branch: wt.branch, base: wt.base_branch, title: p.title, summary: p.summary, head: facts.head, commits: facts.commits, diffStat: facts.diffStat, tests: { command: wt.test_cmd, ok: true, output: tests.output } };
+    const out = await withWorkspace(this.pool, scope.workspaceId, async ({ client: c }) => {
+      const ins = await c.query<{ id: string }>(
+        "insert into approvals (workspace_id, kind, dedupe_key, agent_id, run_id, task_id, payload) values ($1, 'pr.open', $2, $3, $4, $5, $6) on conflict (workspace_id, kind, dedupe_key) do nothing returning id",
+        [scope.workspaceId, dedupe, scope.agentId, scope.runId, scope.taskId, JSON.stringify(payload)],
+      );
+      if (ins.rows[0]) return { approvalId: ins.rows[0].id, existed: false };
+      return { approvalId: (await c.query<{ id: string }>("select id from approvals where kind = 'pr.open' and dedupe_key = $1", [dedupe])).rows[0]!.id, existed: true };
     });
     if (!out.existed) this.onApproval(scope.workspaceId, out.approvalId);
     return out;

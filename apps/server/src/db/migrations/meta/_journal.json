@@ -386,6 +386,20 @@
       "when": 1794955052124,
       "tag": "0054_code_projects_rls",
       "breakpoints": true
+    },
+    {
+      "idx": 55,
+      "version": "7",
+      "when": 1794956332840,
+      "tag": "0055_code_worktrees",
+      "breakpoints": true
+    },
+    {
+      "idx": 56,
+      "version": "7",
+      "when": 1794956341727,
+      "tag": "0056_code_worktrees_rls",
+      "breakpoints": true
     }
   ]
 }
