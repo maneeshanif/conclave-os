@@ -109,6 +109,54 @@ describe('the world, without drawing it (S6-8b)', () => {
   });
 });
 
+describe('following someone (S6B-7)', () => {
+  const person = (x: number, y: number) => ({ id: 'p1', name: 'Dana', look: 1, x, y, availability: 'available' as const, handRaised: false });
+  const far = { x: spot.x, y: spot.y };
+  const run = (w: WorldController, ms: number) => {
+    for (let t = 0; t < ms; t += 100) w.tick(100);
+  };
+  const dist = (w: WorldController) => Math.hypot(w.others()[0]!.position.x - w.me.position.x, w.others()[0]!.position.y - w.me.position.y);
+
+  it('walks you to someone and keeps you beside them as they move', () => {
+    const w = new WorldController(map, { speed: 10, agentSpeed: 10 });
+    w.setOthers([person(far.x, far.y)]);
+    w.tick(1000);
+    expect(w.follow('p1')).toBe(true);
+    expect(w.followingId).toBe('p1');
+    run(w, 60_000);
+    expect(dist(w)).toBeLessThanOrEqual(2.6);
+    const lounge2 = map.rooms.find((r) => r.kind === 'boardroom')!;
+    w.setOthers([person(lounge2.x + 1, lounge2.y + 1)]);
+    run(w, 120_000);
+    expect(dist(w)).toBeLessThanOrEqual(2.6);
+  });
+
+  it('stops when you walk somewhere yourself, or press a key, or when they leave', () => {
+    const w = new WorldController(map, { speed: 10, agentSpeed: 10 });
+    w.setOthers([person(far.x, far.y)]);
+    w.follow('p1');
+    w.click({ x: door.x, y: door.y });
+    expect(w.followingId).toBeNull();
+    w.follow('p1');
+    w.key('right');
+    expect(w.followingId).toBeNull();
+    w.follow('p1');
+    w.setOthers([]);
+    w.tick(1000);
+    expect(w.followingId).toBeNull();
+  });
+
+  it('cannot follow someone who is not here, and following nobody stops it', () => {
+    const w = new WorldController(map);
+    expect(w.follow('nobody')).toBe(false);
+    expect(w.followingId).toBeNull();
+    w.setOthers([person(far.x, far.y)]);
+    expect(w.follow('p1')).toBe(true);
+    expect(w.follow(null)).toBe(true);
+    expect(w.followingId).toBeNull();
+  });
+});
+
 describe('zoom and held keys (S6-8c1)', () => {
   const fresh = () => {
     const w = new WorldController(map, { speed: 8 });

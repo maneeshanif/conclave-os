@@ -43,6 +43,8 @@ export function OfficeWorld({ client, onOpen, onPanel, onOpenList, onFail }: { c
   const [announcement, setAnnouncement] = useState<{ name: string; text: string } | null>(null);
   const [pinned, setPinned] = useState<{ text: string; by: string } | null>(null);
   const [megaphone, setMegaphone] = useState(false);
+  const [following, setFollowing] = useState<string | null>(null);
+  const followRef = useRef<(id: string | null) => void>(() => undefined);
   const sendMega = useRef<(kind: 'announce' | 'pin', text: string) => void>(() => undefined);
   const forYouBefore = useRef<number | null>(null);
   // Sound starts off, is kept in this browser, and is read after the first paint so the server render and the first paint agree.
@@ -179,7 +181,12 @@ export function OfficeWorld({ client, onOpen, onPanel, onOpenList, onFail }: { c
         });
         // Presence: tell the others where you are, and draw the ones who are here. Only a signed-in session is sent anything.
         let others: Member[] = [];
+        followRef.current = (id) => {
+          ctl.follow(id);
+          setFollowing(ctl.followingId);
+        };
         const watchNear = () => {
+          setFollowing((was) => (was === ctl.followingId ? was : ctl.followingId));
           const people = ctl.others();
           setNear((was) => {
             const ids = nearbyPeople(ctl.me.position, people, was.map((n) => n.id));
@@ -300,7 +307,7 @@ export function OfficeWorld({ client, onOpen, onPanel, onOpenList, onFail }: { c
       {addingDesk ? <AddDesk departments={deskCounts} add={api.addDesk} onDone={() => window.location.reload()} onCancel={() => setAddingDesk(false)} /> : null}
       {adding ? <AddDepartment add={api.addDepartment} onDone={() => window.location.reload()} onCancel={() => setAdding(false)} /> : null}
       {hover && factsRef.current ? <Tooltip hover={hover} facts={factsRef.current} who={who.current} hereIn={inRoom.current} status={mine.current} box={box.current} /> : null}
-      <ChatBubble near={near} lines={lines} onSend={(t) => sendChat.current(t)} />
+      <ChatBubble near={near} lines={lines} onSend={(t) => sendChat.current(t)} onFollow={(id) => followRef.current(id)} following={following} />
       <WelcomeCard />
       {view ? (
         <div className="absolute bottom-16 right-3 flex flex-col gap-1.5 sm:bottom-3">

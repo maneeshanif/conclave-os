@@ -46,6 +46,7 @@ export class WorldController {
   private viewH = 0;
   private level = 1.5;
   private zoomBeforeOverview: number | null = null;
+  private following: string | null = null;
 
   constructor(
     private readonly map: OfficeMap,
@@ -103,6 +104,7 @@ export class WorldController {
 
   /** A direction key held down (or null when let go): walk that way until a wall, and stop on a whole tile at release. */
   hold(dir: Direction | null): void {
+    if (dir) this.following = null;
     this.held = dir;
     if (!dir) this.me.stop();
     else this.run(dir);
@@ -184,14 +186,35 @@ export class WorldController {
     }
   }
 
-  /** A click on the floor: walk there, or to the nearest open tile if it was a wall. */
+  /** A click on the floor: walk there, or to the nearest open tile if it was a wall. Walking yourself stops following. */
   click(t: Tile): boolean {
+    this.following = null;
+    return this.goTo(t);
+  }
+
+  private goTo(t: Tile): boolean {
     const to = nearestReachable(this.map, this.me.tile, t);
     return to ? this.me.walkTo(to) : false;
   }
 
+  /** Follow someone: you walk after them and stay within a couple of tiles. Null stops. False if they are not here (S6B-7). */
+  follow(id: string | null): boolean {
+    if (id === null) {
+      this.following = null;
+      return true;
+    }
+    if (!this.others_.has(id)) return false;
+    this.following = id;
+    return true;
+  }
+
+  get followingId(): string | null {
+    return this.following;
+  }
+
   /** An arrow key: one step, from the tile you are on. */
   key(dir: Direction): void {
+    this.following = null;
     this.me.walkTo(stepFrom(this.map, this.me.tile, dir));
   }
 
@@ -216,6 +239,14 @@ export class WorldController {
   tick(dtMs: number): void {
     if (!this.visible) return;
     this.me.tick(dtMs);
+    if (this.following) {
+      const who = this.others_.get(this.following);
+      if (!who) this.following = null; // they left
+      else if (this.me.arrived) {
+        const p = who.walker.position;
+        if (Math.hypot(p.x - this.me.position.x, p.y - this.me.position.y) > 2.5) this.goTo({ x: Math.round(p.x), y: Math.round(p.y) });
+      }
+    }
     if (this.held && this.me.arrived) this.run(this.held);
     for (const w of this.walkers.values()) w.walker.tick(dtMs);
     for (const o of this.others_.values()) o.walker.tick(dtMs);

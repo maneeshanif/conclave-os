@@ -37,6 +37,16 @@ describe('the bubble for talking to someone near you (S6-15c)', () => {
     expect(input.value).toBe('');
   });
 
+  it('offers to follow each person near you, and to stop once you are following one', () => {
+    const follow = vi.fn();
+    const { rerender } = render(<ChatBubble near={[{ id: 'a', name: 'Ana' }, { id: 'b', name: 'Ben' }]} lines={[]} onSend={() => undefined} onFollow={follow} following={null} />);
+    fireEvent.click(screen.getByRole('button', { name: /follow ben/i }));
+    expect(follow).toHaveBeenCalledWith('b');
+    rerender(<ChatBubble near={[{ id: 'a', name: 'Ana' }]} lines={[]} onSend={() => undefined} onFollow={follow} following="a" />);
+    fireEvent.click(screen.getByRole('button', { name: /stop following/i }));
+    expect(follow).toHaveBeenLastCalledWith(null);
+  });
+
   it('keeps the arrow keys for the box, so typing does not walk you around', () => {
     render(<ChatBubble near={[{ id: 'a', name: 'Ana' }]} lines={[]} onSend={() => undefined} />);
     const input = screen.getByLabelText(/message/i);
