@@ -10,6 +10,7 @@ import { applyPresence, type Member } from '../office/presence';
 import { addChat, nearbyPeople, type ChatLine } from '../office/chat';
 import { ChatBubble } from './ChatBubble';
 import { needsYouRose } from '../office/mood';
+import { notesFor, type Note } from '../office/notes';
 import { currentEmote, showEmote, type EmoteMap } from '../office/emotes';
 import { play, readSoundSettings, soundFor, speak, speakable, writeSoundSettings, type SoundSettings } from '../office/sound';
 import { readProfile, writeProfile, type Profile } from '../office/profile';
@@ -93,6 +94,7 @@ export function OfficeWorld({ client, onOpen, onPanel, onOpenList, onFail }: { c
   const followRef = useRef<(id: string | null) => void>(() => undefined);
   const sendMega = useRef<(kind: 'announce' | 'pin', text: string) => void>(() => undefined);
   const forYouBefore = useRef<number | null>(null);
+  const notes = useRef<Note[]>([]);
   // Sound starts off, is kept in this browser, and is read after the first paint so the server render and the first paint agree.
   const [sound, setSound] = useState<SoundSettings>({ effects: false, voice: false });
   const soundRef = useRef(sound);
@@ -189,6 +191,9 @@ export function OfficeWorld({ client, onOpen, onPanel, onOpenList, onFail }: { c
             forYouBefore.current = waiting;
             setPeople(team.map((t) => ({ id: t.id, name: t.name, where: WHERE[who.current.get(t.id)?.place ?? 'lounge'] ?? '', state: t.state, since: t.since, task: t.task, forYou: t.forYou })));
           }).catch(() => undefined);
+        // The sticky notes on the plan wall come from the tasks, and are looked at again when a task changes.
+        const loadNotes = () => void api.tasks().then((list) => (notes.current = notesFor(list))).catch(() => undefined);
+        void loadNotes();
         const loadActivity = () => client.activity?.().then(setActivity).catch(() => undefined);
         void loadActivity();
         const apply = (places: OfficePlace[]) => {
@@ -215,7 +220,7 @@ export function OfficeWorld({ client, onOpen, onPanel, onOpenList, onFail }: { c
         ctl.onDrawer((e) => onOpen(e.kind === 'open' ? e.id : null));
         const { startWorld } = await import('../office/scene');
         if (cancelled || !box.current) return;
-        const world = startWorld({ parent: box.current, mapUrl: `${API}/api/office/map`, tilesUrl: '/office/tiles.png', peopleUrl: '/office/people.png', furnitureUrl: '/office/furniture.png', objectsUrl: '/office/objects.png', decorBase: '/office/decor', agentsUrl: '/office/agents.png', stateOf: (id) => states.current.get(id), emoteOf: (id) => currentEmote(emotes.current, id, Date.now()), facts, ctl, who: () => who.current, myStatus: () => mine.current, myLook: () => profileRef.current.look, myName: () => profileRef.current.name, onUseObject: onPanel, onTile: (t, d) => useTile(t, d), onHover: setHover });
+        const world = startWorld({ parent: box.current, mapUrl: `${API}/api/office/map`, tilesUrl: '/office/tiles.png', peopleUrl: '/office/people.png', furnitureUrl: '/office/furniture.png', objectsUrl: '/office/objects.png', decorBase: '/office/decor', agentsUrl: '/office/agents.png', stateOf: (id) => states.current.get(id), notesOf: () => notes.current, emoteOf: (id) => currentEmote(emotes.current, id, Date.now()), facts, ctl, who: () => who.current, myStatus: () => mine.current, myLook: () => profileRef.current.look, myName: () => profileRef.current.name, onUseObject: onPanel, onTile: (t, d) => useTile(t, d), onHover: setHover });
         setView(ctl);
         const watch = new ResizeObserver(() => world.resize());
         watch.observe(box.current);
@@ -224,6 +229,7 @@ export function OfficeWorld({ client, onOpen, onPanel, onOpenList, onFail }: { c
         const unlive = client.live((m) => {
           if (m.kind === 'office.changed') void client.state().then(apply);
           if (m.kind === 'department.changed' || m.kind === 'approval.changed') void loadActivity();
+          if (m.kind === 'task.changed') loadNotes();
         });
         // Presence: tell the others where you are, and draw the ones who are here. Only a signed-in session is sent anything.
         let others: Member[] = [];

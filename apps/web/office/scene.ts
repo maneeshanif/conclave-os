@@ -4,6 +4,7 @@ import type { OfficeFacts } from '../lib/api';
 import { OBJECT_TYPES } from '@conclave/shared';
 import { ambientFor, reducedMotion, type Ambient } from './ambient';
 import { blinking, moodFor, typingBob } from './mood';
+import { noteSpots, type Note } from './notes';
 import { DECOR_NAMES } from './decor';
 import { signsFor } from './signs';
 import { FRAME, availabilityColour, directionOf, frameIndex, lookFor, placeColour, pose, roomTint, type Availability, type Facing } from './art';
@@ -47,6 +48,8 @@ export function startWorld(opts: {
   /** The quick reaction over someone's head now (a person's id, or 'me'), or null. */
   emoteOf?: (id: string) => string | null;
   /** While editing, a click on a tile goes here first (with the scenery there); true means it was used and you do not walk (S6B-9). */
+  /** The sticky notes for the plan wall (the task board), newest state each time (S6B-10). */
+  notesOf?: () => Note[];
   onTile?: (tile: { x: number; y: number }, decor: { id: number; x: number; y: number; w: number; h: number }[]) => boolean;
   facts: OfficeFacts;
   ctl: WorldController;
@@ -134,6 +137,9 @@ export function startWorld(opts: {
     private cursors?: Phaser.Types.Input.Keyboard.CursorKeys;
     private heldDir: Facing | null = null;
     private screens: { rect: Phaser.GameObjects.Rectangle; agentId: string | null }[] = [];
+    private board: { x: number; y: number; w: number; h: number } | null = null;
+    private noteRects: Phaser.GameObjects.Rectangle[] = [];
+    private noteSig = '';
     private decorBoxes: { id: number; x: number; y: number; w: number; h: number }[] = [];
 
     constructor() {
@@ -227,6 +233,7 @@ export function startWorld(opts: {
           const w = Math.ceil(tex.width / TILE) * TILE;
           const h = Math.ceil(tex.height / TILE) * TILE;
           box = put(key, o.x * TILE + w / 2, o.y * TILE + h / 2, o.y * TILE + h).setAlpha(panel.ready ? 1 : 0.55);
+          if (o.type === 'task-board') this.board = { x: o.x * TILE, y: o.y * TILE, w: tex.width, h: tex.height };
         } else if (opts.objectsUrl && frame >= 0) {
           box = this.add.sprite(o.x * TILE + TILE / 2, o.y * TILE + TILE / 2, 'objects', frame).setDepth(o.y * TILE + TILE).setAlpha(panel.ready ? 1 : 0.5);
         } else {
@@ -281,6 +288,17 @@ export function startWorld(opts: {
     }
 
     /** The monitor on each desk shows what its agent is doing: green lines scroll while it works, amber blinks when it waits, red when blocked. */
+    /** The sticky notes on the task board: redrawn only when the set of notes changes. */
+    private drawNotes(): void {
+      const notes = opts.notesOf?.() ?? [];
+      const sig = notes.map((n) => `${n.id}${n.colour}`).join(',');
+      if (!this.board || sig === this.noteSig) return;
+      this.noteSig = sig;
+      for (const r of this.noteRects) r.destroy();
+      const b = this.board;
+      this.noteRects = noteSpots(notes.length, b.w, b.h).map((s, i) => this.add.rectangle(b.x + s.x, b.y + s.y, s.w, s.h, Phaser.Display.Color.HexStringToColor(notes[i]!.colour).color).setOrigin(0, 0).setStrokeStyle(1, 0x1b2340).setDepth(b.y + b.h + 1));
+    }
+
     private drawScreens(time: number): void {
       for (const sc of this.screens) {
         const state = sc.agentId ? opts.stateOf?.(sc.agentId) : undefined;
@@ -315,6 +333,7 @@ export function startWorld(opts: {
         f.setMood(moodFor(state));
       }
       this.drawScreens(_time);
+      this.drawNotes();
       this.me?.setLook(opts.myLook?.() ?? 0);
       this.me?.label(`${opts.emoteOf?.('me') ? `${opts.emoteOf('me')} ` : ''}${opts.myName?.() ?? 'You'}`, availabilityColour(status));
       const who = opts.who();

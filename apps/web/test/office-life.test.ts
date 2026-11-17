@@ -81,6 +81,35 @@ describe('names on signs (S6B-2)', () => {
   });
 });
 
+describe('the plan wall (S6B-10)', () => {
+  it('turns the newest open tasks into coloured sticky notes, to a limit, and leaves finished ones to a few', async () => {
+    const { notesFor, NOTE_LIMIT } = await import('../office/notes');
+    const t = (id: string, status: string, at: number) => ({ id, status, created_at: new Date(at).toISOString() });
+    const tasks = [t('a', 'todo', 1), t('b', 'in_progress', 2), t('c', 'blocked', 3), t('d', 'done', 4), t('e', 'cancelled', 5)];
+    const notes = notesFor(tasks);
+    expect(notes.map((n) => n.id)).toEqual(['c', 'b', 'a', 'd']); // blocked first, then moving, then waiting, then done; cancelled is not shown
+    expect(notes.map((n) => n.colour)).toEqual(['#ef4444', '#60a5fa', '#fde047', '#4ade80']);
+    const many = Array.from({ length: 40 }, (_, i) => t(`x${i}`, 'todo', i));
+    expect(notesFor(many)).toHaveLength(NOTE_LIMIT);
+    expect(notesFor(many)[0]!.id).toBe('x39'); // the newest of its kind first
+    expect(notesFor([])).toEqual([]);
+  });
+
+  it('puts the notes on a grid inside a board, row by row, without leaving it', async () => {
+    const { notesFor, noteSpots, NOTE_LIMIT } = await import('../office/notes');
+    const spots = noteSpots(NOTE_LIMIT, 64, 28);
+    expect(spots).toHaveLength(NOTE_LIMIT);
+    for (const s of spots) {
+      expect(s.x).toBeGreaterThanOrEqual(0);
+      expect(s.y).toBeGreaterThanOrEqual(0);
+      expect(s.x + s.w).toBeLessThanOrEqual(64);
+      expect(s.y + s.h).toBeLessThanOrEqual(28);
+    }
+    expect(new Set(spots.map((s) => `${s.x},${s.y}`)).size).toBe(spots.length); // none on top of another
+    expect(notesFor([])).toEqual([]);
+  });
+});
+
 describe('how an agent looks (S6B-3, S6B-4)', () => {
   it('shows one small mood over each state, and none for an unknown one', async () => {
     const { moodFor } = await import('../office/mood');
