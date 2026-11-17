@@ -1174,3 +1174,19 @@ export const actionItems = pgTable(
     foreignKey({ name: 'action_items_approval_fk', columns: [t.workspaceId, t.approvalId], foreignColumns: [approvals.workspaceId, approvals.id] }),
   ],
 );
+
+/** A project (S7-1): a registered git folder with its test and build commands, the thing a coding task works on. Never inside this repo. */
+export const codeProjects = pgTable(
+  'code_projects',
+  {
+    id: id(),
+    workspaceId: workspaceId(),
+    key: text('key').notNull(),
+    path: text('path').notNull(),
+    defaultBranch: text('default_branch').notNull(),
+    testCmd: text('test_cmd'),
+    buildCmd: text('build_cmd'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [unique('code_projects_ws_id_uq').on(t.workspaceId, t.id), unique('code_projects_ws_key_uq').on(t.workspaceId, t.key), unique('code_projects_ws_path_uq').on(t.workspaceId, t.path)],
+);

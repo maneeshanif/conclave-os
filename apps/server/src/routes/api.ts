@@ -18,6 +18,7 @@ import { healthRoutes } from './health';
 import { pauseRoutes } from './pauses';
 import { settingsRoutes } from './settings';
 import { agentsInDiscussion, decisionRoutes, discussionRoutes } from './boardroom';
+import { codeProjectRoutes } from './projects';
 import { departmentRoutes } from './departments';
 import { officeRoutes } from './office';
 import { signalRoutes } from './signals';
@@ -51,12 +52,13 @@ export function apiRoutes(deps: { workspaceId: string; dispatcher: Dispatcher; b
   // A malformed id is a 404, not a database error.
   // Settings is a single record with actions (/settings/release-held), not a collection of ids.
   const idGuard = async (c: Context<AppEnv>, next: () => Promise<void>) =>
-    c.req.param('kind') === 'settings' || c.req.param('kind') === 'brief' || c.req.param('kind') === 'company' || c.req.param('kind') === 'runtime-pauses' || c.req.param('kind') === 'health' || c.req.param('kind') === 'office' || c.req.param('kind') === 'departments' || c.req.param('kind') === 'browser' || (c.req.param('kind') === 'leads' && c.req.param('id') === 'import') || z.uuid().safeParse(c.req.param('id')).success ? next() : c.json({ error: 'Not found' }, 404);
+    c.req.param('kind') === 'settings' || c.req.param('kind') === 'brief' || c.req.param('kind') === 'company' || c.req.param('kind') === 'runtime-pauses' || c.req.param('kind') === 'health' || c.req.param('kind') === 'office' || c.req.param('kind') === 'departments' || c.req.param('kind') === 'code-projects' || c.req.param('kind') === 'browser' || (c.req.param('kind') === 'leads' && c.req.param('id') === 'import') || z.uuid().safeParse(c.req.param('id')).success ? next() : c.json({ error: 'Not found' }, 404);
   r.use('/:kind/:id/*', idGuard);
   r.use('/:kind/:id', idGuard);
 
   r.route('/approvals', approvalRoutes({ workspaceId: ws, bus: deps.bus, onDecided: deps.onApprovalDecided }));
   r.route('/leads', leadRoutes({ workspaceId: ws, bus: deps.bus }));
+  r.route('/code-projects', codeProjectRoutes({ workspaceId: ws }));
   r.route('/', crmRoutes({ workspaceId: ws, bus: deps.bus }));
   r.route('/', campaignRoutes({ workspaceId: ws, bus: deps.bus }));
   r.route('/', reportRoutes());

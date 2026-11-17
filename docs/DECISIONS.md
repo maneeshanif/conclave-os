@@ -15,6 +15,12 @@ Newest first. One entry per decision: what, why, and what it replaced.
 - **One test file, `slice3-e2e.test.ts`, runs the three "Done when" checks** on the real run loop, reaper, pause table and eval gate, with a scripted model: (1) a run killed halfway (its process lost, heartbeat stopped) is failed by the reaper, its task goes back to todo still holding the session id, and the next run starts from that session and finishes; (2) a plan limit pauses the runtime for every agent on it while an agent on the other runtime keeps working, the queued tasks wait, the pause lifts only at the reset time and wakes exactly the agents with work, who then finish; (3) the unchanged skill scores at the baseline, and a change that makes the 20 sample drafts long and hyped fails the gate with all 20 leads named.
 - **Slice 3 is tagged `slice-3-done`.** Not done and recorded rather than hidden: the eval set is 20 made-up leads and its baseline is the reference drafter's (real leads and a real-agent drafter are in NEEDS-YOU); breakers cover the os tools only until connectors are live; the lite-mode canvas switch waits for slice 6.
 
+## 2026-11-18 (S7-1: projects)
+
+- **A project is a registered git folder** (table `code_projects`; `projects` already means client delivery work): a key, the full path to the top of a repository, a branch that exists, and a test and a build command. Routes: `/api/code-projects`. Forced row-level security, in the tenancy test.
+- **The folder must not be this repository or inside it**, so an agent can never be pointed at the OS's own code. A folder inside another repository, or one that is not a repository, is refused. A key or a folder already registered is refused.
+- **The commands are stored, never run, at registration.** They run later, in a worktree, by the server (S7-5). Git itself is run with a clean environment and no prompts. Removing a project only takes it off the list.
+
 ## 2026-11-18 (S6C: event places, move and undo)
 
 - **Event places come from what Anees showed on workadventu.re** (a screenshot of their map picker, kept in `.reference/`, not in the repo): a conference campus, a hackathon with team offices, job fairs and meeting rooms. We took the idea of each kind of place, not their maps or art. They are a second row of districts below the first; the lawn between the first row's districts is a way down between the two streets.
