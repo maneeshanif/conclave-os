@@ -46,6 +46,8 @@ export function startWorld(opts: {
   stateOf?: (agentId: string) => string | undefined;
   /** The quick reaction over someone's head now (a person's id, or 'me'), or null. */
   emoteOf?: (id: string) => string | null;
+  /** While editing, a click on a tile goes here first (with the scenery there); true means it was used and you do not walk (S6B-9). */
+  onTile?: (tile: { x: number; y: number }, decor: { id: number; x: number; y: number; w: number; h: number }[]) => boolean;
   facts: OfficeFacts;
   ctl: WorldController;
   who: () => Map<string, Who>;
@@ -132,6 +134,7 @@ export function startWorld(opts: {
     private cursors?: Phaser.Types.Input.Keyboard.CursorKeys;
     private heldDir: Facing | null = null;
     private screens: { rect: Phaser.GameObjects.Rectangle; agentId: string | null }[] = [];
+    private decorBoxes: { id: number; x: number; y: number; w: number; h: number }[] = [];
 
     constructor() {
       super('office');
@@ -188,6 +191,7 @@ export function startWorld(opts: {
         const img = put(key, d.x + w / 2, d.y + h / 2, d.name === 'rug' ? 1.5 : d.y + h);
         const turn = (d.properties as { name: string; value: number }[] | undefined)?.find((p) => p.name === 'turn')?.value;
         if (turn) img.setAngle(turn);
+        if (d.id !== undefined) this.decorBoxes.push({ id: d.id, x: Math.floor(d.x / TILE), y: Math.floor(d.y / TILE), w: Math.round(w / TILE), h: Math.round(h / TILE) });
         const kind = ambientFor(d.name ?? '');
         if (kind && !calm) this.animate(kind, img);
       }
@@ -249,7 +253,12 @@ export function startWorld(opts: {
         opts.onHover?.(thing ? { thing, x: p.x, y: p.y } : null);
       });
       this.input.on('gameout', () => opts.onHover?.(null));
-      this.input.on('pointerdown', (p: Phaser.Input.Pointer) => p.downElement === this.game.canvas && ctl.click({ x: Math.floor(p.worldX / TILE), y: Math.floor(p.worldY / TILE) }));
+      this.input.on('pointerdown', (p: Phaser.Input.Pointer) => {
+        if (p.downElement !== this.game.canvas) return;
+        const tile = { x: Math.floor(p.worldX / TILE), y: Math.floor(p.worldY / TILE) };
+        if (opts.onTile?.(tile, this.decorBoxes)) return; // the editor used the click
+        ctl.click(tile);
+      });
     }
 
     /** A small, endless movement on a piece of scenery: steam over the coffee, a gentle sway, a flickering screen, a bouncing ball. */

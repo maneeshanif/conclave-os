@@ -17,6 +17,8 @@ import type { Who } from '../office/scene';
 import { AddAgent } from './AddAgent';
 import { AddDepartment } from './AddDepartment';
 import { AddDesk } from './AddDesk';
+import { EditPanel } from './EditPanel';
+import { tileAction, type EditTool } from '../office/edit';
 import { AnnouncementBanner, Megaphone } from './Megaphone';
 import { CompanySwitcher } from './CompanySwitcher';
 import { OfficeBar, WelcomeCard, ZonePill, type Availability, type Person } from './OfficeBar';
@@ -43,6 +45,50 @@ export function OfficeWorld({ client, onOpen, onPanel, onOpenList, onFail }: { c
   const [announcement, setAnnouncement] = useState<{ name: string; text: string } | null>(null);
   const [pinned, setPinned] = useState<{ text: string; by: string } | null>(null);
   const [megaphone, setMegaphone] = useState(false);
+  // Editing the office (S6B-9). It survives the reload that follows a change, so you can keep going.
+  const [editing, setEditing] = useState(false);
+  const [tool, setTool] = useState<EditTool | null>(null);
+  const [editMessage, setEditMessage] = useState<string | null>(null);
+  const editRef = useRef<{ editing: boolean; tool: EditTool | null }>({ editing: false, tool: null });
+  editRef.current = { editing, tool };
+  useEffect(() => {
+    try {
+      const saved = sessionStorage.getItem('conclave.edit');
+      if (saved) {
+        const v = JSON.parse(saved) as { tool: EditTool | null };
+        setEditing(true);
+        setTool(v.tool);
+      }
+    } catch {
+      // Not editing.
+    }
+  }, []);
+  const useTile = (tile: { x: number; y: number }, decor: { id: number; x: number; y: number; w: number; h: number }[]): boolean => {
+    const { editing: on, tool: t } = editRef.current;
+    if (!on) return false;
+    const action = tileAction(t, tile, decor);
+    if (!action) {
+      setEditMessage('Pick a piece or Remove first.');
+      return true;
+    }
+    if (action.kind === 'nothing') {
+      setEditMessage(action.why);
+      return true;
+    }
+    const done = action.kind === 'place' ? api.placeDecor({ name: action.name, x: action.x, y: action.y, ...(action.turn ? { turn: action.turn } : {}) }) : api.removeDecor(action.id);
+    void done.then(
+      () => {
+        try {
+          sessionStorage.setItem('conclave.edit', JSON.stringify({ tool: t }));
+        } catch {
+          // The next load is not in edit mode.
+        }
+        window.location.reload();
+      },
+      (err: Error) => setEditMessage(err.message),
+    );
+    return true;
+  };
   const [following, setFollowing] = useState<string | null>(null);
   const followRef = useRef<(id: string | null) => void>(() => undefined);
   const sendMega = useRef<(kind: 'announce' | 'pin', text: string) => void>(() => undefined);
@@ -169,7 +215,7 @@ export function OfficeWorld({ client, onOpen, onPanel, onOpenList, onFail }: { c
         ctl.onDrawer((e) => onOpen(e.kind === 'open' ? e.id : null));
         const { startWorld } = await import('../office/scene');
         if (cancelled || !box.current) return;
-        const world = startWorld({ parent: box.current, mapUrl: `${API}/api/office/map`, tilesUrl: '/office/tiles.png', peopleUrl: '/office/people.png', furnitureUrl: '/office/furniture.png', objectsUrl: '/office/objects.png', decorBase: '/office/decor', agentsUrl: '/office/agents.png', stateOf: (id) => states.current.get(id), emoteOf: (id) => currentEmote(emotes.current, id, Date.now()), facts, ctl, who: () => who.current, myStatus: () => mine.current, myLook: () => profileRef.current.look, myName: () => profileRef.current.name, onUseObject: onPanel, onHover: setHover });
+        const world = startWorld({ parent: box.current, mapUrl: `${API}/api/office/map`, tilesUrl: '/office/tiles.png', peopleUrl: '/office/people.png', furnitureUrl: '/office/furniture.png', objectsUrl: '/office/objects.png', decorBase: '/office/decor', agentsUrl: '/office/agents.png', stateOf: (id) => states.current.get(id), emoteOf: (id) => currentEmote(emotes.current, id, Date.now()), facts, ctl, who: () => who.current, myStatus: () => mine.current, myLook: () => profileRef.current.look, myName: () => profileRef.current.name, onUseObject: onPanel, onTile: (t, d) => useTile(t, d), onHover: setHover });
         setView(ctl);
         const watch = new ResizeObserver(() => world.resize());
         watch.observe(box.current);
@@ -276,6 +322,7 @@ export function OfficeWorld({ client, onOpen, onPanel, onOpenList, onFail }: { c
           onAddDepartment={() => setAdding(true)}
           onAddDesk={() => setAddingDesk(true)}
           onMegaphone={() => setMegaphone(true)}
+          onEdit={() => setEditing(true)}
           onAddAgent={() => setAddingAgent(true)}
           profile={profile}
           onProfile={changeProfile}
@@ -303,6 +350,25 @@ export function OfficeWorld({ client, onOpen, onPanel, onOpenList, onFail }: { c
         />
       ) : null}
       <AnnouncementBanner announcement={announcement} pinned={pinned} />
+      {editing ? (
+        <EditPanel
+          tool={tool}
+          message={editMessage}
+          onTool={(t) => {
+            setTool(t);
+            setEditMessage(null);
+          }}
+          onDone={() => {
+            setEditing(false);
+            setTool(null);
+            try {
+              sessionStorage.removeItem('conclave.edit');
+            } catch {
+              // Nothing to clear.
+            }
+          }}
+        />
+      ) : null}
       {megaphone ? <Megaphone pinned={pinned} onSend={(k, t) => sendMega.current(k, t)} onClose={() => setMegaphone(false)} /> : null}
       {addingDesk ? <AddDesk departments={deskCounts} add={api.addDesk} onDone={() => window.location.reload()} onCancel={() => setAddingDesk(false)} /> : null}
       {adding ? <AddDepartment add={api.addDepartment} onDone={() => window.location.reload()} onCancel={() => setAdding(false)} /> : null}
