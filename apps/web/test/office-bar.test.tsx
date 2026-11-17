@@ -83,6 +83,29 @@ describe('the welcome card (S6-8c2)', () => {
   });
 });
 
+describe('the sound menu in the bar (S6B-5)', () => {
+  const base = { people: [], availability: 'available' as const, onAvailability: () => undefined, onOpenAgent: () => undefined, onOverview: () => undefined };
+
+  it('shows the two switches as they are now, and reports a change to one without touching the other', () => {
+    const change = vi.fn();
+    render(<OfficeBar {...base} sound={{ effects: true, voice: false }} onSound={change} />);
+    fireEvent.click(screen.getByRole('button', { name: /sound/i }));
+    const effects = screen.getByRole('menuitemcheckbox', { name: /sound effects/i });
+    const voice = screen.getByRole('menuitemcheckbox', { name: /read messages aloud/i });
+    expect(effects.getAttribute('aria-checked')).toBe('true');
+    expect(voice.getAttribute('aria-checked')).toBe('false');
+    fireEvent.click(voice);
+    expect(change).toHaveBeenLastCalledWith({ effects: true, voice: true });
+    fireEvent.click(effects);
+    expect(change).toHaveBeenLastCalledWith({ effects: false, voice: false });
+  });
+
+  it('is left out when the page has no sound to switch', () => {
+    render(<OfficeBar {...base} />);
+    expect(screen.queryByRole('button', { name: /sound/i })).toBeNull();
+  });
+});
+
 describe('quick reactions from the bar (S6-18)', () => {
   const base = { people: [], availability: 'available' as const, onAvailability: () => undefined, onOpenAgent: () => undefined, onOverview: () => undefined };
 

@@ -4,6 +4,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { ago } from '../office/ago';
 import { EMOTES } from '@conclave/shared';
 import { cleanName, type Profile } from '../office/profile';
+import type { SoundSettings } from '../office/sound';
 
 const LOOK_COUNT = 6;
 
@@ -40,8 +41,8 @@ const item = 'flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text
  * The bar over the world: who is here, a tools menu and your status. Floating groups on a desktop; on a phone the same controls
  * sit along the bottom edge. It only reports what you chose; the page decides what to do (SPEC 12).
  */
-export function OfficeBar(props: { people: Person[]; /** What just happened, newest first (S6-14b3). Left out, the panel has no feed. */ activity?: { id: string; at: string; text: string }[] | undefined; availability: Availability; onAvailability: (a: Availability) => void; onOpenAgent: (id: string) => void; onOverview: () => void; /** More controls next to the people button (the company switcher). */ extra?: ReactNode; /** Called from the Tools menu: the page shows the add-a-department dialog. */ onAddDepartment?: () => void; /** Called from the Tools menu: the page shows the add-an-agent dialog. */ onAddAgent?: () => void; /** Opens the list of rooms and agents, for keyboard and screen-reader use and for a phone (S6-15a). */ onOpenList?: () => void; /** Your name and look, and what to do when you change them (S6-15b). Left out, there is no picker. */ profile?: Profile; onProfile?: (p: Profile) => void; /** Shows a quick reaction over your head (S6-18). Left out, there is no button. */ onEmote?: (emote: string) => void }) {
-  const [menu, setMenu] = useState<'tools' | 'status' | 'react' | null>(null);
+export function OfficeBar(props: { people: Person[]; /** What just happened, newest first (S6-14b3). Left out, the panel has no feed. */ activity?: { id: string; at: string; text: string }[] | undefined; availability: Availability; onAvailability: (a: Availability) => void; onOpenAgent: (id: string) => void; onOverview: () => void; /** More controls next to the people button (the company switcher). */ extra?: ReactNode; /** Called from the Tools menu: the page shows the add-a-department dialog. */ onAddDepartment?: () => void; /** Called from the Tools menu: the page shows the add-an-agent dialog. */ onAddAgent?: () => void; /** Opens the list of rooms and agents, for keyboard and screen-reader use and for a phone (S6-15a). */ onOpenList?: () => void; /** Your name and look, and what to do when you change them (S6-15b). Left out, there is no picker. */ profile?: Profile; onProfile?: (p: Profile) => void; /** Shows a quick reaction over your head (S6-18). Left out, there is no button. */ onEmote?: (emote: string) => void; /** The sound switches and what to do when one changes (S6B-5). Left out, there is no menu. */ sound?: SoundSettings; onSound?: (s: SoundSettings) => void }) {
+  const [menu, setMenu] = useState<'tools' | 'status' | 'react' | 'sound' | null>(null);
   const [panel, setPanel] = useState(false);
   const [picker, setPicker] = useState(false);
   const [typed, setTyped] = useState<string | null>(null);
@@ -93,6 +94,25 @@ export function OfficeBar(props: { people: Person[]; /** What just happened, new
             </div>
           ) : null}
           {props.extra}
+          {props.sound && props.onSound ? (
+            <div className={`relative flex ${pill}`}>
+              <button type="button" aria-label="Sound" title="Sound" aria-haspopup="menu" aria-expanded={menu === 'sound'} onClick={() => setMenu(menu === 'sound' ? null : 'sound')} className="px-3 py-2 text-sm">
+                <span aria-hidden>{props.sound.effects || props.sound.voice ? '🔊' : '🔇'}</span>
+              </button>
+              {menu === 'sound' ? (
+                <div role="menu" aria-label="Sound" className="px-pop px-font absolute left-0 top-full z-20 mt-2 w-60 p-1 text-sm">
+                  <button type="button" role="menuitemcheckbox" aria-checked={props.sound.effects} onClick={() => props.onSound?.({ ...props.sound!, effects: !props.sound!.effects })} className="flex w-full items-center justify-between rounded px-3 py-2 text-left hover:bg-white/10">
+                    <span>Sound effects</span>
+                    <span aria-hidden>{props.sound.effects ? 'On' : 'Off'}</span>
+                  </button>
+                  <button type="button" role="menuitemcheckbox" aria-checked={props.sound.voice} onClick={() => props.onSound?.({ ...props.sound!, voice: !props.sound!.voice })} className="flex w-full items-center justify-between rounded px-3 py-2 text-left hover:bg-white/10">
+                    <span>Read messages aloud</span>
+                    <span aria-hidden>{props.sound.voice ? 'On' : 'Off'}</span>
+                  </button>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
           {props.onEmote ? (
             <div className={`relative flex ${pill}`}>
               <button type="button" aria-label="React" title="React" aria-haspopup="menu" aria-expanded={menu === 'react'} onClick={() => setMenu(menu === 'react' ? null : 'react')} className="px-3 py-2 text-sm">

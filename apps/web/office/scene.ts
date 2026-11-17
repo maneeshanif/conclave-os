@@ -2,7 +2,9 @@ import * as Phaser from 'phaser';
 import { panelFor } from '@conclave/shared';
 import type { OfficeFacts } from '../lib/api';
 import { OBJECT_TYPES } from '@conclave/shared';
+import { ambientFor, reducedMotion, type Ambient } from './ambient';
 import { DECOR_NAMES } from './decor';
+import { signsFor } from './signs';
 import { FRAME, availabilityColour, directionOf, frameIndex, lookFor, placeColour, pose, roomTint, type Availability, type Facing } from './art';
 import type { WorldController } from './controller';
 import { thingAt, type Thing } from './tooltips';
@@ -149,8 +151,24 @@ export function startWorld(opts: {
       for (const r of facts.map.rooms) {
         const tint = roomTint(r);
         if (tint) this.add.rectangle(r.x * TILE, r.y * TILE, r.w * TILE, r.h * TILE, tint.colour, tint.alpha).setOrigin(0, 0).setDepth(1);
-        this.add.text((r.x + r.w / 2) * TILE, (r.y + r.h / 2) * TILE, r.name.toUpperCase(), { fontSize: '20px', color: '#1e293b', fontStyle: 'bold' }).setOrigin(0.5).setAlpha(0.18).setDepth(2);
       }
+      // Names on the walls: every room, every department, and a banner over the street for each district (S6B-2).
+      for (const sg of signsFor(facts.map.rooms)) {
+        this.add
+          .text(sg.x * TILE, sg.y * TILE, sg.text, {
+            fontFamily: 'monospace',
+            fontSize: sg.banner ? '15px' : sg.department ? '11px' : '9px',
+            fontStyle: 'bold',
+            color: '#fff6e5',
+            backgroundColor: sg.banner || sg.department ? '#1f2a5c' : '#475569',
+            padding: { x: 6, y: 3 },
+            stroke: '#1b2340',
+            strokeThickness: 2,
+          })
+          .setOrigin(0.5)
+          .setDepth(100000);
+      }
+      const calm = reducedMotion();
       // Scenery from the map's decor layer: rugs under everything, the rest sorted by their bottom edge.
       for (const d of map.getObjectLayer('decor')?.objects ?? []) {
         const key = `decor-${d.name}`;
@@ -160,6 +178,8 @@ export function startWorld(opts: {
         const img = put(key, d.x + w / 2, d.y + h / 2, d.name === 'rug' ? 1.5 : d.y + h);
         const turn = (d.properties as { name: string; value: number }[] | undefined)?.find((p) => p.name === 'turn')?.value;
         if (turn) img.setAngle(turn);
+        const kind = ambientFor(d.name ?? '');
+        if (kind && !calm) this.animate(kind, img);
       }
       // Each agent's desk and chair, from the data (so a room added later has them too). The agent stands on the chair tile.
       const screens: { rect: Phaser.GameObjects.Rectangle; agentId: string | null }[] = [];
@@ -171,6 +191,8 @@ export function startWorld(opts: {
           const sw = Math.max(6, Math.round(desk.width * 0.34));
           const rect = this.add.rectangle(desk.x, desk.y - desk.height * 0.3, sw, Math.max(2, Math.round(desk.height * 0.13)), 0x1e293b).setDepth(d.y * TILE - 0.5);
           screens.push({ rect, agentId: owner?.id ?? null });
+          // The name plate: who sits here.
+          if (owner) this.add.text(desk.x, desk.y - desk.height / 2 - 1, owner.name, { fontFamily: 'monospace', fontSize: '7px', color: '#fff6e5', backgroundColor: 'rgba(27,35,64,0.88)', padding: { x: 2, y: 0 } }).setOrigin(0.5, 1).setDepth(d.y * TILE - 0.2);
         } else {
           this.add.sprite(d.x * TILE + TILE / 2, (d.y - 1) * TILE + TILE / 2, 'furniture', 0).setDepth(d.y * TILE - 1);
         }
@@ -218,6 +240,25 @@ export function startWorld(opts: {
       });
       this.input.on('gameout', () => opts.onHover?.(null));
       this.input.on('pointerdown', (p: Phaser.Input.Pointer) => p.downElement === this.game.canvas && ctl.click({ x: Math.floor(p.worldX / TILE), y: Math.floor(p.worldY / TILE) }));
+    }
+
+    /** A small, endless movement on a piece of scenery: steam over the coffee, a gentle sway, a flickering screen, a bouncing ball. */
+    private animate(kind: Ambient, img: Phaser.GameObjects.Image): void {
+      const jitter = Math.random();
+      if (kind === 'sway') {
+        this.tweens.add({ targets: img, angle: { from: -1.6, to: 1.6 }, duration: 1500 + jitter * 1500, yoyo: true, repeat: -1, ease: 'Sine.easeInOut', delay: jitter * 800 });
+      } else if (kind === 'flicker') {
+        this.tweens.add({ targets: img, alpha: { from: 1, to: 0.78 }, duration: 160 + jitter * 260, yoyo: true, repeat: -1, delay: jitter * 600 });
+      } else if (kind === 'steam') {
+        for (let i = 0; i < 2; i++) {
+          const puff = this.add.circle(img.x - img.displayWidth * 0.3 + i * 4, img.y - img.displayHeight * 0.3, 2, 0xffffff, 0).setDepth(img.depth + 0.1);
+          this.tweens.add({ targets: puff, y: puff.y - 14, alpha: { from: 0.55, to: 0 }, scale: { from: 0.8, to: 1.6 }, duration: 1500, repeat: -1, delay: i * 700 + jitter * 400 });
+        }
+      } else if (kind === 'ball') {
+        const ball = this.add.circle(img.x, img.y, 2, 0xffffff).setDepth(img.depth + 0.1);
+        this.tweens.add({ targets: ball, x: { from: img.x - img.displayWidth * 0.32, to: img.x + img.displayWidth * 0.32 }, duration: 650, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+        this.tweens.add({ targets: ball, y: { from: img.y - 4, to: img.y + 4 }, duration: 325, yoyo: true, repeat: -1, ease: 'Quad.easeInOut' });
+      }
     }
 
     /** The monitor on each desk shows what its agent is doing: green lines scroll while it works, amber blinks when it waits, red when blocked. */

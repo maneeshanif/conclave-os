@@ -10,6 +10,7 @@ import { applyPresence, type Member } from '../office/presence';
 import { addChat, nearbyPeople, type ChatLine } from '../office/chat';
 import { ChatBubble } from './ChatBubble';
 import { currentEmote, showEmote, type EmoteMap } from '../office/emotes';
+import { play, readSoundSettings, soundFor, speak, speakable, writeSoundSettings, type SoundSettings } from '../office/sound';
 import { readProfile, writeProfile, type Profile } from '../office/profile';
 import type { Who } from '../office/scene';
 import { AddAgent } from './AddAgent';
@@ -36,6 +37,24 @@ export function OfficeWorld({ client, onOpen, onPanel, onOpenList, onFail }: { c
   const who = useRef(new Map<string, Who>());
   const mine = useRef<Availability>('available');
   const states = useRef(new Map<string, string>());
+  // Sound starts off, is kept in this browser, and is read after the first paint so the server render and the first paint agree.
+  const [sound, setSound] = useState<SoundSettings>({ effects: false, voice: false });
+  const soundRef = useRef(sound);
+  useEffect(() => {
+    const s = readSoundSettings();
+    soundRef.current = s;
+    setSound(s);
+  }, []);
+  const changeSound = (s: SoundSettings) => {
+    soundRef.current = s;
+    setSound(s);
+    writeSoundSettings(s);
+    play('pop', s);
+  };
+  const hear = (event: string) => {
+    const name = soundFor(event);
+    if (name) play(name, soundRef.current);
+  };
   const emotes = useRef<EmoteMap>(new Map());
   const sendEmote = useRef<(emote: string) => void>(() => undefined);
   const [near, setNear] = useState<{ id: string; name: string }[]>([]);
@@ -125,7 +144,11 @@ export function OfficeWorld({ client, onOpen, onPanel, onOpenList, onFail }: { c
           void loadTeam();
           setPeople((cur) => (cur.some((p) => p.state) ? cur : facts.agents.map((a) => ({ id: a.id, name: a.name, where: WHERE[places.find((p) => p.agentId === a.id)?.place ?? 'lounge'] ?? '' }))));
         };
-        ctl.onZone((room) => setNotice(zoneNotice(room)));
+        ctl.onZone((room) => {
+          setNotice(zoneNotice(room));
+          if (room) hear('enter-room');
+        });
+        ctl.onMove(() => hear('step'));
         apply(await client.state());
         ctl.onDrawer((e) => onOpen(e.kind === 'open' ? e.id : null));
         const { startWorld } = await import('../office/scene');
@@ -153,6 +176,12 @@ export function OfficeWorld({ client, onOpen, onPanel, onOpenList, onFail }: { c
           others = applyPresence(others, m);
           ctl.setOthers(others);
           setLines((cur) => addChat(cur, m));
+          if (m.kind === 'chat' && typeof m.text === 'string') {
+            hear('chat');
+            const line = speakable(typeof m.name === 'string' ? m.name : 'Someone', m.text, soundRef.current);
+            if (line) speak(line);
+          }
+          if (m.kind === 'emote') hear('emote');
           if (m.kind === 'emote' && typeof m.id === 'string' && typeof m.emote === 'string') emotes.current = showEmote(emotes.current, m.id, m.emote, Date.now());
           watchNear();
         });
@@ -211,7 +240,12 @@ export function OfficeWorld({ client, onOpen, onPanel, onOpenList, onFail }: { c
           profile={profile}
           onProfile={changeProfile}
           onOpenList={onOpenList}
-          onEmote={(e) => sendEmote.current(e)}
+          onEmote={(e) => {
+            hear('emote');
+            sendEmote.current(e);
+          }}
+          sound={sound}
+          onSound={changeSound}
           onOverview={() => {
             view.overview(!whole);
             setWhole(!whole);
