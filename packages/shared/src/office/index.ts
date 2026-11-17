@@ -200,6 +200,7 @@ export function readOfficeMap(json: unknown, o: { file: string; departments: { k
   return { width: m.width, height: m.height, tile: TILE_SIZE, walls, rooms, desks, objects, entries };
 }
 export * from './emotes';
+export * from './edit';
 export * from './places';
 export * from './walk';
 export * from './zones';

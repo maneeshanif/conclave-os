@@ -1,4 +1,4 @@
-import { readFile, rename, writeFile } from 'node:fs/promises';
+import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { Hono } from 'hono';
 import type { Pool } from 'pg';
@@ -7,26 +7,13 @@ import { z } from 'zod';
 import { PlotsFull, RoomFull, StampError, addDepartmentRoom, addDeskToRoom, readOfficeMap, type OfficeMapJson } from '@conclave/shared';
 import type { AppEnv } from '../app';
 import type { Bus } from '../bus';
+import { exclusive, replaceFile } from '../office/map-file';
 import { CompanyLoadError, loadCompany } from '../company/loader';
 import { DepartmentsFileSchema } from '../company/schema';
 import { syncCompany } from '../company/sync';
 
 const Body = z.object({ name: z.string().max(60) });
 const slug = (name: string) => name.toLowerCase().normalize('NFKD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40).replace(/-+$/g, '');
-
-/** One addition at a time for each company folder: two at once would both pick the same plot. */
-const locks = new Map<string, Promise<unknown>>();
-const exclusive = <T>(key: string, fn: () => Promise<T>): Promise<T> => {
-  const next = (locks.get(key) ?? Promise.resolve()).then(fn, fn);
-  locks.set(key, next.catch(() => undefined));
-  return next;
-};
-
-const replaceFile = async (file: string, text: string) => {
-  const tmp = `${file}.${process.pid}.tmp`;
-  await writeFile(tmp, text);
-  await rename(tmp, file);
-};
 
 /**
  * Adding a department from the office (S6-13b): a room for it is stamped onto the map, it is listed in `departments.yaml`, and the

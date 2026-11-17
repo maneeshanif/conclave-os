@@ -1,4 +1,5 @@
 import { existsSync } from 'node:fs';
+import { loadCompany } from '../company/loader';
 import { readFile, readdir } from 'node:fs/promises';
 import path from 'node:path';
 import { Hono } from 'hono';
@@ -8,6 +9,8 @@ import type { Bus } from '../bus';
 import type { Dispatcher } from '../workflows/dispatch';
 import { assignDesks, loadOffice } from '../office/desks';
 import { activityFeed } from '../office/activity';
+import { exclusive, replaceFile } from '../office/map-file';
+import { EditError, placeDecor, removeDecor, type OfficeMapJson } from '@conclave/shared';
 import { officeState, teamCards } from '../office/state';
 
 /** The office (SPEC 12): the map's facts and where each agent sits. The drawing reads the map file itself from /office/map. */
@@ -134,6 +137,45 @@ export function officeRoutes(deps: { workspaceId: string; companyRoot: string; /
     }
     const tx = c.get('tx').client;
     return c.json({ team: await teamCards(tx, deps.workspaceId, office.map, deps.discussing ? await deps.discussing(tx) : undefined) });
+  });
+
+  // Editing the office from inside it (S6B-9): put scenery down or take it away. The rules are in the shared package; the map is checked
+  // before it is written, one change at a time.
+  const Place = z.object({ name: z.string().max(40), x: z.number(), y: z.number(), turn: z.number().optional() });
+  const mapFile = () => path.join(deps.companyRoot, 'office.tmj');
+  const departmentsNow = async () => (await loadCompany(deps.companyRoot)).departments.map((d) => ({ key: d.key, active: d.active }));
+  r.post('/decor', async (c) => {
+    const body = Place.safeParse(await c.req.json().catch(() => null));
+    if (!body.success) return c.json({ error: 'Say which picture and which tile.' }, 400);
+    try {
+      const id = await exclusive(deps.companyRoot, async () => {
+        const json = JSON.parse(await readFile(mapFile(), 'utf8')) as OfficeMapJson;
+        const next = placeDecor(json, body.data, await departmentsNow());
+        await replaceFile(mapFile(), JSON.stringify(next, null, 1) + '\n');
+        return Number(next.nextobjectid) - 1;
+      });
+      deps.bus?.publish({ kind: 'office.changed', workspaceId: deps.workspaceId });
+      return c.json({ id }, 201);
+    } catch (err) {
+      if (err instanceof EditError) return c.json({ error: err.message }, 400);
+      throw err;
+    }
+  });
+
+  r.delete('/decor/:id', async (c) => {
+    const id = Number(c.req.param('id'));
+    if (!Number.isInteger(id)) return c.json({ error: 'Not found' }, 404);
+    try {
+      await exclusive(deps.companyRoot, async () => {
+        const json = JSON.parse(await readFile(mapFile(), 'utf8')) as OfficeMapJson;
+        await replaceFile(mapFile(), JSON.stringify(removeDecor(json, id), null, 1) + '\n');
+      });
+      deps.bus?.publish({ kind: 'office.changed', workspaceId: deps.workspaceId });
+      return c.json({ ok: true });
+    } catch (err) {
+      if (err instanceof EditError) return c.json({ error: err.message }, 404);
+      throw err;
+    }
   });
 
   r.get('/map', async (c) => {
