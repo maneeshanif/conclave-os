@@ -19,6 +19,8 @@ export const EmailPayload = z.object({
 });
 export type EmailPayload = z.infer<typeof EmailPayload>;
 
+import type { GitConnector } from '../projects/git-connector';
+
 export interface ExecutorDeps {
   pool: pg.Pool;
   workspaceId: string;
@@ -37,6 +39,8 @@ export interface ExecutorDeps {
   dataDir?: string;
   /** Makes an agent from a template, the same way `pnpm agent:new` does (S6-13c). Without one, an approved agent proposal is refused. */
   agentFactory?: (o: { template: string; department: string; id: string; name?: string }) => Promise<{ id: string }>;
+  /** Where approved code goes (S7-6). Without one, an approved pull request is refused. */
+  gitConnector?: GitConnector;
   companyRoot: string;
   from: string;
   bus?: Bus;

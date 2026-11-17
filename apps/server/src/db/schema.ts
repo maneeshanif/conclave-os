@@ -1214,3 +1214,34 @@ export const codeWorktrees = pgTable(
     check('code_worktrees_status_ck', sql`${t.status} in ('open','closed')`),
   ],
 );
+
+/** A pull request recorded by the git connector after an approved `pr.open` (S7-6). The local stand-in has no web page; this row is the record. */
+export const codePullRequests = pgTable(
+  'code_pull_requests',
+  {
+    id: id(),
+    workspaceId: workspaceId(),
+    approvalId: uuid('approval_id').notNull(),
+    projectKey: text('project_key').notNull(),
+    number: integer('number').notNull(),
+    taskId: uuid('task_id'),
+    branch: text('branch').notNull(),
+    base: text('base').notNull(),
+    head: text('head').notNull(),
+    title: text('title').notNull(),
+    summary: text('summary').notNull(),
+    status: text('status').notNull().default('open'),
+    connector: text('connector').notNull(),
+    url: text('url'),
+    approvedBy: text('approved_by').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    mergedAt: timestamp('merged_at', { withTimezone: true }),
+  },
+  (t) => [
+    unique('code_pull_requests_ws_id_uq').on(t.workspaceId, t.id),
+    unique('code_pull_requests_ws_approval_uq').on(t.workspaceId, t.approvalId),
+    unique('code_pull_requests_ws_project_number_uq').on(t.workspaceId, t.projectKey, t.number),
+    foreignKey({ name: 'code_pull_requests_approval_fk', columns: [t.workspaceId, t.approvalId], foreignColumns: [approvals.workspaceId, approvals.id] }),
+    check('code_pull_requests_status_ck', sql`${t.status} in ('open','merged','closed')`),
+  ],
+);

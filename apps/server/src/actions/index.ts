@@ -3,6 +3,7 @@ import { executeEmail, recoverApprovals, releaseApproved, type ExecResult, type 
 import { executeDm, recoverDms, releaseDms } from './dm';
 import { executePost, recoverPosts, releasePosts } from './post';
 import { executeVideoBrief, recoverVideo, releaseVideo } from './video';
+import { executePrOpen, recoverPrs, releasePrs } from './pr';
 import { executeAgentCreate, recoverAgents, releaseAgents } from './agent';
 
 /**
@@ -17,7 +18,7 @@ export function createExecutors(deps: ExecutorDeps) {
     const existing = inFlight.get(approvalId);
     if (existing) return existing;
     const p = kindOf(approvalId)
-      .then((kind) => (kind === 'post.publish' ? executePost(deps, approvalId) : kind === 'dm.send' ? executeDm(deps, approvalId) : kind === 'video.brief' ? executeVideoBrief(deps, approvalId) : kind === 'agent.create' ? executeAgentCreate(deps, approvalId) : executeEmail(deps, approvalId)))
+      .then((kind) => (kind === 'post.publish' ? executePost(deps, approvalId) : kind === 'dm.send' ? executeDm(deps, approvalId) : kind === 'video.brief' ? executeVideoBrief(deps, approvalId) : kind === 'agent.create' ? executeAgentCreate(deps, approvalId) : kind === 'pr.open' ? executePrOpen(deps, approvalId) : executeEmail(deps, approvalId)))
       .finally(() => inFlight.delete(approvalId));
     inFlight.set(approvalId, p);
     return p;
@@ -30,7 +31,8 @@ export function createExecutors(deps: ExecutorDeps) {
       const dms = await recoverDms(deps);
       const video = await recoverVideo(deps);
       const agents = await recoverAgents(deps);
-      return { ...mail, resumed: [...mail.resumed, ...posts.resumed, ...dms.resumed, ...video.resumed, ...agents.resumed], unknown: [...mail.unknown, ...posts.unknown, ...dms.unknown, ...video.unknown], held: [...mail.held, ...dms.held] };
+      const prs = await recoverPrs(deps);
+      return { ...mail, resumed: [...mail.resumed, ...posts.resumed, ...dms.resumed, ...video.resumed, ...agents.resumed, ...prs.resumed], unknown: [...mail.unknown, ...posts.unknown, ...dms.unknown, ...video.unknown, ...prs.unknown], held: [...mail.held, ...dms.held] };
     },
     release: async () => {
       const mail = await releaseApproved(deps);
@@ -38,7 +40,8 @@ export function createExecutors(deps: ExecutorDeps) {
       const dms = await releaseDms(deps);
       const video = await releaseVideo(deps);
       const agents = await releaseAgents(deps);
-      return { released: [...mail.released, ...posts, ...dms.released, ...video, ...agents], held: [...mail.held, ...dms.held] };
+      const prs = await releasePrs(deps);
+      return { released: [...mail.released, ...posts, ...dms.released, ...video, ...agents, ...prs], held: [...mail.held, ...dms.held] };
     },
   };
 }

@@ -22,6 +22,7 @@ const TABLES = [
   'channel_accounts',
   'circuit_breakers',
   'code_projects',
+  'code_pull_requests',
   'code_worktrees',
   'contacts',
   'deal_stage_events',
