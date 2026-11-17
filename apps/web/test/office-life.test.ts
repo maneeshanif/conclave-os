@@ -80,3 +80,38 @@ describe('names on signs (S6B-2)', () => {
     expect(campus.y).toBe(34 - 2); // on the street, just above the district
   });
 });
+
+describe('how an agent looks (S6B-3, S6B-4)', () => {
+  it('shows one small mood over each state, and none for an unknown one', async () => {
+    const { moodFor } = await import('../office/mood');
+    expect(moodFor('working')).toBe('⌨️');
+    expect(moodFor('waiting')).toBe('⏳');
+    expect(moodFor('blocked')).toBe('⛔');
+    expect(moodFor('discussion')).toBe('💬');
+    expect(moodFor('handoff')).toBe('📨');
+    expect(moodFor('idle')).toBe('💤');
+    expect(moodFor('nonsense')).toBeNull();
+    expect(moodFor(undefined)).toBeNull();
+  });
+
+  it('types with a small quick bob only while working, and blinks for a moment now and then', async () => {
+    const { typingBob, blinking } = await import('../office/mood');
+    expect(typingBob('idle', 1234)).toBe(0);
+    const bobs = new Set([0, 100, 200, 300, 400].map((t) => typingBob('working', t)));
+    expect(bobs.size).toBeGreaterThan(1);
+    for (const b of bobs) expect(Math.abs(b)).toBeLessThanOrEqual(1);
+    // Open for most of a four second cycle, shut for a moment.
+    let shut = 0;
+    for (let t = 0; t < 4000; t += 20) if (blinking(t, 0)) shut++;
+    expect(shut).toBeGreaterThan(0);
+    expect(shut).toBeLessThan(15);
+  });
+
+  it('pings when something new needs you, and not when the count stays or falls', async () => {
+    const { needsYouRose } = await import('../office/mood');
+    expect(needsYouRose(null, 3)).toBe(false); // the first look is not news
+    expect(needsYouRose(2, 3)).toBe(true);
+    expect(needsYouRose(3, 3)).toBe(false);
+    expect(needsYouRose(3, 1)).toBe(false);
+  });
+});

@@ -30,7 +30,20 @@ export interface EmoteMessage {
   id: string;
   emote: string;
 }
-export type PresenceMessage = { kind: 'presence'; member: PresenceMember } | { kind: 'presence.all'; members: PresenceMember[] } | { kind: 'presence.leave'; id: string } | ChatMessage | EmoteMessage;
+export interface AnnounceMessage {
+  kind: 'announce';
+  id: string;
+  name: string;
+  text: string;
+  at: number;
+}
+export interface PinMessage {
+  kind: 'pin';
+  text: string;
+  by: string;
+}
+const MAX_ANNOUNCE = 200;
+export type PresenceMessage = { kind: 'presence'; member: PresenceMember } | { kind: 'presence.all'; members: PresenceMember[] } | { kind: 'presence.leave'; id: string } | ChatMessage | EmoteMessage | AnnounceMessage | PinMessage;
 
 /** Text reaches only the people this many tiles from the sender (S6-15c). No audio, no video. */
 export const CHAT_RANGE = 5;
@@ -50,6 +63,11 @@ const Move = z.object({
 });
 const goodLook = (v: unknown): v is number => typeof v === 'number' && Number.isInteger(v) && v >= 0 && v < LOOKS;
 
+const Announce = z.object({ type: z.literal('announce'), text: z.string() });
+const Pin = z.object({ type: z.literal('pin'), text: z.string() });
+const cleanAnnounce = (raw: string): string =>
+  // eslint-disable-next-line no-control-regex
+  raw.replace(/[\u0000-\u001f<>]/g, '').replace(/\s+/g, ' ').trim().slice(0, MAX_ANNOUNCE);
 const Emote = z.object({ type: z.literal('emote'), emote: z.string() });
 const Chat = z.object({ type: z.literal('chat'), text: z.string() });
 const cleanText = (raw: string): string =>
@@ -70,17 +88,21 @@ interface Connection {
   last: number | null;
   lastChat: number | null;
   lastEmote: number | null;
+  lastAnnounce: number | null;
 }
 
 export class PresenceHub {
   private readonly conns = new Set<Connection>();
   private readonly minIntervalMs: number;
   private readonly chatIntervalMs: number;
+  private readonly announceIntervalMs: number;
+  private pinned: PinMessage | null = null;
   private readonly now: () => number;
 
-  constructor(opts: { minIntervalMs?: number; chatIntervalMs?: number; now?: () => number } = {}) {
+  constructor(opts: { minIntervalMs?: number; chatIntervalMs?: number; announceIntervalMs?: number; now?: () => number } = {}) {
     this.minIntervalMs = opts.minIntervalMs ?? 100;
     this.chatIntervalMs = opts.chatIntervalMs ?? 500;
+    this.announceIntervalMs = opts.announceIntervalMs ?? 10_000;
     this.now = opts.now ?? Date.now;
   }
 
@@ -94,10 +116,11 @@ export class PresenceHub {
     const taken = new Set([...this.conns].map((c) => c.id));
     let id = sessionId;
     for (let n = 2; taken.has(id); n++) id = `${sessionId}~${n}`;
-    const conn: Connection = { id, send, member: null, last: null, lastChat: null, lastEmote: null };
+    const conn: Connection = { id, send, member: null, last: null, lastChat: null, lastEmote: null, lastAnnounce: null };
     const here = this.members();
     this.conns.add(conn);
     if (here.length) send({ kind: 'presence.all', members: here });
+    if (this.pinned) send(this.pinned); // what is pinned is shown to whoever arrives
     return {
       message: (raw) => this.receive(conn, raw),
       close: () => {
@@ -114,6 +137,10 @@ export class PresenceHub {
     } catch {
       return;
     }
+    const announce = Announce.safeParse(parsed);
+    if (announce.success) return this.announce(conn, announce.data.text);
+    const pin = Pin.safeParse(parsed);
+    if (pin.success) return this.pin(conn, pin.data.text);
     const emote = Emote.safeParse(parsed);
     if (emote.success) return this.react(conn, emote.data.emote);
     const chat = Chat.safeParse(parsed);
@@ -125,6 +152,32 @@ export class PresenceHub {
     conn.last = t;
     conn.member = { id: conn.id, name: cleanName(m.data.name, conn.member?.name ?? 'Guest'), look: goodLook(m.data.look) ? m.data.look : (conn.member?.look ?? 0), x: m.data.x, y: m.data.y, availability: m.data.availability, handRaised: m.data.handRaised };
     this.tell({ kind: 'presence', member: { ...conn.member } }, conn);
+  }
+
+  /** The megaphone: a line to everyone in the town, near or far. Rate limited, cleaned, and only from someone who has said where they are. */
+  private announce(conn: Connection, raw: string): void {
+    const from = conn.member;
+    if (!from) return;
+    const text = cleanAnnounce(raw);
+    if (!text) return;
+    const t = this.now();
+    if (conn.lastAnnounce !== null && t - conn.lastAnnounce < this.announceIntervalMs) return;
+    conn.lastAnnounce = t;
+    const msg: AnnounceMessage = { kind: 'announce', id: from.id, name: from.name, text, at: t };
+    for (const c of this.conns) if (c !== conn) c.send(msg);
+  }
+
+  /** A pinned message for everyone, kept for people who arrive later. An empty one clears it. */
+  private pin(conn: Connection, raw: string): void {
+    const from = conn.member;
+    if (!from) return;
+    const t = this.now();
+    if (conn.lastAnnounce !== null && t - conn.lastAnnounce < this.chatIntervalMs) return;
+    conn.lastAnnounce = t;
+    const text = cleanAnnounce(raw);
+    this.pinned = text ? { kind: 'pin', text, by: from.name } : null;
+    const msg: PinMessage = { kind: 'pin', text, by: from.name };
+    for (const c of this.conns) if (c !== conn) c.send(msg);
   }
 
   /** A quick reaction from someone who has said where they are: one emoji from the list, to people within range, never the sender. */

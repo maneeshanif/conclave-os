@@ -137,6 +137,74 @@ describe('talking to someone near you (S6-15c)', () => {
 
 const emotes = (s: Socket) => s.sent.filter((m) => m.kind === 'emote') as { kind: 'emote'; id: string; emote: string }[];
 
+const announces = (s: Socket) => s.sent.filter((m) => m.kind === 'announce') as { kind: 'announce'; id: string; name: string; text: string }[];
+const pins = (s: Socket) => s.sent.filter((m) => m.kind === 'pin') as { kind: 'pin'; text: string; by: string }[];
+
+describe('the megaphone and the pinned message (S6B-7)', () => {
+  const hub = () => {
+    let t = 0;
+    return new PresenceHub({ minIntervalMs: 0, chatIntervalMs: 500, announceIntervalMs: 10_000, now: () => (t += 1000) });
+  };
+
+  it('sends an announcement to everyone in the town, near or far, but not back to the sender', async () => {
+    const { open } = setup({ hub: hub() });
+    const a = await open('u1', 'a');
+    const near = await open('u2', 'b');
+    const far = await open('u3', 'c');
+    a.say(move(1, 1, { name: 'Ana' }));
+    near.say(move(2, 2));
+    far.say(move(150, 60));
+    a.say({ type: 'announce', text: 'Standup in five minutes' });
+    expect(announces(near.s)).toMatchObject([{ id: 'a', name: 'Ana', text: 'Standup in five minutes' }]);
+    expect(announces(far.s)).toHaveLength(1);
+    expect(announces(a.s)).toEqual([]);
+  });
+
+  it('cleans the text, cuts it short, drops an empty one, forwards nothing else, and ignores someone who has not said where they are', async () => {
+    const { open } = setup({ hub: hub() });
+    const a = await open('u1', 'a');
+    const b = await open('u2', 'b');
+    b.say(move(1, 1));
+    a.say({ type: 'announce', text: 'nobody knows where I am' });
+    a.say(move(1, 2));
+    a.say({ type: 'announce', text: '   ' });
+    a.say({ type: 'announce', text: 7 });
+    expect(announces(b.s)).toEqual([]);
+    a.say({ type: 'announce', text: '<b>hi</b>\u0007 all', secret: 'tok' });
+    expect(announces(b.s).map((m) => m.text)).toEqual(['bhi/b all']);
+    expect(JSON.stringify(announces(b.s))).not.toMatch(/tok/);
+  });
+
+  it('allows one announcement each ten seconds', async () => {
+    let t = 1000;
+    const { open } = setup({ hub: new PresenceHub({ minIntervalMs: 0, chatIntervalMs: 0, announceIntervalMs: 10_000, now: () => t }) });
+    const a = await open('u1', 'a');
+    const b = await open('u2', 'b');
+    a.say(move(1, 1));
+    b.say(move(1, 2));
+    for (let i = 0; i < 5; i++) a.say({ type: 'announce', text: `m${i}` });
+    expect(announces(b.s)).toHaveLength(1);
+    t += 11_000;
+    a.say({ type: 'announce', text: 'again' });
+    expect(announces(b.s).map((m) => m.text)).toEqual(['m0', 'again']);
+  });
+
+  it('pins a message for everyone, tells a newcomer about it, and clears with an empty one', async () => {
+    const { open } = setup({ hub: hub() });
+    const a = await open('u1', 'a');
+    const b = await open('u2', 'b');
+    a.say(move(1, 1, { name: 'Ana' }));
+    a.say({ type: 'pin', text: 'Friday demo at 4' });
+    expect(pins(b.s)).toMatchObject([{ text: 'Friday demo at 4', by: 'Ana' }]);
+    const later = await open('u3', 'c');
+    expect(pins(later.s)).toMatchObject([{ text: 'Friday demo at 4' }]); // told on arrival
+    a.say({ type: 'pin', text: '' });
+    expect(pins(b.s).at(-1)).toMatchObject({ text: '' });
+    const last = await open('u4', 'd');
+    expect(pins(last.s)).toEqual([]); // nothing pinned now
+  });
+});
+
 describe('quick reactions (S6-18)', () => {
   const ticking = () => {
     let t = 0;

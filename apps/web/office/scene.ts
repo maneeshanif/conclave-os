@@ -3,6 +3,7 @@ import { panelFor } from '@conclave/shared';
 import type { OfficeFacts } from '../lib/api';
 import { OBJECT_TYPES } from '@conclave/shared';
 import { ambientFor, reducedMotion, type Ambient } from './ambient';
+import { blinking, moodFor, typingBob } from './mood';
 import { DECOR_NAMES } from './decor';
 import { signsFor } from './signs';
 import { FRAME, availabilityColour, directionOf, frameIndex, lookFor, placeColour, pose, roomTint, type Availability, type Facing } from './art';
@@ -70,6 +71,7 @@ export function startWorld(opts: {
     private readonly sprite: Phaser.GameObjects.Sprite;
     private readonly dot: Phaser.GameObjects.Arc;
     private readonly text: Phaser.GameObjects.Text;
+    private readonly mood: Phaser.GameObjects.Text;
 
     constructor(
       scene: Phaser.Scene,
@@ -79,13 +81,21 @@ export function startWorld(opts: {
       this.sprite = scene.add.sprite(0, -2, sheet, frameIndex(look, 'down', 0));
       this.dot = scene.add.circle(0, 0, 4, 0x94a3b8).setStrokeStyle(1, 0xffffff);
       this.text = scene.add.text(0, 0, '', { fontSize: '10px', color: '#ffffff', backgroundColor: 'rgba(15,23,42,0.75)', padding: { x: 4, y: 1 } }).setOrigin(0, 0.5);
-      this.box = scene.add.container(0, 0, [this.sprite, this.dot, this.text]).setDepth(5);
+      this.mood = scene.add.text(0, -40, '', { fontSize: '12px' }).setOrigin(0.5, 1);
+      this.box = scene.add.container(0, 0, [this.sprite, this.dot, this.text, this.mood]).setDepth(5);
       this.baseY = -2;
     }
 
-    /** Robots hover: a small bob, all the time. */
-    hover(time: number): void {
-      if (this.sheet === 'agents') this.sprite.setY(this.baseY + Math.sin(time / 260 + this.box.x) * 1.5);
+    /** A helper breathes a little, types with a quick bob while it works, and blinks now and then. */
+    hover(time: number, state?: string): void {
+      if (this.sheet !== 'agents') return;
+      this.sprite.setY(this.baseY + Math.sin(time / 420 + this.box.x) * 0.6 + typingBob(state, time));
+      this.sprite.setAlpha(blinking(time, Math.abs(Math.round(this.box.x)) * 37 % 4000) ? 0.82 : 1);
+    }
+
+    /** The small mood over the head: what the agent is doing. */
+    setMood(mood: string | null): void {
+      this.mood.setText(mood ?? '');
     }
 
     setLook(look: number): void {
@@ -290,7 +300,11 @@ export function startWorld(opts: {
       const p = ctl.me.position;
       const status = opts.myStatus();
       this.me?.moveTo(p.x, p.y);
-      for (const f of this.figures.values()) f.hover(_time);
+      for (const [id, f] of this.figures) {
+        const state = opts.stateOf?.(id);
+        f.hover(_time, state);
+        f.setMood(moodFor(state));
+      }
       this.drawScreens(_time);
       this.me?.setLook(opts.myLook?.() ?? 0);
       this.me?.label(`${opts.emoteOf?.('me') ? `${opts.emoteOf('me')} ` : ''}${opts.myName?.() ?? 'You'}`, availabilityColour(status));

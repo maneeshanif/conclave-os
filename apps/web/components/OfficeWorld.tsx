@@ -9,6 +9,7 @@ import { describeThing, placeTooltip, type Thing } from '../office/tooltips';
 import { applyPresence, type Member } from '../office/presence';
 import { addChat, nearbyPeople, type ChatLine } from '../office/chat';
 import { ChatBubble } from './ChatBubble';
+import { needsYouRose } from '../office/mood';
 import { currentEmote, showEmote, type EmoteMap } from '../office/emotes';
 import { play, readSoundSettings, soundFor, speak, speakable, writeSoundSettings, type SoundSettings } from '../office/sound';
 import { readProfile, writeProfile, type Profile } from '../office/profile';
@@ -16,6 +17,7 @@ import type { Who } from '../office/scene';
 import { AddAgent } from './AddAgent';
 import { AddDepartment } from './AddDepartment';
 import { AddDesk } from './AddDesk';
+import { AnnouncementBanner, Megaphone } from './Megaphone';
 import { CompanySwitcher } from './CompanySwitcher';
 import { OfficeBar, WelcomeCard, ZonePill, type Availability, type Person } from './OfficeBar';
 import { WHERE, type OfficeClient } from './OfficeView';
@@ -38,6 +40,11 @@ export function OfficeWorld({ client, onOpen, onPanel, onOpenList, onFail }: { c
   const who = useRef(new Map<string, Who>());
   const mine = useRef<Availability>('available');
   const states = useRef(new Map<string, string>());
+  const [announcement, setAnnouncement] = useState<{ name: string; text: string } | null>(null);
+  const [pinned, setPinned] = useState<{ text: string; by: string } | null>(null);
+  const [megaphone, setMegaphone] = useState(false);
+  const sendMega = useRef<(kind: 'announce' | 'pin', text: string) => void>(() => undefined);
+  const forYouBefore = useRef<number | null>(null);
   // Sound starts off, is kept in this browser, and is read after the first paint so the server render and the first paint agree.
   const [sound, setSound] = useState<SoundSettings>({ effects: false, voice: false });
   const soundRef = useRef(sound);
@@ -129,6 +136,9 @@ export function OfficeWorld({ client, onOpen, onPanel, onOpenList, onFail }: { c
         const loadTeam = () =>
           client.team?.().then((team) => {
             states.current = new Map(team.map((m) => [m.id, m.state] as [string, string]));
+            const waiting = team.reduce((n, m) => n + (m.forYou ?? 0), 0);
+            if (needsYouRose(forYouBefore.current, waiting)) hear('needs-you');
+            forYouBefore.current = waiting;
             setPeople(team.map((t) => ({ id: t.id, name: t.name, where: WHERE[who.current.get(t.id)?.place ?? 'lounge'] ?? '', state: t.state, since: t.since, task: t.task, forYou: t.forYou })));
           }).catch(() => undefined);
         const loadActivity = () => client.activity?.().then(setActivity).catch(() => undefined);
@@ -186,10 +196,27 @@ export function OfficeWorld({ client, onOpen, onPanel, onOpenList, onFail }: { c
             if (line) speak(line);
           }
           if (m.kind === 'emote') hear('emote');
+          if (m.kind === 'announce' && typeof m.text === 'string') {
+            const name = typeof m.name === 'string' ? m.name : 'Someone';
+            setAnnouncement({ name, text: m.text });
+            setTimeout(() => setAnnouncement((cur) => (cur && cur.text === m.text ? null : cur)), 9000);
+            hear('needs-you');
+            const line = speakable(name, m.text, soundRef.current);
+            if (line) speak(line);
+          }
+          if (m.kind === 'pin' && typeof m.text === 'string') setPinned(m.text ? { text: m.text, by: typeof m.by === 'string' ? m.by : 'Someone' } : null);
           if (m.kind === 'emote' && typeof m.id === 'string' && typeof m.emote === 'string') emotes.current = showEmote(emotes.current, m.id, m.emote, Date.now());
           watchNear();
         });
         const nearTimer = setInterval(watchNear, 300);
+        sendMega.current = (kind, text) => {
+          link?.send({ type: kind, text });
+          if (kind === 'pin') setPinned(text ? { text, by: profileRef.current.name } : null);
+          if (kind === 'announce') {
+            setAnnouncement({ name: 'You', text });
+            setTimeout(() => setAnnouncement(null), 9000);
+          }
+        };
         sendEmote.current = (emote) => {
           link?.send({ type: 'emote', emote });
           emotes.current = showEmote(emotes.current, 'me', emote, Date.now());
@@ -241,6 +268,7 @@ export function OfficeWorld({ client, onOpen, onPanel, onOpenList, onFail }: { c
           extra={<CompanySwitcher onSwitch={() => window.location.reload()} />}
           onAddDepartment={() => setAdding(true)}
           onAddDesk={() => setAddingDesk(true)}
+          onMegaphone={() => setMegaphone(true)}
           onAddAgent={() => setAddingAgent(true)}
           profile={profile}
           onProfile={changeProfile}
@@ -267,6 +295,8 @@ export function OfficeWorld({ client, onOpen, onPanel, onOpenList, onFail }: { c
           }}
         />
       ) : null}
+      <AnnouncementBanner announcement={announcement} pinned={pinned} />
+      {megaphone ? <Megaphone pinned={pinned} onSend={(k, t) => sendMega.current(k, t)} onClose={() => setMegaphone(false)} /> : null}
       {addingDesk ? <AddDesk departments={deskCounts} add={api.addDesk} onDone={() => window.location.reload()} onCancel={() => setAddingDesk(false)} /> : null}
       {adding ? <AddDepartment add={api.addDepartment} onDone={() => window.location.reload()} onCancel={() => setAdding(false)} /> : null}
       {hover && factsRef.current ? <Tooltip hover={hover} facts={factsRef.current} who={who.current} hereIn={inRoom.current} status={mine.current} box={box.current} /> : null}
