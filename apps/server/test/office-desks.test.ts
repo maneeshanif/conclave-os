@@ -76,11 +76,11 @@ describe('desks (S6-2)', () => {
   });
 
   it('puts the overflow in the lounge when the room is full, with no desk number', async () => {
-    for (let i = 1; i <= 5; i++) await hire(`g-${i}`, 'chief-of-staff');
+    for (let i = 1; i <= 7; i++) await hire(`g-${i}`, 'chief-of-staff');
     await assign();
     const all = await desks();
-    expect(all.filter((d) => d.room === 'Chief of Staff').map((d) => d.slot)).toEqual([1, 2, 3, 4]);
-    expect(all.find((d) => d.key === 'g-5')).toMatchObject({ room: 'Lounge', slot: null });
+    expect(all.filter((d) => d.room === 'Chief of Staff').map((d) => d.slot)).toEqual([1, 2, 3, 4, 5, 6]);
+    expect(all.find((d) => d.key === 'g-7')).toMatchObject({ room: 'Lounge', slot: null });
   });
 
   it('puts an agent whose department has no room yet in the lounge', async () => {
@@ -126,7 +126,7 @@ describe('the office API (S6-2)', () => {
     expect(body.map.rooms.map((r) => r.name)).toEqual(expect.arrayContaining(['Outreach', 'Boardroom', 'Lounge', 'Hall']));
     expect(body.map.objects.some((o) => o.type === 'approvals-desk')).toBe(true);
     expect(body.map.entries.some((e) => e.name === 'door')).toBe(true);
-    expect(body.map.walls).toHaveLength(63);
+    expect(body.map.walls).toHaveLength(65);
     expect(body.map.walls[0]).toHaveLength(body.map.width);
     expect(body.agents.find((a) => a.key === 'l-one')).toMatchObject({ department: 'outreach', room: 'Outreach', desk: 1 });
     await sql("update agents set status = 'retired' where key = 'l-one'");

@@ -12,6 +12,16 @@ const FIRST_X = 40;
 const PITCH = 10;
 export const MAX_ADDED_DEPARTMENTS = 8;
 
+/** A department room is nine tiles wide and twelve high. */
+const ROOM_H = 12;
+/**
+ * Where the agents sit, as [across, down] from the room's top left: three columns by three rows. The agent stands on this tile (the
+ * chair) and the desk is the tile above it. A room starts with the first six; "add a desk" takes the next (S6B-1).
+ */
+export const DESK_SPOTS: readonly [number, number][] = [[1, 3], [4, 3], [7, 3], [1, 6], [4, 6], [7, 6], [1, 9], [4, 9], [7, 9]];
+export const MAX_DESKS = DESK_SPOTS.length;
+export const STARTING_DESKS = 6;
+
 // Tile numbers in the starter tileset (scripts/make-office.mjs).
 const FLOOR = 1;
 const WALL = 2;
@@ -21,10 +31,51 @@ const DESK = 7;
 const THING = 8;
 
 export class PlotsFull extends Error {}
+export class RoomFull extends Error {}
 export class StampError extends Error {}
 
 const KEY = /^[a-z0-9][a-z0-9-]*$/;
 const prop = (name: string, type: string, value: unknown) => ({ name, type, value });
+
+/**
+ * Adds one desk to a department room (S6B-1): the next free spot of nine, with the next number. A room that is full says so. Pure; the
+ * map comes back changed and nothing already on it moves. The chair tile is open floor, and the desk the tile above it blocks.
+ */
+export function addDeskToRoom(input: OfficeMapJson, roomName: string): OfficeMapJson {
+  const json = structuredClone(input);
+  const layer = (n: string): TiledLayer => {
+    const l = json.layers.find((x) => x.name === n);
+    if (!l) throw new StampError(`The map has no layer called "${n}".`);
+    return l;
+  };
+  const room = (layer('rooms').objects ?? []).find((r) => r.name === roomName && r.properties?.some((p) => p.name === 'kind' && p.value === 'department'));
+  if (!room) throw new StampError(`There is no department room called "${roomName}".`);
+  const rx = room.x / T;
+  const ry = room.y / T;
+  const rw = (room.width ?? 0) / T;
+  const rh = (room.height ?? 0) / T;
+  const W = json.width;
+  const floor = layer('floor').data!;
+  const coll = layer('collision').data!;
+  const desks = layer('desks');
+  const mine = (desks.objects ?? []).filter((d) => d.properties?.some((p) => p.name === 'room' && p.value === roomName));
+  const taken = new Set(mine.map((d) => `${d.x / T},${d.y / T}`));
+  const slot = Math.max(0, ...mine.map((d) => Number(d.properties?.find((p) => p.name === 'slot')?.value ?? 0))) + 1;
+  for (const [dx, dy] of DESK_SPOTS) {
+    const cx = rx + dx;
+    const cy = ry - 1 + dy;
+    if (dx >= rw || dy >= rh + 1 || taken.has(`${cx},${cy}`)) continue;
+    const free = (x: number, y: number) => floor[y * W + x] !== WALL && coll[y * W + x] === 0;
+    if (!free(cx, cy) || !free(cx, cy - 1)) continue; // something else stands there
+    floor[cy * W + cx] = DESK;
+    coll[(cy - 1) * W + cx] = 1;
+    const id = Number(json.nextobjectid ?? 1);
+    desks.objects = [...(desks.objects ?? []), { id, name: `${roomName} desk ${slot}`, type: '', x: cx * T, y: cy * T, point: true, rotation: 0, visible: true, properties: [prop('room', 'string', roomName), prop('slot', 'int', slot)] } as TiledObject];
+    json.nextobjectid = id + 1;
+    return json;
+  }
+  throw new RoomFull(`${roomName} has no free desk spot left (${MAX_DESKS} at most).`);
+}
 
 export function addDepartmentRoom(input: OfficeMapJson, dept: { key: string; name: string }): OfficeMapJson {
   const name = dept.name.trim();
@@ -71,11 +122,11 @@ export function addDepartmentRoom(input: OfficeMapJson, dept: { key: string; nam
     coll[at(x, y)] = tile === WALL ? 1 : 0;
   };
   // Brick round the room and its corridor, whatever was there before (new ground used to be wall; in a town it can be lawn).
-  for (let x = x0 - 1; x <= x0 + PITCH - 1; x++) for (const y of [0, 11, 15]) set(x, y, WALL);
-  for (let y = 0; y <= 15; y++) set(x0 + PITCH - 1, y, WALL);
-  for (let y = 1; y <= 10; y++) for (let x = x0; x <= x0 + 8; x++) set(x, y, CARPET); // the room
-  for (let y = 12; y <= 14; y++) for (let x = x0 - 1; x <= x0 + PITCH - 2; x++) set(x, y, FLOOR); // the corridor, carried on, through the old end wall
-  set(x0 + 4, 11, DOOR); // the door onto the corridor
+  for (let x = x0 - 1; x <= x0 + PITCH - 1; x++) for (const y of [0, ROOM_H + 1, ROOM_H + 5]) set(x, y, WALL);
+  for (let y = 0; y <= ROOM_H + 5; y++) set(x0 + PITCH - 1, y, WALL);
+  for (let y = 1; y <= ROOM_H; y++) for (let x = x0; x <= x0 + 8; x++) set(x, y, CARPET); // the room
+  for (let y = ROOM_H + 2; y <= ROOM_H + 4; y++) for (let x = x0 - 1; x <= x0 + PITCH - 2; x++) set(x, y, FLOOR); // the corridor, carried on, through the old end wall
+  set(x0 + 4, ROOM_H + 1, DOOR); // the door onto the corridor
   json.width = newW;
 
   let id = Number(json.nextobjectid ?? 1);
@@ -90,13 +141,20 @@ export function addDepartmentRoom(input: OfficeMapJson, dept: { key: string; nam
     visible: true,
     ...(properties ? { properties } : {}),
   });
-  rooms.objects = [...roomList, obj(name, '', x0, 1, [9, 10], [prop('kind', 'string', 'department'), prop('department', 'string', dept.key)])];
-  const seats: [number, number][] = [[2, 3], [5, 3], [2, 6], [5, 6]];
+  rooms.objects = [...roomList, obj(name, '', x0, 1, [9, ROOM_H], [prop('kind', 'string', 'department'), prop('department', 'string', dept.key)])];
+  const seats = DESK_SPOTS.slice(0, STARTING_DESKS);
   desks.objects = [...(desks.objects ?? []), ...seats.map(([dx, dy], i) => obj(`${name} desk ${i + 1}`, '', x0 + dx, dy, undefined, [prop('room', 'string', name), prop('slot', 'int', i + 1)]))];
-  for (const [dx, dy] of seats) set(x0 + dx, dy, DESK);
-  const things: [string, string, number][] = [[`${name} board`, 'dept-board', 2], [`${name} table`, 'dept-table', 5]];
-  objects.objects = [...(objects.objects ?? []), ...things.map(([n, type, dx]) => obj(n, type, x0 + dx, 8))];
-  for (const [, , dx] of things) set(x0 + dx, 8, THING);
+  for (const [dx, dy] of seats) {
+    set(x0 + dx, dy, DESK);
+    coll[at(x0 + dx, dy - 1)] = 1; // the desk itself, one row up from the chair
+  }
+  // A board on the north wall and a meeting table at the bottom, as in the headquarters; each blocks the tiles it stands on.
+  const things: [string, string, number, number, number, number][] = [[`${name} board`, 'dept-board', 1, 1, 2, 1], [`${name} table`, 'dept-table', 5, ROOM_H - 1, 2, 2]];
+  objects.objects = [...(objects.objects ?? []), ...things.map(([n, type, dx, dy]) => obj(n, type, x0 + dx, dy))];
+  for (const [, , dx, dy, w, h] of things) {
+    set(x0 + dx, dy, THING);
+    for (let j = dy; j < dy + h; j++) for (let i = dx; i < dx + w; i++) coll[at(x0 + i, j)] = 1;
+  }
   json.nextobjectid = id + 1;
   return json;
 }

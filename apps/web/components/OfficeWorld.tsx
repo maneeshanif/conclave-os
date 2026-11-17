@@ -15,6 +15,7 @@ import { readProfile, writeProfile, type Profile } from '../office/profile';
 import type { Who } from '../office/scene';
 import { AddAgent } from './AddAgent';
 import { AddDepartment } from './AddDepartment';
+import { AddDesk } from './AddDesk';
 import { CompanySwitcher } from './CompanySwitcher';
 import { OfficeBar, WelcomeCard, ZonePill, type Availability, type Person } from './OfficeBar';
 import { WHERE, type OfficeClient } from './OfficeView';
@@ -85,6 +86,8 @@ export function OfficeWorld({ client, onOpen, onPanel, onOpenList, onFail }: { c
   const [notice, setNotice] = useState<string | null>(null);
   const [activity, setActivity] = useState<{ id: string; at: string; text: string }[] | undefined>(undefined);
   const [adding, setAdding] = useState(false);
+  const [addingDesk, setAddingDesk] = useState(false);
+  const [deskCounts, setDeskCounts] = useState<{ key: string; name: string; desks: number }[]>([]);
   const [hover, setHover] = useState<{ thing: Thing; x: number; y: number } | null>(null);
   const factsRef = useRef<OfficeFacts | null>(null);
   const inRoom = useRef<(room: string) => string[]>(() => []);
@@ -119,6 +122,7 @@ export function OfficeWorld({ client, onOpen, onPanel, onOpenList, onFail }: { c
         factsRef.current = facts;
         const ctl = new WorldController(toMap(facts));
         setDepartments(facts.map.rooms.flatMap((r) => (r.department ? [{ key: r.department, name: r.name }] : [])));
+        setDeskCounts(facts.map.rooms.flatMap((r) => (r.department ? [{ key: r.department, name: r.name, desks: facts.map.desks.filter((d) => d.room === r.name).length }] : [])));
         // While someone is handing a task on they stand beside a colleague's desk; they go back by themselves, so look again soon.
         let again: ReturnType<typeof setTimeout> | undefined;
         // The cards (state, how long, task, what waits for you) come from the server's own reading, the same one the world's placement uses.
@@ -236,6 +240,7 @@ export function OfficeWorld({ client, onOpen, onPanel, onOpenList, onFail }: { c
           onOpenAgent={onOpen}
           extra={<CompanySwitcher onSwitch={() => window.location.reload()} />}
           onAddDepartment={() => setAdding(true)}
+          onAddDesk={() => setAddingDesk(true)}
           onAddAgent={() => setAddingAgent(true)}
           profile={profile}
           onProfile={changeProfile}
@@ -262,6 +267,7 @@ export function OfficeWorld({ client, onOpen, onPanel, onOpenList, onFail }: { c
           }}
         />
       ) : null}
+      {addingDesk ? <AddDesk departments={deskCounts} add={api.addDesk} onDone={() => window.location.reload()} onCancel={() => setAddingDesk(false)} /> : null}
       {adding ? <AddDepartment add={api.addDepartment} onDone={() => window.location.reload()} onCancel={() => setAdding(false)} /> : null}
       {hover && factsRef.current ? <Tooltip hover={hover} facts={factsRef.current} who={who.current} hereIn={inRoom.current} status={mine.current} box={box.current} /> : null}
       <ChatBubble near={near} lines={lines} onSend={(t) => sendChat.current(t)} />

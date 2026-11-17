@@ -178,7 +178,8 @@ const rooms = [
 // Agents sit at their desks: the desk is the tile north of the chair, the chair tile is where the agent stands.
 const desks = [];
 for (const [name, , x] of top) {
-  [[2, 2], [5, 2], [2, 5], [5, 5]].forEach(([dx, dy], i) => {
+  // Three columns, two rows to start (six desks); a third row (slots 7 to 9) is added with "add a desk" (stamp.ts, DESK_SPOTS).
+  [[1, 2], [4, 2], [7, 2], [1, 5], [4, 5], [7, 5]].forEach(([dx, dy], i) => {
     desks.push(obj(`${name} desk ${i + 1}`, '', x + dx, 1 + dy, 0, 0, [prop('room', 'string', name), prop('slot', 'int', i + 1)]));
     floor[at(x + dx, 1 + dy)] = DESK;
     block(x + dx, dy); // the desk itself, one row up from the chair
@@ -208,11 +209,11 @@ use('Needs you board', 'needs-you-board', 9, 8);
 use('Pipeline board', 'pipeline-board', 19, 3);
 use('Campaign board', 'campaign-board', 29, 3);
 use('Idea wall', 'idea-wall', 37, 1);
-use('Signal radio', 'signal-radio', 38, 3);
+use('Signal radio', 'signal-radio', 38, 4);
 // Every department room has a board and a meeting table (S6-13b).
 for (const [name, , x] of top) {
   use(`${name} board`, 'dept-board', x + 1, 1);
-  use(`${name} table`, 'dept-table', x + 4, 8);
+  use(`${name} table`, 'dept-table', x + 5, 9); // moves to rows 11 and 12 below, when the rooms grow taller
 }
 for (const o of objects) floor[at(o.x / T, o.y / T)] = THING;
 
@@ -223,21 +224,14 @@ const dec = (name, x, y, { solidly = true } = {}) => {
   decor.push(obj(name, 'decor', x, y, w, h));
   if (solidly) block(x, y, w, h);
 };
-const chair = (x, y, turn) => decor.push(obj('chair', 'decor', x, y, 1, 1, [prop('turn', 'int', turn)])); // 0 south, 90 west, 180 north, 270 east
-// Desks: a computer on each, and the chair is the agent's tile. Desk pictures go where the desk tile is, one up from the chair.
-for (const [, , x] of top) {
-  for (const [dx, dy] of [[2, 2], [5, 2], [2, 5], [5, 5]]) {
-    decor.push(obj('desk', 'decor', x + dx, dy, 1, 1, [prop('live', 'bool', true)]));
-    chair(x + dx, dy + 1, 180);
-  }
-}
+// Desks and chairs are not listed here: the world draws one of each at every desk in the desks layer, so a desk added later has them too.
 for (const [, , x] of top) {
   dec('bookshelf', x + 4, 1); // along the north wall
   dec('plant', x, 10);
   dec('bin', x + 7, 10);
 }
-dec('printer', 18, 9);
-dec('coffee', 1, 5);
+dec('printer', 19, 9);
+dec('coffee', 1, 9);
 // Boardroom: plants either end.
 dec('plant', 1, 21);
 dec('plant', 14, 21);
@@ -283,9 +277,36 @@ dec('plant', 25, 28);
 dec('plant', 38, 28);
 const entries = [obj('door', '', 19, 28), obj('lounge', '', 28, 19), obj('boardroom', '', 7, 20)];
 
+// ---- Rooms that grow (S6B-1): department rooms are twelve rows high. Two rows go in at row 9 and everything from there down moves. ----
+const INS_AT = 9;
+const INS_N = 2;
+const H2 = H + INS_N;
+{
+  const nf = Array(W * H2).fill(FLOOR);
+  const nw = Array(W * H2).fill(0);
+  for (let y = 0; y < H2; y++)
+    for (let x = 0; x < W; x++) {
+      const from = y < INS_AT ? y : y < INS_AT + INS_N ? INS_AT - 1 : y - INS_N; // new rows copy the row above them, without furniture
+      let tile = floor[at(x, from)];
+      if (y >= INS_AT && y < INS_AT + INS_N && (tile === THING || tile === DESK || tile === DOOR)) tile = CARPET;
+      nf[y * W + x] = tile;
+      nw[y * W + x] = y >= INS_AT && y < INS_AT + INS_N ? (tile === WALL ? 1 : 0) : wall[at(x, from)];
+    }
+  floor.splice(0, floor.length, ...nf);
+  wall.splice(0, wall.length, ...nw);
+  const shift = (o) => {
+    const ty = o.y / T;
+    if (ty >= INS_AT) o.y += INS_N * T;
+    else if (o.height && ty + o.height / T > INS_AT) o.height += INS_N * T; // a room that spans the new rows gets taller
+  };
+  for (const list of [rooms, desks, objects, decor, entries]) list.forEach(shift);
+}
+// The street starts under the (taller) headquarters.
+const STREET_Y = H2;
+
 // ---- The town (S6-17): the headquarters above, a street under it, the districts along the street, one world with no switcher. ----
 // Land beside the headquarters is a fenced lawn (where new departments get their rooms); the districts stand along the street.
-const STREET_Y = 30; // two rows of street
+// two rows of street, from STREET_Y
 const GAP = 2; // lawn between districts
 let reach = 1;
 const placed = districts.map((d) => {
@@ -298,7 +319,7 @@ const BH = STREET_Y + 2 + Math.max(...districts.map((d) => d.h)) + 1;
 const bigFloor = Array(BW * BH).fill(GRASS);
 const bigWall = Array(BW * BH).fill(1); // fenced unless opened below
 const bat = (x, y) => y * BW + x;
-for (let y = 0; y < H; y++)
+for (let y = 0; y < H2; y++)
   for (let x = 0; x < W; x++) {
     bigFloor[bat(x, y)] = floor[at(x, y)];
     bigWall[bat(x, y)] = wall[at(x, y)];
@@ -329,7 +350,7 @@ for (let y = 0; y < BH; y++) for (const x of [0, BW - 1]) {
 }
 // The Park: the lower half of the lawn beside the headquarters is open grounds (the strip above stays fenced, for the rooms new
 // departments get). A boardwalk, trees, picnic tables and benches, joined to the street.
-const PARK_Y = 17;
+const PARK_Y = 19; // below the strip where new departments get their rooms (their walls reach row 17)
 for (let y = PARK_Y; y < STREET_Y; y++) for (let x = W; x < BW - 1; x++) bigWall[bat(x, y)] = 0;
 for (let y = 23; y < 25; y++) for (let x = W; x < BW - 1; x++) bigFloor[bat(x, y)] = PATH;
 const blockBig = (x, y, w, h) => {

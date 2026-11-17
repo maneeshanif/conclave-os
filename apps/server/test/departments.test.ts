@@ -46,7 +46,7 @@ describe('adding a department from the world (S6-13b)', () => {
     expect(f.yaml).toMatch(/key:\s*sales-team/);
     const o = await office();
     expect(o.map.rooms).toContainEqual(expect.objectContaining({ name: 'Sales Team', department: 'sales-team' }));
-    expect(o.map.desks.filter((d) => d.room === 'Sales Team')).toHaveLength(4);
+    expect(o.map.desks.filter((d) => d.room === 'Sales Team')).toHaveLength(6);
     expect(o.map.objects.filter((x) => x.name.startsWith('Sales Team '))).toHaveLength(2);
     expect((await sql("select name from departments where key = 'sales-team'")).rows).toEqual([{ name: 'Sales Team' }]);
     expect((await loadCompany(root)).departments.find((d) => d.key === 'sales-team')).toMatchObject({ name: 'Sales Team', active: true });

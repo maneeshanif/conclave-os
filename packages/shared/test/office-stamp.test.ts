@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { addDepartmentRoom, findPath, nearestReachable, MAX_ADDED_DEPARTMENTS, PlotsFull, readOfficeMap, type OfficeMap, type OfficeMapJson } from '../src/office';
+import { addDepartmentRoom, addDeskToRoom, DESK_SPOTS, MAX_DESKS, RoomFull, StampError, findPath, nearestReachable, MAX_ADDED_DEPARTMENTS, PlotsFull, readOfficeMap, type OfficeMap, type OfficeMapJson } from '../src/office';
 
 const root = path.resolve(import.meta.dirname, '..', '..', '..');
 const base = JSON.parse(readFileSync(path.join(root, 'company', 'office.tmj'), 'utf8')) as OfficeMapJson;
@@ -15,13 +15,63 @@ const read = (j: OfficeMapJson, extra: { key: string; active: boolean }[] = []):
 const dept = (n: number) => ({ key: `team-${n}`, name: `Team ${n}` });
 const add = (j: OfficeMapJson, n: number) => addDepartmentRoom(j, dept(n));
 
+describe('rooms that grow (S6B-1)', () => {
+  const desksOf = (j: OfficeMapJson, room: string) => read(j).desks.filter((d) => d.room === room);
+  const room = (j: OfficeMapJson, name: string) => read(j).rooms.find((r) => r.name === name)!;
+
+  it('starts every department room with six desks in three columns and two rows, with room for nine', () => {
+    for (const name of ['Chief of Staff', 'Lead Gen', 'Outreach', 'Research']) {
+      expect(desksOf(base, name).map((d) => d.slot).sort(), name).toEqual([1, 2, 3, 4, 5, 6]);
+    }
+    expect(MAX_DESKS).toBe(9);
+    expect(DESK_SPOTS).toHaveLength(9);
+  });
+
+  it('puts the next desk in the next free spot with the next number, on open floor, and moves nothing else', () => {
+    const before = read(base);
+    const j = addDeskToRoom(base, 'Outreach');
+    const after = read(j);
+    const r = room(j, 'Outreach');
+    const seven = after.desks.find((d) => d.room === 'Outreach' && d.slot === 7)!;
+    expect(seven).toMatchObject({ x: r.x + DESK_SPOTS[6]![0], y: r.y - 1 + DESK_SPOTS[6]![1] });
+    expect(after.walls[seven.y]![seven.x]).toBe(false); // you can stand at it
+    expect(after.walls[seven.y - 1]![seven.x]).toBe(true); // the desk itself is in the way
+    for (const d of before.desks) expect(after.desks).toContainEqual(d);
+    for (const o of before.objects) expect(after.objects).toContainEqual(o);
+    expect(after.rooms).toEqual(before.rooms);
+    expect(after.entries).toEqual(before.entries);
+    expect(base).toEqual(JSON.parse(readFileSync(path.join(root, 'company', 'office.tmj'), 'utf8'))); // the input was not changed
+  });
+
+  it('fills the room up to nine, says it is full after that, and a new desk can always be reached', () => {
+    let j = base;
+    for (let n = 7; n <= 9; n++) j = addDeskToRoom(j, 'Lead Gen');
+    expect(desksOf(j, 'Lead Gen').map((d) => d.slot).sort()).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9]);
+    expect(() => addDeskToRoom(j, 'Lead Gen')).toThrow(RoomFull);
+    const m = read(j);
+    const door = m.entries.find((e) => e.name === 'door')!;
+    for (const d of m.desks.filter((x) => x.room === 'Lead Gen')) expect(findPath(m, door, d), `desk ${d.slot}`).not.toBeNull();
+  });
+
+  it('refuses a room that is not there and a room that is not a department room', () => {
+    expect(() => addDeskToRoom(base, 'Nowhere')).toThrow(StampError);
+    expect(() => addDeskToRoom(base, 'Boardroom')).toThrow(StampError);
+  });
+
+  it('works on a room stamped for a new department, the same way', () => {
+    let j = add(base, 1);
+    j = addDeskToRoom(j, 'Team 1');
+    expect(read(j, [{ key: 'team-1', active: true }]).desks.filter((d) => d.room === 'Team 1').map((d) => d.slot).sort()).toEqual([1, 2, 3, 4, 5, 6, 7]);
+  });
+});
+
 describe('stamping a department room onto the map (S6-13b)', () => {
-  it('adds a room for the department with four desks, a board and a meeting table, and the map still reads', () => {
+  it('adds a room for the department with six desks, a board and a meeting table, and the map still reads', () => {
     const j = add(base, 1);
     const m = read(j, [{ key: 'team-1', active: true }]);
     const room = m.rooms.find((r) => r.name === 'Team 1')!;
     expect(room).toMatchObject({ kind: 'department', department: 'team-1' });
-    expect(m.desks.filter((d) => d.room === 'Team 1').map((d) => d.slot).sort()).toEqual([1, 2, 3, 4]);
+    expect(m.desks.filter((d) => d.room === 'Team 1').map((d) => d.slot).sort()).toEqual([1, 2, 3, 4, 5, 6]);
     expect(m.objects.find((o) => o.name === 'Team 1 board')).toMatchObject({ type: 'dept-board' });
     expect(m.objects.find((o) => o.name === 'Team 1 table')).toMatchObject({ type: 'dept-table' });
     for (const d of m.desks.filter((x) => x.room === 'Team 1')) expect(d.x >= room.x && d.x < room.x + room.w && d.y >= room.y && d.y < room.y + room.h).toBe(true);
@@ -62,7 +112,7 @@ describe('stamping a department room onto the map (S6-13b)', () => {
     expect(after.entries).toEqual(before.entries);
     // The old walls are the same, except where the new room and its corridor and fence are carved out of the lawn.
     for (let y = 0; y < before.height; y++) for (let x = 0; x < before.width; x++) {
-      const carved = x >= 39 && x <= 49 && y <= 15;
+      const carved = x >= 39 && x <= 49 && y <= 17;
       if (!carved) expect(after.walls[y]![x], `${x},${y}`).toBe(before.walls[y]![x]);
     }
   });

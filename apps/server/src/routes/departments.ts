@@ -4,7 +4,7 @@ import { Hono } from 'hono';
 import type { Pool } from 'pg';
 import { parse as parseYaml } from 'yaml';
 import { z } from 'zod';
-import { PlotsFull, StampError, addDepartmentRoom, readOfficeMap, type OfficeMapJson } from '@conclave/shared';
+import { PlotsFull, RoomFull, StampError, addDepartmentRoom, addDeskToRoom, readOfficeMap, type OfficeMapJson } from '@conclave/shared';
 import type { AppEnv } from '../app';
 import type { Bus } from '../bus';
 import { CompanyLoadError, loadCompany } from '../company/loader';
@@ -76,6 +76,32 @@ export function departmentRoutes(deps: { workspaceId: string; companyRoot: strin
     const row = await c.get('tx').client.query<{ id: string }>("insert into department_messages (workspace_id, department_id, author, body) values ($1, $2, 'founder', $3) returning id", [deps.workspaceId, dept.id, parsed.data.body]);
     c.get('after').push(async () => deps.bus?.publish({ kind: 'department.changed', workspaceId: deps.workspaceId, department: key }));
     return c.json({ id: row.rows[0]!.id }, 201);
+  });
+
+  // Add a desk to a department's room (S6B-1): the next free spot of nine. The map is checked before it is written.
+  r.post('/:key/desks', async (c) => {
+    const key = c.req.param('key');
+    if (!/^[a-z0-9][a-z0-9-]*$/.test(key)) return c.json({ error: 'That is not a department key.' }, 400);
+    const mapFile = path.join(deps.companyRoot, 'office.tmj');
+    try {
+      const done = await exclusive(deps.companyRoot, async () => {
+        const json = JSON.parse(await readFile(mapFile, 'utf8')) as OfficeMapJson;
+        const room = (json.layers.find((l) => l.name === 'rooms')?.objects ?? []).find((r) => r.properties?.some((p) => p.name === 'department' && p.value === key));
+        if (!room?.name) throw new StampError(`There is no room for the department "${key}".`);
+        const grown = addDeskToRoom(json, room.name);
+        const company = await loadCompany(deps.companyRoot);
+        readOfficeMap(grown, { file: 'office.tmj', departments: company.departments.map((d) => ({ key: d.key, active: d.active })) });
+        await replaceFile(mapFile, JSON.stringify(grown, null, 1) + '\n');
+        const desks = (grown.layers.find((l) => l.name === 'desks')?.objects ?? []).filter((d) => d.properties?.some((p) => p.name === 'room' && p.value === room.name)).length;
+        return { key, room: room.name, desks };
+      });
+      deps.bus?.publish({ kind: 'office.changed', workspaceId: deps.workspaceId });
+      return c.json(done, 201);
+    } catch (err) {
+      if (err instanceof RoomFull) return c.json({ error: err.message }, 409);
+      if (err instanceof StampError) return c.json({ error: err.message }, 400);
+      throw err;
+    }
   });
 
   r.post('/', async (c) => {

@@ -407,6 +407,7 @@ export const api = {
   agentTemplates: async () => (await call<{ templates: string[] }>('/api/office/agent-templates')).templates,
   proposeAgent: (p: { department: string; template: string; name?: string }) => call<{ approvalId: string; id: string }>('/api/office/agent-proposals', { method: 'POST', body: JSON.stringify(p) }),
   addDepartment: (name: string) => call<{ key: string; name: string; room: number }>('/api/departments', { method: 'POST', body: JSON.stringify({ name }) }),
+  addDesk: (key: string) => call<{ key: string; room: string; desks: number }>(`/api/departments/${key}/desks`, { method: 'POST', body: '{}' }),
   companies: () => call<CompanyList>('/api/companies'),
   createCompany: (c: { name: string; template: string }) => call<CompanySummary>('/api/companies', { method: 'POST', body: JSON.stringify(c) }),
   office: async () => {

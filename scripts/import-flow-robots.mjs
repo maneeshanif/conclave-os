@@ -3,7 +3,7 @@
 //
 // art-source/flow/robot-<n>.png (n = 0 to 4) is one robot, 3 columns by 4 rows: facing the camera, left, left again, away; each row
 // has three frames (idle and two bobs). The sheet agents.png has the same layout as people.png (rows down, left, right, up; each look
-// three frames across) with five looks. The right-facing row is the left-facing one mirrored. A look with no sheet of its own is the first robot with its colours turned (a hue shift), so every agent can look different from the sheets we have.
+// three frames across) with five looks. The right-facing row is the left-facing one mirrored. A look with no sheet of its own is the first helper with the colour of its jumpsuit turned, so every agent can look different.
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
@@ -19,7 +19,28 @@ const LOOKS = 5;
 const MAX_W = 26;
 const MAX_H = 26;
 /** Hue turns, in degrees, for the looks that have no sheet of their own. */
-const HUE = [0, 0, 150, 215, 300];
+const HUE = [0, 55, 120, 225, 170];
+
+/** Turns the colour of the jumpsuit (the teal part) and leaves skin, outline and grey alone, so every helper keeps a natural face. */
+function recolour(rgba, turn) {
+  const out = Buffer.from(rgba);
+  for (let i = 0; i < out.length; i += 4) {
+    const r = out[i] / 255, g = out[i + 1] / 255, b = out[i + 2] / 255;
+    const max = Math.max(r, g, b), min = Math.min(r, g, b), d = max - min;
+    const l = (max + min) / 2;
+    const sat = d === 0 ? 0 : d / (1 - Math.abs(2 * l - 1));
+    let h = 0;
+    if (d !== 0) h = max === r ? ((g - b) / d + (g < b ? 6 : 0)) * 60 : max === g ? ((b - r) / d + 2) * 60 : ((r - g) / d + 4) * 60;
+    if (sat < 0.12 || h < 110 || h > 210) continue; // not jumpsuit
+    const nh = (h + turn) % 360;
+    const c = (1 - Math.abs(2 * l - 1)) * sat, x = c * (1 - Math.abs(((nh / 60) % 2) - 1)), m = l - c / 2;
+    const [rr, gg, bb] = nh < 60 ? [c, x, 0] : nh < 120 ? [x, c, 0] : nh < 180 ? [0, c, x] : nh < 240 ? [0, x, c] : nh < 300 ? [x, 0, c] : [c, 0, x];
+    out[i] = Math.round((rr + m) * 255);
+    out[i + 1] = Math.round((gg + m) * 255);
+    out[i + 2] = Math.round((bb + m) * 255);
+  }
+  return out;
+}
 
 const files = Array.from({ length: LOOKS }, (_, n) => path.join(src, `robot-${n}.png`)).filter((f) => existsSync(f));
 if (!files.length) {
@@ -33,9 +54,7 @@ for (let look = 0; look < LOOKS; look++) {
   const file = own ? path.join(src, `robot-${look}.png`) : files[0];
   const cut = await cells(file, 3, 4); // row-major: 12 cut-outs
   const turn = own ? 0 : HUE[look];
-  const list = turn
-    ? await Promise.all(cut.map(async (c) => ({ ...c, rgba: await sharp(c.rgba, { raw: { width: c.cw, height: c.ch, channels: 4 } }).modulate({ hue: turn }).raw().toBuffer() })))
-    : cut;
+  const list = turn ? cut.map((c) => ({ ...c, rgba: recolour(c.rgba, turn) })) : cut;
   const maxW = Math.max(...list.map((c) => c.cw));
   const maxH = Math.max(...list.map((c) => c.ch));
   const scale = Math.min(MAX_W / maxW, MAX_H / maxH); // one scale for all, so the bob does not change the size

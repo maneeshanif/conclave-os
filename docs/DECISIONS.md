@@ -15,6 +15,15 @@ Newest first. One entry per decision: what, why, and what it replaced.
 - **One test file, `slice3-e2e.test.ts`, runs the three "Done when" checks** on the real run loop, reaper, pause table and eval gate, with a scripted model: (1) a run killed halfway (its process lost, heartbeat stopped) is failed by the reaper, its task goes back to todo still holding the session id, and the next run starts from that session and finishes; (2) a plan limit pauses the runtime for every agent on it while an agent on the other runtime keeps working, the queued tasks wait, the pause lifts only at the reset time and wakes exactly the agents with work, who then finish; (3) the unchanged skill scores at the baseline, and a change that makes the 20 sample drafts long and hyped fails the gate with all 20 leads named.
 - **Slice 3 is tagged `slice-3-done`.** Not done and recorded rather than hidden: the eval set is 20 made-up leads and its baseline is the reference drafter's (real leads and a real-agent drafter are in NEEDS-YOU); breakers cover the os tools only until connectors are live; the lite-mode canvas switch waits for slice 6.
 
+## 2026-11-17 (S6B: rooms that grow, names, friendly agents, life, sound)
+
+- **Department rooms are twelve rows high, with nine desks (three by three).** Six are there to start; "Add a desk" adds the next in the next free spot (a pure function, `addDeskToRoom`, and a route that checks the map reads before writing). A full room says so. Meeting tables sit at the bottom, to one side of the door lane. The headquarters script adds two rows to the top block (everything below moves down two) so the street and districts still line up; the stamp for new departments uses the same shape.
+- **Desks and chairs are drawn from the desks layer**, not listed as scenery in the map, so a desk added later has them too. A desk blocks the tile it stands on; the chair tile is where the agent stands.
+- **Names:** every room has a sign, department signs are larger, districts have banners over the street, and a seated agent has a name plate on its desk.
+- **Agents are friendly helpers**, not hovering balls: one Flow sheet of a round-headed helper in a jumpsuit, recoloured in five jumpsuit colours (only the jumpsuit changes, skin and outline stay). Eleven starter agents are seeded (four from before, seven more with names: Maya, Omar, Lina, Sam, Noor, Ravi, Zoe).
+- **Sound and voice are off by default**, made in the browser (no files), remembered per browser. "Read messages aloud" uses the browser's own voice; text is cleaned and cut to 160 characters; nothing is sent anywhere.
+- **Animation** (steam, sway, flicker, a ping-pong ball) is driven by a small pure table and is switched off for reduced motion.
+
 ## 2026-11-17 (S6-18: quick reactions)
 
 - An emoji from a short list (`EMOTES` in the shared package, used by the server and the page) shows over your head for four seconds to people within 14 tiles. The server drops anything not on the list, ignores someone who has not said where they are, rate limits each person, and forwards only the emoji and who it is from. Nothing is stored.

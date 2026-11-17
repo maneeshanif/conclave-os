@@ -36,9 +36,9 @@ const say = (from: string, to: string | null, ageSeconds = 0) =>
 beforeAll(async () => {
   ({ sys } = await testSystem());
   await rm(path.join(sys.companyRoot, 'departments'), { recursive: true, force: true });
-  // Four desks in Outreach, so the fifth agent sits in the lounge.
+  // Outreach has desks for the first four; hf-e is in a department with no room, so it sits in the lounge.
   for (const k of ['hf-a', 'hf-b', 'hf-c', 'hf-d', 'hf-e']) {
-    await agentNew(sys, { template: 'researcher', department: 'outreach', id: k });
+    await agentNew(sys, { template: 'researcher', department: k === 'hf-e' ? 'marketing' : 'outreach', id: k });
     ids[k] = (await sql('select id from agents where key = $1', [k])).rows[0].id;
   }
   for (const k of Object.keys(ids)) await sql('update agents set autonomy = 1 where id = $1', [ids[k]]);

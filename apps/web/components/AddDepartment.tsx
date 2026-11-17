@@ -25,7 +25,7 @@ export function AddDepartment({ add, onDone, onCancel }: { add: (name: string) =
   return (
     <div role="dialog" aria-label="Add a department" className="px-pop px-font absolute inset-x-3 top-14 z-40 mx-auto max-w-sm space-y-3 p-4">
       <h3 className="text-sm font-semibold">Add a department</h3>
-      <p className="text-xs text-neutral-300">It gets its own room with four desks, a board and a meeting table.</p>
+      <p className="text-xs text-neutral-300">It gets its own room with six desks (room for nine), a board and a meeting table.</p>
       <label className="block text-xs text-neutral-300">
         Name
         <input value={name} onChange={(e) => setName(e.target.value)} maxLength={60} className="mt-1 w-full rounded-md bg-neutral-800 px-2 py-1.5 text-sm text-white" />
