@@ -217,7 +217,7 @@ describe('the office page in a real browser (S6-8b)', () => {
       expect(stage0.width).toBeGreaterThanOrEqual(page.viewportSize()!.width - 2);
       expect(stage0.height).toBeGreaterThanOrEqual(page.viewportSize()!.height - 2);
       await openList(page);
-      await page.getByRole('heading', { name: lounge.name }).waitFor();
+      await page.getByRole('heading', { name: lounge.name, exact: true }).waitFor();
       await page.getByRole('button', { name: /Scout/ }).waitFor();
       writeFileSync(path.join(SHOTS, `office-${name}-list.png`), await page.screenshot());
       await page.keyboard.press('Escape');
