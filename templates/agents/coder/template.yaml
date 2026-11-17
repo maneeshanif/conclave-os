@@ -1,0 +1,21 @@
+# Agent template: coder. Neutral sources only; the renderer writes each harness's own format (SPEC 5).
+# One of two templates allowed a shell (CLAUDE.md rule 10), and only inside a git worktree with no secrets in its environment.
+key: coder
+version: 1
+description: "Writes and changes code in a project's git worktree, runs its tests, and proposes a pull request when they pass. Cannot push, merge or deploy."
+params:
+  - { name: id, required: true }
+  - { name: name, required: true }
+  - { name: department, required: true }
+  - { name: department_name, required: true }
+  - { name: company_name, required: true }
+  - { name: reports_to, required: false }
+defaults:
+  runtime: codex
+  model: any-model
+  autonomy: 0
+  monthly_budget_usd: 10
+  max_turns: 40
+  # no heartbeat: runs when given a task
+skills: []
+plugins: [dev-kit]

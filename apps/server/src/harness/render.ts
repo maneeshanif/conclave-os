@@ -162,7 +162,7 @@ export interface WorkdirContext {
 }
 
 /** Every path a render target may write, relative to the working folder. Cleared before each render. */
-const GENERATED = ['CLAUDE.md', 'AGENTS.md', 'opencode.json', '.claude', '.opencode', '.mcp.json', 'ROLE.md', '.xdg-config', 'INSTRUCTIONS.md', '.skills', '.runner.json'];
+const GENERATED = ['CLAUDE.md', 'AGENTS.md', 'opencode.json', '.claude', '.opencode', '.mcp.json', 'ROLE.md', '.xdg-config', 'INSTRUCTIONS.md', '.skills', '.runner.json', '.codex-mcp.json'];
 
 async function writeFiles(dir: string, files: Record<string, string>): Promise<string[]> {
   for (const [rel, content] of Object.entries(files)) {
@@ -263,8 +263,26 @@ async function openaiAgentsTarget(agent: LoadedAgent, t: Template, rules: string
   };
 }
 
+/**
+ * Files for the Codex target (S7-4). Codex has its own shell that cannot be switched off, so a template with no shell may not run on it:
+ * rendering one is an error, not a quiet grant. The standing rules and the role become one `INSTRUCTIONS.md` that the runtime puts
+ * in front of the task; `.codex-mcp.json` says where the `os` tools are (the run token is named by its variable, never written).
+ * Where the agent works and what it may write are set by the runtime: its worktree, in a sandbox that can only write there.
+ */
+async function codexTarget(agent: LoadedAgent, t: Template, rules: string, ctx: WorkdirContext) {
+  const p = clampForTrust(t.permissions, agent.role.trust);
+  if (p.shell !== 'allow') {
+    throw new Error(`Template "${t.key}" has no shell, but the codex runtime always has one and cannot switch it off. Run this template on claude-cli, opencode or openai-agents. Only ${[...SHELL_TEMPLATES].join(' and ')} may run on codex.`);
+  }
+  return {
+    'INSTRUCTIONS.md': `${rules.trim()}\n\n# Your role\n\n${agent.body.trim()}\n`,
+    '.codex-mcp.json': JSON.stringify({ url: ctx.osUrl, tokenEnv: 'CONCLAVE_RUN_TOKEN' }, null, 2) + '\n',
+    ...(await skillFiles(t, '.skills')),
+  };
+}
+
 /** Harness files that must never exist inside `work/`, where the agent can write. */
-const PLANTABLE = ['CLAUDE.md', 'CLAUDE.local.md', 'AGENTS.md', 'opencode.json', 'opencode.jsonc', '.claude', '.opencode', '.mcp.json', 'INSTRUCTIONS.md', '.skills', '.runner.json'];
+const PLANTABLE = ['CLAUDE.md', 'CLAUDE.local.md', 'AGENTS.md', 'opencode.json', 'opencode.jsonc', '.claude', '.opencode', '.mcp.json', 'INSTRUCTIONS.md', '.skills', '.runner.json', '.codex-mcp.json'];
 
 /** Removes any harness config an agent wrote into its `work/` folder. Run before every run. */
 export async function cleanWorkFolder(agentDir: string): Promise<void> {
@@ -304,6 +322,9 @@ export async function renderWorkdir(agent: LoadedAgent, ctx: WorkdirContext): Pr
       break;
     case 'openai-agents':
       files = await openaiAgentsTarget(agent, t, rules);
+      break;
+    case 'codex':
+      files = await codexTarget(agent, t, rules, ctx);
       break;
     default:
       throw new Error(`Runtime "${agent.role.runtime}" is not built in this slice, so it has no render target yet.`);

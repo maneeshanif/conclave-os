@@ -1,0 +1,9 @@
+# Plugin: dev-kit (SPEC 4, 8, 13). Coding rules, and a motion skill for the Frontend Studio.
+# The coder works in a git worktree; the server (not the agent) runs the project's tests before a pull request can be proposed (S7-5).
+name: dev-kit
+version: 1
+description: "Rules for changing code safely in a worktree, and a GSAP and Lenis motion skill for the Frontend Studio. It cannot push, merge or deploy: those are approvals."
+skills: [coding-rules, motion-gsap-lenis]
+connectors: [os]
+# The os tools the skills use. Checked against the server, so this list cannot drift.
+tools: [get_task, comment, complete_task, block_task, ask_founder]

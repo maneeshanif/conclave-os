@@ -1,4 +1,5 @@
 import type { ChildProcess } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { createInterface } from 'node:readline';
@@ -141,11 +142,26 @@ const builders: Record<CliName, (req: RunRequest, files: { system: string; promp
   codex: (req) => {
     const model = modelNameFor(req.modelAlias, 'codex');
     const cwd = req.workDir ?? path.join(req.workspaceDir, 'work');
+    // What the renderer wrote (S7-4): the standing rules and role, and where the os tools are. Missing files are simply not used.
+    const read = (f: string): string | null => {
+      try {
+        return readFileSync(path.join(req.workspaceDir, f), 'utf8');
+      } catch {
+        return null;
+      }
+    };
+    let mcp: string[] = [];
+    try {
+      const m = JSON.parse(read('.codex-mcp.json') ?? 'null') as { url?: string; tokenEnv?: string } | null;
+      if (m?.url && /^http:\/\/(127\.0\.0\.1|localhost|\[::1\])[:/]/.test(m.url)) mcp = ['-c', `mcp_servers.os.url=${JSON.stringify(m.url)}`, '-c', `mcp_servers.os.bearer_token_env_var=${JSON.stringify(m.tokenEnv ?? RUN_TOKEN_ENV)}`];
+    } catch {
+      mcp = [];
+    }
     return {
-      args: ['exec', '--json', '--color', 'never', '--sandbox', 'workspace-write', '--ephemeral', '-C', cwd, ...(model ? ['-m', model] : []), '-'],
+      args: ['exec', '--json', '--color', 'never', '--sandbox', 'workspace-write', '--ephemeral', '-C', cwd, ...(model ? ['-m', model] : []), ...mcp, '-'],
       extraEnv: {},
       parser: codexParser(),
-      stdin: `${req.instructions}\n\n---\n\n${req.taskInput}`,
+      stdin: [read('INSTRUCTIONS.md'), req.instructions, req.taskInput].filter((x): x is string => !!x && x.trim() !== '').join('\n\n---\n\n'),
     };
   },
 };
