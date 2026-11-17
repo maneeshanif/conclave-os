@@ -84,7 +84,7 @@ const loopBase: Omit<LoopDeps, 'workspaceSlug' | 'prepare'> = {
   pool: sys.app,
   tokens,
   bus,
-  runtimes: { 'claude-cli': createCliRuntime('claude-cli'), opencode: createCliRuntime('opencode'), 'openai-agents': createOpenAIAgentsRuntime({ osUrl: sys.osUrl }) },
+  runtimes: { 'claude-cli': createCliRuntime('claude-cli'), opencode: createCliRuntime('opencode'), codex: createCliRuntime('codex'), 'openai-agents': createOpenAIAgentsRuntime({ osUrl: sys.osUrl }) },
   dataDir: sys.dataDir,
   templatesRoot: sys.templatesRoot,
   // A run that says nothing for this long is stopped (A2). RUN_SILENCE_MINUTES changes it; 0 turns it off.

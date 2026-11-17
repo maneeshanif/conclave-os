@@ -4,7 +4,7 @@ import path from 'node:path';
 import { createInterface } from 'node:readline';
 import { modelNameFor, resolveModel } from '../config/models';
 import type { RuntimeName } from './names';
-import { claudeParser, opencodeParser, type Parser } from './parsers';
+import { claudeParser, codexParser, opencodeParser, type Parser } from './parsers';
 import { RUN_TOKEN_ENV, type RunEvent, type RunRequest, type Runtime, type RuntimeHealth } from './types';
 import { killTree, resolveCommand, spawnResolved } from './win-process';
 
@@ -73,7 +73,9 @@ async function writeRunFiles(req: RunRequest): Promise<{ system: string; prompt:
   return { system, prompt };
 }
 
-const builders: Record<'claude-cli' | 'opencode', (req: RunRequest, files: { system: string; prompt: string }) => Built> = {
+type CliName = 'claude-cli' | 'opencode' | 'codex';
+
+const builders: Record<CliName, (req: RunRequest, files: { system: string; prompt: string }) => Built> = {
   'claude-cli': (req, files) => {
     const model = modelNameFor(req.modelAlias, 'claude-cli');
     return {
@@ -134,9 +136,21 @@ const builders: Record<'claude-cli' | 'opencode', (req: RunRequest, files: { sys
       parser: opencodeParser(),
     };
   },
+  // Codex (S7-3): headless, JSON events, and a sandbox that can only write in the folder it works in. The prompt goes on stdin (the
+  // trailing "-"), never on the command line. No full-access or auto-approve flag is ever passed. Sessions are not kept or resumed.
+  codex: (req) => {
+    const model = modelNameFor(req.modelAlias, 'codex');
+    const cwd = req.workDir ?? path.join(req.workspaceDir, 'work');
+    return {
+      args: ['exec', '--json', '--color', 'never', '--sandbox', 'workspace-write', '--ephemeral', '-C', cwd, ...(model ? ['-m', model] : []), '-'],
+      extraEnv: {},
+      parser: codexParser(),
+      stdin: `${req.instructions}\n\n---\n\n${req.taskInput}`,
+    };
+  },
 };
 
-const DEFAULT_BIN: Record<'claude-cli' | 'opencode', string> = { 'claude-cli': 'claude', opencode: 'opencode' };
+const DEFAULT_BIN: Record<CliName, string> = { 'claude-cli': 'claude', opencode: 'opencode', codex: 'codex' };
 
 /** Replaces the run token wherever it might appear in text that gets stored or shown. */
 function redact(e: RunEvent, token: string): RunEvent {
@@ -146,7 +160,7 @@ function redact(e: RunEvent, token: string): RunEvent {
 }
 
 /** One runner for every signed-in CLI (SPEC 5, the runner). */
-export function createCliRuntime(name: 'claude-cli' | 'opencode', opts: CliRuntimeOptions = {}): Runtime {
+export function createCliRuntime(name: CliName, opts: CliRuntimeOptions = {}): Runtime {
   const children = new Map<string, ChildProcess>();
   const cancelled = new Set<string>();
   const command = opts.command ?? { command: DEFAULT_BIN[name] };
@@ -161,8 +175,8 @@ export function createCliRuntime(name: 'claude-cli' | 'opencode', opts: CliRunti
       [RUN_TOKEN_ENV]: req.runToken,
     }, opts.envAllowlist);
     const resolved = resolveCommand(command, env);
-    // The agent works one level down, in work/, so it cannot touch its own harness config.
-    const cwd = path.join(req.workspaceDir, 'work');
+    // The agent works one level down, in work/, so it cannot touch its own harness config. A coding task works in its worktree.
+    const cwd = req.workDir ?? path.join(req.workspaceDir, 'work');
     await mkdir(cwd, { recursive: true });
     const child = spawnResolved(resolved, built.args, { cwd, env, stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true });
     children.set(req.runId, child);
@@ -257,7 +271,7 @@ export function createCliRuntime(name: 'claude-cli' | 'opencode', opts: CliRunti
 
   return {
     name: name as RuntimeName,
-    canResume: true,
+    canResume: name !== 'codex',
     start,
     async cancel(runId) {
       const child = children.get(runId);

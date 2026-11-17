@@ -39,6 +39,73 @@ function parseJson(line: string): Json | null {
   }
 }
 
+/**
+ * Codex CLI `exec --json` (S7-3): one JSON event per line. `thread.started` carries the thread id, `item.started` and `item.completed`
+ * carry an item (an agent message, reasoning, a command, a file change, a tool call), `turn.completed` carries the token usage and ends
+ * the run, and `turn.failed` or `error` carry a message. Fields beyond those the documentation shows are read defensively.
+ */
+export function codexParser(): Parser {
+  let sessionId: string | undefined;
+  let lastMessage = '';
+  let steps = 0;
+  let finished = false;
+  let failure: string | undefined;
+  const started = new Set<string>();
+  const toolOf = (item: Json): string => (str(item.type) === 'command_execution' ? 'shell' : str(item.type) === 'mcp_tool_call' ? [str(item.server), str(item.tool)].filter(Boolean).join('.') || 'mcp' : str(item.type) || 'tool');
+  const inputOf = (item: Json): unknown => (str(item.type) === 'command_execution' ? str(item.command) : item.arguments ?? item.changes ?? item.query ?? summarize(item));
+  return {
+    turns: () => steps,
+    line(line) {
+      const e = parseJson(line);
+      if (!e) return [];
+      const out: RunEvent[] = [];
+      const type = str(e.type);
+      const item = obj(e.item);
+      const itemType = str(item.type);
+      if (type === 'thread.started' && str(e.thread_id)) {
+        sessionId = str(e.thread_id);
+        out.push({ type: 'session', sessionId });
+      } else if (type === 'item.started' && itemType !== 'agent_message' && itemType !== 'reasoning') {
+        started.add(str(item.id));
+        out.push({ type: 'tool_call', tool: toolOf(item), input: inputOf(item) });
+      } else if (type === 'item.completed') {
+        if (itemType === 'agent_message') {
+          lastMessage = str(item.text);
+          steps++;
+          if (lastMessage) out.push({ type: 'message', text: lastMessage });
+        } else if (itemType === 'reasoning') {
+          if (str(item.text)) out.push({ type: 'thinking', text: str(item.text) });
+        } else if (itemType) {
+          steps++;
+          if (!started.has(str(item.id))) out.push({ type: 'tool_call', tool: toolOf(item), input: inputOf(item) });
+          const code = item.exit_code;
+          const ok = typeof code === 'number' ? code === 0 : str(item.status) !== 'failed';
+          out.push({ type: 'tool_result', tool: toolOf(item), ok, summary: summarize(item.aggregated_output ?? item.output ?? item.result ?? item.command ?? itemType) });
+        }
+      } else if (type === 'turn.completed' && !finished) {
+        const u = obj(e.usage);
+        out.push({ type: 'cost', usd: 0, tokensIn: num(u.input_tokens), tokensOut: num(u.output_tokens) + num(u.reasoning_output_tokens) });
+        out.push({ type: 'done', output: lastMessage, ...(sessionId ? { sessionId } : {}) });
+        finished = true;
+      } else if (type === 'turn.failed' && !finished) {
+        const m = str(obj(e.error).message) || failure || 'the turn failed';
+        out.push({ type: 'error', kind: classifyError(m), message: m });
+        finished = true;
+      } else if (type === 'error') {
+        failure = str(e.message) || str(obj(e.error).message) || failure;
+      }
+      return out;
+    },
+    end(exitCode, stderr) {
+      if (finished) return [];
+      if (failure) return [{ type: 'error', kind: classifyError(failure), message: failure }];
+      if (exitCode === 0) return [{ type: 'done', output: lastMessage, ...(sessionId ? { sessionId } : {}) }];
+      const tail = stderr.trim().slice(-500) || `codex exited with code ${exitCode}`;
+      return [{ type: 'error', kind: classifyError(tail), message: tail }];
+    },
+  };
+}
+
 /** Claude Code `--output-format stream-json`. */
 export function claudeParser(): Parser {
   const toolNames = new Map<string, string>();

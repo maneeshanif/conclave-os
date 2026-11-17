@@ -16,6 +16,8 @@ export interface RunRequest {
   taskInput: string;
   /** The agent's rendered working folder (outside the repo). */
   workspaceDir: string;
+  /** Where the agent works, if not `<workspaceDir>/work`: a coding task's git worktree (S7). Never inside this repo. */
+  workDir?: string;
   modelAlias: string;
   maxTurns: number;
   /** Short-lived token for the `os` MCP server, valid for this run only. */

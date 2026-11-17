@@ -113,6 +113,35 @@ if (flavor === 'claude') {
       out({ type: 'result', subtype: 'success', is_error: false, result: text, session_id: sid, total_cost_usd: 0.0123, usage: { input_tokens: 100, output_tokens: 20 } });
     }
   }
+} else if (flavor === 'codex') {
+  // Codex CLI `exec --json`: one JSON event per line (thread.started, turn.started, item.*, turn.completed).
+  const thread = '0199a213-81c0-7800-8aa1-bbab2a035a53';
+  out({ type: 'thread.started', thread_id: thread });
+  out({ type: 'turn.started' });
+  if (mode === 'fail') {
+    process.stderr.write('boom: something broke\n');
+    process.exit(3);
+  }
+  if (mode === 'hang') setInterval(() => undefined, 1000);
+  else if (mode === 'limit') {
+    out({ type: 'error', message: 'Rate limit reached: too many requests (429)' });
+    out({ type: 'turn.failed', error: { message: 'Rate limit reached: too many requests (429)' } });
+    process.exit(1);
+  } else if (mode === 'auth') {
+    out({ type: 'error', message: 'Not logged in. Please run codex login' });
+    out({ type: 'turn.failed', error: { message: 'Not logged in. Please run codex login' } });
+    process.exit(1);
+  } else {
+    const steps = mode === 'turns' ? 50 : 1;
+    for (let i = 0; i < steps; i++) {
+      out({ type: 'item.started', item: { id: `item_${i}`, type: 'command_execution', command: 'bash -lc ls', status: 'in_progress' } });
+      out({ type: 'item.completed', item: { id: `item_${i}`, type: 'command_execution', command: 'bash -lc ls', aggregated_output: 'README.md\n', exit_code: 0, status: 'completed' } });
+    }
+    out({ type: 'item.completed', item: { id: 'item_r', type: 'reasoning', text: 'Thinking about the task.' } });
+    const text = mode === 'env' ? envReport() : mode === 'token' ? `token is ${process.env.CONCLAVE_RUN_TOKEN}` : mode === 'where' ? JSON.stringify({ cwd: process.cwd(), args, stdin }) : 'All done.';
+    out({ type: 'item.completed', item: { id: 'item_m', type: 'agent_message', text } });
+    out({ type: 'turn.completed', usage: { input_tokens: 100, cached_input_tokens: 40, output_tokens: 20, reasoning_output_tokens: 5 } });
+  }
 } else {
   const sid = 'ses_fake123';
   const ev = (type, part) => out({ type, timestamp: Date.now(), sessionID: sid, part: { sessionID: sid, ...part } });
