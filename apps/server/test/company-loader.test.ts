@@ -51,7 +51,8 @@ describe('company folder loader (S0-3)', () => {
     await mkdir(agentDir, { recursive: true });
     await writeFile(path.join(agentDir, 'AGENT.md'), role(goodFm));
     const company = await loadCompany(dir);
-    expect(company.agents.map((a) => a.role.id)).toEqual(['researcher']);
+    // The starter company now has its own agents; this checks the one this test adds.
+    expect(company.agents.map((a) => a.role.id)).toContain('researcher');
     expect(company.agents[0]?.rolePath).toBe('departments/research/agents/researcher/AGENT.md');
 
     await writeFile(path.join(agentDir, 'AGENT.md'), role(goodFm + '\nreports_to: nobody'));
