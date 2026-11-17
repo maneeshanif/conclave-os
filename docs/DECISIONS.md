@@ -15,6 +15,12 @@ Newest first. One entry per decision: what, why, and what it replaced.
 - **One test file, `slice3-e2e.test.ts`, runs the three "Done when" checks** on the real run loop, reaper, pause table and eval gate, with a scripted model: (1) a run killed halfway (its process lost, heartbeat stopped) is failed by the reaper, its task goes back to todo still holding the session id, and the next run starts from that session and finishes; (2) a plan limit pauses the runtime for every agent on it while an agent on the other runtime keeps working, the queued tasks wait, the pause lifts only at the reset time and wakes exactly the agents with work, who then finish; (3) the unchanged skill scores at the baseline, and a change that makes the 20 sample drafts long and hyped fails the gate with all 20 leads named.
 - **Slice 3 is tagged `slice-3-done`.** Not done and recorded rather than hidden: the eval set is 20 made-up leads and its baseline is the reference drafter's (real leads and a real-agent drafter are in NEEDS-YOU); breakers cover the os tools only until connectors are live; the lite-mode canvas switch waits for slice 6.
 
+## 2026-11-18 (S6C: event places, move and undo)
+
+- **Event places come from what Anees showed on workadventu.re** (a screenshot of their map picker, kept in `.reference/`, not in the repo): a conference campus, a hackathon with team offices, job fairs and meeting rooms. We took the idea of each kind of place, not their maps or art. They are a second row of districts below the first; the lawn between the first row's districts is a way down between the two streets.
+- **The event pieces are drawn in code**, because Google Flow would not connect this session (the browser had closed and timed out twice, and reconnecting before cost credits). `scripts/make-events-art.mjs` draws them; generated pictures of the same sizes can replace them later (S6C-8).
+- **Moving a piece gives it a new id** (it is taken up and put down in one change). **Undo keeps the last twenty map states in memory**; a restart starts empty, and the map file is the truth. Adding a desk can be undone; adding a department cannot (it also changes `departments.yaml`).
+
 ## 2026-11-18 (S6B continued: moods, megaphone, follow, editor, plan wall)
 
 - **Megaphone and pin:** one line to everyone in the town, sent on the same socket (cleaned, 200 characters, one every ten seconds); a pinned message is kept in the server's memory for newcomers and lost when the server restarts. Anyone signed in can pin or clear it (it is one company).

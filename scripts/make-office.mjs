@@ -8,6 +8,7 @@ import { Buffer } from 'node:buffer';
 import process from 'node:process';
 import { DECOR_FOOT, OBJECT_FOOT } from './lib/footprints.mjs';
 import { districts } from './lib/districts.mjs';
+import { eventDistricts } from './lib/districts-events.mjs';
 
 const root = path.resolve(import.meta.dirname, '..');
 const T = 32;
@@ -308,14 +309,23 @@ const STREET_Y = H2;
 // Land beside the headquarters is a fenced lawn (where new departments get their rooms); the districts stand along the street.
 // two rows of street, from STREET_Y
 const GAP = 2; // lawn between districts
-let reach = 1;
-const placed = districts.map((d) => {
-  const ox = reach;
-  reach += d.w + GAP;
-  return { d, ox };
-});
-const BW = Math.max(W, reach - GAP + 1);
-const BH = STREET_Y + 2 + Math.max(...districts.map((d) => d.h)) + 1;
+// Two rows of districts: the first along the street under the headquarters, the second along another street below it (S6C-1).
+const layout = (list) => {
+  let at = 1;
+  return list.map((d) => {
+    const ox = at;
+    at += d.w + GAP;
+    return { d, ox };
+  });
+};
+const row1 = layout(districts);
+const row2 = layout(eventDistricts);
+const reachOf = (row) => row.reduce((m, { d, ox }) => Math.max(m, ox + d.w + 1), 0);
+const BW = Math.max(W, reachOf(row1), reachOf(row2));
+const ROW1_Y = STREET_Y + 2;
+const STREET2_Y = ROW1_Y + Math.max(...districts.map((d) => d.h));
+const ROW2_Y = STREET2_Y + 2;
+const BH = ROW2_Y + Math.max(...eventDistricts.map((d) => d.h)) + 1;
 const bigFloor = Array(BW * BH).fill(GRASS);
 const bigWall = Array(BW * BH).fill(1); // fenced unless opened below
 const bat = (x, y) => y * BW + x;
@@ -324,20 +334,36 @@ for (let y = 0; y < H2; y++)
     bigFloor[bat(x, y)] = floor[at(x, y)];
     bigWall[bat(x, y)] = wall[at(x, y)];
   }
-for (let y = STREET_Y; y < STREET_Y + 2; y++)
-  for (let x = 1; x < BW - 1; x++) {
-    bigFloor[bat(x, y)] = PATH;
-    bigWall[bat(x, y)] = 0;
-  }
-for (const { d, ox } of placed) {
-  for (let y = 0; y < d.h; y++)
-    for (let x = 0; x < d.w; x++) {
-      bigFloor[bat(ox + x, STREET_Y + 2 + y)] = d.floor[y * d.w + x];
-      bigWall[bat(ox + x, STREET_Y + 2 + y)] = d.wall[y * d.w + x];
+const street = (y0) => {
+  for (let y = y0; y < y0 + 2; y++)
+    for (let x = 1; x < BW - 1; x++) {
+      bigFloor[bat(x, y)] = PATH;
+      bigWall[bat(x, y)] = 0;
     }
-  for (const r of d.rooms) rooms.push(obj(`${d.title}: ${r.name}`, '', ox + r.x, STREET_Y + 2 + r.y, r.w, r.h, [prop('kind', 'string', r.kind)]));
-  for (const c of d.decor) decor.push(obj(c.name, 'decor', ox + c.x, STREET_Y + 2 + c.y, c.w, c.h, c.turn ? [prop('turn', 'int', c.turn)] : undefined));
-  for (const e of d.entries) entries.push(obj(e.name, '', ox + e.x, STREET_Y + 2 + e.y));
+};
+street(STREET_Y);
+street(STREET2_Y);
+const placeRow = (row, y0) => {
+  for (const { d, ox } of row) {
+    for (let y = 0; y < d.h; y++)
+      for (let x = 0; x < d.w; x++) {
+        bigFloor[bat(ox + x, y0 + y)] = d.floor[y * d.w + x];
+        bigWall[bat(ox + x, y0 + y)] = d.wall[y * d.w + x];
+      }
+    for (const r of d.rooms) rooms.push(obj(`${d.title}: ${r.name}`, '', ox + r.x, y0 + r.y, r.w, r.h, [prop('kind', 'string', r.kind)]));
+    for (const c of d.decor) decor.push(obj(c.name, 'decor', ox + c.x, y0 + c.y, c.w, c.h, c.turn ? [prop('turn', 'int', c.turn)] : undefined));
+    for (const e of d.entries) entries.push(obj(e.name, '', ox + e.x, y0 + e.y));
+  }
+};
+placeRow(row1, ROW1_Y);
+placeRow(row2, ROW2_Y);
+// The lawn between the first row's districts is a way down from the first street to the second.
+for (const { d, ox } of row1.slice(0, -1)) {
+  for (let y = ROW1_Y; y < STREET2_Y; y++)
+    for (let x = ox + d.w; x < ox + d.w + GAP; x++) {
+      bigFloor[bat(x, y)] = PATH;
+      bigWall[bat(x, y)] = 0;
+    }
 }
 // A brick fence round the whole town.
 for (let x = 0; x < BW; x++) for (const y of [0, BH - 1]) {
@@ -370,8 +396,8 @@ for (let x = W + 4; x < BW - 8; x += 10) {
   scenery('plant', x + 7, 21);
   scenery('bookshelf', x + 6, 28);
 }
-// Trees and plants along the street.
-for (let x = 4; x < BW - 3; x += 9) decor.push(obj('plant', 'decor', x, STREET_Y + 2, 1, 1));
+// Plants along both streets.
+for (const y0 of [STREET_Y, STREET2_Y]) for (let x = 4; x < BW - 3; x += 9) decor.push(obj('plant', 'decor', x, y0 + 2, 1, 1));
 
 const group = (name, list) => ({ id: nextId++, name, type: 'objectgroup', draworder: 'topdown', opacity: 1, visible: true, x: 0, y: 0, objects: list });
 const tiles = (name, data) => ({ id: nextId++, name, type: 'tilelayer', width: BW, height: BH, x: 0, y: 0, opacity: 1, visible: true, data });

@@ -7,7 +7,7 @@ import { z } from 'zod';
 import { PlotsFull, RoomFull, StampError, addDepartmentRoom, addDeskToRoom, readOfficeMap, type OfficeMapJson } from '@conclave/shared';
 import type { AppEnv } from '../app';
 import type { Bus } from '../bus';
-import { exclusive, replaceFile } from '../office/map-file';
+import { exclusive, replaceFile, writeMap } from '../office/map-file';
 import { CompanyLoadError, loadCompany } from '../company/loader';
 import { DepartmentsFileSchema } from '../company/schema';
 import { syncCompany } from '../company/sync';
@@ -78,7 +78,7 @@ export function departmentRoutes(deps: { workspaceId: string; companyRoot: strin
         const grown = addDeskToRoom(json, room.name);
         const company = await loadCompany(deps.companyRoot);
         readOfficeMap(grown, { file: 'office.tmj', departments: company.departments.map((d) => ({ key: d.key, active: d.active })) });
-        await replaceFile(mapFile, JSON.stringify(grown, null, 1) + '\n');
+        await writeMap(mapFile, JSON.stringify(grown, null, 1) + '\n'); // remembered, so it can be undone
         const desks = (grown.layers.find((l) => l.name === 'desks')?.objects ?? []).filter((d) => d.properties?.some((p) => p.name === 'room' && p.value === room.name)).length;
         return { key, room: room.name, desks };
       });

@@ -153,8 +153,8 @@ describe('the town (S6-17): one world with the headquarters and four districts',
 
   it('has a room for each district, named after it, and a way in from the street for each', () => {
     const m = read();
-    for (const d of ['Campus Green', 'Co-working Loft', 'Game Night', 'Rooftop']) expect(m.rooms.some((r) => r.name.startsWith(`${d}: `)), d).toBe(true);
-    for (const k of ['campus', 'loft', 'arcade', 'rooftop']) expect(m.entries.some((e) => e.name === `${k}-lounge`), k).toBe(true);
+    for (const d of ['Campus Green', 'Co-working Loft', 'Game Night', 'Rooftop', 'Conference Campus', 'Hackathon Hall', 'Job Fair', 'Meeting Centre']) expect(m.rooms.some((r) => r.name.startsWith(`${d}: `)), d).toBe(true);
+    for (const k of ['campus', 'loft', 'arcade', 'rooftop', 'conference', 'hackathon', 'jobfair', 'meeting']) expect(m.entries.some((e) => e.name === `${k}-lounge`), k).toBe(true);
     expect(m.rooms.every((r) => r.x >= 0 && r.y >= 0 && r.x + r.w <= m.width && r.y + r.h <= m.height)).toBe(true);
   });
 
@@ -166,6 +166,19 @@ describe('the town (S6-17): one world with the headquarters and four districts',
       expect(have.has(d.name ?? ''), d.name).toBe(true);
       expect(d.x >= 0 && d.y >= 0 && d.x + (d.width ?? 0) <= json.width * 32 && d.y + (d.height ?? 0) <= json.height * 32, `${d.name} at ${d.x},${d.y}`).toBe(true);
     }
+  });
+
+  it('has the event places: an auditorium with a stage and seats, team offices, job-fair booths and meeting rooms', () => {
+    const m = read();
+    const names = m.rooms.map((r) => r.name);
+    for (const n of ['Conference Campus: Auditorium', 'Conference Campus: Workshop 1', 'Conference Campus: Sports ground', 'Hackathon Hall: Main hall', 'Hackathon Hall: Team A', 'Hackathon Hall: Team F', 'Job Fair: Fair floor', 'Job Fair: Talk stage', 'Meeting Centre: Room 1', 'Meeting Centre: Room 8']) expect(names, n).toContain(n);
+    const decor = json.layers.find((l) => l.name === 'decor')!.objects ?? [];
+    const count = (name: string) => decor.filter((d) => d.name === name).length;
+    expect(count('seat')).toBeGreaterThan(100); // rows of theatre seats
+    expect(count('stage')).toBeGreaterThanOrEqual(3);
+    expect(count('booth') + count('booth2') + count('booth3')).toBeGreaterThanOrEqual(20);
+    expect(count('court')).toBe(1);
+    expect(count('track')).toBe(1);
   });
 
   it('has the same town in the starter company template', () => {

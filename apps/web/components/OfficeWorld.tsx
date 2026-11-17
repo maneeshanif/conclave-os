@@ -76,11 +76,16 @@ export function OfficeWorld({ client, onOpen, onPanel, onOpenList, onFail }: { c
       setEditMessage(action.why);
       return true;
     }
-    const done = action.kind === 'place' ? api.placeDecor({ name: action.name, x: action.x, y: action.y, ...(action.turn ? { turn: action.turn } : {}) }) : api.removeDecor(action.id);
+    if (action.kind === 'pick') {
+      setTool({ kind: 'move', id: action.id });
+      setEditMessage('Now click where it goes.');
+      return true;
+    }
+    const done = action.kind === 'place' ? api.placeDecor({ name: action.name, x: action.x, y: action.y, ...(action.turn ? { turn: action.turn } : {}) }) : action.kind === 'move' ? api.moveDecor(action.id, { x: action.x, y: action.y }) : api.removeDecor(action.id);
     void done.then(
       () => {
         try {
-          sessionStorage.setItem('conclave.edit', JSON.stringify({ tool: t }));
+          sessionStorage.setItem('conclave.edit', JSON.stringify({ tool: t?.kind === 'move' ? { kind: 'move', id: null } : t }));
         } catch {
           // The next load is not in edit mode.
         }
@@ -358,6 +363,12 @@ export function OfficeWorld({ client, onOpen, onPanel, onOpenList, onFail }: { c
       <AnnouncementBanner announcement={announcement} pinned={pinned} />
       {editing ? (
         <EditPanel
+          onUndo={() => {
+            void api.undoEdit().then(
+              () => window.location.reload(),
+              (err: Error) => setEditMessage(err.message),
+            );
+          }}
           tool={tool}
           message={editMessage}
           onTool={(t) => {

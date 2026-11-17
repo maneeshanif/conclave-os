@@ -9,9 +9,11 @@ import type { Bus } from '../bus';
 import type { Dispatcher } from '../workflows/dispatch';
 import { assignDesks, loadOffice } from '../office/desks';
 import { activityFeed } from '../office/activity';
-import { exclusive, replaceFile } from '../office/map-file';
-import { EditError, placeDecor, removeDecor, type OfficeMapJson } from '@conclave/shared';
+import { exclusive, undoMap, writeMap } from '../office/map-file';
+import { EditError, moveDecor, placeDecor, readOfficeMap, removeDecor, type OfficeMapJson } from '@conclave/shared';
 import { officeState, teamCards } from '../office/state';
+
+class NotThere extends Error {}
 
 /** The office (SPEC 12): the map's facts and where each agent sits. The drawing reads the map file itself from /office/map. */
 export function officeRoutes(deps: { workspaceId: string; companyRoot: string; /** For the agent templates (S6-13c). */ templatesRoot?: string; bus?: Bus; dispatcher?: Dispatcher; /** The agents in an open discussion; the Boardroom supplies it (S6-10). */ discussing?: (c: import('pg').PoolClient) => Promise<Set<string>> }) {
@@ -151,7 +153,7 @@ export function officeRoutes(deps: { workspaceId: string; companyRoot: string; /
       const id = await exclusive(deps.companyRoot, async () => {
         const json = JSON.parse(await readFile(mapFile(), 'utf8')) as OfficeMapJson;
         const next = placeDecor(json, body.data, await departmentsNow());
-        await replaceFile(mapFile(), JSON.stringify(next, null, 1) + '\n');
+        await writeMap(mapFile(), JSON.stringify(next, null, 1) + '\n');
         return Number(next.nextobjectid) - 1;
       });
       deps.bus?.publish({ kind: 'office.changed', workspaceId: deps.workspaceId });
@@ -168,7 +170,7 @@ export function officeRoutes(deps: { workspaceId: string; companyRoot: string; /
     try {
       await exclusive(deps.companyRoot, async () => {
         const json = JSON.parse(await readFile(mapFile(), 'utf8')) as OfficeMapJson;
-        await replaceFile(mapFile(), JSON.stringify(removeDecor(json, id), null, 1) + '\n');
+        await writeMap(mapFile(), JSON.stringify(removeDecor(json, id), null, 1) + '\n');
       });
       deps.bus?.publish({ kind: 'office.changed', workspaceId: deps.workspaceId });
       return c.json({ ok: true });
@@ -176,6 +178,39 @@ export function officeRoutes(deps: { workspaceId: string; companyRoot: string; /
       if (err instanceof EditError) return c.json({ error: err.message }, 404);
       throw err;
     }
+  });
+
+  // Move a piece to another tile in one change (S6C-2): nothing is written if the new place is refused.
+  const Move = z.object({ x: z.number(), y: z.number() });
+  r.post('/decor/:id/move', async (c) => {
+    const id = Number(c.req.param('id'));
+    const body = Move.safeParse(await c.req.json().catch(() => null));
+    if (!Number.isInteger(id) || !body.success) return c.json({ error: 'Say which tile.' }, 400);
+    try {
+      await exclusive(deps.companyRoot, async () => {
+        const json = JSON.parse(await readFile(mapFile(), 'utf8')) as OfficeMapJson;
+        if (!(json.layers.find((l) => l.name === 'decor')?.objects ?? []).some((o) => o.id === id)) throw new NotThere();
+        await writeMap(mapFile(), JSON.stringify(moveDecor(json, id, body.data, await departmentsNow()), null, 1) + '\n');
+      });
+      deps.bus?.publish({ kind: 'office.changed', workspaceId: deps.workspaceId });
+      return c.json({ ok: true });
+    } catch (err) {
+      if (err instanceof NotThere) return c.json({ error: 'Not found' }, 404);
+      if (err instanceof EditError) return c.json({ error: err.message }, 400);
+      throw err;
+    }
+  });
+
+  // Undo the last edit to the map (S6C-2), as far back as the history goes. The result must still read.
+  r.post('/undo', async (c) => {
+    const done = await exclusive(deps.companyRoot, async () => {
+      const ok = await undoMap(mapFile());
+      if (ok) readOfficeMap(JSON.parse(await readFile(mapFile(), 'utf8')) as OfficeMapJson, { file: 'office.tmj', departments: await departmentsNow() });
+      return ok;
+    });
+    if (!done) return c.json({ error: 'There is nothing to undo.' }, 404);
+    deps.bus?.publish({ kind: 'office.changed', workspaceId: deps.workspaceId });
+    return c.json({ ok: true });
   });
 
   r.get('/map', async (c) => {

@@ -7,7 +7,7 @@ import { DECOR_FOOT } from './footprints.mjs';
 export const TILE = { FLOOR: 1, WALL: 2, CARPET: 3, WOOD: 4, GRASS: 5, MAT: 6, PATH: 7 };
 const { FLOOR, WALL, CARPET, WOOD, GRASS, MAT, PATH } = TILE;
 
-function district({ key, title, w, h, fill }, draw) {
+export function district({ key, title, w, h, fill }, draw) {
   const floor = Array(w * h).fill(fill);
   const wall = Array(w * h).fill(0);
   const at = (x, y) => y * w + x;

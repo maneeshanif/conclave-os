@@ -26,9 +26,24 @@ export const DECOR_FOOTPRINT: Readonly<Record<string, readonly [number, number]>
   plant: [1, 1],
   clock: [1, 1],
   tree: [2, 2],
+  // Conferences, job fairs and sports (drawn in code by scripts/make-events-art.mjs).
+  lectern: [1, 1],
+  'screen-wide': [3, 1],
+  booth: [2, 1],
+  booth2: [2, 1],
+  booth3: [2, 1],
+  regdesk: [2, 1],
+  banner: [1, 2],
+  banner2: [1, 2],
+  seat: [1, 1],
+  banquet: [2, 2],
+  signboard: [2, 1],
+  stage: [8, 3],
+  court: [8, 5],
+  track: [12, 6],
 };
 /** These lie on the floor or hang on a wall, so you can walk over them. */
-const FLAT = new Set(['rug', 'clock']);
+const FLAT = new Set(['rug', 'clock', 'stage', 'court', 'track']);
 export class EditError extends Error {}
 
 const layerOf = (json: OfficeMapJson, name: string): TiledLayer => {
@@ -128,4 +143,15 @@ export function removeDecor(input: OfficeMapJson, id: number): OfficeMapJson {
       for (let x = x0; x < x0 + (gone!.width ?? T) / T; x++) if (floor[y * json.width + x] !== WALL) coll[y * json.width + x] = 0;
   }
   return json;
+}
+
+/**
+ * Moves a piece to another tile (S6C-2): taken up and put down in one change, keeping its turn. Nothing changes if the new place is
+ * refused, and it can slide onto part of the tiles it stood on.
+ */
+export function moveDecor(input: OfficeMapJson, id: number, to: { x: number; y: number }, departments: { key: string; active: boolean }[]): OfficeMapJson {
+  const piece = (layerOf(input, 'decor').objects ?? []).find((o) => o.id === id);
+  if (!piece) throw new EditError('There is no scenery with that number. (Desks are added with "Add a desk".)');
+  const turn = Number(piece.properties?.find((p) => p.name === 'turn')?.value ?? 0);
+  return placeDecor(removeDecor(input, id), { name: piece.name ?? '', ...to, ...(turn ? { turn } : {}) }, departments);
 }

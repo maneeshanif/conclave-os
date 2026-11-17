@@ -45,6 +45,30 @@ describe('the editing panel (S6B-9)', () => {
   });
 });
 
+describe('moving and undoing from the panel (S6C-2)', () => {
+  it('has a Move tool and an Undo button that tells the page', () => {
+    const pick = vi.fn();
+    const undo = vi.fn();
+    render(<EditPanel tool={null} message={null} onTool={pick} onDone={() => undefined} onUndo={undo} />);
+    fireEvent.click(screen.getByRole('button', { name: /^move/i }));
+    expect(pick).toHaveBeenCalledWith({ kind: 'move', id: null });
+    fireEvent.click(screen.getByRole('button', { name: /^undo$/i }));
+    expect(undo).toHaveBeenCalled();
+  });
+
+  it('says what to do next with the Move tool', () => {
+    const { rerender } = render(<EditPanel tool={{ kind: 'move', id: null }} message={null} onTool={() => undefined} onDone={() => undefined} onUndo={() => undefined} />);
+    expect(screen.getByText(/click the piece to move/i)).toBeTruthy();
+    rerender(<EditPanel tool={{ kind: 'move', id: 7 }} message={null} onTool={() => undefined} onDone={() => undefined} onUndo={() => undefined} />);
+    expect(screen.getByText(/now click where it goes/i)).toBeTruthy();
+  });
+
+  it('leaves Undo out when the page cannot undo', () => {
+    render(<EditPanel tool={null} message={null} onTool={() => undefined} onDone={() => undefined} />);
+    expect(screen.queryByRole('button', { name: /^undo$/i })).toBeNull();
+  });
+});
+
 describe('what a click does while editing (S6B-9)', () => {
   const decor = [{ id: 7, x: 10, y: 4, w: 2, h: 1 }];
   it('places the picked piece on the tile, or removes the piece on the tile, and otherwise lets you walk', () => {
@@ -53,5 +77,9 @@ describe('what a click does while editing (S6B-9)', () => {
     expect(tileAction({ kind: 'remove' }, { x: 11, y: 4 }, decor)).toEqual({ kind: 'remove', id: 7 });
     expect(tileAction({ kind: 'remove' }, { x: 0, y: 0 }, decor)).toEqual({ kind: 'nothing', why: 'Click a piece of scenery to remove it.' });
     expect(tileAction(null, { x: 3, y: 5 }, decor)).toBeNull();
+    // Move: the first click picks a piece up, the second puts it down.
+    expect(tileAction({ kind: 'move', id: null }, { x: 10, y: 4 }, decor)).toEqual({ kind: 'pick', id: 7 });
+    expect(tileAction({ kind: 'move', id: null }, { x: 0, y: 0 }, decor)).toEqual({ kind: 'nothing', why: 'Click the piece to move.' });
+    expect(tileAction({ kind: 'move', id: 7 }, { x: 20, y: 9 }, decor)).toEqual({ kind: 'move', id: 7, x: 20, y: 9 });
   });
 });

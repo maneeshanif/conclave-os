@@ -94,3 +94,38 @@ describe('placing and removing scenery (S6B-9)', () => {
     expect((await del(desks[0]!.id)).status).toBe(404); // not scenery
   });
 });
+
+describe('moving a piece and undoing (S6C-2)', () => {
+  const move = (id: number, body: unknown) => app.request(`/api/office/decor/${id}/move`, { method: 'POST', headers: json, body: JSON.stringify(body) });
+  const undo = () => app.request('/api/office/undo', { method: 'POST', headers: json, body: '{}' });
+
+  it('moves a piece to another tile in one change, and changes nothing when the new place is refused', async () => {
+    const at = await freeTile();
+    const placed = (await (await put({ name: 'plant', ...at })).json()) as { id: number };
+    const to = { x: at.x + 1, y: at.y };
+    expect((await move(placed.id, to)).status).toBe(200);
+    const moved = (await decor()).find((d) => d.name === 'plant' && d.x === to.x * 32 && d.y === to.y * 32);
+    expect(moved).toBeTruthy();
+    const text = await readFile(path.join(root, 'office.tmj'), 'utf8');
+    expect((await move(moved!.id, { x: 0, y: 0 })).status).toBe(400); // a wall
+    expect(await readFile(path.join(root, 'office.tmj'), 'utf8')).toBe(text);
+    expect((await move(999999, to)).status).toBe(404);
+  });
+
+  it('undoes the last change, one at a time, and then says there is nothing to undo', async () => {
+    // Start from a known point: undo everything the earlier tests left in the history.
+    for (let i = 0; i < 30; i++) if ((await undo()).status !== 200) break;
+    const start = (await decor()).length;
+    const at = await freeTile();
+    await put({ name: 'bin', ...at });
+    await put({ name: 'plant', x: at.x + 2, y: at.y });
+    expect(await decor()).toHaveLength(start + 2);
+    seen.length = 0;
+    expect((await undo()).status).toBe(200);
+    expect(await decor()).toHaveLength(start + 1);
+    expect(seen.some((m) => m.kind === 'office.changed')).toBe(true);
+    expect((await undo()).status).toBe(200);
+    expect(await decor()).toHaveLength(start);
+    expect((await undo()).status).toBe(404);
+  });
+});

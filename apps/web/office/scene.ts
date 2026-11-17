@@ -194,7 +194,7 @@ export function startWorld(opts: {
         if (!this.textures.exists(key) || d.x === undefined || d.y === undefined) continue;
         const w = d.width ?? TILE;
         const h = d.height ?? TILE;
-        const img = put(key, d.x + w / 2, d.y + h / 2, d.name === 'rug' ? 1.5 : d.y + h);
+        const img = put(key, d.x + w / 2, d.y + h / 2, ['rug', 'stage', 'court', 'track'].includes(d.name ?? '') ? 1.5 : d.y + h);
         const turn = (d.properties as { name: string; value: number }[] | undefined)?.find((p) => p.name === 'turn')?.value;
         if (turn) img.setAngle(turn);
         if (d.id !== undefined) this.decorBoxes.push({ id: d.id, x: Math.floor(d.x / TILE), y: Math.floor(d.y / TILE), w: Math.round(w / TILE), h: Math.round(h / TILE) });

@@ -3,7 +3,7 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 // The same table the importers and the map script use, so the two cannot drift apart.
 import { DECOR_FOOT } from '../../../scripts/lib/footprints.mjs';
-import { DECOR_FOOTPRINT, EditError, findPath, nearestReachable, placeDecor, readOfficeMap, removeDecor, type OfficeMap, type OfficeMapJson } from '../src/office';
+import { DECOR_FOOTPRINT, EditError, findPath, moveDecor, nearestReachable, placeDecor, readOfficeMap, removeDecor, type OfficeMap, type OfficeMapJson } from '../src/office';
 
 const root = path.resolve(import.meta.dirname, '..', '..', '..');
 const base = JSON.parse(readFileSync(path.join(root, 'company', 'office.tmj'), 'utf8')) as OfficeMapJson;
@@ -106,5 +106,29 @@ describe('editing the office from inside it (S6B-9)', () => {
     expect(() => removeDecor(base, 999999)).toThrow(EditError);
     const aDesk = base.layers.find((l) => l.name === 'desks')!.objects![0]!;
     expect(() => removeDecor(base, aDesk.id!)).toThrow(EditError); // desks are added with Add a desk, not here
+  });
+});
+
+describe('moving a piece (S6C-2)', () => {
+  it('lifts a piece and puts it down on another tile in one change, keeping its turn', () => {
+    const placed = place(base, { name: 'chair', ...free, turn: 90 });
+    const id = decorOf(placed).at(-1)!.id!;
+    const to = { x: free.x + 1, y: free.y };
+    const moved = moveDecor(placed, id, to, departments);
+    const d = decorOf(moved).find((x) => x.name === 'chair' && x.x === to.x * 32 && x.y === to.y * 32)!;
+    expect(d.properties?.find((p) => p.name === 'turn')?.value).toBe(90);
+    expect(decorOf(moved)).toHaveLength(decorOf(placed).length); // one in, one out
+    const m = read(moved);
+    expect(m.walls[to.y]![to.x]).toBe(true);
+    expect(m.walls[free.y]![free.x]).toBe(false); // the old tile is free again
+  });
+
+  it('changes nothing when the new place is refused, and can move a piece onto part of the tile it was on', () => {
+    const placed = place(base, { name: 'sofa', ...free });
+    const id = decorOf(placed).at(-1)!.id!;
+    expect(() => moveDecor(placed, id, { x: 0, y: 0 }, departments)).toThrow(EditError); // a wall
+    const slid = moveDecor(placed, id, { x: free.x + 1, y: free.y }, departments); // a 2 wide sofa slides one tile along
+    expect(read(slid).walls[free.y]![free.x + 2]).toBe(true);
+    expect(() => moveDecor(base, 999999, free, departments)).toThrow(EditError);
   });
 });
