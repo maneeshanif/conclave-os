@@ -1,3 +1,4 @@
+import { EMOTES, EMOTE_RANGE } from '@conclave/shared';
 import { z } from 'zod';
 
 /**
@@ -24,7 +25,12 @@ export interface ChatMessage {
   text: string;
   at: number;
 }
-export type PresenceMessage = { kind: 'presence'; member: PresenceMember } | { kind: 'presence.all'; members: PresenceMember[] } | { kind: 'presence.leave'; id: string } | ChatMessage;
+export interface EmoteMessage {
+  kind: 'emote';
+  id: string;
+  emote: string;
+}
+export type PresenceMessage = { kind: 'presence'; member: PresenceMember } | { kind: 'presence.all'; members: PresenceMember[] } | { kind: 'presence.leave'; id: string } | ChatMessage | EmoteMessage;
 
 /** Text reaches only the people this many tiles from the sender (S6-15c). No audio, no video. */
 export const CHAT_RANGE = 5;
@@ -44,6 +50,7 @@ const Move = z.object({
 });
 const goodLook = (v: unknown): v is number => typeof v === 'number' && Number.isInteger(v) && v >= 0 && v < LOOKS;
 
+const Emote = z.object({ type: z.literal('emote'), emote: z.string() });
 const Chat = z.object({ type: z.literal('chat'), text: z.string() });
 const cleanText = (raw: string): string =>
   // eslint-disable-next-line no-control-regex
@@ -58,12 +65,11 @@ const cleanName = (raw: string | undefined, was: string): string => {
 
 interface Connection {
   id: string;
-  /** The world this socket is in (the headquarters by default). Nobody hears or sees anyone in another. */
-  world: string;
   send: (m: PresenceMessage) => void;
   member: PresenceMember | null;
   last: number | null;
   lastChat: number | null;
+  lastEmote: number | null;
 }
 
 export class PresenceHub {
@@ -79,17 +85,17 @@ export class PresenceHub {
   }
 
   /** Everyone who has said where they are. */
-  members(world?: string): PresenceMember[] {
-    return [...this.conns].filter((c) => world === undefined || c.world === world).flatMap((c) => (c.member ? [{ ...c.member }] : []));
+  members(): PresenceMember[] {
+    return [...this.conns].flatMap((c) => (c.member ? [{ ...c.member }] : []));
   }
 
   /** A signed-in session's socket. `id` is its session, so one person on two devices is two avatars. */
-  connect(sessionId: string, send: (m: PresenceMessage) => void, world = 'hq'): { message(raw: unknown): void; close(): void } {
+  connect(sessionId: string, send: (m: PresenceMessage) => void): { message(raw: unknown): void; close(): void } {
     const taken = new Set([...this.conns].map((c) => c.id));
     let id = sessionId;
     for (let n = 2; taken.has(id); n++) id = `${sessionId}~${n}`;
-    const conn: Connection = { id, world, send, member: null, last: null, lastChat: null };
-    const here = this.members(world);
+    const conn: Connection = { id, send, member: null, last: null, lastChat: null, lastEmote: null };
+    const here = this.members();
     this.conns.add(conn);
     if (here.length) send({ kind: 'presence.all', members: here });
     return {
@@ -108,6 +114,8 @@ export class PresenceHub {
     } catch {
       return;
     }
+    const emote = Emote.safeParse(parsed);
+    if (emote.success) return this.react(conn, emote.data.emote);
     const chat = Chat.safeParse(parsed);
     if (chat.success) return this.say(conn, chat.data.text);
     const m = Move.safeParse(parsed);
@@ -117,6 +125,20 @@ export class PresenceHub {
     conn.last = t;
     conn.member = { id: conn.id, name: cleanName(m.data.name, conn.member?.name ?? 'Guest'), look: goodLook(m.data.look) ? m.data.look : (conn.member?.look ?? 0), x: m.data.x, y: m.data.y, availability: m.data.availability, handRaised: m.data.handRaised };
     this.tell({ kind: 'presence', member: { ...conn.member } }, conn);
+  }
+
+  /** A quick reaction from someone who has said where they are: one emoji from the list, to people within range, never the sender. */
+  private react(conn: Connection, raw: string): void {
+    const from = conn.member;
+    if (!from || !(EMOTES as readonly string[]).includes(raw)) return;
+    const t = this.now();
+    if (conn.lastEmote !== null && t - conn.lastEmote < this.chatIntervalMs) return;
+    conn.lastEmote = t;
+    const msg: EmoteMessage = { kind: 'emote', id: from.id, emote: raw };
+    for (const c of this.conns) {
+      if (c === conn || !c.member) continue;
+      if (Math.hypot(c.member.x - from.x, c.member.y - from.y) <= EMOTE_RANGE) c.send(msg);
+    }
   }
 
   /** A line of text from someone who has said where they are: only people within range hear it, and never the sender. */
@@ -130,12 +152,12 @@ export class PresenceHub {
     conn.lastChat = t;
     const msg: ChatMessage = { kind: 'chat', id: from.id, name: from.name, text, at: t };
     for (const c of this.conns) {
-      if (c === conn || !c.member || c.world !== conn.world) continue;
+      if (c === conn || !c.member) continue;
       if (Math.hypot(c.member.x - from.x, c.member.y - from.y) <= CHAT_RANGE) c.send(msg);
     }
   }
 
   private tell(m: PresenceMessage, except: Connection): void {
-    for (const c of this.conns) if (c !== except && c.world === except.world) c.send(m);
+    for (const c of this.conns) if (c !== except) c.send(m);
   }
 }

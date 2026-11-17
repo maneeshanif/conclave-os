@@ -6,7 +6,6 @@ import { HealthSchema } from '@conclave/shared';
 import type { Auth, SessionInfo } from './auth';
 import type { Companies } from './companies';
 import { PresenceHub } from './office/presence';
-import { worldKey } from './office/worlds';
 import { companyRoutes } from './routes/companies';
 import type { Bus } from './bus';
 import type { Breakers } from './harness/breakers';
@@ -182,7 +181,6 @@ export function createApp(deps?: AppDeps) {
         let off: (() => void) | undefined;
         // Presence only for a signed-in session. With login off there is no session, so no presence.
         const me = (c as Context<AppEnv>).get('owner');
-        const world = worldKey(c.req.query('world'));
         let here: ReturnType<PresenceHub['connect']> | undefined;
         return {
           onOpen(_e, socket) {
@@ -193,7 +191,7 @@ export function createApp(deps?: AppDeps) {
             off = bus.subscribe((m) => {
               if (m.workspaceId === ws) socket.send(JSON.stringify(m));
             });
-            if (me) here = hub.connect(me.sessionId, (m) => socket.send(JSON.stringify(m)), world);
+            if (me) here = hub.connect(me.sessionId, (m) => socket.send(JSON.stringify(m)));
           },
           onMessage(e) {
             here?.message(e.data);

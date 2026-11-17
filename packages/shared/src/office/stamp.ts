@@ -44,11 +44,14 @@ export function addDepartmentRoom(input: OfficeMapJson, dept: { key: string; nam
   if (roomList.some((r) => (r.name ?? '').toLowerCase() === name.toLowerCase())) throw new StampError(`There is already a room called "${name}".`);
   if (roomList.some((r) => r.properties?.some((p) => p.name === 'department' && p.value === dept.key))) throw new StampError(`The department "${dept.key}" already has a room.`);
 
-  const added = roomList.filter((r) => r.x / T >= FIRST_X).length;
+  // Only department rooms count: the map is a town now, and the districts below also have rooms out to the right.
+  const isDepartment = (r: TiledObject) => r.properties?.some((p) => p.name === 'kind' && p.value === 'department');
+  const added = roomList.filter((r) => isDepartment(r) && r.x / T >= FIRST_X).length;
   if (added >= MAX_ADDED_DEPARTMENTS) throw new PlotsFull(`The office has no room for another department (${MAX_ADDED_DEPARTMENTS} can be added).`);
   const x0 = FIRST_X + PITCH * added;
-  if (json.width !== x0) throw new StampError(`The map is ${json.width} tiles wide, but the next room starts at ${x0}. It was changed by hand; add the room in Tiled.`);
-  const newW = x0 + PITCH;
+  if (json.width < x0) throw new StampError(`The map is ${json.width} tiles wide, but the next room starts at ${x0}. It was changed by hand; add the room in Tiled.`);
+  // The map grows only if the new room runs past its edge; in a town that is already wide it does not, and the room goes on the lawn.
+  const newW = Math.max(json.width, x0 + PITCH);
   const H = json.height;
 
   // Lay the tiles out again at the new width. New ground is wall, and the room, its door and the corridor are carved out of it.
@@ -67,8 +70,11 @@ export function addDepartmentRoom(input: OfficeMapJson, dept: { key: string; nam
     floor[at(x, y)] = tile;
     coll[at(x, y)] = tile === WALL ? 1 : 0;
   };
+  // Brick round the room and its corridor, whatever was there before (new ground used to be wall; in a town it can be lawn).
+  for (let x = x0 - 1; x <= x0 + PITCH - 1; x++) for (const y of [0, 11, 15]) set(x, y, WALL);
+  for (let y = 0; y <= 15; y++) set(x0 + PITCH - 1, y, WALL);
   for (let y = 1; y <= 10; y++) for (let x = x0; x <= x0 + 8; x++) set(x, y, CARPET); // the room
-  for (let y = 12; y <= 14; y++) for (let x = x0 - 1; x <= newW - 2; x++) set(x, y, FLOOR); // the corridor, carried on, through the old end wall
+  for (let y = 12; y <= 14; y++) for (let x = x0 - 1; x <= x0 + PITCH - 2; x++) set(x, y, FLOOR); // the corridor, carried on, through the old end wall
   set(x0 + 4, 11, DOOR); // the door onto the corridor
   json.width = newW;
 

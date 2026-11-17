@@ -1,5 +1,5 @@
 import { existsSync } from 'node:fs';
-import { readdir } from 'node:fs/promises';
+import { readFile, readdir } from 'node:fs/promises';
 import path from 'node:path';
 import { Hono } from 'hono';
 import { z } from 'zod';
@@ -9,26 +9,20 @@ import type { Dispatcher } from '../workflows/dispatch';
 import { assignDesks, loadOffice } from '../office/desks';
 import { activityFeed } from '../office/activity';
 import { officeState, teamCards } from '../office/state';
-import { listWorlds, loadWorld, worldFile, worldKey } from '../office/worlds';
 
 /** The office (SPEC 12): the map's facts and where each agent sits. The drawing reads the map file itself from /office/map. */
 export function officeRoutes(deps: { workspaceId: string; companyRoot: string; /** For the agent templates (S6-13c). */ templatesRoot?: string; bus?: Bus; dispatcher?: Dispatcher; /** The agents in an open discussion; the Boardroom supplies it (S6-10). */ discussing?: (c: import('pg').PoolClient) => Promise<Set<string>> }) {
   const r = new Hono<AppEnv>();
 
-  r.get('/worlds', async (c) => c.json({ worlds: await listWorlds(deps.companyRoot) }));
-
   r.get('/', async (c) => {
-    const key = worldKey(c.req.query('world'));
     let office;
     try {
-      office = await loadWorld(deps.companyRoot, key);
+      office = await loadOffice(deps.companyRoot);
     } catch (err) {
       return c.json({ error: (err as Error).message }, 422);
     }
-    if (!office) return c.json({ error: 'Not found' }, 404);
     const tx = c.get('tx').client;
-    // Desks belong to the headquarters; in another world nobody has one.
-    const seats = office.social ? [] : await assignDesks(tx, deps.workspaceId, office.map);
+    const seats = await assignDesks(tx, deps.workspaceId, office.map);
     const agents = await tx.query<{ id: string; key: string; name: string; department: string | null; status: string }>(
       "select a.id, a.key, a.name, d.key as department, a.status from agents a left join departments d on d.id = a.department_id where a.status <> 'retired' order by a.created_at, a.key",
     );
@@ -43,15 +37,13 @@ export function officeRoutes(deps: { workspaceId: string; companyRoot: string; /
   });
 
   r.get('/state', async (c) => {
-    const key = worldKey(c.req.query('world'));
     let office;
     try {
-      office = await loadWorld(deps.companyRoot, key);
+      office = await loadOffice(deps.companyRoot);
     } catch (err) {
       return c.json({ error: (err as Error).message }, 422);
     }
-    if (!office) return c.json({ error: 'Not found' }, 404);
-    return c.json({ places: await officeState(c.get('tx').client, deps.workspaceId, office.map, deps.discussing ? await deps.discussing(c.get('tx').client) : undefined, office.social) });
+    return c.json({ places: await officeState(c.get('tx').client, deps.workspaceId, office.map, deps.discussing ? await deps.discussing(c.get('tx').client) : undefined) });
   });
 
   r.get('/agents/:id', async (c) => {
@@ -145,13 +137,12 @@ export function officeRoutes(deps: { workspaceId: string; companyRoot: string; /
   });
 
   r.get('/map', async (c) => {
-    const key = worldKey(c.req.query('world'));
     try {
-      if (!(await loadWorld(deps.companyRoot, key))) return c.json({ error: 'Not found' }, 404); // and refuse to serve a map the OS cannot read
+      await loadOffice(deps.companyRoot); // refuse to serve a map the OS cannot read
     } catch (err) {
       return c.json({ error: (err as Error).message }, 422);
     }
-    return c.body((await worldFile(deps.companyRoot, key)) ?? '', 200, { 'content-type': 'application/json' });
+    return c.body(await readFile(path.join(deps.companyRoot, 'office.tmj'), 'utf8'), 200, { 'content-type': 'application/json' });
   });
 
   return r;

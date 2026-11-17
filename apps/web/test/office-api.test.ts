@@ -1,4 +1,3 @@
-// @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { api } from '../lib/api';
 
@@ -21,29 +20,6 @@ describe('the office client (S6-12c)', () => {
   it('refuses a list of places that is not a list', async () => {
     answer({ places: 'nope' });
     await expect(api.officeState()).rejects.toThrow(/unexpected/i);
-  });
-});
-
-describe('the worlds client (S6-17)', () => {
-  afterEach(() => localStorage.clear());
-
-  it('asks for the world you are in, and for none at the headquarters', async () => {
-    const fetchMock = vi.fn<(url: string) => Promise<Response>>(async () => new Response(JSON.stringify({ places: [] }), { status: 200, headers: { 'content-type': 'application/json' } }));
-    vi.stubGlobal('fetch', fetchMock);
-    await api.officeState();
-    expect(String(fetchMock.mock.calls[0]![0])).not.toMatch(/world=/);
-    localStorage.setItem('conclave.world', 'arcade');
-    await api.officeState();
-    expect(String(fetchMock.mock.calls[1]![0])).toMatch(/\/api\/office\/state\?world=arcade$/);
-  });
-
-  it('lists the worlds, and refuses an answer that is not a list', async () => {
-    answer({ worlds: [{ key: 'hq', name: 'Headquarters', blurb: '' }] });
-    expect((await api.officeWorlds())[0]!.key).toBe('hq');
-    for (const body of [[], {}, { worlds: 'no' }, null]) {
-      answer(body);
-      await expect(api.officeWorlds(), JSON.stringify(body)).rejects.toThrow(/unexpected/i);
-    }
   });
 });
 

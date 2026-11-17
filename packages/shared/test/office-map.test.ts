@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { OBJECT_TYPES, OfficeMapError, readOfficeMap, type OfficeMapJson } from '../src/office';
@@ -40,7 +40,8 @@ describe('the starter office map (S6-1)', () => {
     const m = read();
     for (const d of departments.filter((x) => x.active)) expect(m.rooms.find((r) => r.department === d.key), d.key).toBeTruthy();
     expect(m.rooms.filter((r) => r.kind === 'boardroom')).toHaveLength(1);
-    expect(m.rooms.filter((r) => r.kind === 'lounge')).toHaveLength(1);
+    // The headquarters has one Lounge (the districts of the town have lounges of their own, named after the district).
+    expect(m.rooms.filter((r) => r.kind === 'lounge' && !r.name.includes(': '))).toHaveLength(1);
     expect(m.rooms.find((r) => r.department === 'outreach')).toMatchObject({ kind: 'department', locked: false });
   });
 
@@ -144,5 +145,30 @@ describe('a map with a mistake is refused, saying where (S6-1)', () => {
   it('a file that is not a Tiled map at all', () => {
     expect(msg(() => read('nonsense'))).toMatch(/company\/office\.tmj.*not a Tiled map/is);
     expect(msg(() => read({ layers: [] }))).toMatch(/width|height/i);
+  });
+});
+
+describe('the town (S6-17): one world with the headquarters and four districts', () => {
+  const json = JSON.parse(readFileSync(path.join(root, 'company', 'office.tmj'), 'utf8')) as OfficeMapJson;
+
+  it('has a room for each district, named after it, and a way in from the street for each', () => {
+    const m = read();
+    for (const d of ['Campus Green', 'Co-working Loft', 'Game Night', 'Rooftop']) expect(m.rooms.some((r) => r.name.startsWith(`${d}: `)), d).toBe(true);
+    for (const k of ['campus', 'loft', 'arcade', 'rooftop']) expect(m.entries.some((e) => e.name === `${k}-lounge`), k).toBe(true);
+    expect(m.rooms.every((r) => r.x >= 0 && r.y >= 0 && r.x + r.w <= m.width && r.y + r.h <= m.height)).toBe(true);
+  });
+
+  it('draws its scenery only with pictures we have, inside the map', () => {
+    const have = new Set(readdirSync(path.join(root, 'apps', 'web', 'public', 'office', 'decor')).map((f) => f.replace(/\.png$/, '')));
+    const decor = json.layers.find((l) => l.name === 'decor')!.objects ?? [];
+    expect(decor.length).toBeGreaterThan(100);
+    for (const d of decor) {
+      expect(have.has(d.name ?? ''), d.name).toBe(true);
+      expect(d.x >= 0 && d.y >= 0 && d.x + (d.width ?? 0) <= json.width * 32 && d.y + (d.height ?? 0) <= json.height * 32, `${d.name} at ${d.x},${d.y}`).toBe(true);
+    }
+  });
+
+  it('has the same town in the starter company template', () => {
+    expect(readFileSync(path.join(root, 'templates', 'companies', 'starter', 'office.tmj'), 'utf8')).toBe(readFileSync(path.join(root, 'company', 'office.tmj'), 'utf8'));
   });
 });

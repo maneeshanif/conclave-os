@@ -27,12 +27,29 @@ describe('stamping a department room onto the map (S6-13b)', () => {
     for (const d of m.desks.filter((x) => x.room === 'Team 1')) expect(d.x >= room.x && d.x < room.x + room.w && d.y >= room.y && d.y < room.y + room.h).toBe(true);
   });
 
-  it('grows the map to the right by one room each time, and never changes the height', () => {
+  it('puts each new room ten tiles on from the last, on the lawn beside the headquarters, and never changes the size of a town that is wide enough', () => {
+    const roomX = (j: ReturnType<typeof add>, name: string) => (j.layers.find((l) => l.name === 'rooms')!.objects ?? []).find((r) => r.name === name)!.x / 32;
     const one = add(base, 1);
-    expect([one.width, one.height]).toEqual([base.width + 10, base.height]);
     const two = add(one, 2);
-    expect([two.width, two.height]).toEqual([base.width + 20, base.height]);
+    expect([roomX(one, 'Team 1'), roomX(two, 'Team 2')]).toEqual([40, 50]);
+    // The town is already wider than the top row needs (S6-17), so it does not grow.
+    for (const j of [one, two]) expect([j.width, j.height]).toEqual([base.width, base.height]);
     for (const l of two.layers.filter((x) => x.type === 'tilelayer')) expect(l.data).toHaveLength(two.width * two.height);
+  });
+
+  it('grows a map that is only as wide as its top row, as before', () => {
+    // The old starter shape: 40 wide. The first room makes it 50.
+    const narrow = structuredClone(base);
+    const w = 40;
+    for (const l of narrow.layers.filter((x) => x.type === 'tilelayer')) {
+      const data: number[] = [];
+      for (let y = 0; y < narrow.height; y++) for (let x = 0; x < w; x++) data.push(l.data![y * narrow.width + x]!);
+      l.data = data;
+      l.width = w;
+    }
+    narrow.width = w;
+    const one = add(narrow, 1);
+    expect([one.width, one.height]).toEqual([50, narrow.height]);
   });
 
   it('leaves everything that was already on the map where it was', () => {
@@ -43,8 +60,11 @@ describe('stamping a department room onto the map (S6-13b)', () => {
     for (const d of before.desks) expect(after.desks).toContainEqual(d);
     for (const o of before.objects) expect(after.objects).toContainEqual(o);
     expect(after.entries).toEqual(before.entries);
-    // The old walls are the same, except the outer right wall, which now has a way through into the new rooms.
-    for (let y = 0; y < before.height; y++) for (let x = 0; x < before.width - 1; x++) expect(after.walls[y]![x], `${x},${y}`).toBe(before.walls[y]![x]);
+    // The old walls are the same, except where the new room and its corridor and fence are carved out of the lawn.
+    for (let y = 0; y < before.height; y++) for (let x = 0; x < before.width; x++) {
+      const carved = x >= 39 && x <= 49 && y <= 15;
+      if (!carved) expect(after.walls[y]![x], `${x},${y}`).toBe(before.walls[y]![x]);
+    }
   });
 
   it('can be walked to from the door: its room, desks and objects, and the old ones still', () => {

@@ -41,6 +41,8 @@ export function startWorld(opts: {
   agentsUrl?: string;
   /** What an agent is doing now (working, waiting, blocked, discussion, handoff, idle), for the screen on its desk. */
   stateOf?: (agentId: string) => string | undefined;
+  /** The quick reaction over someone's head now (a person's id, or 'me'), or null. */
+  emoteOf?: (id: string) => string | null;
   facts: OfficeFacts;
   ctl: WorldController;
   who: () => Map<string, Who>;
@@ -250,7 +252,7 @@ export function startWorld(opts: {
       for (const f of this.figures.values()) f.hover(_time);
       this.drawScreens(_time);
       this.me?.setLook(opts.myLook?.() ?? 0);
-      this.me?.label(opts.myName?.() ?? 'You', availabilityColour(status));
+      this.me?.label(`${opts.emoteOf?.('me') ? `${opts.emoteOf('me')} ` : ''}${opts.myName?.() ?? 'You'}`, availabilityColour(status));
       const who = opts.who();
       const live = new Set<string>();
       for (const a of ctl.agents()) {
@@ -274,7 +276,8 @@ export function startWorld(opts: {
         }
         f.setLook(o.look);
         f.moveTo(o.position.x, o.position.y);
-        f.label(o.handRaised ? `${o.name} ✋` : o.name, availabilityColour(o.availability));
+        const moji = opts.emoteOf?.(o.id);
+        f.label(`${moji ? `${moji} ` : ''}${o.handRaised ? `${o.name} ✋` : o.name}`, availabilityColour(o.availability));
       }
       for (const [id, f] of this.figures) {
         if (!live.has(id)) {

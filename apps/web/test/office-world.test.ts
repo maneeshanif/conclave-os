@@ -142,9 +142,11 @@ describe('zoom and held keys (S6-8c1)', () => {
   it('on a big screen the lowest zoom is never less than showing the whole map', () => {
     const w = new WorldController(map);
     w.setViewport(4000, 3000);
-    expect(w.zoom).toBeGreaterThanOrEqual(2);
+    const fit = Math.min(4000 / (map.width * map.tile), 3000 / (map.height * map.tile));
+    expect(w.zoom).toBeGreaterThanOrEqual(Math.min(1.5, Math.max(fit, 1.5)));
     for (let i = 0; i < 40; i++) w.zoomOut();
-    expect(w.zoom).toBeGreaterThanOrEqual(1);
+    // The lowest zoom is exactly the whole map, never less (the town is wide, so on this screen that is below one).
+    expect(w.zoom).toBeCloseTo(fit, 5);
   });
 
   it('keeps walking while a key is held, and stops on a whole tile when it is let go', () => {

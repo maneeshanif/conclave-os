@@ -83,6 +83,27 @@ describe('the welcome card (S6-8c2)', () => {
   });
 });
 
+describe('quick reactions from the bar (S6-18)', () => {
+  const base = { people: [], availability: 'available' as const, onAvailability: () => undefined, onOpenAgent: () => undefined, onOverview: () => undefined };
+
+  it('opens a row of emoji and sends the one you pick', () => {
+    const send = vi.fn();
+    render(<OfficeBar {...base} onEmote={send} />);
+    fireEvent.click(screen.getByRole('button', { name: /react/i }));
+    const row = screen.getByRole('menu', { name: /reactions/i });
+    const buttons = within(row).getAllByRole('menuitem');
+    expect(buttons.length).toBeGreaterThanOrEqual(6);
+    fireEvent.click(buttons[1]!);
+    expect(send).toHaveBeenCalledWith(buttons[1]!.textContent);
+    expect(screen.queryByRole('menu', { name: /reactions/i })).toBeNull();
+  });
+
+  it('is left out when the page cannot send one', () => {
+    render(<OfficeBar {...base} />);
+    expect(screen.queryByRole('button', { name: /react/i })).toBeNull();
+  });
+});
+
 describe('the list of rooms and agents from the bar (S6-15a)', () => {
   it('has a button for it, next to the people button, that tells the page to open it', () => {
     const open = vi.fn();
@@ -94,44 +115,6 @@ describe('the list of rooms and agents from the bar (S6-15a)', () => {
   it('is left out when the page has no list to open', () => {
     render(<OfficeBar people={[]} availability="available" onAvailability={() => undefined} onOpenAgent={() => undefined} onOverview={() => undefined} />);
     expect(screen.queryByRole('button', { name: /rooms and agents/i })).toBeNull();
-  });
-});
-
-describe('the world switcher (S6-17)', () => {
-  const base = { people: [], availability: 'available' as const, onAvailability: () => undefined, onOpenAgent: () => undefined, onOverview: () => undefined };
-  const worlds = [
-    { key: 'hq', name: 'Headquarters', blurb: 'The company office.' },
-    { key: 'campus', name: 'Campus Green', blurb: 'A park to walk and talk in.' },
-    { key: 'loft', name: 'Co-working Loft', blurb: 'An open-plan floor.' },
-  ];
-
-  it('shows the world you are in, opens a list of them, and reports the one you pick', () => {
-    const pick = vi.fn();
-    render(<OfficeBar {...base} worlds={worlds} world="hq" onWorld={pick} />);
-    fireEvent.click(screen.getByRole('button', { name: /world: headquarters/i }));
-    const items = screen.getAllByRole('menuitemradio');
-    expect(items.map((i) => i.textContent)).toEqual([expect.stringMatching(/Headquarters/), expect.stringMatching(/Campus Green/), expect.stringMatching(/Co-working Loft/)]);
-    expect(items[0]!.getAttribute('aria-checked')).toBe('true');
-    expect(screen.getByText(/a park to walk and talk in/i)).toBeTruthy();
-    fireEvent.click(items[1]!);
-    expect(pick).toHaveBeenCalledWith('campus');
-    expect(screen.queryByRole('menuitemradio')).toBeNull();
-  });
-
-  it('does not report the world you are already in', () => {
-    const pick = vi.fn();
-    render(<OfficeBar {...base} worlds={worlds} world="loft" onWorld={pick} />);
-    fireEvent.click(screen.getByRole('button', { name: /world: co-working loft/i }));
-    fireEvent.click(screen.getAllByRole('menuitemradio')[2]!);
-    expect(pick).not.toHaveBeenCalled();
-  });
-
-  it('is left out when there is only one world, or the page cannot switch', () => {
-    render(<OfficeBar {...base} worlds={[worlds[0]!]} world="hq" onWorld={() => undefined} />);
-    expect(screen.queryByRole('button', { name: /world:/i })).toBeNull();
-    cleanup();
-    render(<OfficeBar {...base} worlds={worlds} world="hq" />);
-    expect(screen.queryByRole('button', { name: /world:/i })).toBeNull();
   });
 });
 

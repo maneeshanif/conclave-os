@@ -7,6 +7,7 @@ import path from 'node:path';
 import { Buffer } from 'node:buffer';
 import process from 'node:process';
 import { DECOR_FOOT, OBJECT_FOOT } from './lib/footprints.mjs';
+import { districts } from './lib/districts.mjs';
 
 const root = path.resolve(import.meta.dirname, '..');
 const T = 32;
@@ -15,6 +16,7 @@ const H = 30;
 
 // ---- The tiles: eight 32 by 32 squares in one row ----
 const FLOOR = 1, WALL = 2, CARPET = 3, WOOD = 4, LOUNGE = 5, DOOR = 6, DESK = 7, THING = 8;
+const GRASS = LOUNGE, PATH = DESK; // the green carpet is grass outdoors and the dark planks are a boardwalk
 const colours = { [FLOOR]: [232, 228, 218], [WALL]: [59, 63, 74], [CARPET]: [201, 214, 232], [WOOD]: [216, 185, 138], [LOUNGE]: [207, 227, 196], [DOOR]: [242, 225, 168], [DESK]: [216, 185, 138], [THING]: [232, 228, 218] };
 // A little deterministic grain, so a floor is not one flat colour. Same on every run.
 const grain = (x, y, id) => {
@@ -281,12 +283,81 @@ dec('plant', 25, 28);
 dec('plant', 38, 28);
 const entries = [obj('door', '', 19, 28), obj('lounge', '', 28, 19), obj('boardroom', '', 7, 20)];
 
+// ---- The town (S6-17): the headquarters above, a street under it, the districts along the street, one world with no switcher. ----
+// Land beside the headquarters is a fenced lawn (where new departments get their rooms); the districts stand along the street.
+const STREET_Y = 30; // two rows of street
+const GAP = 2; // lawn between districts
+let reach = 1;
+const placed = districts.map((d) => {
+  const ox = reach;
+  reach += d.w + GAP;
+  return { d, ox };
+});
+const BW = Math.max(W, reach - GAP + 1);
+const BH = STREET_Y + 2 + Math.max(...districts.map((d) => d.h)) + 1;
+const bigFloor = Array(BW * BH).fill(GRASS);
+const bigWall = Array(BW * BH).fill(1); // fenced unless opened below
+const bat = (x, y) => y * BW + x;
+for (let y = 0; y < H; y++)
+  for (let x = 0; x < W; x++) {
+    bigFloor[bat(x, y)] = floor[at(x, y)];
+    bigWall[bat(x, y)] = wall[at(x, y)];
+  }
+for (let y = STREET_Y; y < STREET_Y + 2; y++)
+  for (let x = 1; x < BW - 1; x++) {
+    bigFloor[bat(x, y)] = PATH;
+    bigWall[bat(x, y)] = 0;
+  }
+for (const { d, ox } of placed) {
+  for (let y = 0; y < d.h; y++)
+    for (let x = 0; x < d.w; x++) {
+      bigFloor[bat(ox + x, STREET_Y + 2 + y)] = d.floor[y * d.w + x];
+      bigWall[bat(ox + x, STREET_Y + 2 + y)] = d.wall[y * d.w + x];
+    }
+  for (const r of d.rooms) rooms.push(obj(`${d.title}: ${r.name}`, '', ox + r.x, STREET_Y + 2 + r.y, r.w, r.h, [prop('kind', 'string', r.kind)]));
+  for (const c of d.decor) decor.push(obj(c.name, 'decor', ox + c.x, STREET_Y + 2 + c.y, c.w, c.h, c.turn ? [prop('turn', 'int', c.turn)] : undefined));
+  for (const e of d.entries) entries.push(obj(e.name, '', ox + e.x, STREET_Y + 2 + e.y));
+}
+// A brick fence round the whole town.
+for (let x = 0; x < BW; x++) for (const y of [0, BH - 1]) {
+  bigFloor[bat(x, y)] = WALL;
+  bigWall[bat(x, y)] = 1;
+}
+for (let y = 0; y < BH; y++) for (const x of [0, BW - 1]) {
+  bigFloor[bat(x, y)] = WALL;
+  bigWall[bat(x, y)] = 1;
+}
+// The Park: the lower half of the lawn beside the headquarters is open grounds (the strip above stays fenced, for the rooms new
+// departments get). A boardwalk, trees, picnic tables and benches, joined to the street.
+const PARK_Y = 17;
+for (let y = PARK_Y; y < STREET_Y; y++) for (let x = W; x < BW - 1; x++) bigWall[bat(x, y)] = 0;
+for (let y = 23; y < 25; y++) for (let x = W; x < BW - 1; x++) bigFloor[bat(x, y)] = PATH;
+const blockBig = (x, y, w, h) => {
+  for (let j = y; j < y + h; j++) for (let i = x; i < x + w; i++) bigWall[bat(i, j)] = 1;
+};
+const scenery = (name, x, y) => {
+  const [w, h] = DECOR_FOOT[name];
+  decor.push(obj(name, 'decor', x, y, w, h));
+  blockBig(x, y, w, h);
+};
+rooms.push(obj('Park', '', W + 1, PARK_Y + 1, BW - W - 3, STREET_Y - PARK_Y - 2, [prop('kind', 'string', 'terrace')]));
+for (let x = W + 4; x < BW - 8; x += 10) {
+  scenery('tree', x, PARK_Y + 1);
+  scenery('tree', x + 5, 26);
+  scenery('cafe-table', x + 1, 27);
+  scenery('sofa', x + 3, 20);
+  scenery('plant', x + 7, 21);
+  scenery('bookshelf', x + 6, 28);
+}
+// Trees and plants along the street.
+for (let x = 4; x < BW - 3; x += 9) decor.push(obj('plant', 'decor', x, STREET_Y + 2, 1, 1));
+
 const group = (name, list) => ({ id: nextId++, name, type: 'objectgroup', draworder: 'topdown', opacity: 1, visible: true, x: 0, y: 0, objects: list });
-const tiles = (name, data) => ({ id: nextId++, name, type: 'tilelayer', width: W, height: H, x: 0, y: 0, opacity: 1, visible: true, data });
+const tiles = (name, data) => ({ id: nextId++, name, type: 'tilelayer', width: BW, height: BH, x: 0, y: 0, opacity: 1, visible: true, data });
 const map = {
   compressionlevel: -1,
-  width: W,
-  height: H,
+  width: BW,
+  height: BH,
   tilewidth: T,
   tileheight: T,
   infinite: false,
@@ -296,7 +367,7 @@ const map = {
   type: 'map',
   version: '1.10',
   tilesets: [{ firstgid: 1, name: 'office', image: 'tiles.png', imagewidth: T * 8, imageheight: T, tilewidth: T, tileheight: T, columns: 8, tilecount: 8, margin: 0, spacing: 0 }],
-  layers: [tiles('floor', floor), tiles('collision', wall), group('rooms', rooms), group('desks', desks), group('objects', objects), group('decor', decor), group('entries', entries)],
+  layers: [tiles('floor', bigFloor), tiles('collision', bigWall), group('rooms', rooms), group('desks', desks), group('objects', objects), group('decor', decor), group('entries', entries)],
   nextlayerid: nextId + 1,
   nextobjectid: nextId + 1,
 };
@@ -304,5 +375,5 @@ writeFileSync(path.join(root, 'company/office.tmj'), JSON.stringify(map, null, 1
 // A new company starts from the same office (the starter company template).
 mkdirSync(path.join(root, 'templates/companies/starter'), { recursive: true });
 writeFileSync(path.join(root, 'templates/companies/starter/office.tmj'), JSON.stringify(map, null, 1) + '\n');
-process.stdout.write(`wrote company/office.tmj (${W}x${H}) and apps/web/public/office/tiles.png
+process.stdout.write(`wrote company/office.tmj (${BW}x${BH}) and apps/web/public/office/tiles.png
 `);

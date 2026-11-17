@@ -1,9 +1,8 @@
 'use client';
 
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { api } from '../lib/api';
-import { currentWorld, setCurrentWorld } from '../lib/world';
 import { PANEL_IDS, panelHref, parsePanel, type PanelId } from '../lib/panels';
 import { OfficeView, realOfficeClient } from './OfficeView';
 import { OfficeWorld } from './OfficeWorld';
@@ -21,14 +20,6 @@ export function OfficeScreen({ base = '/' }: { base?: string }) {
   const params = useSearchParams();
   const state = parsePanel(params);
   const [worldFailed, setWorldFailed] = useState(false);
-  // Which world (S6-17). Read after the first paint so the server render and the first paint agree.
-  const [world, setWorld] = useState('hq');
-  useEffect(() => setWorld(currentWorld()), []);
-  const changeWorld = useCallback((key: string) => {
-    setCurrentWorld(key);
-    setWorld(key);
-    setWorldFailed(false);
-  }, []);
   // The world is started once and must not start again because the page changed, so the callbacks it is given never change.
   const routerRef = useRef(router);
   routerRef.current = router;
@@ -68,7 +59,7 @@ export function OfficeScreen({ base = '/' }: { base?: string }) {
           <OfficeView client={realOfficeClient} onPanel={show} />
         </section>
       ) : (
-        <OfficeWorld key={world} client={realOfficeClient} world={world} onWorld={changeWorld} onOpen={walkTo} onPanel={show} onOpenList={openList} onFail={failed} />
+        <OfficeWorld client={realOfficeClient} onOpen={walkTo} onPanel={show} onOpenList={openList} onFail={failed} />
       )}
       <PanelHost state={state} onClose={close} render={(s) => (s.id === 'rooms' ? <OfficeView client={realOfficeClient} openId={s.agent ?? null} onPanel={show} /> : PanelContent(s))} />
     </div>
