@@ -3,6 +3,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { ago } from '../office/ago';
 import { cleanName, type Profile } from '../office/profile';
+import type { WorldInfo } from '../lib/world';
 
 const LOOK_COUNT = 6;
 
@@ -39,8 +40,8 @@ const item = 'flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text
  * The bar over the world: who is here, a tools menu and your status. Floating groups on a desktop; on a phone the same controls
  * sit along the bottom edge. It only reports what you chose; the page decides what to do (SPEC 12).
  */
-export function OfficeBar(props: { people: Person[]; /** What just happened, newest first (S6-14b3). Left out, the panel has no feed. */ activity?: { id: string; at: string; text: string }[] | undefined; availability: Availability; onAvailability: (a: Availability) => void; onOpenAgent: (id: string) => void; onOverview: () => void; /** More controls next to the people button (the company switcher). */ extra?: ReactNode; /** Called from the Tools menu: the page shows the add-a-department dialog. */ onAddDepartment?: () => void; /** Called from the Tools menu: the page shows the add-an-agent dialog. */ onAddAgent?: () => void; /** Opens the list of rooms and agents, for keyboard and screen-reader use and for a phone (S6-15a). */ onOpenList?: () => void; /** Your name and look, and what to do when you change them (S6-15b). Left out, there is no picker. */ profile?: Profile; onProfile?: (p: Profile) => void }) {
-  const [menu, setMenu] = useState<'tools' | 'status' | null>(null);
+export function OfficeBar(props: { people: Person[]; /** What just happened, newest first (S6-14b3). Left out, the panel has no feed. */ activity?: { id: string; at: string; text: string }[] | undefined; availability: Availability; onAvailability: (a: Availability) => void; onOpenAgent: (id: string) => void; onOverview: () => void; /** More controls next to the people button (the company switcher). */ extra?: ReactNode; /** Called from the Tools menu: the page shows the add-a-department dialog. */ onAddDepartment?: () => void; /** Called from the Tools menu: the page shows the add-an-agent dialog. */ onAddAgent?: () => void; /** Opens the list of rooms and agents, for keyboard and screen-reader use and for a phone (S6-15a). */ onOpenList?: () => void; /** Your name and look, and what to do when you change them (S6-15b). Left out, there is no picker. */ profile?: Profile; onProfile?: (p: Profile) => void; /** The worlds there are, the one you are in, and what to do when you pick another (S6-17). Left out, or with one world, there is no switcher. */ worlds?: WorldInfo[]; world?: string; onWorld?: (key: string) => void }) {
+  const [menu, setMenu] = useState<'tools' | 'status' | 'world' | null>(null);
   const [panel, setPanel] = useState(false);
   const [picker, setPicker] = useState(false);
   const [typed, setTyped] = useState<string | null>(null);
@@ -92,6 +93,34 @@ export function OfficeBar(props: { people: Person[]; /** What just happened, new
             </div>
           ) : null}
           {props.extra}
+          {props.worlds && props.worlds.length > 1 && props.onWorld ? (
+            <div className={`relative flex ${pill}`}>
+              <button type="button" aria-haspopup="menu" aria-expanded={menu === 'world'} aria-label={`World: ${props.worlds.find((x) => x.key === props.world)?.name ?? 'Headquarters'}`} onClick={() => setMenu(menu === 'world' ? null : 'world')} className="flex items-center gap-2 px-3 py-2 text-sm">
+                <span aria-hidden>🌍</span>
+                <span className="hidden max-w-[8rem] truncate sm:inline">{props.worlds.find((x) => x.key === props.world)?.name ?? 'Headquarters'}</span>
+              </button>
+              {menu === 'world' ? (
+                <div role="menu" aria-label="Worlds" className="px-pop px-font absolute left-0 top-full z-20 mt-2 w-64 p-1 text-sm">
+                  {props.worlds.map((x) => (
+                    <button
+                      key={x.key}
+                      type="button"
+                      role="menuitemradio"
+                      aria-checked={x.key === props.world}
+                      onClick={() => {
+                        setMenu(null);
+                        if (x.key !== props.world) props.onWorld?.(x.key);
+                      }}
+                      className={`block w-full rounded px-3 py-2 text-left hover:bg-white/10 ${x.key === props.world ? 'bg-white/15' : ''}`}
+                    >
+                      <span className="block font-bold">{x.name}</span>
+                      {x.blurb ? <span className="block text-xs text-neutral-300">{x.blurb}</span> : null}
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+          ) : null}
           {props.onOpenList ? (
             <div className={`flex ${pill}`}>
               <button type="button" aria-label="Rooms and agents" title="Rooms and agents" onClick={props.onOpenList} className="px-3 py-2 text-sm">

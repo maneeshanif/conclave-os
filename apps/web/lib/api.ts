@@ -3,6 +3,13 @@ export const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://127.0.0.1:3100';
 
 import type { OfficeMap, Placed } from '@conclave/shared';
 import { currentCompany } from './company';
+import { worldQuery, type WorldInfo } from './world';
+
+/** "?world=campus" for the world this browser is in, or nothing at the headquarters. */
+const worldQs = (): string => {
+  const q = worldQuery();
+  return q ? `?${q}` : '';
+};
 
 export interface BoardroomDiscussion {
   id: string;
@@ -410,14 +417,19 @@ export const api = {
   companies: () => call<CompanyList>('/api/companies'),
   createCompany: (c: { name: string; template: string }) => call<CompanySummary>('/api/companies', { method: 'POST', body: JSON.stringify(c) }),
   office: async () => {
-    const f = await call<OfficeFacts>('/api/office');
+    const f = await call<OfficeFacts>(`/api/office${worldQs()}`);
     if (!f || typeof f !== 'object' || !f.map || !Array.isArray(f.map.rooms) || !Array.isArray(f.agents)) throw new Error('The office answered with something unexpected.');
     return f;
   },
   officeState: async () => {
-    const r = await call<{ places: OfficePlace[] }>('/api/office/state');
+    const r = await call<{ places: OfficePlace[] }>(`/api/office/state${worldQs()}`);
     if (!r || !Array.isArray(r.places)) throw new Error('The office answered with something unexpected.');
     return r.places;
+  },
+  officeWorlds: async () => {
+    const r = await call<{ worlds: WorldInfo[] }>('/api/office/worlds');
+    if (!r || !Array.isArray(r.worlds)) throw new Error('The office answered with something unexpected.');
+    return r.worlds;
   },
   officeActivity: async () => {
     const r = await call<{ events: ActivityEvent[] }>('/api/office/activity');

@@ -10,8 +10,12 @@ vi.mock('next/navigation', () => ({
 }));
 // The world needs a canvas and the list needs the server: stand in for both, and keep what this test is about.
 vi.mock('../components/OfficeWorld', () => ({
-  OfficeWorld: ({ onPanel, onOpen, onOpenList, onFail }: { onPanel: (id: string) => void; onOpen: (id: string | null) => void; onOpenList?: () => void; onFail?: () => void }) => (
+  OfficeWorld: ({ onPanel, onOpen, onOpenList, onFail, world, onWorld }: { onPanel: (id: string) => void; onOpen: (id: string | null) => void; onOpenList?: () => void; onFail?: () => void; world?: string; onWorld?: (key: string) => void }) => (
     <>
+      <p>in world {world}</p>
+      <button type="button" onClick={() => onWorld?.('campus')}>
+        go to the campus
+      </button>
       <button type="button" onClick={() => onOpenList?.()}>
         open the list
       </button>
@@ -81,6 +85,16 @@ describe('the office with its panels (S6-12a)', () => {
     render(<OfficeScreen base="/office" />);
     fireEvent.click(screen.getByRole('button', { name: /outreach board/ }));
     expect(push).toHaveBeenLastCalledWith('/office?panel=department-board&dept=outreach');
+  });
+
+  it('starts in the world this browser was last in, and moves to another when asked, remembering it', () => {
+    localStorage.setItem('conclave.world', 'loft');
+    render(<OfficeScreen base="/office" />);
+    expect(screen.getByText('in world loft')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: /go to the campus/ }));
+    expect(screen.getByText('in world campus')).toBeTruthy();
+    expect(localStorage.getItem('conclave.world')).toBe('campus');
+    localStorage.clear();
   });
 
   it('opens the list of rooms and agents from the world\'s bar, as a panel with its own address', () => {

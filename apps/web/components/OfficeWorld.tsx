@@ -9,6 +9,7 @@ import { describeThing, placeTooltip, type Thing } from '../office/tooltips';
 import { applyPresence, type Member } from '../office/presence';
 import { addChat, nearbyPeople, type ChatLine } from '../office/chat';
 import { ChatBubble } from './ChatBubble';
+import type { WorldInfo } from '../lib/world';
 import { readProfile, writeProfile, type Profile } from '../office/profile';
 import type { Who } from '../office/scene';
 import { AddAgent } from './AddAgent';
@@ -24,7 +25,7 @@ export const toMap = (facts: OfficeFacts): OfficeMap => ({ ...facts.map, walls: 
  * The office as a world you can walk about (SPEC 12). Phaser is loaded only here, only in the browser, so the server render and
  * the plain list never pull it in. A hidden tab stops the drawing; a phone gets a smaller canvas (the list below is the main way in).
  */
-export function OfficeWorld({ client, onOpen, onPanel, onOpenList, onFail }: { client: OfficeClient; onOpen: (agentId: string | null) => void; onPanel: (id: string, ctx?: { dept?: string }) => void; onOpenList?: () => void; onFail?: () => void }) {
+export function OfficeWorld({ client, onOpen, onPanel, onOpenList, onFail, world: worldKey = 'hq', onWorld }: { client: OfficeClient; world?: string; onWorld?: (key: string) => void; onOpen: (agentId: string | null) => void; onPanel: (id: string, ctx?: { dept?: string }) => void; onOpenList?: () => void; onFail?: () => void }) {
   const box = useRef<HTMLDivElement>(null);
   const [failed, setFailed] = useState<string | null>(null);
   const failRef = useRef(onFail);
@@ -35,6 +36,10 @@ export function OfficeWorld({ client, onOpen, onPanel, onOpenList, onFail }: { c
   const who = useRef(new Map<string, Who>());
   const mine = useRef<Availability>('available');
   const states = useRef(new Map<string, string>());
+  const [worlds, setWorlds] = useState<WorldInfo[]>([]);
+  useEffect(() => {
+    void client.worlds?.().then(setWorlds).catch(() => undefined);
+  }, [client]);
   const [near, setNear] = useState<{ id: string; name: string }[]>([]);
   const [lines, setLines] = useState<ChatLine[]>([]);
   const sendChat = useRef<(text: string) => void>(() => undefined);
@@ -127,7 +132,7 @@ export function OfficeWorld({ client, onOpen, onPanel, onOpenList, onFail }: { c
         ctl.onDrawer((e) => onOpen(e.kind === 'open' ? e.id : null));
         const { startWorld } = await import('../office/scene');
         if (cancelled || !box.current) return;
-        const world = startWorld({ parent: box.current, mapUrl: `${API}/api/office/map`, tilesUrl: '/office/tiles.png', peopleUrl: '/office/people.png', furnitureUrl: '/office/furniture.png', objectsUrl: '/office/objects.png', decorBase: '/office/decor', agentsUrl: '/office/agents.png', stateOf: (id) => states.current.get(id), facts, ctl, who: () => who.current, myStatus: () => mine.current, myLook: () => profileRef.current.look, myName: () => profileRef.current.name, onUseObject: onPanel, onHover: setHover });
+        const world = startWorld({ parent: box.current, mapUrl: `${API}/api/office/map${worldKey === 'hq' ? '' : `?world=${worldKey}`}`, tilesUrl: '/office/tiles.png', peopleUrl: '/office/people.png', furnitureUrl: '/office/furniture.png', objectsUrl: '/office/objects.png', decorBase: '/office/decor', agentsUrl: '/office/agents.png', stateOf: (id) => states.current.get(id), facts, ctl, who: () => who.current, myStatus: () => mine.current, myLook: () => profileRef.current.look, myName: () => profileRef.current.name, onUseObject: onPanel, onHover: setHover });
         setView(ctl);
         const watch = new ResizeObserver(() => world.resize());
         watch.observe(box.current);
@@ -203,6 +208,9 @@ export function OfficeWorld({ client, onOpen, onPanel, onOpenList, onFail }: { c
           profile={profile}
           onProfile={changeProfile}
           onOpenList={onOpenList}
+          worlds={worlds}
+          world={worldKey}
+          onWorld={onWorld}
           onOverview={() => {
             view.overview(!whole);
             setWhole(!whole);

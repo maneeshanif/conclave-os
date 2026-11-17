@@ -39,9 +39,9 @@ function setup(opts: { signedIn?: boolean; hub?: PresenceHub } = {}) {
   const hub = opts.hub ?? new PresenceHub();
   const app = createApp({ pool: {} as Pool, workspaceId: 'w', bus: new Bus(), dispatcher: new LocalDispatcher(async () => ({ status: 'no_task' })), upgradeWebSocket: upgrade, presence: hub, ...(opts.signedIn === false ? {} : { auth }) });
   /** Opens a socket for a session and returns it with a way to send what the browser would. */
-  const open = async (user: string, session: string) => {
+  const open = async (user: string, session: string, world?: string) => {
     const before = handlers.length;
-    const res = await app.request('/events', { headers: { cookie: `s=${user}.${session}` } });
+    const res = await app.request(world ? `/events?world=${world}` : '/events', { headers: { cookie: `s=${user}.${session}` } });
     expect(await res.text()).toBe('upgraded');
     const h = handlers[before]!;
     const s = socket();
@@ -54,6 +54,57 @@ const move = (x: number, y: number, extra: Record<string, unknown> = {}) => ({ t
 const presence = (s: Socket) => s.sent.filter((m) => String(m.kind).startsWith('presence'));
 
 const chats = (s: Socket) => s.sent.filter((m) => m.kind === 'chat') as { kind: 'chat'; id: string; name: string; text: string; at: number }[];
+
+describe('presence in many worlds (S6-17)', () => {
+  const ticking = () => {
+    let t = 0;
+    return new PresenceHub({ minIntervalMs: 0, chatIntervalMs: 0, now: () => (t += 1000) });
+  };
+
+  it('shows people only to others in the same world, and tells a newcomer only about their own', async () => {
+    const { open } = setup({ hub: ticking() });
+    const a = await open('u1', 'a', 'campus');
+    a.say(move(3, 3));
+    const same = await open('u2', 'b', 'campus');
+    const other = await open('u3', 'c', 'loft');
+    const office = await open('u4', 'd');
+    expect(presence(same.s)).toMatchObject([{ kind: 'presence.all', members: [{ id: 'a' }] }]);
+    expect(presence(other.s)).toEqual([]);
+    expect(presence(office.s)).toEqual([]);
+    a.say(move(4, 4));
+    expect(presence(same.s).at(-1)).toMatchObject({ kind: 'presence', member: { id: 'a', x: 4 } });
+    expect(presence(other.s)).toEqual([]);
+    expect(presence(office.s)).toEqual([]);
+  });
+
+  it('keeps chat in the world it was said in, even when the people stand on the same tile', async () => {
+    const { open } = setup({ hub: ticking() });
+    const a = await open('u1', 'a', 'campus');
+    const near = await open('u2', 'b', 'campus');
+    const elsewhere = await open('u3', 'c', 'loft');
+    a.say(move(5, 5));
+    near.say(move(5, 6));
+    elsewhere.say(move(5, 6));
+    a.say({ type: 'chat', text: 'hello campus' });
+    expect(chats(near.s).map((c) => c.text)).toEqual(['hello campus']);
+    expect(chats(elsewhere.s)).toEqual([]);
+  });
+
+  it('tells only the world a person left, and treats a name that is not a plain key as the office', async () => {
+    const { open } = setup({ hub: ticking() });
+    const a = await open('u1', 'a', 'campus');
+    const same = await open('u2', 'b', 'campus');
+    const other = await open('u3', 'c', 'loft');
+    a.say(move(1, 1));
+    a.close();
+    expect(presence(same.s).at(-1)).toEqual({ kind: 'presence.leave', id: 'a' });
+    expect(presence(other.s)).toEqual([]);
+    const odd = await open('u5', 'e', '../x');
+    const hq = await open('u6', 'f');
+    hq.say(move(2, 2));
+    expect(presence(odd.s).at(-1)).toMatchObject({ kind: 'presence', member: { id: 'f' } });
+  });
+});
 
 describe('talking to someone near you (S6-15c)', () => {
   const ticking = () => {

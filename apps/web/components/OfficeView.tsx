@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { panelFor } from '@conclave/shared';
 import { API, api, type AgentDrawer, type OfficeFacts, type OfficePlace, type TeamCard, type ActivityEvent } from '../lib/api';
 import { openSocket, socketEvents, type LiveMessage } from '../lib/live';
+import type { WorldInfo } from '../lib/world';
 import { Button } from './ui/button';
 
 export interface OfficeClient {
@@ -17,11 +18,13 @@ export interface OfficeClient {
   message(id: string, text: string): Promise<void>;
   /** Listens for live updates; returns the function that stops listening. */
   live(onMessage: (m: LiveMessage) => void): () => void;
+  /** The worlds there are (S6-17). Not every client has them. */
+  worlds?(): Promise<WorldInfo[]>;
   /** A socket you can also send on, for presence (S6-9). Not every client has one. */
   presence?(onMessage: (m: LiveMessage) => void): { send: (m: unknown) => void; stop: () => void };
 }
 
-export const realOfficeClient: OfficeClient = { office: api.office, state: api.officeState, team: api.officeTeam, activity: api.officeActivity, drawer: api.officeDrawer, message: api.officeMessage, live: socketEvents, presence: openSocket };
+export const realOfficeClient: OfficeClient = { worlds: api.officeWorlds, office: api.office, state: api.officeState, team: api.officeTeam, activity: api.officeActivity, drawer: api.officeDrawer, message: api.officeMessage, live: socketEvents, presence: openSocket };
 
 import { WHERE } from '../office/tooltips';
 export { WHERE };

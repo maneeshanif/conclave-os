@@ -52,6 +52,21 @@ const places = {
   ],
 };
 
+/** The extra worlds (S6-17): each map file, its facts, and the two agents resting in its lounge. */
+const WORLD_KEYS = ['campus', 'loft', 'arcade', 'rooftop'];
+const worlds = Object.fromEntries(
+  WORLD_KEYS.map((key) => {
+    const text = readFileSync(path.join(REPO, 'company', 'worlds', `${key}.tmj`), 'utf8');
+    const raw = JSON.parse(text) as OfficeMapJson & { properties?: { name: string; value: string }[] };
+    const m = readOfficeMap(raw, { file: `${key}.tmj`, departments: [] });
+    const { walls: w, ...r } = m;
+    const rest = m.entries.find((e) => e.name === 'lounge')!;
+    const f = { map: { ...r, walls: w.map((row) => row.map((x) => (x ? '#' : '.')).join('')) }, agents: facts.agents.map((a) => ({ ...a, room: null, desk: null })) };
+    const p = { places: facts.agents.map((a, i) => ({ agentId: a.id, key: a.key, place: 'lounge', reason: 'Resting.', x: rest.x + i, y: rest.y })) };
+    return [key, { text, facts: f, places: p, title: raw.properties?.find((q) => q.name === 'title')?.value ?? key }];
+  }),
+);
+
 const COMPANY_A = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const COMPANY_B = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
 let made = false;
@@ -116,6 +131,12 @@ async function stub(context: BrowserContext) {
       departmentPosted.push(JSON.parse(req.postData() ?? '{}') as { name: string });
       return route.fulfill({ status: 201, headers: cors, body: JSON.stringify({ key: 'sales', name: 'Sales', room: 20 }) });
     }
+    const wk = url.searchParams.get('world') ?? '';
+    const w = worlds[wk];
+    if (url.pathname === '/api/office/worlds') return route.fulfill({ status: 200, headers: cors, body: JSON.stringify({ worlds: [{ key: 'hq', name: 'Headquarters', blurb: 'The company office.' }, ...WORLD_KEYS.map((k) => ({ key: k, name: worlds[k]!.title, blurb: '' }))] }) });
+    if (w && url.pathname === '/api/office') return route.fulfill({ status: 200, headers: cors, body: JSON.stringify(w.facts) });
+    if (w && url.pathname === '/api/office/state') return route.fulfill({ status: 200, headers: cors, body: JSON.stringify(w.places) });
+    if (w && url.pathname === '/api/office/map') return route.fulfill({ status: 200, headers: cors, body: w.text });
     if (url.pathname === '/api/office') officeCompany.push(req.headers()['x-company'] ?? null);
     if (url.pathname === '/api/office') return route.fulfill({ status: 200, headers: cors, body: JSON.stringify(facts) });
     if (url.pathname === '/api/office/state') return route.fulfill({ status: 200, headers: cors, body: JSON.stringify(places) });
@@ -243,6 +264,19 @@ describe('the office page in a real browser (S6-8b)', () => {
       await page.waitForTimeout(600);
       writeFileSync(path.join(SHOTS, `office-${name}-overview.png`), await page.screenshot());
       await page.getByRole('button', { name: 'Back to close up' }).click();
+      // The other worlds: switch to each from the bar, look at the whole map, and come back to the headquarters.
+      for (const k of WORLD_KEYS) {
+        await page.getByRole('button', { name: /^World:/ }).click();
+        await page.getByRole('menuitemradio', { name: new RegExp(worlds[k]!.title) }).click();
+        await page.getByRole('button', { name: new RegExp(`^World: ${worlds[k]!.title}`) }).waitFor({ timeout: 15_000 });
+        await page.getByRole('button', { name: 'See the whole office' }).click();
+        await page.waitForTimeout(900);
+        writeFileSync(path.join(SHOTS, `office-${name}-world-${k}.png`), await page.screenshot());
+        await page.getByRole('button', { name: 'Back to close up' }).click();
+      }
+      await page.getByRole('button', { name: /^World:/ }).click();
+      await page.getByRole('menuitemradio', { name: /Headquarters/ }).click();
+      await page.getByRole('button', { name: /^World: Headquarters/ }).waitFor({ timeout: 15_000 });
       // A department can be added from the Tools menu.
       departmentPosted.length = 0;
       await page.getByRole('button', { name: /tools/i }).click();

@@ -58,6 +58,8 @@ const cleanName = (raw: string | undefined, was: string): string => {
 
 interface Connection {
   id: string;
+  /** The world this socket is in (the headquarters by default). Nobody hears or sees anyone in another. */
+  world: string;
   send: (m: PresenceMessage) => void;
   member: PresenceMember | null;
   last: number | null;
@@ -77,17 +79,17 @@ export class PresenceHub {
   }
 
   /** Everyone who has said where they are. */
-  members(): PresenceMember[] {
-    return [...this.conns].flatMap((c) => (c.member ? [{ ...c.member }] : []));
+  members(world?: string): PresenceMember[] {
+    return [...this.conns].filter((c) => world === undefined || c.world === world).flatMap((c) => (c.member ? [{ ...c.member }] : []));
   }
 
   /** A signed-in session's socket. `id` is its session, so one person on two devices is two avatars. */
-  connect(sessionId: string, send: (m: PresenceMessage) => void): { message(raw: unknown): void; close(): void } {
+  connect(sessionId: string, send: (m: PresenceMessage) => void, world = 'hq'): { message(raw: unknown): void; close(): void } {
     const taken = new Set([...this.conns].map((c) => c.id));
     let id = sessionId;
     for (let n = 2; taken.has(id); n++) id = `${sessionId}~${n}`;
-    const conn: Connection = { id, send, member: null, last: null, lastChat: null };
-    const here = this.members();
+    const conn: Connection = { id, world, send, member: null, last: null, lastChat: null };
+    const here = this.members(world);
     this.conns.add(conn);
     if (here.length) send({ kind: 'presence.all', members: here });
     return {
@@ -128,12 +130,12 @@ export class PresenceHub {
     conn.lastChat = t;
     const msg: ChatMessage = { kind: 'chat', id: from.id, name: from.name, text, at: t };
     for (const c of this.conns) {
-      if (c === conn || !c.member) continue;
+      if (c === conn || !c.member || c.world !== conn.world) continue;
       if (Math.hypot(c.member.x - from.x, c.member.y - from.y) <= CHAT_RANGE) c.send(msg);
     }
   }
 
   private tell(m: PresenceMessage, except: Connection): void {
-    for (const c of this.conns) if (c !== except) c.send(m);
+    for (const c of this.conns) if (c !== except && c.world === except.world) c.send(m);
   }
 }

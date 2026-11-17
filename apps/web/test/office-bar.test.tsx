@@ -97,6 +97,44 @@ describe('the list of rooms and agents from the bar (S6-15a)', () => {
   });
 });
 
+describe('the world switcher (S6-17)', () => {
+  const base = { people: [], availability: 'available' as const, onAvailability: () => undefined, onOpenAgent: () => undefined, onOverview: () => undefined };
+  const worlds = [
+    { key: 'hq', name: 'Headquarters', blurb: 'The company office.' },
+    { key: 'campus', name: 'Campus Green', blurb: 'A park to walk and talk in.' },
+    { key: 'loft', name: 'Co-working Loft', blurb: 'An open-plan floor.' },
+  ];
+
+  it('shows the world you are in, opens a list of them, and reports the one you pick', () => {
+    const pick = vi.fn();
+    render(<OfficeBar {...base} worlds={worlds} world="hq" onWorld={pick} />);
+    fireEvent.click(screen.getByRole('button', { name: /world: headquarters/i }));
+    const items = screen.getAllByRole('menuitemradio');
+    expect(items.map((i) => i.textContent)).toEqual([expect.stringMatching(/Headquarters/), expect.stringMatching(/Campus Green/), expect.stringMatching(/Co-working Loft/)]);
+    expect(items[0]!.getAttribute('aria-checked')).toBe('true');
+    expect(screen.getByText(/a park to walk and talk in/i)).toBeTruthy();
+    fireEvent.click(items[1]!);
+    expect(pick).toHaveBeenCalledWith('campus');
+    expect(screen.queryByRole('menuitemradio')).toBeNull();
+  });
+
+  it('does not report the world you are already in', () => {
+    const pick = vi.fn();
+    render(<OfficeBar {...base} worlds={worlds} world="loft" onWorld={pick} />);
+    fireEvent.click(screen.getByRole('button', { name: /world: co-working loft/i }));
+    fireEvent.click(screen.getAllByRole('menuitemradio')[2]!);
+    expect(pick).not.toHaveBeenCalled();
+  });
+
+  it('is left out when there is only one world, or the page cannot switch', () => {
+    render(<OfficeBar {...base} worlds={[worlds[0]!]} world="hq" onWorld={() => undefined} />);
+    expect(screen.queryByRole('button', { name: /world:/i })).toBeNull();
+    cleanup();
+    render(<OfficeBar {...base} worlds={worlds} world="hq" />);
+    expect(screen.queryByRole('button', { name: /world:/i })).toBeNull();
+  });
+});
+
 describe('your name and look from the bar (S6-15b)', () => {
   const base = { people: [], availability: 'available' as const, onAvailability: () => undefined, onOpenAgent: () => undefined, onOverview: () => undefined };
 

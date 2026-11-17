@@ -172,6 +172,8 @@ export function startWorld(opts: {
         } else {
           this.add.sprite(d.x * TILE + TILE / 2, (d.y - 1) * TILE + TILE / 2, 'furniture', 0).setDepth(d.y * TILE - 1);
         }
+        // An empty desk has a sleeping robot on it, faded, so the seats read as seats waiting for an agent.
+        if (!owner && this.textures.exists('agents')) this.add.sprite(d.x * TILE + TILE / 2, d.y * TILE + TILE / 2 - 2, 'agents', frameIndex(0, 'down', 0)).setAlpha(0.28).setDepth((d.y + 1) * TILE - 4);
         if (this.textures.exists('decor-chair')) put('decor-chair', d.x * TILE + TILE / 2, d.y * TILE + TILE / 2 + 4, (d.y + 1) * TILE - 2).setAngle(180).setScale(0.8);
       }
       this.screens = screens;

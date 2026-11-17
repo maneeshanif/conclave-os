@@ -9,8 +9,12 @@ import { assignDesks } from './desks';
 /** How long an agent that has handed a task on stays beside its colleague's desk. */
 export const HANDOFF_SECONDS = 30;
 
-export async function officeState(c: pg.PoolClient, ws: string, map: OfficeMap, discussing: ReadonlySet<string> = new Set()): Promise<(Placed & { key: string })[]> {
-  const seats = await assignDesks(c, ws, map);
+/**
+ * `social` is a world with no departments (S6-17): nobody has a desk there, so desks are not looked at or changed, and every agent
+ * rests in the lounge unless it is in a discussion or has something waiting for you.
+ */
+export async function officeState(c: pg.PoolClient, ws: string, map: OfficeMap, discussing: ReadonlySet<string> = new Set(), social = false): Promise<(Placed & { key: string })[]> {
+  const seats = social ? [] : await assignDesks(c, ws, map);
   const agents = (await c.query<{ id: string; key: string; name: string }>("select id, key, name from agents where status <> 'retired' order by created_at, key")).rows;
   // The newest message from one agent to another within the last half minute is a handoff: the giver visits the receiver.
   const handoffs = new Map<string, { toAgentId: string; toName: string }>();
