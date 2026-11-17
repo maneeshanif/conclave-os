@@ -6,7 +6,7 @@
 import { OBJECT_TYPES, type ObjectType } from './objects';
 
 export const TILE_SIZE = 32;
-export const ROOM_KINDS = ['department', 'boardroom', 'lounge', 'hall', 'meeting'] as const;
+export const ROOM_KINDS = ['department', 'boardroom', 'lounge', 'hall', 'meeting', 'cafe', 'play', 'terrace'] as const;
 export type RoomKind = (typeof ROOM_KINDS)[number];
 
 export interface TiledProperty {
@@ -181,7 +181,7 @@ export function readOfficeMap(json: unknown, o: { file: string; departments: { k
     if (objects.some((e) => e.name === b.name)) fail(where, 'two objects have this name (a duplicate); a name may be used only once');
     const x = tileOf(b.x);
     const y = tileOf(b.y);
-    if (!inside(x, y) || walls[y]![x]) fail(where, 'this object is on a wall or off the map');
+    if (!inside(x, y)) fail(where, 'this object is off the map');
     objects.push({ type: type as ObjectType, name: b.name!, x, y });
   }
 

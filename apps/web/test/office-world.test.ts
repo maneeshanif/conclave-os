@@ -15,7 +15,8 @@ const map: OfficeMap = readOfficeMap(JSON.parse(readFileSync(path.join(root, 'co
 const door = map.entries.find((e) => e.name === 'door')!;
 const desk = map.desks[0]!;
 const lounge = map.rooms.find((r) => r.kind === 'lounge')!;
-const spot = { x: lounge.x + 1, y: lounge.y + 1 };
+// The lounge's own marked tile: the tiles around it have sofas on them.
+const spot = (({ x, y }) => ({ x, y }))(map.entries.find((e) => e.name === 'lounge')!);
 
 describe('the world, without drawing it (S6-8b)', () => {
   it('starts you at the door, and puts an agent on its tile the first time it is seen', () => {
@@ -115,16 +116,16 @@ describe('zoom and held keys (S6-8c1)', () => {
     return w;
   };
 
-  it('starts zoomed in about twice, and the overview fits the whole map', () => {
+  it('starts a little zoomed in (1.5 times), and the overview fits the whole map', () => {
     const w = fresh();
-    expect(w.zoom).toBe(2);
+    expect(w.zoom).toBe(1.5);
     w.overview(true);
     const fit = Math.min(640 / (map.width * map.tile), 384 / (map.height * map.tile));
     expect(w.zoom).toBeCloseTo(fit, 5);
     expect(fit * map.width * map.tile).toBeLessThanOrEqual(640 + 1e-6);
     expect(fit * map.height * map.tile).toBeLessThanOrEqual(384 + 1e-6);
     w.overview(false);
-    expect(w.zoom).toBe(2);
+    expect(w.zoom).toBe(1.5);
   });
 
   it('zooms in and out in steps, never past the limits', () => {

@@ -2,6 +2,7 @@ import * as Phaser from 'phaser';
 import { panelFor } from '@conclave/shared';
 import type { OfficeFacts } from '../lib/api';
 import { OBJECT_TYPES } from '@conclave/shared';
+import { DECOR_NAMES } from './decor';
 import { FRAME, availabilityColour, directionOf, frameIndex, lookFor, placeColour, pose, roomTint, type Availability, type Facing } from './art';
 import type { WorldController } from './controller';
 import { thingAt, type Thing } from './tooltips';
@@ -34,6 +35,12 @@ export function startWorld(opts: {
   furnitureUrl: string;
   /** One picture for each object type, in the order of OBJECT_TYPES. */
   objectsUrl?: string;
+  /** The folder of scenery pictures (decor/*.png and decor/obj-<type>.png). */
+  decorBase?: string;
+  /** The sheet of robot agents, laid out like the people sheet. */
+  agentsUrl?: string;
+  /** What an agent is doing now (working, waiting, blocked, discussion, handoff, idle), for the screen on its desk. */
+  stateOf?: (agentId: string) => string | undefined;
   facts: OfficeFacts;
   ctl: WorldController;
   who: () => Map<string, Who>;
@@ -54,6 +61,7 @@ export function startWorld(opts: {
     private facing: Facing = 'down';
     private travelled = 0;
     private last: { x: number; y: number } | null = null;
+    private baseY = -2;
     readonly box: Phaser.GameObjects.Container;
     private readonly sprite: Phaser.GameObjects.Sprite;
     private readonly dot: Phaser.GameObjects.Arc;
@@ -62,11 +70,18 @@ export function startWorld(opts: {
     constructor(
       scene: Phaser.Scene,
       private look: number,
+      private readonly sheet: 'people' | 'agents' = 'people',
     ) {
-      this.sprite = scene.add.sprite(0, -2, 'people', frameIndex(look, 'down', 0));
+      this.sprite = scene.add.sprite(0, -2, sheet, frameIndex(look, 'down', 0));
       this.dot = scene.add.circle(0, 0, 4, 0x94a3b8).setStrokeStyle(1, 0xffffff);
       this.text = scene.add.text(0, 0, '', { fontSize: '10px', color: '#ffffff', backgroundColor: 'rgba(15,23,42,0.75)', padding: { x: 4, y: 1 } }).setOrigin(0, 0.5);
       this.box = scene.add.container(0, 0, [this.sprite, this.dot, this.text]).setDepth(5);
+      this.baseY = -2;
+    }
+
+    /** Robots hover: a small bob, all the time. */
+    hover(time: number): void {
+      if (this.sheet === 'agents') this.sprite.setY(this.baseY + Math.sin(time / 260 + this.box.x) * 1.5);
     }
 
     setLook(look: number): void {
@@ -92,6 +107,8 @@ export function startWorld(opts: {
       }
       this.last = { x, y };
       this.box.setPosition(x * TILE + TILE / 2, y * TILE + TILE / 2);
+      // Drawn by where its feet are, so a figure goes behind a desk or a sofa above it and in front of one below it.
+      this.box.setDepth(y * TILE + TILE / 2 + 1);
     }
   }
 
@@ -100,6 +117,7 @@ export function startWorld(opts: {
     private me?: Figure;
     private cursors?: Phaser.Types.Input.Keyboard.CursorKeys;
     private heldDir: Facing | null = null;
+    private screens: { rect: Phaser.GameObjects.Rectangle; agentId: string | null }[] = [];
 
     constructor() {
       super('office');
@@ -111,6 +129,11 @@ export function startWorld(opts: {
       this.load.spritesheet('people', opts.peopleUrl, { frameWidth: FRAME, frameHeight: FRAME });
       this.load.spritesheet('furniture', opts.furnitureUrl, { frameWidth: FRAME, frameHeight: FRAME });
       if (opts.objectsUrl) this.load.spritesheet('objects', opts.objectsUrl, { frameWidth: FRAME, frameHeight: FRAME });
+      if (opts.agentsUrl) this.load.spritesheet('agents', opts.agentsUrl, { frameWidth: FRAME, frameHeight: FRAME });
+      if (opts.decorBase) {
+        for (const n of DECOR_NAMES) this.load.image(`decor-${n}`, `${opts.decorBase}/${n}.png`);
+        for (const t of OBJECT_TYPES) this.load.image(`obj-${t}`, `${opts.decorBase}/obj-${t}.png`);
+      }
     }
 
     create() {
@@ -118,33 +141,58 @@ export function startWorld(opts: {
       const tiles = map.addTilesetImage('office', 'tiles');
       if (tiles) {
         map.createLayer('floor', tiles);
-        map.createLayer('collision', tiles);
       }
-      const open = (x: number, y: number) => x >= 0 && y >= 0 && x < facts.map.width && y < facts.map.height && facts.map.walls[y]![x] === '.';
-      const taken = new Set<string>([...facts.map.desks, ...facts.map.objects, ...facts.map.entries].map((t) => `${t.x},${t.y}`));
-
+      // A piece of scenery drawn by where its bottom edge is, so you can walk behind it.
+      const put = (key: string, cx: number, cy: number, bottom: number) => this.add.image(cx, cy, key).setDepth(bottom);
       for (const r of facts.map.rooms) {
         const tint = roomTint(r);
         if (tint) this.add.rectangle(r.x * TILE, r.y * TILE, r.w * TILE, r.h * TILE, tint.colour, tint.alpha).setOrigin(0, 0).setDepth(1);
-        this.add.text((r.x + r.w / 2) * TILE, (r.y + r.h / 2) * TILE, r.name.toUpperCase(), { fontSize: '20px', color: '#1e293b', fontStyle: 'bold' }).setOrigin(0.5).setAlpha(0.22).setDepth(2);
-        // A plant in the top right corner of a room, where nothing else is.
-        const corner = { x: r.x + r.w - 1, y: r.y };
-        if (r.kind !== 'hall' && open(corner.x, corner.y) && !taken.has(`${corner.x},${corner.y}`)) this.add.sprite(corner.x * TILE + TILE / 2, corner.y * TILE + TILE / 2, 'furniture', r.kind === 'lounge' && this.textures.get('furniture').frameTotal > 6 ? 5 : 2).setDepth(3);
+        this.add.text((r.x + r.w / 2) * TILE, (r.y + r.h / 2) * TILE, r.name.toUpperCase(), { fontSize: '20px', color: '#1e293b', fontStyle: 'bold' }).setOrigin(0.5).setAlpha(0.18).setDepth(2);
       }
+      // Scenery from the map's decor layer: rugs under everything, the rest sorted by their bottom edge.
+      for (const d of map.getObjectLayer('decor')?.objects ?? []) {
+        const key = `decor-${d.name}`;
+        if (!this.textures.exists(key) || d.x === undefined || d.y === undefined) continue;
+        const w = d.width ?? TILE;
+        const h = d.height ?? TILE;
+        const img = put(key, d.x + w / 2, d.y + h / 2, d.name === 'rug' ? 1.5 : d.y + h);
+        const turn = (d.properties as { name: string; value: number }[] | undefined)?.find((p) => p.name === 'turn')?.value;
+        if (turn) img.setAngle(turn);
+      }
+      // Each agent's desk and chair, from the data (so a room added later has them too). The agent stands on the chair tile.
+      const screens: { rect: Phaser.GameObjects.Rectangle; agentId: string | null }[] = [];
       for (const d of facts.map.desks) {
-        if (open(d.x, d.y - 1) && !taken.has(`${d.x},${d.y - 1}`)) this.add.sprite(d.x * TILE + TILE / 2, (d.y - 1) * TILE + TILE / 2, 'furniture', 0).setDepth(3);
-        this.add.sprite(d.x * TILE + TILE / 2, d.y * TILE + TILE / 2, 'furniture', 1).setDepth(3);
+        const owner = facts.agents.find((a) => a.room === d.room && a.desk === d.slot) ?? null;
+        if (this.textures.exists('decor-desk')) {
+          const desk = put('decor-desk', d.x * TILE + TILE / 2, (d.y - 1) * TILE + TILE / 2 + 2, d.y * TILE - 1);
+          // The screen on the desk: lit by what its agent is doing.
+          const sw = Math.max(6, Math.round(desk.width * 0.34));
+          const rect = this.add.rectangle(desk.x, desk.y - desk.height * 0.3, sw, Math.max(2, Math.round(desk.height * 0.13)), 0x1e293b).setDepth(d.y * TILE - 0.5);
+          screens.push({ rect, agentId: owner?.id ?? null });
+        } else {
+          this.add.sprite(d.x * TILE + TILE / 2, (d.y - 1) * TILE + TILE / 2, 'furniture', 0).setDepth(d.y * TILE - 1);
+        }
+        if (this.textures.exists('decor-chair')) put('decor-chair', d.x * TILE + TILE / 2, d.y * TILE + TILE / 2 + 4, (d.y + 1) * TILE - 2).setAngle(180).setScale(0.8);
       }
+      this.screens = screens;
+      // The things you use. Each has its own picture at its own size; a click on it opens its panel.
       for (const o of facts.map.objects) {
         const panel = panelFor(o.type);
         if (!panel) continue;
-        // Its own picture if the sheet has one; otherwise the plain square.
+        const key = `obj-${o.type}`;
         const frame = OBJECT_TYPES.indexOf(o.type as (typeof OBJECT_TYPES)[number]);
-        const box: Phaser.GameObjects.Shape | Phaser.GameObjects.Sprite =
-          opts.objectsUrl && frame >= 0
-            ? this.add.sprite(o.x * TILE + TILE / 2, o.y * TILE + TILE / 2, 'objects', frame).setDepth(3).setAlpha(panel.ready ? 1 : 0.5).setInteractive({ useHandCursor: panel.ready })
-            : this.add.rectangle(o.x * TILE + TILE / 2, o.y * TILE + TILE / 2, TILE - 6, TILE - 6, panel.ready ? 0x0f766e : 0x94a3b8).setDepth(3).setInteractive({ useHandCursor: panel.ready });
-        this.add.text(o.x * TILE + TILE / 2, o.y * TILE - 2, panel.label, { fontSize: '9px', color: '#0f172a' }).setOrigin(0.5, 1).setDepth(3);
+        let box: Phaser.GameObjects.Image | Phaser.GameObjects.Sprite | Phaser.GameObjects.Rectangle;
+        if (this.textures.exists(key)) {
+          const tex = this.textures.get(key).getSourceImage();
+          const w = Math.ceil(tex.width / TILE) * TILE;
+          const h = Math.ceil(tex.height / TILE) * TILE;
+          box = put(key, o.x * TILE + w / 2, o.y * TILE + h / 2, o.y * TILE + h).setAlpha(panel.ready ? 1 : 0.55);
+        } else if (opts.objectsUrl && frame >= 0) {
+          box = this.add.sprite(o.x * TILE + TILE / 2, o.y * TILE + TILE / 2, 'objects', frame).setDepth(o.y * TILE + TILE).setAlpha(panel.ready ? 1 : 0.5);
+        } else {
+          box = this.add.rectangle(o.x * TILE + TILE / 2, o.y * TILE + TILE / 2, TILE - 6, TILE - 6, panel.ready ? 0x0f766e : 0x94a3b8).setDepth(o.y * TILE + TILE);
+        }
+        box.setInteractive({ useHandCursor: panel.ready });
         box.on('pointerdown', (_p: unknown, _x: unknown, _y: unknown, e: Phaser.Types.Input.EventData) => {
           e.stopPropagation();
           if (panel.ready && this.input.activePointer.downElement === this.game.canvas) {
@@ -155,7 +203,6 @@ export function startWorld(opts: {
         });
       }
       this.me = new Figure(this, opts.myLook?.() ?? lookFor(null));
-      this.me.box.setDepth(6);
       this.cameras.main.setBounds(0, 0, facts.map.width * TILE, facts.map.height * TILE);
       this.cameras.main.startFollow(this.me.box, true, 0.15, 0.15);
       this.cursors = this.input.keyboard?.createCursorKeys();
@@ -167,6 +214,21 @@ export function startWorld(opts: {
       });
       this.input.on('gameout', () => opts.onHover?.(null));
       this.input.on('pointerdown', (p: Phaser.Input.Pointer) => p.downElement === this.game.canvas && ctl.click({ x: Math.floor(p.worldX / TILE), y: Math.floor(p.worldY / TILE) }));
+    }
+
+    /** The monitor on each desk shows what its agent is doing: green lines scroll while it works, amber blinks when it waits, red when blocked. */
+    private drawScreens(time: number): void {
+      for (const sc of this.screens) {
+        const state = sc.agentId ? opts.stateOf?.(sc.agentId) : undefined;
+        const tick = Math.floor(time / 180);
+        let colour = 0x1e293b; // off
+        if (state === 'working') colour = [0x22c55e, 0x16a34a, 0x4ade80, 0x15803d][tick % 4]!;
+        else if (state === 'waiting') colour = tick % 4 < 2 ? 0xf59e0b : 0x78350f;
+        else if (state === 'blocked') colour = tick % 4 < 2 ? 0xef4444 : 0x7f1d1d;
+        else if (state === 'discussion' || state === 'handoff') colour = 0x38bdf8;
+        else if (state === 'idle') colour = 0x334155;
+        sc.rect.setFillStyle(colour);
+      }
     }
 
     update(_time: number, delta: number) {
@@ -183,6 +245,8 @@ export function startWorld(opts: {
       const p = ctl.me.position;
       const status = opts.myStatus();
       this.me?.moveTo(p.x, p.y);
+      for (const f of this.figures.values()) f.hover(_time);
+      this.drawScreens(_time);
       this.me?.setLook(opts.myLook?.() ?? 0);
       this.me?.label(opts.myName?.() ?? 'You', availabilityColour(status));
       const who = opts.who();
@@ -192,7 +256,7 @@ export function startWorld(opts: {
         const info = who.get(a.id);
         let f = this.figures.get(a.id);
         if (!f) {
-          f = new Figure(this, lookFor(info?.key ?? a.id));
+          f = this.textures.exists('agents') ? new Figure(this, lookFor(info?.key ?? a.id) - 1, 'agents') : new Figure(this, lookFor(info?.key ?? a.id));
           this.figures.set(a.id, f);
         }
         f.moveTo(a.position.x, a.position.y);
@@ -222,7 +286,7 @@ export function startWorld(opts: {
   const game = new Phaser.Game({
     type: Phaser.AUTO,
     parent: opts.parent,
-    backgroundColor: '#f8fafc',
+    backgroundColor: '#1b2340',
     // Crisp pixels at any zoom: no smoothing between them.
     pixelArt: true,
     roundPixels: true,

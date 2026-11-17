@@ -51,6 +51,8 @@ export function roomTint(r: Room): { colour: number; alpha: number } | null {
   if (r.silent) return { colour: 0x3b82f6, alpha: 0.18 };
   if (r.kind === 'boardroom') return { colour: 0x7c3aed, alpha: 0.16 };
   if (r.kind === 'lounge') return { colour: 0x16a34a, alpha: 0.14 };
+  if (r.kind === 'cafe') return { colour: 0xf59e0b, alpha: 0.12 };
+  if (r.kind === 'play') return { colour: 0xec4899, alpha: 0.1 };
   if (r.kind === 'department' || r.kind === 'meeting') return { colour: 0x2563eb, alpha: 0.08 };
   return null;
 }

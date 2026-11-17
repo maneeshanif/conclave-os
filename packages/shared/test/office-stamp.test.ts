@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { addDepartmentRoom, findPath, MAX_ADDED_DEPARTMENTS, PlotsFull, readOfficeMap, type OfficeMap, type OfficeMapJson } from '../src/office';
+import { addDepartmentRoom, findPath, nearestReachable, MAX_ADDED_DEPARTMENTS, PlotsFull, readOfficeMap, type OfficeMap, type OfficeMapJson } from '../src/office';
 
 const root = path.resolve(import.meta.dirname, '..', '..', '..');
 const base = JSON.parse(readFileSync(path.join(root, 'company', 'office.tmj'), 'utf8')) as OfficeMapJson;
@@ -57,8 +57,8 @@ describe('stamping a department room onto the map (S6-13b)', () => {
     const m = read(j, extra);
     const door = m.entries.find((e) => e.name === 'door')!;
     for (const d of m.desks) expect(findPath(m, door, d), `desk ${d.room} ${d.slot}`).not.toBeNull();
-    for (const o of m.objects) expect(findPath(m, door, o), o.name).not.toBeNull();
-    for (const r of m.rooms) expect(findPath(m, door, { x: r.x + Math.floor(r.w / 2), y: r.y + Math.floor(r.h / 2) }), r.name).not.toBeNull();
+    for (const o of m.objects) expect(findPath(m, door, nearestReachable(m, door, o)), o.name).not.toBeNull();
+    for (const r of m.rooms) expect(findPath(m, door, nearestReachable(m, door, { x: r.x + Math.floor(r.w / 2), y: r.y + Math.floor(r.h / 2) })), r.name).not.toBeNull();
   });
 
   it('never puts two rooms on the same ground, and gives every one its own door', () => {

@@ -44,7 +44,7 @@ export class WorldController {
   private readonly zoneListeners: ((room: Room | null) => void)[] = [];
   private viewW = 0;
   private viewH = 0;
-  private level = 2;
+  private level = 1.5;
   private zoomBeforeOverview: number | null = null;
 
   constructor(

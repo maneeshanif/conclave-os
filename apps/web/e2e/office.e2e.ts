@@ -238,6 +238,11 @@ describe('the office page in a real browser (S6-8b)', () => {
       await page.evaluate(() => localStorage.removeItem('conclave.company'));
       await page.reload();
       await page.getByRole('button', { name: /company: first co/i }).waitFor({ timeout: 15_000 });
+      // The whole office, for the screenshot: every room, the furniture and the robots.
+      await page.getByRole('button', { name: 'See the whole office' }).click();
+      await page.waitForTimeout(600);
+      writeFileSync(path.join(SHOTS, `office-${name}-overview.png`), await page.screenshot());
+      await page.getByRole('button', { name: 'Back to close up' }).click();
       // A department can be added from the Tools menu.
       departmentPosted.length = 0;
       await page.getByRole('button', { name: /tools/i }).click();

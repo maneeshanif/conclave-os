@@ -34,6 +34,7 @@ export function OfficeWorld({ client, onOpen, onPanel, onOpenList, onFail }: { c
   const [people, setPeople] = useState<Person[]>([]);
   const who = useRef(new Map<string, Who>());
   const mine = useRef<Availability>('available');
+  const states = useRef(new Map<string, string>());
   const [near, setNear] = useState<{ id: string; name: string }[]>([]);
   const [lines, setLines] = useState<ChatLine[]>([]);
   const sendChat = useRef<(text: string) => void>(() => undefined);
@@ -100,9 +101,10 @@ export function OfficeWorld({ client, onOpen, onPanel, onOpenList, onFail }: { c
         let again: ReturnType<typeof setTimeout> | undefined;
         // The cards (state, how long, task, what waits for you) come from the server's own reading, the same one the world's placement uses.
         const loadTeam = () =>
-          client.team?.().then((team) =>
-            setPeople(team.map((t) => ({ id: t.id, name: t.name, where: WHERE[who.current.get(t.id)?.place ?? 'lounge'] ?? '', state: t.state, since: t.since, task: t.task, forYou: t.forYou }))),
-          ).catch(() => undefined);
+          client.team?.().then((team) => {
+            states.current = new Map(team.map((m) => [m.id, m.state] as [string, string]));
+            setPeople(team.map((t) => ({ id: t.id, name: t.name, where: WHERE[who.current.get(t.id)?.place ?? 'lounge'] ?? '', state: t.state, since: t.since, task: t.task, forYou: t.forYou })));
+          }).catch(() => undefined);
         const loadActivity = () => client.activity?.().then(setActivity).catch(() => undefined);
         void loadActivity();
         const apply = (places: OfficePlace[]) => {
@@ -125,7 +127,7 @@ export function OfficeWorld({ client, onOpen, onPanel, onOpenList, onFail }: { c
         ctl.onDrawer((e) => onOpen(e.kind === 'open' ? e.id : null));
         const { startWorld } = await import('../office/scene');
         if (cancelled || !box.current) return;
-        const world = startWorld({ parent: box.current, mapUrl: `${API}/api/office/map`, tilesUrl: '/office/tiles.png', peopleUrl: '/office/people.png', furnitureUrl: '/office/furniture.png', objectsUrl: '/office/objects.png', facts, ctl, who: () => who.current, myStatus: () => mine.current, myLook: () => profileRef.current.look, myName: () => profileRef.current.name, onUseObject: onPanel, onHover: setHover });
+        const world = startWorld({ parent: box.current, mapUrl: `${API}/api/office/map`, tilesUrl: '/office/tiles.png', peopleUrl: '/office/people.png', furnitureUrl: '/office/furniture.png', objectsUrl: '/office/objects.png', decorBase: '/office/decor', agentsUrl: '/office/agents.png', stateOf: (id) => states.current.get(id), facts, ctl, who: () => who.current, myStatus: () => mine.current, myLook: () => profileRef.current.look, myName: () => profileRef.current.name, onUseObject: onPanel, onHover: setHover });
         setView(ctl);
         const watch = new ResizeObserver(() => world.resize());
         watch.observe(box.current);

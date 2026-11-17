@@ -126,7 +126,7 @@ describe('the office API (S6-2)', () => {
     expect(body.map.rooms.map((r) => r.name)).toEqual(expect.arrayContaining(['Outreach', 'Boardroom', 'Lounge', 'Hall']));
     expect(body.map.objects.some((o) => o.type === 'approvals-desk')).toBe(true);
     expect(body.map.entries.some((e) => e.name === 'door')).toBe(true);
-    expect(body.map.walls).toHaveLength(24);
+    expect(body.map.walls).toHaveLength(30);
     expect(body.map.walls[0]).toHaveLength(body.map.width);
     expect(body.agents.find((a) => a.key === 'l-one')).toMatchObject({ department: 'outreach', room: 'Outreach', desk: 1 });
     await sql("update agents set status = 'retired' where key = 'l-one'");
@@ -139,6 +139,6 @@ describe('the office API (S6-2)', () => {
     expect(res.status).toBe(200);
     const j = (await res.json()) as { tilewidth: number; layers: { name: string }[] };
     expect(j.tilewidth).toBe(32);
-    expect(j.layers.map((l) => l.name)).toEqual(['floor', 'collision', 'rooms', 'desks', 'objects', 'entries']);
+    expect(j.layers.map((l) => l.name)).toEqual(['floor', 'collision', 'rooms', 'desks', 'objects', 'decor', 'entries']);
   });
 });

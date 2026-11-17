@@ -6,11 +6,12 @@ import { deflateSync, crc32 } from 'node:zlib';
 import path from 'node:path';
 import { Buffer } from 'node:buffer';
 import process from 'node:process';
+import { DECOR_FOOT, OBJECT_FOOT } from './lib/footprints.mjs';
 
 const root = path.resolve(import.meta.dirname, '..');
 const T = 32;
 const W = 40;
-const H = 24;
+const H = 30;
 
 // ---- The tiles: eight 32 by 32 squares in one row ----
 const FLOOR = 1, WALL = 2, CARPET = 3, WOOD = 4, LOUNGE = 5, DOOR = 6, DESK = 7, THING = 8;
@@ -98,6 +99,10 @@ const open = (x, y) => {
   floor[at(x, y)] = DOOR;
   wall[at(x, y)] = 0;
 };
+/** Furniture you cannot walk through: the floor stays as it is. */
+const block = (x, y, w = 1, h = 1) => {
+  for (let j = y; j < y + h; j++) for (let i = x; i < x + w; i++) wall[at(i, j)] = 1;
+};
 for (let x = 0; x < W; x++) {
   solid(x, 0);
   solid(x, H - 1);
@@ -107,7 +112,7 @@ for (let y = 0; y < H; y++) {
   solid(W - 1, y);
 }
 
-// Top row: four department rooms, a corridor below them.
+// ---- Top row: four department rooms (nine tiles wide, ten high), with a corridor below them. The stamp code (stamp.ts) relies on this. ----
 const top = [
   ['Chief of Staff', 'chief-of-staff', 1, 9],
   ['Lead Gen', 'lead-gen', 11, 9],
@@ -119,13 +124,17 @@ for (const wx of [10, 20, 30]) for (let y = 1; y <= 11; y++) solid(wx, y);
 for (let x = 1; x < W - 1; x++) solid(x, 11);
 for (const dx of [5, 15, 25, 34]) open(dx, 11);
 
-// Bottom row: the Boardroom, the hall with the door, the lounge.
+// ---- Middle row (y 16 to 21): the Boardroom, the Hall (tall, with the front door at the bottom), the Lounge and the Cafe. ----
 rect(1, 16, 14, 6, WOOD);
-rect(25, 16, 14, 6, LOUNGE);
-for (let y = 15; y <= 22; y++) {
-  solid(15, y);
-  solid(24, y);
+rect(25, 16, 7, 6, LOUNGE);
+rect(33, 16, 6, 6, CARPET);
+for (let y = 15; y <= 28; y++) {
+  if (y !== 23) {
+    solid(15, y);
+    solid(24, y);
+  }
 }
+for (let y = 15; y <= 22; y++) solid(32, y);
 for (let x = 1; x <= 14; x++) {
   solid(x, 15);
   solid(x, 22);
@@ -134,10 +143,21 @@ for (let x = 25; x <= 38; x++) {
   solid(x, 15);
   solid(x, 22);
 }
-open(8, 15);
-open(31, 15);
-open(19, 23);
-open(20, 23);
+open(8, 15); // into the Boardroom
+open(28, 15); // into the Lounge
+open(35, 15); // into the Cafe
+open(32, 19); // Lounge to Cafe
+// The Hall is open to the corridor above, and runs down to the front door.
+rect(16, 15, 8, 14, FLOOR);
+// ---- Bottom row (y 25 to 28): a play room and a terrace, off a corridor along y 23. ----
+rect(1, 25, 14, 4, CARPET);
+rect(25, 25, 14, 4, LOUNGE); // grass
+for (let x = 1; x <= 14; x++) solid(x, 24);
+for (let x = 25; x <= 38; x++) solid(x, 24);
+open(8, 24);
+open(31, 24);
+open(19, 29); // the front door
+open(20, 29);
 
 const prop = (name, type, value) => ({ name, type, value });
 let nextId = 1;
@@ -146,37 +166,120 @@ const obj = (name, type, x, y, w, h, properties) => ({ id: nextId++, name, type,
 const rooms = [
   ...top.map(([name, dept, x, w]) => obj(name, '', x, 1, w, 10, [prop('kind', 'string', 'department'), prop('department', 'string', dept)])),
   obj('Boardroom', '', 1, 16, 14, 6, [prop('kind', 'string', 'boardroom'), prop('maxUsers', 'int', 12), prop('focusable', 'bool', true)]),
-  obj('Hall', '', 16, 16, 8, 7, [prop('kind', 'string', 'hall')]),
-  obj('Lounge', '', 25, 16, 14, 6, [prop('kind', 'string', 'lounge')]),
+  obj('Hall', '', 16, 16, 8, 13, [prop('kind', 'string', 'hall')]),
+  obj('Lounge', '', 25, 16, 7, 6, [prop('kind', 'string', 'lounge')]),
+  obj('Cafe', '', 33, 16, 6, 6, [prop('kind', 'string', 'cafe')]),
+  obj('Play room', '', 1, 25, 14, 4, [prop('kind', 'string', 'play')]),
+  obj('Terrace', '', 25, 25, 14, 4, [prop('kind', 'string', 'terrace')]),
 ];
+
+// Agents sit at their desks: the desk is the tile north of the chair, the chair tile is where the agent stands.
 const desks = [];
 for (const [name, , x] of top) {
   [[2, 2], [5, 2], [2, 5], [5, 5]].forEach(([dx, dy], i) => {
     desks.push(obj(`${name} desk ${i + 1}`, '', x + dx, 1 + dy, 0, 0, [prop('room', 'string', name), prop('slot', 'int', i + 1)]));
     floor[at(x + dx, 1 + dy)] = DESK;
+    block(x + dx, dy); // the desk itself, one row up from the chair
   });
 }
-const objects = [
-  obj('Approvals desk', 'approvals-desk', 19, 18),
-  obj('Goal whiteboard', 'whiteboard', 17, 17),
-  obj('Dashboard screen', 'screen', 22, 17),
-  obj('Mailbox', 'mailbox', 22, 20),
-  obj('Job board', 'jobboard', 27, 17),
-  obj('Boardroom table', 'boardroom-table', 7, 18),
-  // Where the working pages live: the planning ones in Chief of Staff, the pipeline and campaigns in their own rooms, signals and ideas in Research, run logs in the hall.
-  obj('Brief desk', 'brief-desk', 3, 9),
-  obj('Task board', 'task-board', 5, 9),
-  obj('Needs you board', 'needs-you-board', 7, 9),
-  obj('Pipeline board', 'pipeline-board', 15, 9),
-  obj('Campaign board', 'campaign-board', 25, 9),
-  obj('Signal radio', 'signal-radio', 33, 9),
-  obj('Idea wall', 'idea-wall', 36, 9),
-  obj('Terminal', 'terminal', 21, 20),
-  // Every department room has a board and a meeting table (S6-13b).
-  ...top.flatMap(([name, , x]) => [obj(`${name} board`, 'dept-board', x + 2, 8), obj(`${name} table`, 'dept-table', x + 5, 8)]),
-];
+
+// ---- What you use. Each opens a panel. Sizes come from scripts/lib/footprints.mjs and the tiles under them are blocked. ----
+const objects = [];
+const use = (name, type, x, y) => {
+  objects.push(obj(name, type, x, y));
+  const [w, h] = OBJECT_FOOT[type];
+  block(x, y, w, h);
+};
+// The Boardroom: the goals whiteboard and the health screen on the wall, and a long table with chairs.
+use('Goal whiteboard', 'whiteboard', 2, 16);
+use('Dashboard screen', 'screen', 11, 16);
+use('Boardroom table', 'boardroom-table', 5, 18);
+// The Hall: reception by the door, approvals and the terminal, the mailbox.
+use('Job board', 'jobboard', 21, 25);
+use('Approvals desk', 'approvals-desk', 17, 26);
+use('Terminal', 'terminal', 21, 19);
+use('Mailbox', 'mailbox', 23, 22);
+// Chief of Staff keeps the brief, the task board and the needs-you light; Lead Gen the pipeline; Outreach the campaigns; Research signals and ideas.
+use('Task board', 'task-board', 8, 1);
+use('Brief desk', 'brief-desk', 8, 4);
+use('Needs you board', 'needs-you-board', 9, 8);
+use('Pipeline board', 'pipeline-board', 19, 3);
+use('Campaign board', 'campaign-board', 29, 3);
+use('Idea wall', 'idea-wall', 37, 1);
+use('Signal radio', 'signal-radio', 38, 3);
+// Every department room has a board and a meeting table (S6-13b).
+for (const [name, , x] of top) {
+  use(`${name} board`, 'dept-board', x + 1, 1);
+  use(`${name} table`, 'dept-table', x + 4, 8);
+}
 for (const o of objects) floor[at(o.x / T, o.y / T)] = THING;
-const entries = [obj('door', '', 19, 22), obj('lounge', '', 30, 19), obj('boardroom', '', 7, 20)];
+
+// ---- Scenery: only there to look right. Each is [picture, x, y]; blocking ones stop you walking through. ----
+const decor = [];
+const dec = (name, x, y, { solidly = true } = {}) => {
+  const [w, h] = DECOR_FOOT[name];
+  decor.push(obj(name, 'decor', x, y, w, h));
+  if (solidly) block(x, y, w, h);
+};
+const chair = (x, y, turn) => decor.push(obj('chair', 'decor', x, y, 1, 1, [prop('turn', 'int', turn)])); // 0 south, 90 west, 180 north, 270 east
+// Desks: a computer on each, and the chair is the agent's tile. Desk pictures go where the desk tile is, one up from the chair.
+for (const [, , x] of top) {
+  for (const [dx, dy] of [[2, 2], [5, 2], [2, 5], [5, 5]]) {
+    decor.push(obj('desk', 'decor', x + dx, dy, 1, 1, [prop('live', 'bool', true)]));
+    chair(x + dx, dy + 1, 180);
+  }
+}
+for (const [, , x] of top) {
+  dec('bookshelf', x + 4, 1); // along the north wall
+  dec('plant', x, 10);
+  dec('bin', x + 7, 10);
+}
+dec('printer', 18, 9);
+dec('coffee', 1, 5);
+// Boardroom: plants either end.
+dec('plant', 1, 21);
+dec('plant', 14, 21);
+dec('bin', 14, 16);
+dec('bookshelf', 6, 16);
+decor.push(obj('rug', 'decor', 5, 18, 4, 3)); // a soft rug under the table
+// Hall: a rug by the door, plants, a clock, a water cooler of plants.
+decor.push(obj('rug', 'decor', 18, 25, 4, 3));
+dec('plant', 16, 28);
+dec('plant', 23, 28);
+dec('plant', 16, 22);
+dec('clock', 13, 16, { solidly: false });
+// Lounge: sofas facing a rug, armchairs, plants.
+decor.push(obj('rug', 'decor', 26, 18, 4, 3));
+dec('sofa', 26, 17);
+dec('sofa', 29, 17);
+dec('armchair', 25, 19);
+dec('armchair', 25, 20);
+dec('plant', 31, 16);
+dec('plant', 31, 21);
+// Cafe: a counter with the coffee machine, a fridge, tables with their chairs.
+dec('coffee', 36, 16);
+dec('fridge', 38, 16);
+dec('cafe-table', 34, 19);
+dec('cafe-table', 36, 19);
+dec('cafe-table', 34, 21);
+dec('bin', 38, 21);
+dec('plant', 33, 21);
+// Play room: ping pong, arcade machines, a sofa.
+dec('pingpong', 3, 26);
+dec('arcade', 10, 25);
+dec('arcade', 12, 25);
+dec('sofa', 9, 28);
+dec('plant', 1, 25);
+dec('plant', 14, 25);
+// Terrace: trees, benches (sofas), a table.
+dec('tree', 26, 25);
+dec('tree', 36, 25);
+dec('tree', 33, 25);
+dec('cafe-table', 29, 27);
+dec('sofa', 33, 27);
+dec('plant', 25, 28);
+dec('plant', 38, 28);
+const entries = [obj('door', '', 19, 28), obj('lounge', '', 28, 19), obj('boardroom', '', 7, 20)];
 
 const group = (name, list) => ({ id: nextId++, name, type: 'objectgroup', draworder: 'topdown', opacity: 1, visible: true, x: 0, y: 0, objects: list });
 const tiles = (name, data) => ({ id: nextId++, name, type: 'tilelayer', width: W, height: H, x: 0, y: 0, opacity: 1, visible: true, data });
@@ -193,7 +296,7 @@ const map = {
   type: 'map',
   version: '1.10',
   tilesets: [{ firstgid: 1, name: 'office', image: 'tiles.png', imagewidth: T * 8, imageheight: T, tilewidth: T, tileheight: T, columns: 8, tilecount: 8, margin: 0, spacing: 0 }],
-  layers: [tiles('floor', floor), tiles('collision', wall), group('rooms', rooms), group('desks', desks), group('objects', objects), group('entries', entries)],
+  layers: [tiles('floor', floor), tiles('collision', wall), group('rooms', rooms), group('desks', desks), group('objects', objects), group('decor', decor), group('entries', entries)],
   nextlayerid: nextId + 1,
   nextobjectid: nextId + 1,
 };

@@ -88,3 +88,7 @@ Interpretation I am operating under (confirm with user):
   them.
 - Do not import WA's map format or server code.
 - Do not treat the WA look as a spec to match pixel-for-pixel; treat it as inspiration for our own look.
+
+## Second look at the reference starter map (2026-11-17, own words; study only, nothing copied)
+
+I drew their 31 by 17 starter map into a local image (kept in `.reference/`, git-ignored) to see how an office is laid out. What makes it feel real: a strict top-down view; two columns of desks, each with a computer and a chair on both sides; a boardroom with one long glass table and eight chairs; a lounge with grey sofas, orange armchairs, plants and a rug; a kitchen counter with a coffee machine and a bin; clocks and a whiteboard on the walls; thick dark walls; layers for floor, walls, furniture and "above furniture" (drawn over people), and invisible zone layers for meeting rooms, a chill zone and a clock. Public pages add: small proximity bubbles for chats, unlimited meeting rooms, silent zones, and objects such as a computer that opens a website. Our S6-16 follows these ideas with our own Flow art and our own map.

@@ -14,7 +14,8 @@ const map: OfficeMap = readOfficeMap(JSON.parse(readFileSync(path.join(root, 'co
 const door = map.entries.find((e) => e.name === 'door')!;
 const centre = (name: string) => {
   const r = map.rooms.find((x) => x.name === name)!;
-  return { x: r.x + Math.floor(r.w / 2), y: r.y + Math.floor(r.h / 2) };
+  // The middle of a room may have a table on it, so this is the nearest open tile to the middle.
+  return nearestReachable(map, door, { x: r.x + Math.floor(r.w / 2), y: r.y + Math.floor(r.h / 2) });
 };
 /** A tiny map of our own for the exact cases: a wall with one gap, and a sealed box. */
 const tiny = (rows: string[]): OfficeMap => ({ width: rows[0]!.length, height: rows.length, tile: 32, walls: rows.map((r) => [...r].map((c) => c === '#')), rooms: [], desks: [], objects: [], entries: [] });
@@ -45,7 +46,8 @@ describe('finding a path (S6-4)', () => {
   it('gets from the door to every room, and to every desk, object and entry', () => {
     for (const r of map.rooms) expect(findPath(map, door, centre(r.name)), r.name).not.toBeNull();
     for (const d of map.desks) expect(findPath(map, door, d), `desk ${d.room} ${d.slot}`).not.toBeNull();
-    for (const o of map.objects) expect(findPath(map, door, o), o.name).not.toBeNull();
+    // Furniture blocks its own tiles, so what you can reach is the open tile beside it.
+    for (const o of map.objects) expect(findPath(map, door, nearestReachable(map, door, o)), o.name).not.toBeNull();
     for (const e of map.entries) expect(findPath(map, door, e), e.name).not.toBeNull();
   });
 
