@@ -1,0 +1,1 @@
+ALTER TABLE "agents" ADD COLUMN "self_writing" boolean DEFAULT false NOT NULL;

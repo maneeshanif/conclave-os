@@ -9,7 +9,9 @@ import { checkHook } from '../hooks';
 import { checkBrief, estimateCredits, type Shot } from '../video/briefs';
 import { normalizeUrl } from '../signals';
 import { branchFacts, PrError, refHead, runTests } from '../projects/pr';
+import { createHash } from 'node:crypto';
 import { recallMemories, rememberMemory } from '../memory/memory';
+import { applySkillPatch, checkNewSkill, diffLines, locateSkill, readSkill, skillVersion } from '../memory/skills';
 import { PROJECT_KEY } from '../projects/projects';
 import { labelUntrusted } from './trust';
 import { checkEvidence } from '../boardroom/evidence';
@@ -29,6 +31,8 @@ export class DbOsStore implements OsStore {
     private readonly onApproval: (workspaceId: string, approvalId: string) => void = () => undefined,
     /** Something moved in the office (a handoff): the office should look again (S6-13d2). */
     private readonly onOffice: (workspaceId: string) => void = () => undefined,
+    /** The templates folder, to find the skills an agent has (S8-3). */
+    private readonly templatesRoot?: string,
   ) {}
 
   /** The text of the COMPANY.md of the company this run belongs to, or nothing if its folder is not known. */
@@ -272,6 +276,36 @@ ${tests.output}`);
       );
       if (ins.rows[0]) return { approvalId: ins.rows[0].id, existed: false };
       return { approvalId: (await c.query<{ id: string }>("select id from approvals where kind = 'pr.open' and dedupe_key = $1", [dedupe])).rows[0]!.id, existed: true };
+    });
+    if (!out.existed) this.onApproval(scope.workspaceId, out.approvalId);
+    return out;
+  }
+
+  /** A change to one of the agent's own skills (S8-3). Off until self-writing is on; the skill must be one it has; nothing is written. */
+  async proposeSkillPatch(scope: RunScope, p: { skill: string; text: string; why: string }): Promise<{ approvalId: string; existed: boolean }> {
+    if (!this.templatesRoot) throw new ToolError('This server cannot change skills.');
+    const agent = (
+      await withWorkspace(this.pool, scope.workspaceId, ({ client: c }) =>
+        c.query<{ self_writing: boolean; template: string | null }>('select a.self_writing, t.key as template from agents a left join agent_templates t on t.id = a.template_id and t.workspace_id = a.workspace_id where a.id = $1', [scope.agentId]),
+      )
+    ).rows[0];
+    if (!agent?.self_writing) throw new ToolError('Self-writing is off for you, so you cannot propose changes to your skills. Say what you would change in your final note instead.');
+    if (!agent.template) throw new ToolError('You have no template, so no skills of your own.');
+    const home = await locateSkill(this.templatesRoot, agent.template, p.skill);
+    if (!home) throw new ToolError(`"${p.skill}" is not one of your skills.`);
+    const before = await readSkill(home.file);
+    const bad = checkNewSkill(p.skill, before, p.text);
+    if (bad) throw new ToolError(bad);
+    const after = applySkillPatch(before, p.text);
+    const payload = { skill: p.skill, owner: home.owner, why: p.why, fromVersion: skillVersion(before), toVersion: skillVersion(after), before, after, diff: diffLines(before, after) };
+    const dedupe = `skill:${p.skill}:${createHash('sha256').update(after).digest('hex').slice(0, 16)}`;
+    const out = await withWorkspace(this.pool, scope.workspaceId, async ({ client: c }) => {
+      const ins = await c.query<{ id: string }>(
+        "insert into approvals (workspace_id, kind, dedupe_key, agent_id, run_id, task_id, payload) values ($1, 'skill.patch', $2, $3, $4, $5, $6) on conflict (workspace_id, kind, dedupe_key) do nothing returning id",
+        [scope.workspaceId, dedupe, scope.agentId, scope.runId, scope.taskId ?? null, JSON.stringify(payload)],
+      );
+      if (ins.rows[0]) return { approvalId: ins.rows[0].id, existed: false };
+      return { approvalId: (await c.query<{ id: string }>("select id from approvals where kind = 'skill.patch' and dedupe_key = $1", [dedupe])).rows[0]!.id, existed: true };
     });
     if (!out.existed) this.onApproval(scope.workspaceId, out.approvalId);
     return out;

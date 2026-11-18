@@ -95,6 +95,7 @@ export class CompanyRuntimes {
       pool: sys.app,
       workspaceId: company.id,
       dataDir: sys.dataDir,
+      templatesRoot: sys.templatesRoot,
       companyRoot: company.root,
       bus,
       env,

@@ -16,6 +16,8 @@ export interface OutreachDeps {
   pool: pg.Pool;
   workspaceId: string;
   dataDir: string;
+  /** The templates folder, for approved skill patches (S8-3). */
+  templatesRoot?: string;
   /** Where COMPANY.md lives: the footer and the prices an email may quote come from it. */
   companyRoot: string;
   bus?: Bus;
@@ -47,6 +49,7 @@ export function createOutreach(d: OutreachDeps): { transport: EmailTransport; ex
     // Used only for an account a person has logged in to by hand and switched to the browser (S5-3).
     browserPostTransport: browserPostTransport(d.dataDir, playwrightDriver(playwrightPageOpener(d.dataDir, d.env))),
     // Approved code goes to a local bare repo unless GIT_CONNECTOR=gh is set by hand (S7-6).
+    ...(d.templatesRoot ? { templatesRoot: d.templatesRoot } : {}),
     gitConnector: selectGitConnector(d.env.GIT_CONNECTOR, path.join(d.dataDir, 'git-remotes')),
     // The stand-in for Vercel: builds in a copy and serves on 127.0.0.1 only (S7-8).
     deployer: new LocalDeployer(path.join(d.dataDir, 'git-remotes'), path.join(d.dataDir, 'deploys')),

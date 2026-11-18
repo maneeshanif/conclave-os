@@ -105,6 +105,8 @@ export const agents = pgTable(
     modelAlias: text('model_alias').notNull(),
     fallbackAlias: text('fallback_alias'),
     fallbackRuntime: text('fallback_runtime'),
+    // Whether the agent may propose changes to its own skills (S8-3). Off for a new agent until a person switches it on.
+    selfWriting: boolean('self_writing').notNull().default(false),
     trust: text('trust').notNull().default('standard'), // standard | low (A1): low-trust agents are contained in the server
     heartbeatCron: text('heartbeat_cron'),
     // What the scheduled morning run asks the agent to do, from the role file. Empty: the agent is only woken (S2-8).

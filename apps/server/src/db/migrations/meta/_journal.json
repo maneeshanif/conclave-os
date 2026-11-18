@@ -449,6 +449,13 @@
       "when": 1794971739433,
       "tag": "0063_memories_rls",
       "breakpoints": true
+    },
+    {
+      "idx": 64,
+      "version": "7",
+      "when": 1794972516888,
+      "tag": "0064_agents_self_writing",
+      "breakpoints": true
     }
   ]
 }

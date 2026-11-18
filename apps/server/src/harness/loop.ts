@@ -15,6 +15,7 @@ import type { RuntimeName } from '../runtimes/names';
 import type { ErrorKind, RunEvent, Runtime } from '../runtimes/types';
 import { agentWorkDir } from '../paths';
 import { memoryBlock } from '../memory/memory';
+import { reflectOnRun } from '../memory/reflect';
 
 export interface LoopDeps {
   pool: pg.Pool;
@@ -405,6 +406,8 @@ export async function executeRun(deps: LoopDeps, workspaceId: string, agentId: s
   if (planLimit && error) {
     await withWorkspace(deps.pool, workspaceId, ({ client: c }) => pauseRuntime(c, workspaceId, runtimeName, parseResetTime(error.message, (deps.now ?? (() => new Date()))()), error.message)).catch((err) => console.error('could not pause the runtime:', (err as Error).message));
   }
+  // The reflect pass (S8-3): saves a note only for an agent that has self-writing on, after a run of more than a few steps.
+  if (ok) await reflectOnRun(deps.pool, workspaceId, runId, (final as Extract<RunEvent, { type: 'done' }>).output).catch(() => false);
   deps.bus.publish({ kind: 'run.state', workspaceId, runId, taskId: task.id, status, ...(error ? { error: `${error.kind}: ${error.message}` } : {}) });
   deps.bus.publish({ kind: 'task.changed', workspaceId, taskId: task.id });
   return ok ? { status: 'succeeded', runId, taskId: task.id } : { status: 'failed', runId, taskId: task.id, ...(error ? { error } : {}) };

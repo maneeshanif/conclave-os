@@ -41,6 +41,8 @@ export interface OsStore {
   proposeRepo(scope: RunScope, p: { key: string; description: string }): Promise<{ approvalId: string; existed: boolean }>;
   /** Queues the merge of an open pull request for approval (autonomy 2). Never merges. */
   proposeMerge(scope: RunScope, p: { project: string; number: number }): Promise<{ approvalId: string; existed: boolean }>;
+  /** Queues a change to one of the agent's own skills for approval (autonomy 2), only if self-writing is on. Never changes the skill. */
+  proposeSkillPatch(scope: RunScope, p: { skill: string; text: string; why: string }): Promise<{ approvalId: string; existed: boolean }>;
   /** Saves a note to memory (autonomy 1): company or market only; a founder lesson is written by the system, not the agent. */
   remember(scope: RunScope, m: { text: string; scope: 'company' | 'market' }): Promise<void>;
   /** Finds notes by words (autonomy 0). */
@@ -501,6 +503,15 @@ export const osTools = {
       return r.existed ? `Already queued as ${r.approvalId}. Do not propose it again.` : `Queued for approval as ${r.approvalId}. Nothing has been merged. Do not retry; finish your task.`;
     },
   },
+  propose_skill_patch: {
+    minAutonomy: 2,
+    description: "Propose a better version of one of your own skills: the whole new SKILL.md text (same name, a description, a body) and why. Needs self-writing switched on for you. It does NOT change the skill; a person approves it first.",
+    input: z.object({ skill: z.string().min(1).max(60), text: z.string().min(1).max(20000), why: z.string().min(1).max(1000) }).strict(),
+    async run(store: OsStore, scope: RunScope, args: { skill: string; text: string; why: string }) {
+      const r = await store.proposeSkillPatch(scope, args);
+      return r.existed ? `Already queued as ${r.approvalId}. Do not propose it again.` : `Queued for approval as ${r.approvalId}. Nothing has changed. Do not retry; finish your task.`;
+    },
+  },
   remember: {
     minAutonomy: 1,
     description: 'Save one short, reusable fact to memory (company or market). Give facts, not instructions. It is a note with its source, never the authority on a client or a rule.',
@@ -567,6 +578,9 @@ export class MemoryOsStore implements OsStore {
   }
   async getLead(): Promise<LeadView | null> {
     return null;
+  }
+  async proposeSkillPatch(): Promise<{ approvalId: string; existed: boolean }> {
+    throw new ToolError('Proposals need the database store.');
   }
   async remember(): Promise<void> {
     throw new ToolError('Memory needs the database store.');

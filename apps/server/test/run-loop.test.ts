@@ -56,6 +56,9 @@ class LateStore implements OsStore {
   getLead(s: RunScope, id: string) {
     return this.inner.getLead(s, id);
   }
+  proposeSkillPatch(s: RunScope, p: { skill: string; text: string; why: string }) {
+    return this.inner.proposeSkillPatch(s, p);
+  }
   remember(s: RunScope, m: { text: string; scope: 'company' | 'market' }) {
     return this.inner.remember(s, m);
   }
