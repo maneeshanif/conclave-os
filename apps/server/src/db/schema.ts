@@ -1152,6 +1152,8 @@ export const workspaceSettings = pgTable('workspace_settings', {
   hiringLevel: text('hiring_level').notNull().default('H0'),
   rosterCap: integer('roster_cap').notNull().default(20),
   trialBudgetCapUsd: numeric('trial_budget_cap_usd', { precision: 10, scale: 2 }).notNull().default('5'),
+  // How long a guest link to a client meeting works by default, in hours (S10-1, set on the Settings screen).
+  guestLinkHours: integer('guest_link_hours').notNull().default(48),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 },
 (t) => [

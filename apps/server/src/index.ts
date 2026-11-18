@@ -236,6 +236,7 @@ shell.route(
     reaperStatus,
     companyRoot: sys.companyRoot,
     templatesRoot: sys.templatesRoot,
+    dataDir: sys.dataDir,
     companies,
     bus,
     dispatcher,

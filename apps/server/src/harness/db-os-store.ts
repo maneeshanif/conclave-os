@@ -352,7 +352,8 @@ ${tests.output}`);
       if (m.status === 'cancelled' || m.status === 'closed') throw new ToolError(`That meeting is ${m.status}.`);
       const to = p.to.trim().toLowerCase();
       const dedupe = `meeting:${p.meetingId}:${to}`;
-      const payload = { meetingId: p.meetingId, title: m.title, to, ttlHours: p.ttlHours ?? 48 };
+      const dflt = (await c.query<{ guest_link_hours: number }>('select guest_link_hours from workspace_settings')).rows[0]?.guest_link_hours ?? 48;
+      const payload = { meetingId: p.meetingId, title: m.title, to, ttlHours: p.ttlHours ?? dflt };
       const ins = await c.query<{ id: string }>(
         "insert into approvals (workspace_id, kind, dedupe_key, agent_id, run_id, task_id, payload) values ($1, 'meeting.invite', $2, $3, $4, $5, $6) on conflict (workspace_id, kind, dedupe_key) do nothing returning id",
         [scope.workspaceId, dedupe, scope.agentId, scope.runId, scope.taskId ?? null, JSON.stringify(payload)],

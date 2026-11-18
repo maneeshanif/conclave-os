@@ -9,14 +9,14 @@ afterEach(cleanup);
 
 describe('the list of panels and their addresses (S6-12a)', () => {
   it('has a panel for each page that used to be a route, a tasks panel and a run log', () => {
-    expect([...PANEL_IDS].sort()).toEqual(['approvals', 'boardroom', 'brief', 'campaigns', 'channels', 'department-board', 'department-meeting', 'deployments', 'goals', 'health', 'ideas', 'inbox', 'meetings', 'needs-you', 'network', 'pipeline', 'rooms', 'run-log', 'signals', 'talent', 'tasks']);
+    expect([...PANEL_IDS].sort()).toEqual(['approvals', 'boardroom', 'brief', 'campaigns', 'channels', 'department-board', 'department-meeting', 'deployments', 'goals', 'health', 'ideas', 'inbox', 'meetings', 'needs-you', 'network', 'pipeline', 'rooms', 'run-log', 'settings', 'signals', 'talent', 'tasks']);
     for (const id of PANEL_IDS) expect(PANEL_LABELS[id].length, id).toBeGreaterThan(2);
   });
 
   it('has a place in the office for every panel, and every ready object opens a panel that exists', () => {
     const opened = OBJECT_TYPES.filter((t) => OBJECT_PANELS[t].ready).map((t) => OBJECT_PANELS[t].panel);
-    // The list of rooms and agents is opened from the bar, not from a thing in the office.
-    expect([...opened].sort()).toEqual(PANEL_IDS.filter((id) => id !== 'rooms').sort());
+    // The list of rooms and agents, and Settings, are opened from the bar, not from a thing in the office.
+    expect([...opened].sort()).toEqual(PANEL_IDS.filter((id) => id !== 'rooms' && id !== 'settings').sort());
   });
 
   it('puts the open panel in the address, so it can be linked to', () => {

@@ -218,6 +218,32 @@ export interface Deployment {
   finishedAt: string | null;
 }
 
+export interface ConfigView {
+  hiring: { level: 'H0' | 'H1'; rosterCap: number; trialBudgetCapUsd: number; active: number };
+  guestLinkHours: number;
+  agents: { key: string; name: string; department: string | null; status: string; autonomy: number; selfWriting: boolean; runtime: string }[];
+  delegate: { registered: boolean; active: boolean; revoked: boolean; fingerprint: string | null; mandate: Record<string, unknown>; handDecisions: Record<string, number>; handDecisionsNeeded: number };
+  connectors: { git: string; meeting: string; claudeAgentKey: string; httpWorkers: number };
+}
+
+export interface SendSettings {
+  killSwitch: boolean;
+  windowHours: number;
+  windowCap: number;
+  emailDailyCap: number;
+  sentInWindow: number;
+  sentToday: number;
+}
+
+export interface ToolCall {
+  tool: string;
+  risk: string;
+  decision: 'allowed' | 'refused';
+  reason: string | null;
+  at: string;
+  agent: string | null;
+}
+
 export interface NetworkPerson {
   id: string;
   name: string;
@@ -455,6 +481,17 @@ export const api = {
     }
   },
   rebuildBrief: () => call<Brief>('/api/brief/rebuild', { method: 'POST', body: '{}' }),
+  config: () => call<ConfigView>('/api/config'),
+  sendSettings: () => call<SendSettings>('/api/settings'),
+  toolCalls: async () => (await call<{ calls: ToolCall[] }>('/api/config/tool-calls?limit=30')).calls,
+  putPolicy: (p: { level?: 'H0' | 'H1'; rosterCap?: number; trialBudgetCapUsd?: number }) => call('/api/talent/policy', { method: 'PUT', body: JSON.stringify(p) }),
+  putConfigAgent: (key: string, p: { selfWriting?: boolean; autonomy?: number }) => call(`/api/config/agents/${encodeURIComponent(key)}`, { method: 'PUT', body: JSON.stringify(p) }),
+  putGuestHours: (hours: number) => call('/api/config/guest-link-hours', { method: 'PUT', body: JSON.stringify({ hours }) }),
+  patchSends: (p: Partial<Pick<SendSettings, 'windowHours' | 'windowCap' | 'emailDailyCap'>>) => call('/api/settings', { method: 'PATCH', body: JSON.stringify(p) }),
+  delegateOp: (op: 'register' | 'on' | 'off' | 'revoke') =>
+    op === 'register' ? call('/api/config/delegate/register', { method: 'POST', body: '{}' }) : op === 'revoke' ? call('/api/config/delegate/revoke', { method: 'POST', body: '{}' }) : call('/api/config/delegate/active', { method: 'PUT', body: JSON.stringify({ active: op === 'on' }) }),
+  putMandate: (rule: { kind: 'email.send'; minStep: number; maxStep: number }) => call('/api/config/delegate/mandate', { method: 'PUT', body: JSON.stringify(rule) }),
+  dropMandate: (kind: string) => call(`/api/config/delegate/mandate/${encodeURIComponent(kind)}`, { method: 'DELETE' }),
   networkPeople: async () => (await call<{ people: NetworkPerson[] }>('/api/network')).people,
   networkSentByYou: (draftId: string, nudgeInDays?: number) => call<{ ok: boolean }>(`/api/network/drafts/${draftId}/sent`, { method: 'POST', body: JSON.stringify(nudgeInDays ? { nudgeInDays } : {}) }),
   channelMessages: async () => (await call<{ messages: ChannelMessage[] }>('/api/channels')).messages,

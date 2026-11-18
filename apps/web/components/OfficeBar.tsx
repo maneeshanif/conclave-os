@@ -41,7 +41,7 @@ const item = 'flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text
  * The bar over the world: who is here, a tools menu and your status. Floating groups on a desktop; on a phone the same controls
  * sit along the bottom edge. It only reports what you chose; the page decides what to do (SPEC 12).
  */
-export function OfficeBar(props: { people: Person[]; /** What just happened, newest first (S6-14b3). Left out, the panel has no feed. */ activity?: { id: string; at: string; text: string }[] | undefined; availability: Availability; onAvailability: (a: Availability) => void; onOpenAgent: (id: string) => void; onOverview: () => void; /** More controls next to the people button (the company switcher). */ extra?: ReactNode; /** Called from the Tools menu: the page shows the add-a-department dialog. */ onAddDepartment?: () => void; /** Called from the Tools menu: the page shows the add-an-agent dialog. */ onAddAgent?: () => void; /** Opens the list of rooms and agents, for keyboard and screen-reader use and for a phone (S6-15a). */ onOpenList?: () => void; /** Your name and look, and what to do when you change them (S6-15b). Left out, there is no picker. */ profile?: Profile; onProfile?: (p: Profile) => void; /** Shows a quick reaction over your head (S6-18). Left out, there is no button. */ onEmote?: (emote: string) => void; /** Called from the Tools menu: the page shows the add-a-desk dialog (S6B-1). */ onAddDesk?: () => void; /** Opens the megaphone (S6B-7). */ onMegaphone?: () => void; /** Called from the Tools menu: the page starts editing the office (S6B-9). */ onEdit?: () => void; /** The sound switches and what to do when one changes (S6B-5). Left out, there is no menu. */ sound?: SoundSettings; onSound?: (s: SoundSettings) => void }) {
+export function OfficeBar(props: { people: Person[]; /** What just happened, newest first (S6-14b3). Left out, the panel has no feed. */ activity?: { id: string; at: string; text: string }[] | undefined; availability: Availability; onAvailability: (a: Availability) => void; onOpenAgent: (id: string) => void; onOverview: () => void; /** More controls next to the people button (the company switcher). */ extra?: ReactNode; /** Called from the Tools menu: the page shows the add-a-department dialog. */ onAddDepartment?: () => void; /** Called from the Tools menu: the page shows the add-an-agent dialog. */ onAddAgent?: () => void; /** Opens the list of rooms and agents, for keyboard and screen-reader use and for a phone (S6-15a). */ onOpenList?: () => void; /** Opens Settings (S12). Left out, there is no button. */ onSettings?: () => void; /** Your name and look, and what to do when you change them (S6-15b). Left out, there is no picker. */ profile?: Profile; onProfile?: (p: Profile) => void; /** Shows a quick reaction over your head (S6-18). Left out, there is no button. */ onEmote?: (emote: string) => void; /** Called from the Tools menu: the page shows the add-a-desk dialog (S6B-1). */ onAddDesk?: () => void; /** Opens the megaphone (S6B-7). */ onMegaphone?: () => void; /** Called from the Tools menu: the page starts editing the office (S6B-9). */ onEdit?: () => void; /** The sound switches and what to do when one changes (S6B-5). Left out, there is no menu. */ sound?: SoundSettings; onSound?: (s: SoundSettings) => void }) {
   const [menu, setMenu] = useState<'tools' | 'status' | 'react' | 'sound' | null>(null);
   const [panel, setPanel] = useState(false);
   const [picker, setPicker] = useState(false);
@@ -143,6 +143,13 @@ export function OfficeBar(props: { people: Person[]; /** What just happened, new
                   ))}
                 </div>
               ) : null}
+            </div>
+          ) : null}
+          {props.onSettings ? (
+            <div className={`flex ${pill}`}>
+              <button type="button" aria-label="Settings" title="Settings" onClick={props.onSettings} className="px-3 py-2 text-sm">
+                <span aria-hidden>⚙</span>
+              </button>
             </div>
           ) : null}
           {props.onOpenList ? (
