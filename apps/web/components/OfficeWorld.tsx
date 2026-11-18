@@ -25,6 +25,7 @@ import { CompanySwitcher } from './CompanySwitcher';
 import { OfficeBar, WelcomeCard, ZonePill, type Availability, type Person } from './OfficeBar';
 import { WHERE, type OfficeClient } from './OfficeView';
 import { DemoSim, stepMs, type Speed } from '../office/demo';
+import { dragAction, grabs } from '../office/edit';
 
 /** Strings of # and . from the server back into the grid of booleans the walking code uses. */
 export const toMap = (facts: OfficeFacts): OfficeMap => ({ ...facts.map, walls: facts.map.walls.map((row) => [...row].map((c) => c === '#')) });
@@ -87,6 +88,24 @@ export function OfficeWorld({ client, onOpen, onPanel, onOpenList, onFail }: { c
       () => {
         try {
           sessionStorage.setItem('conclave.edit', JSON.stringify({ tool: t?.kind === 'move' ? { kind: 'move', id: null } : t }));
+        } catch {
+          // The next load is not in edit mode.
+        }
+        window.location.reload();
+      },
+      (err: Error) => setEditMessage(err.message),
+    );
+    return true;
+  };
+  // A piece dragged from one tile to another with the Move tool: one change on the server, refused with its reason if it is not allowed.
+  const dropPiece = (from: { x: number; y: number }, to: { x: number; y: number }, decor: { id: number; x: number; y: number; w: number; h: number }[]): boolean => {
+    const { editing: on, tool: t } = editRef.current;
+    const action = on ? dragAction(t, from, to, decor) : null;
+    if (!action) return false;
+    void api.moveDecor(action.id, { x: action.x, y: action.y }).then(
+      () => {
+        try {
+          sessionStorage.setItem('conclave.edit', JSON.stringify({ tool: { kind: 'move', id: null } }));
         } catch {
           // The next load is not in edit mode.
         }
@@ -247,7 +266,7 @@ export function OfficeWorld({ client, onOpen, onPanel, onOpenList, onFail }: { c
         ctl.onDrawer((e) => onOpen(e.kind === 'open' ? e.id : null));
         const { startWorld } = await import('../office/scene');
         if (cancelled || !box.current) return;
-        const world = startWorld({ parent: box.current, mapUrl: `${API}/api/office/map`, tilesUrl: '/office/tiles.png', peopleUrl: '/office/people.png', furnitureUrl: '/office/furniture.png', objectsUrl: '/office/objects.png', decorBase: '/office/decor', agentsUrl: '/office/agents.png', stateOf: (id) => states.current.get(id), notesOf: () => notes.current, emoteOf: (id) => currentEmote(emotes.current, id, Date.now()), facts, ctl, who: () => who.current, myStatus: () => mine.current, myLook: () => profileRef.current.look, myName: () => profileRef.current.name, onUseObject: onPanel, onTile: (t, d) => useTile(t, d), onHover: setHover });
+        const world = startWorld({ parent: box.current, mapUrl: `${API}/api/office/map`, tilesUrl: '/office/tiles.png', peopleUrl: '/office/people.png', furnitureUrl: '/office/furniture.png', objectsUrl: '/office/objects.png', decorBase: '/office/decor', agentsUrl: '/office/agents.png', stateOf: (id) => states.current.get(id), notesOf: () => notes.current, emoteOf: (id) => currentEmote(emotes.current, id, Date.now()), facts, ctl, who: () => who.current, myStatus: () => mine.current, myLook: () => profileRef.current.look, myName: () => profileRef.current.name, onUseObject: onPanel, onTile: (t, d) => useTile(t, d), grabs: (t, d) => editRef.current.editing && grabs(editRef.current.tool, t, d), onDrag: (a, b, d) => dropPiece(a, b, d), onHover: setHover });
         setView(ctl);
         const watch = new ResizeObserver(() => world.resize());
         watch.observe(box.current);

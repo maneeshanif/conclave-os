@@ -16,4 +16,23 @@ export function tileAction(tool: EditTool | null, tile: { x: number; y: number }
   return hit ? { kind: 'remove', id: hit.id } : { kind: 'nothing', why: 'Click a piece of scenery to remove it.' };
 }
 
+type Piece = { id: number; x: number; y: number; w: number; h: number };
+const pieceAt = (decor: Piece[], t: { x: number; y: number }) => [...decor].reverse().find((d) => t.x >= d.x && t.x < d.x + d.w && t.y >= d.y && t.y < d.y + d.h);
+
+/** True if a press on this tile picks a piece up: only with the Move tool, and only on a piece. Then the press is a drag of the piece, not of the view. */
+export function grabs(tool: EditTool | null, tile: { x: number; y: number }, decor: Piece[]): boolean {
+  return tool?.kind === 'move' && !!pieceAt(decor, tile);
+}
+
+/**
+ * Dropping a piece after dragging it (S6C-2): where it goes keeps the spot you held it by, so a wide piece does not jump under the pointer.
+ * Null if it did not move or the Move tool is not in hand.
+ */
+export function dragAction(tool: EditTool | null, from: { x: number; y: number }, to: { x: number; y: number }, decor: Piece[]): { kind: 'move'; id: number; x: number; y: number } | null {
+  if (tool?.kind !== 'move') return null;
+  const piece = pieceAt(decor, from);
+  if (!piece || (from.x === to.x && from.y === to.y)) return null;
+  return { kind: 'move', id: piece.id, x: piece.x + (to.x - from.x), y: piece.y + (to.y - from.y) };
+}
+
 export const PICTURES = Object.entries(DECOR_FOOTPRINT).map(([name, [w, h]]) => ({ name, w, h }));

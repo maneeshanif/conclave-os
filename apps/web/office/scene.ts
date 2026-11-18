@@ -51,6 +51,10 @@ export function startWorld(opts: {
   /** While editing, a click on a tile goes here first (with the scenery there); true means it was used and you do not walk (S6B-9). */
   /** The sticky notes for the plan wall (the task board), newest state each time (S6B-10). */
   notesOf?: () => Note[];
+  /** Whether a press here picks up a piece in the editor, so the press drags the piece and not the view (S6C-2). */
+  grabs?: (tile: { x: number; y: number }, decor: { id: number; x: number; y: number; w: number; h: number }[]) => boolean;
+  /** A piece was dragged from one tile to another in the editor. True if it was used. */
+  onDrag?: (from: { x: number; y: number }, to: { x: number; y: number }, decor: { id: number; x: number; y: number; w: number; h: number }[]) => boolean;
   onTile?: (tile: { x: number; y: number }, decor: { id: number; x: number; y: number; w: number; h: number }[]) => boolean;
   facts: OfficeFacts;
   ctl: WorldController;
@@ -138,6 +142,7 @@ export function startWorld(opts: {
     private cursors?: Phaser.Types.Input.Keyboard.CursorKeys;
     private heldDir: Facing | null = null;
     private pending: { x: number; y: number } | null = null;
+    private grabbed: { x: number; y: number } | null = null;
     private screens: { rect: Phaser.GameObjects.Rectangle; agentId: string | null }[] = [];
     private board: { x: number; y: number; w: number; h: number } | null = null;
     private noteRects: Phaser.GameObjects.Rectangle[] = [];
@@ -259,7 +264,20 @@ export function startWorld(opts: {
       // What is under the pointer, for the tooltip. Only while the pointer is over the canvas itself.
       // Dragging the world looks around (jsm-hq's pan): the camera lets go of you while you drag, and takes hold again when you next walk.
       const drag = new PanDrag();
-      this.input.on('pointerup', () => {
+      this.input.on('pointerup', (p: Phaser.Input.Pointer) => {
+        const from = this.grabbed;
+        this.grabbed = null;
+        if (from) {
+          // A piece was picked up in the editor: letting go on another tile drops it there, and on the same tile is a plain click.
+          const to = { x: Math.floor(p.worldX / TILE), y: Math.floor(p.worldY / TILE) };
+          this.pending = null;
+          if (from.x !== to.x || from.y !== to.y) {
+            opts.onDrag?.(from, to, this.decorBoxes);
+            return;
+          }
+          if (opts.onTile?.(from, this.decorBoxes)) return;
+          return;
+        }
         const was = drag.end();
         const tile = this.pending;
         this.pending = null;
@@ -284,8 +302,12 @@ export function startWorld(opts: {
       this.input.on('gameout', () => opts.onHover?.(null));
       this.input.on('pointerdown', (p: Phaser.Input.Pointer) => {
         if (p.downElement !== this.game.canvas) return;
-        drag.start(p.x, p.y);
         const tile = { x: Math.floor(p.worldX / TILE), y: Math.floor(p.worldY / TILE) };
+        if (opts.grabs?.(tile, this.decorBoxes)) {
+          this.grabbed = tile; // dragging a piece, not the view
+          return;
+        }
+        drag.start(p.x, p.y);
         // The click is acted on when the press is let go, so a drag can be told from a click.
         this.pending = tile;
       });

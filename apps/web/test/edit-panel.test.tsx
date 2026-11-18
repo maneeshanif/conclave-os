@@ -3,7 +3,7 @@ import { cleanup, fireEvent, render, screen, within } from '@testing-library/rea
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { EditPanel, type EditTool } from '../components/EditPanel';
 import { OfficeBar } from '../components/OfficeBar';
-import { tileAction } from '../office/edit';
+import { dragAction, grabs, tileAction } from '../office/edit';
 
 afterEach(cleanup);
 
@@ -86,5 +86,19 @@ describe('what a click does while editing (S6B-9)', () => {
   it('has a door tool: a click on a tile asks for a door there, whatever is under it, and the panel has a Door button (S6C-2)', () => {
     expect(tileAction({ kind: 'door' }, { x: 7, y: 9 }, [])).toEqual({ kind: 'door', x: 7, y: 9 });
     expect(tileAction({ kind: 'door' }, { x: 7, y: 9 }, [{ id: 1, x: 7, y: 9, w: 1, h: 1 }])).toEqual({ kind: 'door', x: 7, y: 9 });
+  });
+
+  it('drags a piece with the Move tool: a press on a piece grabs it, and it lands keeping the spot it was held by (S6C-2)', () => {
+    const decor = [{ id: 4, x: 10, y: 5, w: 3, h: 2 }];
+    const move = { kind: 'move' as const, id: null };
+    expect(grabs(move, { x: 11, y: 5 }, decor)).toBe(true);
+    expect(grabs(move, { x: 20, y: 20 }, decor)).toBe(false); // empty floor: the press pans the view
+    expect(grabs({ kind: 'remove' }, { x: 11, y: 5 }, decor)).toBe(false);
+    expect(grabs(null, { x: 11, y: 5 }, decor)).toBe(false);
+    // Held by its middle tile and dropped two tiles right and one down: the whole piece moves by that much.
+    expect(dragAction(move, { x: 11, y: 5 }, { x: 13, y: 6 }, decor)).toEqual({ kind: 'move', id: 4, x: 12, y: 6 });
+    expect(dragAction(move, { x: 11, y: 5 }, { x: 11, y: 5 }, decor)).toBeNull(); // not moved
+    expect(dragAction(move, { x: 0, y: 0 }, { x: 3, y: 3 }, decor)).toBeNull(); // nothing was held
+    expect(dragAction({ kind: 'remove' }, { x: 11, y: 5 }, { x: 13, y: 6 }, decor)).toBeNull();
   });
 });
