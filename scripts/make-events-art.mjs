@@ -207,3 +207,14 @@ process.stdout.write(`wrote ${Object.keys(EVENT_FOOT).length} event pictures\n`)
   c.disc(w * T - 10, 20, 3, '#22c55e');
   save('obj-meetings-board', c);
 }
+// The client messages board (S10-7): speech bubbles on a board.
+{
+  const [w, h] = OBJECT_FOOT['channels-board'];
+  const c = canvas(w * T, h * T);
+  c.rect(2, 3, w * T - 4, h * T - 8, '#3b2f63');
+  c.frame(2, 3, w * T - 4, h * T - 8, INK);
+  c.rect(6, 7, w * T - 12, 4, '#a78bfa');
+  c.rect(9, 14, 20, 9, '#f8fafc');
+  c.rect(33, 17, 20, 7, '#c4b5fd');
+  save('obj-channels-board', c);
+}

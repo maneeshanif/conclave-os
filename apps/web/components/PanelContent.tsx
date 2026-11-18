@@ -7,6 +7,7 @@ import { ApprovalsInbox } from './ApprovalsInbox';
 import { BoardroomView } from './BoardroomView';
 import { BriefView } from './BriefView';
 import { CampaignsView } from './CampaignsView';
+import { ChannelsView } from './ChannelsView';
 import { DeploymentsView } from './DeploymentsView';
 import { DepartmentBoard, DepartmentChannel } from './DepartmentPanels';
 import { GoalsView } from './GoalsView';
@@ -37,6 +38,8 @@ export function PanelContent(state: PanelState): ReactNode {
       return null; // the list is drawn by the office screen, which owns the world, the drawer and the panels
     case 'deployments':
       return <DeploymentsView />;
+    case 'channels':
+      return <ChannelsView />;
     case 'meetings':
       return <MeetingsView />;
     case 'talent':

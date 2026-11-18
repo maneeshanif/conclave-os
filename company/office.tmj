@@ -44267,6 +44267,16 @@
      "point": true,
      "rotation": 0,
      "visible": true
+    },
+    {
+     "id": 899,
+     "name": "Client messages board",
+     "type": "channels-board",
+     "x": 6016,
+     "y": 2144,
+     "point": true,
+     "rotation": 0,
+     "visible": true
     }
    ]
   },
@@ -52961,5 +52971,5 @@
   }
  ],
  "nextlayerid": 874,
- "nextobjectid": 898
+ "nextobjectid": 900
 }

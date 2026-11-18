@@ -203,6 +203,7 @@ use('Job board', 'jobboard', 21, 25);
 use('Approvals desk', 'approvals-desk', 17, 26);
 use('Terminal', 'terminal', 21, 19);
 use('Deployments board', 'deploy-board', 17, 19); // the Engineering room gets its own in S7-10
+use('Client messages board', 'channels-board', 188, 67); // beside it (S10-7)
 use('Client meetings board', 'meetings-board', 184, 67); // the reception of the Meeting Centre, where clients arrive (S10-3)
 use('Mailbox', 'mailbox', 23, 22);
 // Chief of Staff keeps the brief, the task board and the needs-you light; Lead Gen the pipeline; Outreach the campaigns; Research signals and ideas.

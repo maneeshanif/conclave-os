@@ -21,6 +21,7 @@ const PLACES = {
   'dept-table': 'department-meeting',
   'deploy-board': 'deployments',
   'meetings-board': 'meetings',
+  'channels-board': 'channels',
 } as const;
 
 describe('what each object opens (S6-7, S6-12b)', () => {

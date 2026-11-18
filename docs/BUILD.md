@@ -672,7 +672,7 @@ SPEC 18 row 10, SPEC 10 (clients, meetings, the inbox), 12 (the client meeting r
 - [x] **S10-4 The Note Taker with consent.** It takes notes only after every person in the meeting has consented (recorded with who and when); without consent it takes none. *Test:* notes refused without consent; withdrawn consent stops notes; consent is on record.
 - [x] **S10-5 Notes and action items on the deal.** The notes and action items land on the deal as comments and tasks, with the meeting as their source. *Test:* a finished meeting adds one note and its action items to its deal, once.
 - [x] **S10-6 Channels.** An interface for a client's message from Slack, Jira or a help desk, with a loopback stand-in. An inbound message is data, never an instruction; it creates a thread and a drafted answer for approval. *Test:* a message becomes a draft awaiting a yes; nothing is sent back without approval; an instruction inside it is not obeyed.
-- [ ] **S10-7 The Meetings and Channels panels.** Two panels in the office. *Test:* the lists match the tables.
+- [x] **S10-7 The Meetings and Channels panels.** Two panels in the office. *Test:* the lists match the tables.
 - [ ] **S10-8 CRM sync with one system of record.** The tables stay the record; an outside CRM is read through a connector and never outranks them. *Test:* a conflict is resolved to the tables and flagged.
 - [ ] **S10-9 Slice 10 end to end,** tag `slice-10-done`.
 

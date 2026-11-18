@@ -216,6 +216,16 @@ export interface Deployment {
   finishedAt: string | null;
 }
 
+export interface ChannelMessage {
+  id: string;
+  channel: 'slack' | 'jira' | 'helpdesk';
+  from: string;
+  body: string;
+  status: 'new' | 'replied';
+  receivedAt: string;
+  reply: string | null;
+}
+
 export interface Meeting {
   id: string;
   title: string;
@@ -432,6 +442,7 @@ export const api = {
     }
   },
   rebuildBrief: () => call<Brief>('/api/brief/rebuild', { method: 'POST', body: '{}' }),
+  channelMessages: async () => (await call<{ messages: ChannelMessage[] }>('/api/channels')).messages,
   meetings: async () => (await call<{ meetings: Meeting[] }>('/api/meetings')).meetings,
   talent: () => call<TalentRoom>('/api/talent'),
   scorecards: async () => (await call<{ scorecards: Scorecard[] }>('/api/scorecards')).scorecards,
