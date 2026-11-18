@@ -15,6 +15,7 @@ import type { RuntimeName } from '../runtimes/names';
 import type { ErrorKind, RunEvent, Runtime } from '../runtimes/types';
 import { agentWorkDir } from '../paths';
 import { memoryBlock } from '../memory/memory';
+import { probeBlock } from './probe';
 import { reflectOnRun } from '../memory/reflect';
 
 export interface LoopDeps {
@@ -164,6 +165,9 @@ export async function executeRun(deps: LoopDeps, workspaceId: string, agentId: s
   if (!agent) return { status: 'not_runnable', reason: 'no such agent' };
   if (await killSwitchOn(deps.pool, workspaceId)) return { status: 'not_runnable', reason: 'the kill switch is on' };
   if (agent.status !== 'active') return { status: 'not_runnable', reason: `agent is ${agent.status}` };
+  // A4: an agent whose rendered folder failed its probe does not run until it is rendered again and passes.
+  const blocked = await probeBlock(deps.pool, workspaceId, agent.id);
+  if (blocked) return { status: 'not_runnable', reason: blocked };
   const now = () => (deps.now ?? (() => new Date()))();
   // The other engine this role names (S4-5), used while the first is paused, for retries and for escalation. Only if it exists here.
   const fbRuntime: RuntimeName = agent.fallback_runtime ?? agent.runtime;

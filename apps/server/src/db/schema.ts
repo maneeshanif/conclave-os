@@ -1619,3 +1619,21 @@ export const toolCalls = pgTable(
     index('tool_calls_ws_at_idx').on(t.workspaceId, t.at),
   ],
 );
+
+/** What the probe found in an agent's rendered folder (A4). The latest row for an agent decides whether it may run. */
+export const agentProbes = pgTable(
+  'agent_probes',
+  {
+    id: id(),
+    workspaceId: workspaceId(),
+    agentId: uuid('agent_id').notNull(),
+    ok: boolean('ok').notNull(),
+    problems: jsonb('problems').notNull().default(sql`'[]'::jsonb`),
+    at: timestamp('at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    unique('agent_probes_ws_id_uq').on(t.workspaceId, t.id),
+    foreignKey({ name: 'agent_probes_agent_fk', columns: [t.workspaceId, t.agentId], foreignColumns: [agents.workspaceId, agents.id] }),
+    index('agent_probes_agent_idx').on(t.workspaceId, t.agentId, t.at),
+  ],
+);

@@ -645,6 +645,20 @@
       "when": 1795035889315,
       "tag": "0091_tool_calls_rls",
       "breakpoints": true
+    },
+    {
+      "idx": 92,
+      "version": "7",
+      "when": 1795036667767,
+      "tag": "0092_agent_probes",
+      "breakpoints": true
+    },
+    {
+      "idx": 93,
+      "version": "7",
+      "when": 1795036673593,
+      "tag": "0093_agent_probes_rls",
+      "breakpoints": true
     }
   ]
 }

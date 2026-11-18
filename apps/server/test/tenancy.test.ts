@@ -13,6 +13,7 @@ import { withWorkspace } from '../src/db/tenant';
 const TABLES = [
   'accounts',
   'action_items',
+  'agent_probes',
   'agent_templates',
   'agents',
   'approvals',

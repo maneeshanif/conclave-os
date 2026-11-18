@@ -3,6 +3,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { loadCompany } from '../company/loader';
 import { syncCompany } from '../company/sync';
+import { probeAgentFolder, recordProbe } from '../harness/probe';
 import { loadTemplate, renderRoleFile, renderWorkdir } from '../harness/render';
 import type { RuntimeName } from '../runtimes/names';
 import { companyName, type System } from '../system';
@@ -70,6 +71,7 @@ export async function agentNew(sys: System, opts: AgentNewOptions): Promise<Agen
     osUrl: sys.osUrl,
     templatesRoot: sys.templatesRoot,
   });
+  await recordProbe(sys.app, sys.workspace.id, id, await probeAgentFolder(out.dir, out.runtime));
   return { id, rolePath: rel, workDir: out.dir, runtime: out.runtime, autonomy: agent.role.autonomy };
 }
 
@@ -91,6 +93,7 @@ export async function renderAll(sys: System): Promise<AgentNewResult[]> {
       osUrl: sys.osUrl,
       templatesRoot: sys.templatesRoot,
     });
+    await recordProbe(sys.app, sys.workspace.id, a.role.id, await probeAgentFolder(r.dir, r.runtime));
     out.push({ id: a.role.id, rolePath: a.rolePath, workDir: r.dir, runtime: r.runtime, autonomy: a.role.autonomy });
   }
   return out;
