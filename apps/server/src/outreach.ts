@@ -1,7 +1,7 @@
 import type pg from 'pg';
 import path from 'node:path';
 import { LocalDeployer } from './projects/deployer';
-import { selectGitConnector } from './projects/git-connector';
+import { SwitchableGit } from './connectors/choice';
 import { createExecutors, type Executors } from './actions';
 import type { ExecutorDeps } from './actions/email';
 import { browserPostTransport, outboxDmTransport, outboxPostTransport } from './actions/post-transport';
@@ -54,9 +54,9 @@ export function createOutreach(d: OutreachDeps): { transport: EmailTransport; ex
     dataDir: d.dataDir,
     // Used only for an account a person has logged in to by hand and switched to the browser (S5-3).
     browserPostTransport: browserPostTransport(d.dataDir, playwrightDriver(playwrightPageOpener(d.dataDir, d.env))),
-    // Approved code goes to a local bare repo unless GIT_CONNECTOR=gh is set by hand (S7-6).
+    // Approved code goes to a local bare repo unless `gh` is chosen on the Settings screen (or GIT_CONNECTOR=gh is set) (S7-6).
     ...(d.templatesRoot ? { templatesRoot: d.templatesRoot } : {}),
-    gitConnector: selectGitConnector(d.env.GIT_CONNECTOR, path.join(d.dataDir, 'git-remotes')),
+    gitConnector: new SwitchableGit(d.pool, d.workspaceId, d.env.GIT_CONNECTOR, path.join(d.dataDir, 'git-remotes')),
     // The stand-in for Vercel: builds in a copy and serves on 127.0.0.1 only (S7-8).
     deployer: new LocalDeployer(path.join(d.dataDir, 'git-remotes'), path.join(d.dataDir, 'deploys')),
     bus: d.bus,

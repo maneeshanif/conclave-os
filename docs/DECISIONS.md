@@ -1118,3 +1118,7 @@ See SPEC 19. Numbers 1 and 3 block slice 0: which CLIs on which account, and whe
 ## 2026-11-20 (the first full-suite run since slice 6)
 
 - 1839 of 1863 passed at first; 17 failed in 5 files, all fixed: agent probes now cascade when their agent is deleted (migration 0099; the test that clears agents hit the foreign key); the companies tests had a sign-in user who was not a member, so since S9-3 was a viewer (the test now makes that user the owner); the os MCP tool list gained `recall` in slice 8; `/api/office/door` is admin only like the other editor routes. The approval-gate and backup failures were timeouts from a loaded machine and pass alone.
+
+## 2026-11-20 (Settings: connectors switch with no restart)
+
+- `workspace_settings.connectors` (jsonb, names only) holds which code host (`local`, `gh`) and meetings connector (`local`, `livekit`) is used. `SwitchableGit` and `SwitchableMeeting` read it at every call, falling back to the environment variable, then `local`. `PUT /api/config/connectors` (owner only, audit-logged) refuses unknown names and anything but names. Choosing `gh` or `livekit` does not make them work: they still need the sign-ins and keys in docs/NEEDS-YOU.md, and until then they refuse with their own message.

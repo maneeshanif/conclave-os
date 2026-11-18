@@ -133,3 +133,27 @@ describe('spend corrections (Settings, A5)', () => {
     expect((await call('POST', '/api/config/agents/nobody/spend', { usd: 3, reason: 'who' })).status).toBe(404);
   });
 });
+
+describe('PUT /api/config/connectors (switch with no restart)', () => {
+  it('switches the code host and the meetings connector, is used at once, keeps only names, and refuses an unknown one', async () => {
+    const before = (await config()) as unknown as { connectors: { git: string; meeting: string; options: Record<string, string[]> } };
+    expect(before.connectors.options).toEqual({ git: ['local', 'gh'], meeting: ['local', 'livekit'] });
+    const ok = await call('PUT', '/api/config/connectors', { meeting: 'livekit' });
+    expect(ok.status).toBe(200);
+    expect(((await config()) as unknown as { connectors: { meeting: string; git: string } }).connectors).toMatchObject({ meeting: 'livekit', git: 'local' });
+    // The connector in use is read each time: the livekit stand-in refuses with its own message, so the switch took effect.
+    const { SwitchableMeeting } = await import('../src/connectors/choice');
+    await expect(new SwitchableMeeting(sys.app, ws(), undefined).createRoom({ meetingId: 'm1', title: 't' })).rejects.toThrow(/LiveKit is not set up/);
+    expect((await call('PUT', '/api/config/connectors', { meeting: 'local' })).status).toBe(200);
+    await expect(new SwitchableMeeting(sys.app, ws(), undefined).createRoom({ meetingId: 'm1', title: 't' })).resolves.toEqual({ room: 'local-m1' });
+    const bad = await call('PUT', '/api/config/connectors', { git: 'bitbucket' });
+    expect(bad.status).toBe(400);
+    expect(((await bad.json()) as { error: string }).error).toMatch(/local, gh/);
+    expect((await call('PUT', '/api/config/connectors', {})).status).toBe(400);
+    expect((await call('PUT', '/api/config/connectors', { git: 'local', key: 'sk-secret' })).status).toBe(400); // nothing but names
+    const kept = (await sql('select connectors from workspace_settings')).rows[0].connectors as Record<string, string>;
+    expect(Object.values(kept).every((v) => ['local', 'gh', 'livekit'].includes(v))).toBe(true);
+    const logged = (await sql("select data from audit_log where action = 'config.connectors'")).rows;
+    expect(logged.length).toBe(2);
+  });
+});

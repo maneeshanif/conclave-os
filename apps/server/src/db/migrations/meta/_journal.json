@@ -701,6 +701,13 @@
       "when": 1795043267518,
       "tag": "0099_careless_red_wolf",
       "breakpoints": true
+    },
+    {
+      "idx": 100,
+      "version": "7",
+      "when": 1795043748245,
+      "tag": "0100_overjoyed_scarlet_spider",
+      "breakpoints": true
     }
   ]
 }

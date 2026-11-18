@@ -2,14 +2,15 @@ import { Hono } from 'hono';
 import type { Pool } from 'pg';
 import { z } from 'zod';
 import type { AppEnv } from '../app';
-import { closeMeeting, MeetingStateError, openMeeting, selectMeetingConnector, type MeetingConnector } from '../meetings/connector';
+import { SwitchableMeeting } from '../connectors/choice';
+import { closeMeeting, MeetingStateError, openMeeting, type MeetingConnector } from '../meetings/connector';
 
 const New = z.object({ title: z.string().trim().min(1).max(200), startsAt: z.iso.datetime(), dealId: z.uuid().optional() }).strict();
 
 /** Client meetings (S10-3, S10-7): the list, making one, and opening and closing its room. Guest links are made by an approved invite, never here. */
 export function meetingRoutes(deps: { workspaceId: string; pool: Pool; connector?: MeetingConnector }) {
   const r = new Hono<AppEnv>();
-  const connector = deps.connector ?? selectMeetingConnector(process.env.MEETING_CONNECTOR);
+  const connector = deps.connector ?? new SwitchableMeeting(deps.pool, deps.workspaceId, process.env.MEETING_CONNECTOR);
 
   r.get('/', async (c) => {
     const rows = await c.get('tx').client.query<{ id: string; title: string; starts_at: Date; status: string; room: string | null; deal_id: string | null; invites: number }>(

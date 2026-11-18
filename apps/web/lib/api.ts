@@ -254,7 +254,7 @@ export interface ConfigView {
   taskWatchdog: boolean;
   agents: { key: string; name: string; department: string | null; status: string; autonomy: number; selfWriting: boolean; runtime: string }[];
   delegate: { registered: boolean; active: boolean; revoked: boolean; fingerprint: string | null; mandate: Record<string, unknown>; handDecisions: Record<string, number>; handDecisionsNeeded: number };
-  connectors: { git: string; meeting: string; claudeAgentKey: string; httpWorkers: number };
+  connectors: { git: string; meeting: string; options: { git: string[]; meeting: string[] }; claudeAgentKey: string; httpWorkers: number };
 }
 
 export interface SendSettings {
@@ -518,6 +518,7 @@ export const api = {
   sendSettings: () => call<SendSettings>('/api/settings'),
   toolCalls: async () => (await call<{ calls: ToolCall[] }>('/api/config/tool-calls?limit=30')).calls,
   putPolicy: (p: { level?: 'H0' | 'H1'; rosterCap?: number; trialBudgetCapUsd?: number }) => call('/api/talent/policy', { method: 'PUT', body: JSON.stringify(p) }),
+  putConnectors: (p: { git?: string; meeting?: string }) => call('/api/config/connectors', { method: 'PUT', body: JSON.stringify(p) }),
   postSpend: (key: string, p: { usd: number; reason: string }) => call(`/api/config/agents/${encodeURIComponent(key)}/spend`, { method: 'POST', body: JSON.stringify(p) }),
   putConfigAgent: (key: string, p: { selfWriting?: boolean; autonomy?: number }) => call(`/api/config/agents/${encodeURIComponent(key)}`, { method: 'PUT', body: JSON.stringify(p) }),
   putTaskWatchdog: (on: boolean) => call('/api/config/task-watchdog', { method: 'PUT', body: JSON.stringify({ on }) }),

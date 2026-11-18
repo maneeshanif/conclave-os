@@ -4,6 +4,7 @@ import type { Pool } from 'pg';
 import { z } from 'zod';
 import type { AppEnv } from '../app';
 import { createDelegate, getDelegate, HAND_DECISIONS_NEEDED, revokeDelegate, setDelegateActive, setMandateRule } from '../approvals/delegate';
+import { CHOICES, chosen, isChoice } from '../connectors/choice';
 import { withWorkspace } from '../db/tenant';
 import { readHiring, rosterRoom } from '../talent/hiring';
 
@@ -14,6 +15,7 @@ import { readHiring, rosterRoom } from '../talent/hiring';
  */
 const Agent = z.object({ selfWriting: z.boolean().optional(), autonomy: z.number().int().min(0).max(3).optional() }).strict().refine((v) => Object.keys(v).length > 0, { message: 'Nothing to change.' });
 const Spend = z.object({ usd: z.number().min(-1000).max(1000).refine((n) => n !== 0, { message: 'A correction of zero changes nothing.' }), reason: z.string().trim().min(3).max(300) }).strict();
+const Connectors = z.object({ git: z.string().max(20).optional(), meeting: z.string().max(20).optional() }).strict().refine((o) => o.git !== undefined || o.meeting !== undefined, { message: 'Nothing to change.' });
 const Watchdog = z.object({ on: z.boolean() }).strict();
 const Channel = z.object({ channel: z.enum(['stable', 'beta', 'nightly']) }).strict();
 const Hours = z.object({ hours: z.number().int().min(1).max(168) }).strict();
@@ -43,10 +45,11 @@ export function configRoutes(deps: { workspaceId: string; pool: Pool; dataDir?: 
       taskWatchdog: st?.task_watchdog ?? false,
       agents: agents.map((a) => ({ key: a.key, name: a.name, department: a.department, status: a.status, autonomy: a.autonomy, selfWriting: a.self_writing, runtime: a.runtime })),
       delegate: { registered: Boolean(d), active: d?.active ?? false, revoked: Boolean(d?.revokedAt), fingerprint: d?.fingerprint ?? null, mandate: d?.mandate ?? {}, handDecisions: hand, handDecisionsNeeded: HAND_DECISIONS_NEEDED },
-      // Chosen when the server starts (environment), shown by name only. Changing one takes a restart.
+      // Which connector is in use is a setting (PUT /connectors, no restart); keys are shown as set or not set, never their value.
       connectors: {
-        git: process.env.GIT_CONNECTOR || 'local',
-        meeting: process.env.MEETING_CONNECTOR || 'local',
+        git: await chosen(deps.pool, ws, 'git', process.env.GIT_CONNECTOR),
+        meeting: await chosen(deps.pool, ws, 'meeting', process.env.MEETING_CONNECTOR),
+        options: CHOICES,
         claudeAgentKey: process.env.CLAUDE_AGENT_API_KEY ? 'set' : 'not set',
         httpWorkers: (() => {
           try {
@@ -82,6 +85,18 @@ export function configRoutes(deps: { workspaceId: string; pool: Pool; dataDir?: 
     await tx.query("insert into spend_adjustments (workspace_id, agent_id, usd, reason, created_by) values (current_setting('app.workspace_id')::uuid, $1, $2, $3, 'founder')", [a.id, parsed.data.usd, parsed.data.reason]);
     await tx.query("insert into audit_log (workspace_id, actor, action, subject, data) values (current_setting('app.workspace_id')::uuid, 'founder', 'config.spend_adjustment', $1, $2)", [c.req.param('key'), JSON.stringify(parsed.data)]);
     return c.json({ ok: true }, 201);
+  });
+
+  // Switch a connector from the screen (no restart). Only names that exist; the sign-ins and keys they need are still yours to add.
+  r.put('/connectors', async (c) => {
+    const parsed = Connectors.safeParse(await c.req.json().catch(() => null));
+    if (!parsed.success) return c.json({ error: 'Send { git } or { meeting } with a known name.' }, 400);
+    for (const [kind, name] of Object.entries(parsed.data)) if (!isChoice(kind, name as string)) return c.json({ error: `There is no ${kind} connector called "${name as string}". Use one of: ${CHOICES[kind as 'git' | 'meeting'].join(', ')}.` }, 400);
+    const tx = c.get('tx').client;
+    await tx.query('insert into workspace_settings (workspace_id) values ($1) on conflict (workspace_id) do nothing', [ws]);
+    await tx.query("update workspace_settings set connectors = connectors || $1::jsonb, updated_at = now()", [JSON.stringify(parsed.data)]);
+    await tx.query("insert into audit_log (workspace_id, actor, action, subject, data) values (current_setting('app.workspace_id')::uuid, 'founder', 'config.connectors', 'connectors', $1)", [JSON.stringify(parsed.data)]);
+    return c.json({ ok: true });
   });
 
   r.put('/task-watchdog', async (c) => {

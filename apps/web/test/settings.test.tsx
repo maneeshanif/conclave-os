@@ -17,7 +17,7 @@ const cfg = (over: Partial<ConfigView> = {}): ConfigView => ({
     { key: 'kofi', name: 'Kofi', department: 'engineering', status: 'active', autonomy: 0, selfWriting: true, runtime: 'codex' },
   ],
   delegate: { registered: false, active: false, revoked: false, fingerprint: null, mandate: {}, handDecisions: {}, handDecisionsNeeded: 20 },
-  connectors: { git: 'local', meeting: 'local', claudeAgentKey: 'not set', httpWorkers: 0 },
+  connectors: { git: 'local', meeting: 'local', options: { git: ['local', 'gh'], meeting: ['local', 'livekit'] }, claudeAgentKey: 'not set', httpWorkers: 0 },
   ...over,
 });
 const sends: SendSettings = { killSwitch: false, windowHours: 5, windowCap: 30, emailDailyCap: 100, sentInWindow: 4, sentToday: 9 };
@@ -30,6 +30,7 @@ const client = (c: ConfigView | Error = cfg(), over: Partial<SettingsClient> = {
     putPolicy: vi.fn(async () => ({})),
     putAgent: vi.fn(async () => ({})),
     postSpend: vi.fn(async () => ({})),
+    putConnectors: vi.fn(async () => ({})),
     putGuestHours: vi.fn(async () => ({})),
     putReleaseChannel: vi.fn(async () => ({})),
     putTaskWatchdog: vi.fn(async () => ({})),
@@ -48,7 +49,7 @@ describe('the Settings panel', () => {
     expect(within(screen.getByLabelText('Agents')).getAllByRole('row')).toHaveLength(3);
     expect(screen.getByLabelText('Delegate').textContent).toMatch(/No delegate yet/);
     expect(screen.getByLabelText('Sending').textContent).toMatch(/4 sent in the last 5 hours \(limit 30\); 9 today \(limit 100\)/);
-    expect(screen.getByLabelText('Connectors').textContent).toMatch(/Code host: local/);
+    expect((screen.getByLabelText('Code host') as HTMLSelectElement).value).toBe('local');
     expect(screen.getByLabelText('Connectors').textContent).toMatch(/Claude Agent key: not set/);
     expect(screen.getByLabelText('Tool calls').textContent).toMatch(/wren · send_email \(unknown\) · refused: no such tool/);
   });
@@ -152,5 +153,16 @@ describe('the Settings panel', () => {
     fireEvent.change(within(form).getByLabelText('Why'), { target: { value: 'a run was counted twice' } });
     fireEvent.click(within(form).getByRole('button', { name: 'Correct' }));
     await waitFor(() => expect(c.postSpend).toHaveBeenCalledWith(first, { usd: -2.5, reason: 'a run was counted twice' }));
+  });
+
+  it('switches a connector from a menu, with no restart, and shows only the names that exist', async () => {
+    const c = client();
+    render(<SettingsView client={c} />);
+    const host = (await screen.findByLabelText('Code host')) as HTMLSelectElement;
+    expect([...host.options].map((o) => o.value)).toEqual(['local', 'gh']);
+    fireEvent.change(host, { target: { value: 'gh' } });
+    await waitFor(() => expect(c.putConnectors).toHaveBeenCalledWith({ git: 'gh' }));
+    fireEvent.change(screen.getByLabelText('Meeting connector'), { target: { value: 'livekit' } });
+    await waitFor(() => expect(c.putConnectors).toHaveBeenCalledWith({ meeting: 'livekit' }));
   });
 });

@@ -11,6 +11,8 @@ export interface SettingsClient {
   putPolicy(p: { level?: 'H0' | 'H1'; rosterCap?: number; trialBudgetCapUsd?: number }): Promise<unknown>;
   putAgent(key: string, p: { selfWriting?: boolean; autonomy?: number }): Promise<unknown>;
   /** A correction to what an agent has spent this month (A5): adds or takes off an amount, with a reason. Runs are never edited. */
+  /** Switches which connector is used (no restart). Names only. */
+  putConnectors(p: { git?: string; meeting?: string }): Promise<unknown>;
   postSpend(key: string, p: { usd: number; reason: string }): Promise<unknown>;
   putGuestHours(hours: number): Promise<unknown>;
   putReleaseChannel(channel: 'stable' | 'beta' | 'nightly'): Promise<unknown>;
@@ -28,6 +30,7 @@ const real: SettingsClient = {
   putPolicy: api.putPolicy,
   putAgent: api.putConfigAgent,
   postSpend: api.postSpend,
+  putConnectors: api.putConnectors,
   putGuestHours: api.putGuestHours,
   putReleaseChannel: api.putReleaseChannel,
   putTaskWatchdog: api.putTaskWatchdog,
@@ -286,10 +289,32 @@ export function SettingsView({ client = real }: { client?: SettingsClient }) {
 
       <section aria-label="Connectors">
         <h3 className="font-semibold">Connectors</h3>
-        <p className="text-slate-600">Chosen when the server starts, so changing one takes a restart. Keys are never shown here.</p>
+        <p className="text-slate-600">Switch which one is used here, with no restart. Sign-ins and keys are yours to add and are never shown.</p>
         <ul>
-          <li>Code host: {cfg.connectors.git}</li>
-          <li>Meetings: {cfg.connectors.meeting}</li>
+          <li>
+            <label>
+              Code host{' '}
+              <select aria-label="Code host" className={field} value={cfg.connectors.git} onChange={(e) => void change('Code host', () => client.putConnectors({ git: e.target.value }))}>
+                {cfg.connectors.options.git.map((n) => (
+                  <option key={n} value={n}>
+                    {n}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </li>
+          <li>
+            <label>
+              Meeting rooms{' '}
+              <select aria-label="Meeting connector" className={field} value={cfg.connectors.meeting} onChange={(e) => void change('Meeting connector', () => client.putConnectors({ meeting: e.target.value }))}>
+                {cfg.connectors.options.meeting.map((n) => (
+                  <option key={n} value={n}>
+                    {n}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </li>
           <li>Claude Agent key: {cfg.connectors.claudeAgentKey}</li>
           <li>http workers: {cfg.connectors.httpWorkers}</li>
         </ul>
