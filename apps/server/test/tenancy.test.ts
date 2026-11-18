@@ -29,6 +29,7 @@ const TABLES = [
   'code_pull_requests',
   'code_worktrees',
   'contacts',
+  'crm_conflicts',
   'deal_stage_events',
   'deals',
   'decisions',

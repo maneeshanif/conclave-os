@@ -603,6 +603,20 @@
       "when": 1795032807597,
       "tag": "0085_channel_messages_rls",
       "breakpoints": true
+    },
+    {
+      "idx": 86,
+      "version": "7",
+      "when": 1795033537008,
+      "tag": "0086_crm_sync",
+      "breakpoints": true
+    },
+    {
+      "idx": 87,
+      "version": "7",
+      "when": 1795033539957,
+      "tag": "0087_crm_sync_rls",
+      "breakpoints": true
     }
   ]
 }

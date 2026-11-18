@@ -491,10 +491,13 @@ export const accounts = pgTable(
     ownerAgentId: uuid('owner_agent_id'),
     health: text('health'),
     notes: text('notes'),
+    // The id this account has in an outside CRM, set by the sync (S10-8). The tables stay the record.
+    externalRef: text('external_ref'),
     createdAt: createdAt(),
   },
   (t) => [
     unique('accounts_ws_id_uq').on(t.workspaceId, t.id),
+    uniqueIndex('accounts_ws_external_ref_uq').on(t.workspaceId, t.externalRef).where(sql`${t.externalRef} is not null`),
     foreignKey({ name: 'accounts_owner_fk', columns: [t.workspaceId, t.ownerAgentId], foreignColumns: [agents.workspaceId, agents.id] }),
     check('accounts_stage_ck', sql`${t.stage} in ('prospect','client','past_client','lost')`),
   ],
@@ -1531,5 +1534,26 @@ export const channelMessages = pgTable(
     unique('channel_messages_ws_channel_ext_uq').on(t.workspaceId, t.channel, t.externalId),
     check('channel_messages_channel_ck', sql`${t.channel} in ('slack','jira','helpdesk')`),
     check('channel_messages_status_ck', sql`${t.status} in ('new','replied')`),
+  ],
+);
+
+/** Where an outside CRM disagrees with the tables (S10-8): the tables were kept; a person settles it. One row per disagreement. */
+export const crmConflicts = pgTable(
+  'crm_conflicts',
+  {
+    id: id(),
+    workspaceId: workspaceId(),
+    accountId: uuid('account_id').notNull(),
+    field: text('field').notNull(),
+    localValue: text('local_value').notNull(),
+    externalValue: text('external_value').notNull(),
+    status: text('status').notNull().default('open'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    unique('crm_conflicts_ws_id_uq').on(t.workspaceId, t.id),
+    unique('crm_conflicts_ws_account_field_value_uq').on(t.workspaceId, t.accountId, t.field, t.externalValue),
+    foreignKey({ name: 'crm_conflicts_account_fk', columns: [t.workspaceId, t.accountId], foreignColumns: [accounts.workspaceId, accounts.id] }),
+    check('crm_conflicts_status_ck', sql`${t.status} in ('open','resolved')`),
   ],
 );
