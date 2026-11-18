@@ -1236,6 +1236,7 @@ export const codePullRequests = pgTable(
     approvedBy: text('approved_by').notNull(),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     mergedAt: timestamp('merged_at', { withTimezone: true }),
+    mergedBy: text('merged_by'),
   },
   (t) => [
     unique('code_pull_requests_ws_id_uq').on(t.workspaceId, t.id),

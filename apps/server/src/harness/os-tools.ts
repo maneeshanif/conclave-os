@@ -37,6 +37,10 @@ export interface OsStore {
   addBriefNote(scope: RunScope, text: string): Promise<{ day: string }>;
   /** Queues a pull request for approval (autonomy 2). The server runs the project's tests in the task's worktree first. Never pushes. */
   proposePr(scope: RunScope, p: { title: string; summary: string }): Promise<{ approvalId: string; existed: boolean }>;
+  /** Queues the making of a new repository for approval (autonomy 2). Never creates it. */
+  proposeRepo(scope: RunScope, p: { key: string; description: string }): Promise<{ approvalId: string; existed: boolean }>;
+  /** Queues the merge of an open pull request for approval (autonomy 2). Never merges. */
+  proposeMerge(scope: RunScope, p: { project: string; number: number }): Promise<{ approvalId: string; existed: boolean }>;
   /** Queues an email for approval. Never sends. Returns the approval id and whether it already existed. */
   proposeEmail(scope: RunScope, p: ProposedEmail): Promise<{ approvalId: string; existed: boolean }>;
   /** Opens a Boardroom discussion (autonomy 1). Returns its id. */
@@ -473,6 +477,24 @@ export const osTools = {
         : `Queued for approval as ${r.approvalId}. Nothing has been pushed. Do not retry; finish your task.`;
     },
   },
+  propose_repo: {
+    minAutonomy: 2,
+    description: 'Propose a new git repository (and project) for the founder to approve. It does NOT create it. The key is lower-case letters, digits and dashes.',
+    input: z.object({ key: z.string().min(1).max(40), description: z.string().min(1).max(500) }).strict(),
+    async run(store: OsStore, scope: RunScope, args: { key: string; description: string }) {
+      const r = await store.proposeRepo(scope, args);
+      return r.existed ? `Already queued as ${r.approvalId}. Do not propose it again.` : `Queued for approval as ${r.approvalId}. Nothing has been created. Do not retry; finish your task.`;
+    },
+  },
+  propose_merge: {
+    minAutonomy: 2,
+    description: 'Propose merging an open pull request (by project and number) for the founder to approve. It does NOT merge. Refused unless its tests passed.',
+    input: z.object({ project: z.string().min(1).max(40), number: z.number().int().min(1) }).strict(),
+    async run(store: OsStore, scope: RunScope, args: { project: string; number: number }) {
+      const r = await store.proposeMerge(scope, args);
+      return r.existed ? `Already queued as ${r.approvalId}. Do not propose it again.` : `Queued for approval as ${r.approvalId}. Nothing has been merged. Do not retry; finish your task.`;
+    },
+  },
   propose_email: {
     minAutonomy: 2,
     description:
@@ -512,6 +534,12 @@ export class MemoryOsStore implements OsStore {
   }
   async getLead(): Promise<LeadView | null> {
     return null;
+  }
+  async proposeRepo(): Promise<{ approvalId: string; existed: boolean }> {
+    throw new ToolError('Proposals need the database store.');
+  }
+  async proposeMerge(): Promise<{ approvalId: string; existed: boolean }> {
+    throw new ToolError('Proposals need the database store.');
   }
   async proposePr(): Promise<{ approvalId: string; existed: boolean }> {
     throw new ToolError('Proposals need the database store.');

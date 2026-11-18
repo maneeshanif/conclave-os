@@ -9,6 +9,7 @@ import { checkHook } from '../hooks';
 import { checkBrief, estimateCredits, type Shot } from '../video/briefs';
 import { normalizeUrl } from '../signals';
 import { branchFacts, PrError, runTests } from '../projects/pr';
+import { PROJECT_KEY } from '../projects/projects';
 import { labelUntrusted } from './trust';
 import { checkEvidence } from '../boardroom/evidence';
 import { checkDm, dmEligible, dmSuppressed, isDmChannel, normalizeHandle } from '../dms';
@@ -270,6 +271,51 @@ ${tests.output}`);
       );
       if (ins.rows[0]) return { approvalId: ins.rows[0].id, existed: false };
       return { approvalId: (await c.query<{ id: string }>("select id from approvals where kind = 'pr.open' and dedupe_key = $1", [dedupe])).rows[0]!.id, existed: true };
+    });
+    if (!out.existed) this.onApproval(scope.workspaceId, out.approvalId);
+    return out;
+  }
+
+  /** A new repository for a client (S7-7). Refused for a bad key or one that exists. Never creates it. */
+  async proposeRepo(scope: RunScope, p: { key: string; description: string }): Promise<{ approvalId: string; existed: boolean }> {
+    if (!PROJECT_KEY.test(p.key)) throw new ToolError('The key must be lower-case letters, digits and dashes, up to 40 characters.');
+    const claims = checkClaims(p.description, await this.companyText(scope.workspaceId));
+    if (!claims.ok) throw new ToolError(`Refused: ${claims.reasons.join('; ')}. Rewrite without it and propose again.`);
+    const out = await withWorkspace(this.pool, scope.workspaceId, async ({ client: c }) => {
+      if ((await c.query('select 1 from code_projects where key = $1', [p.key])).rows[0]) throw new ToolError(`A project called "${p.key}" already exists.`);
+      const dedupe = `repo:${p.key}`;
+      const ins = await c.query<{ id: string }>(
+        "insert into approvals (workspace_id, kind, dedupe_key, agent_id, run_id, task_id, payload) values ($1, 'repo.create', $2, $3, $4, $5, $6) on conflict (workspace_id, kind, dedupe_key) do nothing returning id",
+        [scope.workspaceId, dedupe, scope.agentId, scope.runId, scope.taskId ?? null, JSON.stringify({ key: p.key, description: p.description })],
+      );
+      if (ins.rows[0]) return { approvalId: ins.rows[0].id, existed: false };
+      return { approvalId: (await c.query<{ id: string }>("select id from approvals where kind = 'repo.create' and dedupe_key = $1", [dedupe])).rows[0]!.id, existed: true };
+    });
+    if (!out.existed) this.onApproval(scope.workspaceId, out.approvalId);
+    return out;
+  }
+
+  /** Merging an open pull request whose tests passed (S7-7). The tests are those the server ran when it was proposed. Never merges. */
+  async proposeMerge(scope: RunScope, p: { project: string; number: number }): Promise<{ approvalId: string; existed: boolean }> {
+    const out = await withWorkspace(this.pool, scope.workspaceId, async ({ client: c }) => {
+      const r = (
+        await c.query<{ status: string; title: string; branch: string; base: string; head: string; payload: { tests?: unknown; diffStat?: string } }>(
+          'select r.status, r.title, r.branch, r.base, r.head, a.payload from code_pull_requests r join approvals a on a.id = r.approval_id and a.workspace_id = r.workspace_id where r.project_key = $1 and r.number = $2',
+          [p.project, p.number],
+        )
+      ).rows[0];
+      if (!r) throw new ToolError(`There is no pull request #${p.number} on "${p.project}".`);
+      if (r.status !== 'open') throw new ToolError(`That pull request is ${r.status}, not open.`);
+      const tests = r.payload.tests as { ok?: boolean } | undefined;
+      if (!tests || tests.ok !== true) throw new ToolError('The tests have not passed for that pull request, so it cannot be merged.');
+      const dedupe = `merge:${p.project}:${p.number}`;
+      const payload = { projectKey: p.project, number: p.number, title: r.title, branch: r.branch, base: r.base, head: r.head, tests, diffStat: r.payload.diffStat ?? '' };
+      const ins = await c.query<{ id: string }>(
+        "insert into approvals (workspace_id, kind, dedupe_key, agent_id, run_id, task_id, payload) values ($1, 'pr.merge', $2, $3, $4, $5, $6) on conflict (workspace_id, kind, dedupe_key) do nothing returning id",
+        [scope.workspaceId, dedupe, scope.agentId, scope.runId, scope.taskId ?? null, JSON.stringify(payload)],
+      );
+      if (ins.rows[0]) return { approvalId: ins.rows[0].id, existed: false };
+      return { approvalId: (await c.query<{ id: string }>("select id from approvals where kind = 'pr.merge' and dedupe_key = $1", [dedupe])).rows[0]!.id, existed: true };
     });
     if (!out.existed) this.onApproval(scope.workspaceId, out.approvalId);
     return out;
