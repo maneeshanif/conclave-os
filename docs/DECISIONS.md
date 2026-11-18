@@ -1107,3 +1107,10 @@ Newest first. One entry per decision: what, why, and what it replaced.
 ## Still open
 
 See SPEC 19. Numbers 1 and 3 block slice 0: which CLIs on which account, and where it runs. Number 2 (which local model) blocks slice 4. Number 5 (footer address and sender) blocks the first send.
+
+## 2026-11-20 (jsm-hq gaps: Boards, drag-to-pan, demo mode, spend control)
+
+- Boards: `GET /api/boards` (read only) gives one board per goal and one for tasks with no goal; the panel has a tab per goal and a column per status. Opened from the ▦ button in the bar.
+- Drag-to-pan: a press that moves 8 pixels or more is a drag; the camera lets go of you, moves with the pointer and stays inside the map; a click is now acted on when the press is let go (so a drag is never also a click), and walking or clicking a tile brings the view back to you.
+- Demo mode: `DemoSim` (pure, seeded) acts out a day by changing only the states drawn on this screen (working, discussion, handoff, waiting, blocked, idle) at 1x, 2x or 4x. It writes nothing and asks the server nothing; the live team load is ignored while it runs, and turning it off reloads what is really happening. It does not move people around the map.
+- Settings has a Spend correction form (agent, amount, reason) over the existing A5 API.

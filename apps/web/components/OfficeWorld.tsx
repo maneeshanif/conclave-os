@@ -24,6 +24,7 @@ import { AnnouncementBanner, Megaphone } from './Megaphone';
 import { CompanySwitcher } from './CompanySwitcher';
 import { OfficeBar, WelcomeCard, ZonePill, type Availability, type Person } from './OfficeBar';
 import { WHERE, type OfficeClient } from './OfficeView';
+import { DemoSim, stepMs, type Speed } from '../office/demo';
 
 /** Strings of # and . from the server back into the grid of booleans the walking code uses. */
 export const toMap = (facts: OfficeFacts): OfficeMap => ({ ...facts.map, walls: facts.map.walls.map((row) => [...row].map((c) => c === '#')) });
@@ -97,6 +98,25 @@ export function OfficeWorld({ client, onOpen, onPanel, onOpenList, onFail }: { c
   };
   const [following, setFollowing] = useState<string | null>(null);
   const followRef = useRef<(id: string | null) => void>(() => undefined);
+  // Demo mode: the office acts out a day on this screen only. Nothing is written or asked of the server while it runs.
+  const [demo, setDemo] = useState<{ on: boolean; speed: Speed }>({ on: false, speed: 1 });
+  const demoOn = useRef(false);
+  const reloadTeam = useRef<() => void>(() => undefined);
+  useEffect(() => {
+    demoOn.current = demo.on;
+    if (!demo.on) {
+      reloadTeam.current(); // back to what is really happening
+      return;
+    }
+    const sim = new DemoSim([...who.current.keys()]);
+    const tick = () => {
+      sim.tick();
+      states.current = sim.states();
+    };
+    tick();
+    const timer = setInterval(tick, stepMs(demo.speed));
+    return () => clearInterval(timer);
+  }, [demo.on, demo.speed]);
   const sendMega = useRef<(kind: 'announce' | 'pin', text: string) => void>(() => undefined);
   const forYouBefore = useRef<number | null>(null);
   const notes = useRef<Note[]>([]);
@@ -190,12 +210,14 @@ export function OfficeWorld({ client, onOpen, onPanel, onOpenList, onFail }: { c
         // The cards (state, how long, task, what waits for you) come from the server's own reading, the same one the world's placement uses.
         const loadTeam = () =>
           client.team?.().then((team) => {
+            if (demoOn.current) return; // the demo is drawing the people for now
             states.current = new Map(team.map((m) => [m.id, m.state] as [string, string]));
             const waiting = team.reduce((n, m) => n + (m.forYou ?? 0), 0);
             if (needsYouRose(forYouBefore.current, waiting)) hear('needs-you');
             forYouBefore.current = waiting;
             setPeople(team.map((t) => ({ id: t.id, name: t.name, where: WHERE[who.current.get(t.id)?.place ?? 'lounge'] ?? '', state: t.state, since: t.since, task: t.task, forYou: t.forYou })));
           }).catch(() => undefined);
+        reloadTeam.current = () => void loadTeam();
         // The sticky notes on the plan wall come from the tasks, and are looked at again when a task changes.
         const loadNotes = () => void api.tasks().then((list) => (notes.current = notesFor(list))).catch(() => undefined);
         void loadNotes();
@@ -340,6 +362,8 @@ export function OfficeWorld({ client, onOpen, onPanel, onOpenList, onFail }: { c
           onOpenList={onOpenList}
           onSettings={() => onPanel('settings')}
           onBoards={() => onPanel('boards')}
+          demo={demo}
+          onDemo={setDemo}
           onEmote={(e) => {
             hear('emote');
             sendEmote.current(e);

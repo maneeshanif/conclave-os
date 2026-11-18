@@ -240,3 +240,23 @@ describe('the activity feed in the People panel (S6-14b3)', () => {
     expect(within(open(undefined)).queryByText(/activity/i)).toBeNull();
   });
 });
+
+describe('demo mode on the bar', () => {
+  const base = { people: [] as never[], availability: 'available' as const, onAvailability: () => undefined, onOpenAgent: () => undefined, onOverview: () => undefined };
+  it('has no demo button unless the page offers one, turns it on and off, and shows a speed button only while it runs', () => {
+    const { unmount } = render(<OfficeBar {...base} />);
+    expect(screen.queryByRole('button', { name: 'Demo' })).toBeNull();
+    unmount();
+    const change = vi.fn();
+    const { rerender } = render(<OfficeBar {...base} demo={{ on: false, speed: 1 }} onDemo={change} />);
+    expect(screen.queryByRole('button', { name: /^Speed/ })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Demo' }));
+    expect(change).toHaveBeenLastCalledWith({ on: true, speed: 1 });
+    rerender(<OfficeBar {...base} demo={{ on: true, speed: 2 }} onDemo={change} />);
+    expect(screen.getByRole('button', { name: 'Demo' }).getAttribute('aria-pressed')).toBe('true');
+    fireEvent.click(screen.getByRole('button', { name: 'Speed 2x' }));
+    expect(change).toHaveBeenLastCalledWith({ on: true, speed: 4 });
+    fireEvent.click(screen.getByRole('button', { name: 'Demo' }));
+    expect(change).toHaveBeenLastCalledWith({ on: false, speed: 2 });
+  });
+});
