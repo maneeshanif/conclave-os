@@ -11,6 +11,7 @@ const cfg = (over: Partial<ConfigView> = {}): ConfigView => ({
   hiring: { level: 'H0', rosterCap: 20, trialBudgetCapUsd: 5, active: 7 },
   guestLinkHours: 48,
   releaseChannel: 'stable',
+  taskWatchdog: false,
   agents: [
     { key: 'wren', name: 'Wren', department: 'outreach', status: 'active', autonomy: 1, selfWriting: false, runtime: 'claude-cli' },
     { key: 'kofi', name: 'Kofi', department: 'engineering', status: 'active', autonomy: 0, selfWriting: true, runtime: 'codex' },
@@ -30,6 +31,7 @@ const client = (c: ConfigView | Error = cfg(), over: Partial<SettingsClient> = {
     putAgent: vi.fn(async () => ({})),
     putGuestHours: vi.fn(async () => ({})),
     putReleaseChannel: vi.fn(async () => ({})),
+    putTaskWatchdog: vi.fn(async () => ({})),
     patchSends: vi.fn(async () => ({})),
     delegate: vi.fn(async () => ({})),
     putMandate: vi.fn(async () => ({})),
@@ -112,6 +114,13 @@ describe('the Settings panel', () => {
     unmount();
     render(<SettingsView client={client(new Error('down'))} />);
     expect(await screen.findByText(/cannot reach the server/i)).toBeTruthy();
+  });
+
+  it('switches the task watchdog on', async () => {
+    const c = client();
+    render(<SettingsView client={c} />);
+    fireEvent.click(await screen.findByLabelText('Task watchdog'));
+    await waitFor(() => expect(c.putTaskWatchdog).toHaveBeenCalledWith(true));
   });
 
   it('changes the release channel', async () => {

@@ -15,6 +15,10 @@ Newest first. One entry per decision: what, why, and what it replaced.
 - **One test file, `slice3-e2e.test.ts`, runs the three "Done when" checks** on the real run loop, reaper, pause table and eval gate, with a scripted model: (1) a run killed halfway (its process lost, heartbeat stopped) is failed by the reaper, its task goes back to todo still holding the session id, and the next run starts from that session and finishes; (2) a plan limit pauses the runtime for every agent on it while an agent on the other runtime keeps working, the queued tasks wait, the pause lifts only at the reset time and wakes exactly the agents with work, who then finish; (3) the unchanged skill scores at the baseline, and a change that makes the 20 sample drafts long and hyped fails the gate with all 20 leads named.
 - **Slice 3 is tagged `slice-3-done`.** Not done and recorded rather than hidden: the eval set is 20 made-up leads and its baseline is the reference drafter's (real leads and a real-agent drafter are in NEEDS-YOU); breakers cover the os tools only until connectors are live; the lite-mode canvas switch waits for slice 6.
 
+## 2026-11-20 (A7: the task watchdog)
+
+- `runWatchdog` (opt-in: `workspace_settings.task_watchdog`, a switch on the Settings screen, off by default) finds three wrong stops and puts the task back to todo with a note on it: in progress over two hours with no run alive, done with nothing from its agent on it (last 14 days, not system tasks), and waiting for an approval that is no longer pending. **Once per task**: a second wrong stop is left alone and one action item is raised for a person, so it cannot loop. It changes only a task's state. Not built: the schedule that calls it (it is a function for the run loop or a heartbeat to call).
+
 ## 2026-11-20 (A5 and A6: hand-off, spend corrections, release channels)
 
 - **Hand-off (P7):** a test now shows that after `hand_off_task`, or a person moving the task, the old run's complete, block, comment, ask and hand-off calls are all refused and nothing it says lands on the task (this was already enforced by `inTask`; it is now tested).

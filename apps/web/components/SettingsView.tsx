@@ -12,6 +12,7 @@ export interface SettingsClient {
   putAgent(key: string, p: { selfWriting?: boolean; autonomy?: number }): Promise<unknown>;
   putGuestHours(hours: number): Promise<unknown>;
   putReleaseChannel(channel: 'stable' | 'beta' | 'nightly'): Promise<unknown>;
+  putTaskWatchdog(on: boolean): Promise<unknown>;
   patchSends(p: Partial<Pick<SendSettings, 'windowHours' | 'windowCap' | 'emailDailyCap'>>): Promise<unknown>;
   delegate(op: 'register' | 'on' | 'off' | 'revoke'): Promise<unknown>;
   putMandate(rule: { kind: 'email.send'; minStep: number; maxStep: number }): Promise<unknown>;
@@ -26,6 +27,7 @@ const real: SettingsClient = {
   putAgent: api.putConfigAgent,
   putGuestHours: api.putGuestHours,
   putReleaseChannel: api.putReleaseChannel,
+  putTaskWatchdog: api.putTaskWatchdog,
   patchSends: api.patchSends,
   delegate: api.delegateOp,
   putMandate: api.putMandate,
@@ -224,6 +226,14 @@ export function SettingsView({ client = real }: { client?: SettingsClient }) {
             Save
           </Button>
         </div>
+      </section>
+
+      <section aria-label="Watchdog">
+        <h3 className="font-semibold">Task watchdog</h3>
+        <label className="flex items-center gap-2">
+          <input type="checkbox" aria-label="Task watchdog" checked={cfg.taskWatchdog} onChange={(e) => void change('Task watchdog', () => client.putTaskWatchdog(e.target.checked))} />
+          Put a wrongly stopped task back in line, once (stuck with no run, done with nothing to show, or waiting for an approval that is gone). Off by default.
+        </label>
       </section>
 
       <section aria-label="Updates">

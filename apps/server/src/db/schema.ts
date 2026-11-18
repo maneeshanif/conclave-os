@@ -1156,6 +1156,8 @@ export const workspaceSettings = pgTable('workspace_settings', {
   guestLinkHours: integer('guest_link_hours').notNull().default(48),
   // Which release channel upgrades come from: stable, beta or nightly (A6).
   releaseChannel: text('release_channel').notNull().default('stable'),
+  // Whether the task watchdog may put a wrongly stopped task back in line (A7). Off until a person switches it on.
+  taskWatchdog: boolean('task_watchdog').notNull().default(false),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 },
 (t) => [
