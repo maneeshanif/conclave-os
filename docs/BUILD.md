@@ -643,7 +643,7 @@ SPEC 18 row 8, SPEC 9 (learning loop and hiring), 6 (the delegate), 5 (templates
 - [x] **S8-7 Weekly scorecards.** Per agent: tasks done, checks passed, approvals accepted, edited or rejected, cost per accepted output, boundary attempts; a weak agent gets a suggestion. *Test:* counted from the tables.
 - [x] **S8-8 The Talent room.** A panel and room object for candidates, bake-offs and scorecards. *Test:* the list matches the tables; it opens from its object and a link.
 - [x] **S8-9 Gap check.** Weekly: two of three signals confirm a gap; choose hire, escalate, queue or decline. *Test:* one signal is not a gap.
-- [ ] **S8-10 The delegate.** A mandate (classes of approval it may clear) and a ledger; it clears one routine approval and refuses one outside its limit; every action is logged and can be undone where possible. *Test:* inside clears, outside refuses, ledger records both, kill switch stops it.
+- [x] **S8-10 The delegate.** A mandate (classes of approval it may clear) and a ledger; it clears one routine approval and refuses one outside its limit; every action is logged and can be undone where possible. *Test:* inside clears, outside refuses, ledger records both, kill switch stops it.
 - [ ] **S8-11 Research and improvement proposals; Founder Network.** An improvement proposal carries evidence, expected gain and an eval that must pass before it ships. *Test:* a proposal whose eval fails cannot be approved.
 - [ ] **S8-12 Slice 8 end to end,** full suite (two workers), tag `slice-8-done`.
 

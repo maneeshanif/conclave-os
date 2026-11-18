@@ -1339,3 +1339,41 @@ export const bakeoffs = pgTable(
   },
   (t) => [unique('bakeoffs_ws_id_uq').on(t.workspaceId, t.id), check('bakeoffs_status_ck', sql`${t.status} in ('scored','proposed')`)],
 );
+
+/** The delegate (S8-10): who may clear routine approvals in the founder's name. Only the public key is here; the private key is a file outside the repository. */
+export const delegates = pgTable(
+  'delegates',
+  {
+    id: id(),
+    workspaceId: workspaceId(),
+    publicKeyPem: text('public_key_pem').notNull(),
+    fingerprint: text('fingerprint').notNull(),
+    active: boolean('active').notNull().default(false),
+    revokedAt: timestamp('revoked_at', { withTimezone: true }),
+    mandate: jsonb('mandate').notNull().default(sql`'{}'::jsonb`),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [unique('delegates_ws_id_uq').on(t.workspaceId, t.id)],
+);
+
+/** What the delegate decided or refused, matched to the approval by id: who, why, and the signature (S8-10). */
+export const delegateLedger = pgTable(
+  'delegate_ledger',
+  {
+    id: id(),
+    workspaceId: workspaceId(),
+    approvalId: uuid('approval_id').notNull(),
+    delegateId: uuid('delegate_id'),
+    kind: text('kind').notNull(),
+    outcome: text('outcome').notNull(),
+    reason: text('reason'),
+    reasoning: text('reasoning').notNull().default(''),
+    signature: text('signature'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    unique('delegate_ledger_ws_id_uq').on(t.workspaceId, t.id),
+    foreignKey({ name: 'delegate_ledger_approval_fk', columns: [t.workspaceId, t.approvalId], foreignColumns: [approvals.workspaceId, approvals.id] }),
+    check('delegate_ledger_outcome_ck', sql`${t.outcome} in ('cleared','refused')`),
+  ],
+);

@@ -30,6 +30,8 @@ const TABLES = [
   'deal_stage_events',
   'deals',
   'decisions',
+  'delegate_ledger',
+  'delegates',
   'department_messages',
   'departments',
   'deployments',
