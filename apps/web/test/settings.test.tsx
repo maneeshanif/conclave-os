@@ -29,6 +29,7 @@ const client = (c: ConfigView | Error = cfg(), over: Partial<SettingsClient> = {
     toolCalls: vi.fn(async () => calls),
     putPolicy: vi.fn(async () => ({})),
     putAgent: vi.fn(async () => ({})),
+    postSpend: vi.fn(async () => ({})),
     putGuestHours: vi.fn(async () => ({})),
     putReleaseChannel: vi.fn(async () => ({})),
     putTaskWatchdog: vi.fn(async () => ({})),
@@ -135,5 +136,21 @@ describe('the Settings panel', () => {
     expect(PANEL_IDS as readonly string[]).toContain('settings');
     expect(panelHref('settings')).toBe('/?panel=settings');
     expect(parsePanel('?panel=settings')).toEqual({ id: 'settings' });
+  });
+
+  it('corrects the spend of an agent with an amount and a reason, and refuses an empty one before asking the server', async () => {
+    const c = client();
+    render(<SettingsView client={c} />);
+    const form = await screen.findByLabelText('Spend correction');
+    const agent = within(form).getByLabelText('Agent to correct') as HTMLSelectElement;
+    const first = agent.options[1]!.value;
+    fireEvent.click(within(form).getByRole('button', { name: 'Correct' }));
+    expect(c.postSpend).not.toHaveBeenCalled();
+    expect(await screen.findByText(/pick an agent/i)).toBeTruthy();
+    fireEvent.change(agent, { target: { value: first } });
+    fireEvent.change(within(form).getByLabelText(/Amount in dollars/), { target: { value: '-2.5' } });
+    fireEvent.change(within(form).getByLabelText('Why'), { target: { value: 'a run was counted twice' } });
+    fireEvent.click(within(form).getByRole('button', { name: 'Correct' }));
+    await waitFor(() => expect(c.postSpend).toHaveBeenCalledWith(first, { usd: -2.5, reason: 'a run was counted twice' }));
   });
 });

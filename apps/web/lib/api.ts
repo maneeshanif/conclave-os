@@ -518,6 +518,7 @@ export const api = {
   sendSettings: () => call<SendSettings>('/api/settings'),
   toolCalls: async () => (await call<{ calls: ToolCall[] }>('/api/config/tool-calls?limit=30')).calls,
   putPolicy: (p: { level?: 'H0' | 'H1'; rosterCap?: number; trialBudgetCapUsd?: number }) => call('/api/talent/policy', { method: 'PUT', body: JSON.stringify(p) }),
+  postSpend: (key: string, p: { usd: number; reason: string }) => call(`/api/config/agents/${encodeURIComponent(key)}/spend`, { method: 'POST', body: JSON.stringify(p) }),
   putConfigAgent: (key: string, p: { selfWriting?: boolean; autonomy?: number }) => call(`/api/config/agents/${encodeURIComponent(key)}`, { method: 'PUT', body: JSON.stringify(p) }),
   putTaskWatchdog: (on: boolean) => call('/api/config/task-watchdog', { method: 'PUT', body: JSON.stringify({ on }) }),
   putReleaseChannel: (channel: 'stable' | 'beta' | 'nightly') => call('/api/config/release-channel', { method: 'PUT', body: JSON.stringify({ channel }) }),

@@ -10,6 +10,8 @@ export interface SettingsClient {
   toolCalls(): Promise<ToolCall[]>;
   putPolicy(p: { level?: 'H0' | 'H1'; rosterCap?: number; trialBudgetCapUsd?: number }): Promise<unknown>;
   putAgent(key: string, p: { selfWriting?: boolean; autonomy?: number }): Promise<unknown>;
+  /** A correction to what an agent has spent this month (A5): adds or takes off an amount, with a reason. Runs are never edited. */
+  postSpend(key: string, p: { usd: number; reason: string }): Promise<unknown>;
   putGuestHours(hours: number): Promise<unknown>;
   putReleaseChannel(channel: 'stable' | 'beta' | 'nightly'): Promise<unknown>;
   putTaskWatchdog(on: boolean): Promise<unknown>;
@@ -25,6 +27,7 @@ const real: SettingsClient = {
   toolCalls: api.toolCalls,
   putPolicy: api.putPolicy,
   putAgent: api.putConfigAgent,
+  postSpend: api.postSpend,
   putGuestHours: api.putGuestHours,
   putReleaseChannel: api.putReleaseChannel,
   putTaskWatchdog: api.putTaskWatchdog,
@@ -69,6 +72,7 @@ export function SettingsView({ client = real }: { client?: SettingsClient }) {
   }, [load]);
 
   /** Runs one change, then looks again. A refusal shows the reason the server gave. */
+  const [fix, setFix] = useState({ key: '', usd: '', reason: '' });
   async function change(what: string, fn: () => Promise<unknown>) {
     try {
       await fn();
@@ -144,6 +148,37 @@ export function SettingsView({ client = real }: { client?: SettingsClient }) {
             ))}
           </tbody>
         </table>
+      </section>
+
+      <section aria-label="Spend correction">
+        <h3 className="font-semibold">Spend correction</h3>
+        <p className="text-xs text-slate-500">Add or take off an amount from what an agent has spent this month, with a reason. The runs are not changed, and the correction is kept in the audit log.</p>
+        <form
+          className="flex flex-wrap items-end gap-2"
+          onSubmit={(e) => {
+            e.preventDefault();
+            const usd = Number(fix.usd);
+            if (!fix.key || !Number.isFinite(usd) || usd === 0 || fix.reason.trim().length < 3) {
+              setNote('Spend correction: pick an agent, give an amount that is not zero, and say why.');
+              return;
+            }
+            void change('Spend correction', () => client.postSpend(fix.key, { usd, reason: fix.reason.trim() })).then(() => setFix({ key: fix.key, usd: '', reason: '' }));
+          }}
+        >
+          <select aria-label="Agent to correct" className={field} value={fix.key} onChange={(e) => setFix({ ...fix, key: e.target.value })}>
+            <option value="">Agent…</option>
+            {cfg.agents.map((a) => (
+              <option key={a.key} value={a.key}>
+                {a.name}
+              </option>
+            ))}
+          </select>
+          <input aria-label="Amount in dollars (negative takes off)" className={field} inputMode="decimal" placeholder="-2.50" value={fix.usd} onChange={(e) => setFix({ ...fix, usd: e.target.value })} />
+          <input aria-label="Why" className={field} placeholder="Why" value={fix.reason} onChange={(e) => setFix({ ...fix, reason: e.target.value })} />
+          <button type="submit" className="rounded border border-slate-400 px-2 py-1">
+            Correct
+          </button>
+        </form>
       </section>
 
       <section aria-label="Delegate">
