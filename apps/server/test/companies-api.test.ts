@@ -37,6 +37,8 @@ const auth = {
 
 beforeAll(async () => {
   ({ sys } = await testSystem());
+  // Team mode (S9-3): a person who is not on the list is a viewer, so the stand-in sign-in user is the owner.
+  await sql(ws(), "insert into members (workspace_id, user_id, role) values ($1, 'u1', 'owner') on conflict do nothing", [ws()]);
   companies = new Companies({ dataDir: sys.dataDir, templatesRoot: sys.templatesRoot, pool: sys.app, defaultCompany: { id: ws(), slug: sys.workspace.slug, root: sys.companyRoot } });
   const upgrade = ((factory: (c: unknown) => (typeof handlers)[number]) => async (c: { text: (s: string) => Response }) => {
     handlers.push(factory(c));
@@ -65,6 +67,7 @@ describe('the companies API (S6-13a)', () => {
     const r = await call('POST', '/api/companies', { name: 'Acme Studio', template: 'starter' }, undefined, IN);
     expect(r.status).toBe(201);
     acme = ((await r.json()) as { id: string }).id;
+    await sql(acme, "insert into members (workspace_id, user_id, role) values ($1, 'u1', 'owner') on conflict do nothing", [acme]);
     const list = (await (await call('GET', '/api/companies', undefined, undefined, IN)).json()) as { companies: { slug: string }[] };
     expect(list.companies.map((c) => c.slug)).toEqual(['local', 'acme-studio']);
     beta = ((await (await call('POST', '/api/companies', { name: 'Beta', template: 'starter' }, undefined, IN)).json()) as { id: string }).id;

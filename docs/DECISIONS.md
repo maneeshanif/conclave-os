@@ -1114,3 +1114,7 @@ See SPEC 19. Numbers 1 and 3 block slice 0: which CLIs on which account, and whe
 - Drag-to-pan: a press that moves 8 pixels or more is a drag; the camera lets go of you, moves with the pointer and stays inside the map; a click is now acted on when the press is let go (so a drag is never also a click), and walking or clicking a tile brings the view back to you.
 - Demo mode: `DemoSim` (pure, seeded) acts out a day by changing only the states drawn on this screen (working, discussion, handoff, waiting, blocked, idle) at 1x, 2x or 4x. It writes nothing and asks the server nothing; the live team load is ignored while it runs, and turning it off reloads what is really happening. It does not move people around the map.
 - Settings has a Spend correction form (agent, amount, reason) over the existing A5 API.
+
+## 2026-11-20 (the first full-suite run since slice 6)
+
+- 1839 of 1863 passed at first; 17 failed in 5 files, all fixed: agent probes now cascade when their agent is deleted (migration 0099; the test that clears agents hit the foreign key); the companies tests had a sign-in user who was not a member, so since S9-3 was a viewer (the test now makes that user the owner); the os MCP tool list gained `recall` in slice 8; `/api/office/door` is admin only like the other editor routes. The approval-gate and backup failures were timeouts from a loaded machine and pass alone.

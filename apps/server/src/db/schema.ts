@@ -1640,7 +1640,7 @@ export const agentProbes = pgTable(
   },
   (t) => [
     unique('agent_probes_ws_id_uq').on(t.workspaceId, t.id),
-    foreignKey({ name: 'agent_probes_agent_fk', columns: [t.workspaceId, t.agentId], foreignColumns: [agents.workspaceId, agents.id] }),
+    foreignKey({ name: 'agent_probes_agent_fk', columns: [t.workspaceId, t.agentId], foreignColumns: [agents.workspaceId, agents.id] }).onDelete('cascade'),
     index('agent_probes_agent_idx').on(t.workspaceId, t.agentId, t.at),
   ],
 );
