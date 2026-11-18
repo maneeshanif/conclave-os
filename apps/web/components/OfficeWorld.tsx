@@ -339,6 +339,7 @@ export function OfficeWorld({ client, onOpen, onPanel, onOpenList, onFail }: { c
           onProfile={changeProfile}
           onOpenList={onOpenList}
           onSettings={() => onPanel('settings')}
+          onBoards={() => onPanel('boards')}
           onEmote={(e) => {
             hear('emote');
             sendEmote.current(e);

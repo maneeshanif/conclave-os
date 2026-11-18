@@ -218,6 +218,15 @@ export interface Deployment {
   finishedAt: string | null;
 }
 
+export interface Board {
+  id: string | null;
+  key: string;
+  title: string;
+  kind: string;
+  status: string;
+  tasks: { id: string; title: string; status: string; priority: number; assignee: string | null }[];
+}
+
 export interface PullRequest {
   id: string;
   project: string;
@@ -503,6 +512,7 @@ export const api = {
     }
   },
   rebuildBrief: () => call<Brief>('/api/brief/rebuild', { method: 'POST', body: '{}' }),
+  boards: async () => (await call<{ boards: Board[] }>('/api/boards')).boards,
   pulls: async () => (await call<{ pulls: PullRequest[] }>('/api/pull-requests')).pulls,
   config: () => call<ConfigView>('/api/config'),
   sendSettings: () => call<SendSettings>('/api/settings'),

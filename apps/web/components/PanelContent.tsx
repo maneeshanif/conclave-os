@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 import type { PanelState } from '../lib/panels';
 import { ActionItems } from './ActionItems';
 import { ApprovalsInbox } from './ApprovalsInbox';
+import { BoardsView } from './BoardsView';
 import { BoardroomView } from './BoardroomView';
 import { BriefView } from './BriefView';
 import { CampaignsView } from './CampaignsView';
@@ -41,6 +42,8 @@ export function PanelContent(state: PanelState): ReactNode {
       return null; // the list is drawn by the office screen, which owns the world, the drawer and the panels
     case 'deployments':
       return <DeploymentsView />;
+    case 'boards':
+      return <BoardsView />;
     case 'pulls':
       return <PullsView />;
     case 'settings':
