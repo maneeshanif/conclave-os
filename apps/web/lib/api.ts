@@ -548,6 +548,7 @@ export const api = {
   addDepartment: (name: string) => call<{ key: string; name: string; room: number }>('/api/departments', { method: 'POST', body: JSON.stringify({ name }) }),
   placeDecor: (p: { name: string; x: number; y: number; turn?: number }) => call<{ id: number }>('/api/office/decor', { method: 'POST', body: JSON.stringify(p) }),
   moveDecor: (id: number, to: { x: number; y: number }) => call<{ ok: true }>(`/api/office/decor/${id}/move`, { method: 'POST', body: JSON.stringify(to) }),
+  toggleDoor: (t: { x: number; y: number }) => call<{ ok: true; opened: boolean }>('/api/office/door', { method: 'POST', body: JSON.stringify(t) }),
   undoEdit: () => call<{ ok: true }>('/api/office/undo', { method: 'POST', body: '{}' }),
   removeDecor: (id: number) => call<{ ok: true }>(`/api/office/decor/${id}`, { method: 'DELETE' }),
   addDesk: (key: string) => call<{ key: string; room: string; desks: number }>(`/api/departments/${key}/desks`, { method: 'POST', body: '{}' }),

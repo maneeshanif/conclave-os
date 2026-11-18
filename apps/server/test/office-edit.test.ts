@@ -129,3 +129,45 @@ describe('moving a piece and undoing (S6C-2)', () => {
     expect((await undo()).status).toBe(404);
   });
 });
+
+describe('doors (S6C-2)', () => {
+  const door = (b: unknown) => app.request('/api/office/door', { method: 'POST', headers: json, body: JSON.stringify(b) });
+  const floorAt = async (x: number, y: number) => {
+    const m = await map();
+    return (m.layers.find((l) => l.name === 'floor') as unknown as { data: number[] }).data[y * (m as unknown as { width: number }).width + x];
+  };
+  /** A wall tile one thick with floor either side, found in the company map. */
+  const thin = async () => {
+    const m = (await map()) as unknown as { width: number; height: number };
+    const f = ((await map()).layers.find((l) => l.name === 'floor') as unknown as { data: number[] }).data;
+    for (let y = 2; y < m.height - 2; y++) for (let x = 2; x < m.width - 2; x++) if (f[y * m.width + x] === 2 && f[y * m.width + x - 1] !== 2 && f[y * m.width + x + 1] !== 2 && f[(y - 1) * m.width + x] === 2 && f[(y + 1) * m.width + x] === 2) return { x, y };
+    throw new Error('no thin wall');
+  };
+
+  it('opens a wall, tells the office, closes it again with the same tile, and undo takes each one back', async () => {
+    const at = await thin();
+    seen.length = 0;
+    const open = await door(at);
+    expect(open.status).toBe(200);
+    expect(await open.json()).toEqual({ ok: true, opened: true });
+    expect(await floorAt(at.x, at.y)).not.toBe(2);
+    expect(seen.some((m) => m.kind === 'office.changed')).toBe(true);
+    const close = await door(at);
+    expect(await close.json()).toEqual({ ok: true, opened: false });
+    expect(await floorAt(at.x, at.y)).toBe(2);
+    expect((await app.request('/api/office/undo', { method: 'POST', headers: json, body: '{}' })).status).toBe(200);
+    expect(await floorAt(at.x, at.y)).not.toBe(2);
+    expect((await app.request('/api/office/undo', { method: 'POST', headers: json, body: '{}' })).status).toBe(200);
+    expect(await floorAt(at.x, at.y)).toBe(2);
+  });
+
+  it('refuses with the reason and writes nothing: a map edge, floor that is not a gap, and a bad body', async () => {
+    const before = JSON.stringify(await map());
+    const edge = await door({ x: 0, y: 3 });
+    expect(edge.status).toBe(400);
+    expect(((await edge.json()) as { error: string }).error).toMatch(/edge of the map/);
+    expect((await door({ x: 'a', y: 3 })).status).toBe(400);
+    expect((await door({ x: 5, y: 5, extra: 1 })).status).toBe(400);
+    expect(JSON.stringify(await map())).toBe(before);
+  });
+});

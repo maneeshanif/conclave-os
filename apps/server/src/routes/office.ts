@@ -11,7 +11,7 @@ import type { Dispatcher } from '../workflows/dispatch';
 import { assignDesks, loadOffice } from '../office/desks';
 import { activityFeed } from '../office/activity';
 import { exclusive, undoMap, writeMap } from '../office/map-file';
-import { EditError, moveDecor, placeDecor, readOfficeMap, removeDecor, type OfficeMapJson } from '@conclave/shared';
+import { EditError, moveDecor, placeDecor, readOfficeMap, removeDecor, setDoor, type OfficeMapJson } from '@conclave/shared';
 import { officeState, teamCards } from '../office/state';
 
 class NotThere extends Error {}
@@ -206,6 +206,27 @@ export function officeRoutes(deps: { workspaceId: string; companyRoot: string; /
   });
 
   // Undo the last edit to the map (S6C-2), as far back as the history goes. The result must still read.
+  // A door: click a wall tile to open it, click a gap to close it (S6C-2). One change, refused and unchanged if the new place is not allowed.
+  const Door = z.object({ x: z.number(), y: z.number() }).strict();
+  r.post('/door', async (c) => {
+    const body = Door.safeParse(await c.req.json().catch(() => null));
+    if (!body.success) return c.json({ error: 'Say which tile.' }, 400);
+    try {
+      const opened = await exclusive(deps.companyRoot, async () => {
+        const json = JSON.parse(await readFile(mapFile(), 'utf8')) as OfficeMapJson;
+        const floor = json.layers.find((l) => l.name === 'floor')?.data ?? [];
+        const open = floor[body.data.y * json.width + body.data.x] === 2;
+        await writeMap(mapFile(), JSON.stringify(setDoor(json, { ...body.data, open }, await departmentsNow()), null, 1) + '\n');
+        return open;
+      });
+      deps.bus?.publish({ kind: 'office.changed', workspaceId: deps.workspaceId });
+      return c.json({ ok: true, opened });
+    } catch (err) {
+      if (err instanceof EditError) return c.json({ error: err.message }, 400);
+      throw err;
+    }
+  });
+
   r.post('/undo', async (c) => {
     const done = await exclusive(deps.companyRoot, async () => {
       const ok = await undoMap(mapFile());

@@ -28,10 +28,14 @@ export function EditPanel({ tool, message, onTool, onDone, onUndo }: { tool: Edi
           Turn ({tool.turn}°)
         </button>
       ) : null}
+      {tool?.kind === 'door' ? <p className="text-xs text-neutral-300">Click a wall to open a door, or a gap to close it.</p> : null}
       {tool?.kind === 'move' ? <p className="text-xs text-neutral-300">{tool.id === null ? 'Click the piece to move.' : 'Now click where it goes.'}</p> : null}
       <div className="flex flex-wrap items-center justify-between gap-2">
         <button type="button" aria-pressed={tool?.kind === 'move'} className={`px-btn px-2 py-1 text-xs ${tool?.kind === 'move' ? 'ring-2 ring-white' : ''}`} onClick={() => onTool({ kind: 'move', id: null })}>
           Move
+        </button>
+        <button type="button" aria-pressed={tool?.kind === 'door'} className={`px-btn px-2 py-1 text-xs ${tool?.kind === 'door' ? 'ring-2 ring-white' : ''}`} onClick={() => onTool({ kind: 'door' })}>
+          Door
         </button>
         {onUndo ? (
           <button type="button" className="px-btn px-2 py-1 text-xs" onClick={onUndo}>

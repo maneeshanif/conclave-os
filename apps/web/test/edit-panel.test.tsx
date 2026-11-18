@@ -82,4 +82,9 @@ describe('what a click does while editing (S6B-9)', () => {
     expect(tileAction({ kind: 'move', id: null }, { x: 0, y: 0 }, decor)).toEqual({ kind: 'nothing', why: 'Click the piece to move.' });
     expect(tileAction({ kind: 'move', id: 7 }, { x: 20, y: 9 }, decor)).toEqual({ kind: 'move', id: 7, x: 20, y: 9 });
   });
+
+  it('has a door tool: a click on a tile asks for a door there, whatever is under it, and the panel has a Door button (S6C-2)', () => {
+    expect(tileAction({ kind: 'door' }, { x: 7, y: 9 }, [])).toEqual({ kind: 'door', x: 7, y: 9 });
+    expect(tileAction({ kind: 'door' }, { x: 7, y: 9 }, [{ id: 1, x: 7, y: 9, w: 1, h: 1 }])).toEqual({ kind: 'door', x: 7, y: 9 });
+  });
 });

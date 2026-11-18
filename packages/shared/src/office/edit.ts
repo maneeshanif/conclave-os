@@ -155,3 +155,50 @@ export function moveDecor(input: OfficeMapJson, id: number, to: { x: number; y: 
   const turn = Number(piece.properties?.find((p) => p.name === 'turn')?.value ?? 0);
   return placeDecor(removeDecor(input, id), { name: piece.name ?? '', ...to, ...(turn ? { turn } : {}) }, departments);
 }
+
+/**
+ * Opens or closes a door (S6C-2): a gap in a wall that is one tile thick. Opening takes a wall tile with open floor on its two opposite sides
+ * and turns it into floor; closing takes such a gap and turns it back into wall. A door is never put on a map edge, on a thick wall or a
+ * corner, on a piece of scenery, a desk or an entry, and closing one is refused if it would cut a room, a desk or the front door off from the
+ * way in. Nothing changes if it is refused.
+ */
+export function setDoor(input: OfficeMapJson, p: { x: number; y: number; open: boolean }, departments: { key: string; active: boolean }[]): OfficeMapJson {
+  if (!Number.isInteger(p.x) || !Number.isInteger(p.y)) throw new EditError('Say which tile, with whole numbers.');
+  if (p.x < 1 || p.y < 1 || p.x >= input.width - 1 || p.y >= input.height - 1) throw new EditError('A door cannot go on the edge of the map.');
+  const file = 'office.tmj';
+  const json = structuredClone(input);
+  const floor = layerOf(json, 'floor').data!;
+  const coll = layerOf(json, 'collision').data!;
+  const W = json.width;
+  const at = (x: number, y: number) => y * W + x;
+  const isWall = (x: number, y: number) => floor[at(x, y)] === WALL;
+  const i = at(p.x, p.y);
+  const across = !isWall(p.x - 1, p.y) && !isWall(p.x + 1, p.y);
+  const down = !isWall(p.x, p.y - 1) && !isWall(p.x, p.y + 1);
+  if (p.open) {
+    if (!isWall(p.x, p.y)) throw new EditError('That is not a wall, so there is nothing to open.');
+    if (!across && !down) throw new EditError('A door goes in a wall one tile thick, with floor on both sides.');
+    floor[i] = across ? floor[at(p.x - 1, p.y)]! : floor[at(p.x, p.y - 1)]!;
+    coll[i] = 0;
+    return json;
+  }
+  if (isWall(p.x, p.y)) throw new EditError('That is already a wall.');
+  // A gap has wall on two opposite sides and open floor on the other two.
+  const gapAcross = isWall(p.x - 1, p.y) && isWall(p.x + 1, p.y) && !isWall(p.x, p.y - 1) && !isWall(p.x, p.y + 1);
+  const gapDown = isWall(p.x, p.y - 1) && isWall(p.x, p.y + 1) && !isWall(p.x - 1, p.y) && !isWall(p.x + 1, p.y);
+  if (!gapAcross && !gapDown) throw new EditError('That is not a gap in a wall, so there is nothing to close.');
+  const before = readOfficeMap(input, { file, departments }); // read only once the tile is known to be a gap: reading the whole map is the slow part
+  if (before.entries.some((e) => e.x === p.x && e.y === p.y)) throw new EditError('An entry (the door or a marked spot) is there.');
+  if (before.desks.some((d) => d.x === p.x && d.y === p.y)) throw new EditError('A desk is there.');
+  for (const o of layerOf(json, 'decor').objects ?? []) {
+    const x0 = o.x / T;
+    const y0 = o.y / T;
+    if (p.x >= x0 && p.x < x0 + (o.width ?? T) / T && p.y >= y0 && p.y < y0 + (o.height ?? T) / T) throw new EditError('Scenery is there.');
+  }
+  floor[i] = WALL;
+  coll[i] = 1;
+  const after = readOfficeMap(json, { file, departments });
+  const was = unreachable(before);
+  for (const name of unreachable(after)) if (!was.has(name)) throw new EditError(`That would block the way to ${name}.`);
+  return json;
+}
