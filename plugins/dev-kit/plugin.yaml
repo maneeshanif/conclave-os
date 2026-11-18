@@ -6,4 +6,4 @@ description: "Rules for changing code safely in a worktree, and a GSAP and Lenis
 skills: [coding-rules, motion-gsap-lenis]
 connectors: [os]
 # The os tools the skills use. Checked against the server, so this list cannot drift.
-tools: [get_task, comment, complete_task, block_task, ask_founder, propose_pr, propose_repo, propose_merge]
+tools: [get_task, comment, complete_task, block_task, ask_founder, propose_pr, propose_repo, propose_merge, propose_deploy]

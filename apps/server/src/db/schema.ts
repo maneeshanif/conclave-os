@@ -1246,3 +1246,28 @@ export const codePullRequests = pgTable(
     check('code_pull_requests_status_ck', sql`${t.status} in ('open','merged','closed')`),
   ],
 );
+
+/** What is deployed where (S7-8): one row per approved deploy, live or failed, naming the commit, the preview address and who approved it. */
+export const deployments = pgTable(
+  'deployments',
+  {
+    id: id(),
+    workspaceId: workspaceId(),
+    approvalId: uuid('approval_id').notNull(),
+    projectKey: text('project_key').notNull(),
+    client: text('client'),
+    ref: text('ref'),
+    status: text('status').notNull().default('building'),
+    url: text('url'),
+    error: text('error'),
+    approvedBy: text('approved_by').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    finishedAt: timestamp('finished_at', { withTimezone: true }),
+  },
+  (t) => [
+    unique('deployments_ws_id_uq').on(t.workspaceId, t.id),
+    unique('deployments_ws_approval_uq').on(t.workspaceId, t.approvalId),
+    foreignKey({ name: 'deployments_approval_fk', columns: [t.workspaceId, t.approvalId], foreignColumns: [approvals.workspaceId, approvals.id] }),
+    check('deployments_status_ck', sql`${t.status} in ('building','live','failed')`),
+  ],
+);

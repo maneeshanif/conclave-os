@@ -1,5 +1,6 @@
 import type pg from 'pg';
 import path from 'node:path';
+import { LocalDeployer } from './projects/deployer';
 import { selectGitConnector } from './projects/git-connector';
 import { createExecutors, type Executors } from './actions';
 import type { ExecutorDeps } from './actions/email';
@@ -47,6 +48,8 @@ export function createOutreach(d: OutreachDeps): { transport: EmailTransport; ex
     browserPostTransport: browserPostTransport(d.dataDir, playwrightDriver(playwrightPageOpener(d.dataDir, d.env))),
     // Approved code goes to a local bare repo unless GIT_CONNECTOR=gh is set by hand (S7-6).
     gitConnector: selectGitConnector(d.env.GIT_CONNECTOR, path.join(d.dataDir, 'git-remotes')),
+    // The stand-in for Vercel: builds in a copy and serves on 127.0.0.1 only (S7-8).
+    deployer: new LocalDeployer(path.join(d.dataDir, 'git-remotes'), path.join(d.dataDir, 'deploys')),
     bus: d.bus,
     ...(d.agentFactory ? { agentFactory: d.agentFactory } : {}),
   });

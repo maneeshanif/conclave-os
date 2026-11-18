@@ -30,6 +30,7 @@ const TABLES = [
   'decisions',
   'department_messages',
   'departments',
+  'deployments',
   'discussion_turns',
   'discussions',
   'dms',

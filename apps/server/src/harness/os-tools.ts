@@ -41,6 +41,8 @@ export interface OsStore {
   proposeRepo(scope: RunScope, p: { key: string; description: string }): Promise<{ approvalId: string; existed: boolean }>;
   /** Queues the merge of an open pull request for approval (autonomy 2). Never merges. */
   proposeMerge(scope: RunScope, p: { project: string; number: number }): Promise<{ approvalId: string; existed: boolean }>;
+  /** Queues a deploy of a project's default branch for approval (autonomy 2). Never builds or serves. */
+  proposeDeploy(scope: RunScope, p: { project: string; client?: string | undefined }): Promise<{ approvalId: string; existed: boolean }>;
   /** Queues an email for approval. Never sends. Returns the approval id and whether it already existed. */
   proposeEmail(scope: RunScope, p: ProposedEmail): Promise<{ approvalId: string; existed: boolean }>;
   /** Opens a Boardroom discussion (autonomy 1). Returns its id. */
@@ -495,6 +497,15 @@ export const osTools = {
       return r.existed ? `Already queued as ${r.approvalId}. Do not propose it again.` : `Queued for approval as ${r.approvalId}. Nothing has been merged. Do not retry; finish your task.`;
     },
   },
+  propose_deploy: {
+    minAutonomy: 2,
+    description: "Propose deploying a project's main branch (as pushed to its remote) for the founder to approve. It does NOT build or serve anything. Optionally name the client it is for.",
+    input: z.object({ project: z.string().min(1).max(40), client: z.string().min(1).max(100).optional() }).strict(),
+    async run(store: OsStore, scope: RunScope, args: { project: string; client?: string | undefined }) {
+      const r = await store.proposeDeploy(scope, args);
+      return r.existed ? `Already queued as ${r.approvalId}. Do not propose it again.` : `Queued for approval as ${r.approvalId}. Nothing has been deployed. Do not retry; finish your task.`;
+    },
+  },
   propose_email: {
     minAutonomy: 2,
     description:
@@ -534,6 +545,9 @@ export class MemoryOsStore implements OsStore {
   }
   async getLead(): Promise<LeadView | null> {
     return null;
+  }
+  async proposeDeploy(): Promise<{ approvalId: string; existed: boolean }> {
+    throw new ToolError('Proposals need the database store.');
   }
   async proposeRepo(): Promise<{ approvalId: string; existed: boolean }> {
     throw new ToolError('Proposals need the database store.');

@@ -56,6 +56,9 @@ class LateStore implements OsStore {
   getLead(s: RunScope, id: string) {
     return this.inner.getLead(s, id);
   }
+  proposeDeploy(s: RunScope, p: { project: string; client?: string | undefined }) {
+    return this.inner.proposeDeploy(s, p);
+  }
   proposeRepo(s: RunScope, p: { key: string; description: string }) {
     return this.inner.proposeRepo(s, p);
   }

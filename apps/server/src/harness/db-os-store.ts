@@ -8,7 +8,7 @@ import { ingestLead } from '../leads/ingest';
 import { checkHook } from '../hooks';
 import { checkBrief, estimateCredits, type Shot } from '../video/briefs';
 import { normalizeUrl } from '../signals';
-import { branchFacts, PrError, runTests } from '../projects/pr';
+import { branchFacts, PrError, refHead, runTests } from '../projects/pr';
 import { PROJECT_KEY } from '../projects/projects';
 import { labelUntrusted } from './trust';
 import { checkEvidence } from '../boardroom/evidence';
@@ -271,6 +271,26 @@ ${tests.output}`);
       );
       if (ins.rows[0]) return { approvalId: ins.rows[0].id, existed: false };
       return { approvalId: (await c.query<{ id: string }>("select id from approvals where kind = 'pr.open' and dedupe_key = $1", [dedupe])).rows[0]!.id, existed: true };
+    });
+    if (!out.existed) this.onApproval(scope.workspaceId, out.approvalId);
+    return out;
+  }
+
+  /** A deploy of a project's default branch (S7-8). Refused for an unknown project or one with nothing committed. Never builds or serves. */
+  async proposeDeploy(scope: RunScope, p: { project: string; client?: string | undefined }): Promise<{ approvalId: string; existed: boolean }> {
+    const out = await withWorkspace(this.pool, scope.workspaceId, async ({ client: c }) => {
+      const proj = (await c.query<{ path: string; default_branch: string; build_cmd: string | null }>('select path, default_branch, build_cmd from code_projects where key = $1', [p.project])).rows[0];
+      if (!proj) throw new ToolError(`There is no project called "${p.project}".`);
+      const head = await refHead(proj.path, proj.default_branch);
+      if (!head) throw new ToolError(`"${p.project}" has no commits on ${proj.default_branch}: nothing has been pushed to its remote, so there is nothing to deploy.`);
+      const dedupe = `deploy:${p.project}:${head}`;
+      const payload = { projectKey: p.project, client: p.client ?? null, base: proj.default_branch, head, buildCmd: proj.build_cmd };
+      const ins = await c.query<{ id: string }>(
+        "insert into approvals (workspace_id, kind, dedupe_key, agent_id, run_id, task_id, payload) values ($1, 'deploy', $2, $3, $4, $5, $6) on conflict (workspace_id, kind, dedupe_key) do nothing returning id",
+        [scope.workspaceId, dedupe, scope.agentId, scope.runId, scope.taskId ?? null, JSON.stringify(payload)],
+      );
+      if (ins.rows[0]) return { approvalId: ins.rows[0].id, existed: false };
+      return { approvalId: (await c.query<{ id: string }>("select id from approvals where kind = 'deploy' and dedupe_key = $1", [dedupe])).rows[0]!.id, existed: true };
     });
     if (!out.existed) this.onApproval(scope.workspaceId, out.approvalId);
     return out;

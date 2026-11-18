@@ -70,3 +70,12 @@ export async function branchFacts(worktree: string, base: string): Promise<PrFac
   const diffStat = (await git(worktree, 'diff', '--stat', '--no-color', `${base}...HEAD`)).slice(0, 4000);
   return { head, commits, diffStat };
 }
+
+/** The commit a ref points at in a repository, or null if there is none (no such ref, or not a repository). */
+export async function refHead(cwd: string, ref: string): Promise<string | null> {
+  try {
+    return (await git(cwd, 'rev-parse', '--verify', '-q', `${ref}^{commit}`)) || null;
+  } catch {
+    return null;
+  }
+}

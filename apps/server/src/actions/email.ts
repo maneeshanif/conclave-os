@@ -19,6 +19,7 @@ export const EmailPayload = z.object({
 });
 export type EmailPayload = z.infer<typeof EmailPayload>;
 
+import type { Deployer } from '../projects/deployer';
 import type { GitConnector } from '../projects/git-connector';
 
 export interface ExecutorDeps {
@@ -41,6 +42,8 @@ export interface ExecutorDeps {
   agentFactory?: (o: { template: string; department: string; id: string; name?: string }) => Promise<{ id: string }>;
   /** Where approved code goes (S7-6). Without one, an approved pull request is refused. */
   gitConnector?: GitConnector;
+  /** Builds and serves an approved deploy (S7-8). Without one, an approved deploy is refused. */
+  deployer?: Deployer;
   companyRoot: string;
   from: string;
   bus?: Bus;
