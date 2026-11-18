@@ -284,6 +284,26 @@ ${tests.output}`);
     return out;
   }
 
+  /** A guest invite (S10-1): the meeting must be there and not over. Makes nothing: the link is made by the executor after approval. */
+  async proposeMeeting(scope: RunScope, p: { meetingId: string; to: string; ttlHours?: number | undefined }): Promise<{ approvalId: string; existed: boolean }> {
+    const out = await withWorkspace(this.pool, scope.workspaceId, async ({ client: c }) => {
+      const m = (await c.query<{ title: string; status: string }>('select title, status from meetings where id = $1', [p.meetingId])).rows[0];
+      if (!m) throw new ToolError('No such meeting.');
+      if (m.status === 'cancelled' || m.status === 'closed') throw new ToolError(`That meeting is ${m.status}.`);
+      const to = p.to.trim().toLowerCase();
+      const dedupe = `meeting:${p.meetingId}:${to}`;
+      const payload = { meetingId: p.meetingId, title: m.title, to, ttlHours: p.ttlHours ?? 48 };
+      const ins = await c.query<{ id: string }>(
+        "insert into approvals (workspace_id, kind, dedupe_key, agent_id, run_id, task_id, payload) values ($1, 'meeting.invite', $2, $3, $4, $5, $6) on conflict (workspace_id, kind, dedupe_key) do nothing returning id",
+        [scope.workspaceId, dedupe, scope.agentId, scope.runId, scope.taskId ?? null, JSON.stringify(payload)],
+      );
+      if (ins.rows[0]) return { approvalId: ins.rows[0].id, existed: false };
+      return { approvalId: (await c.query<{ id: string }>("select id from approvals where kind = 'meeting.invite' and dedupe_key = $1", [dedupe])).rows[0]!.id, existed: true };
+    });
+    if (!out.existed) this.onApproval(scope.workspaceId, out.approvalId);
+    return out;
+  }
+
   /**
    * One call to one lead (S9-8). Every rule is checked here, in code: the lead exists and has a phone number, is not marked do not contact,
    * the number is not on the suppression list, and the opener and script make no blocked claim. It never calls.

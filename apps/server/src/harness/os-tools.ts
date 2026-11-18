@@ -49,6 +49,8 @@ export interface OsStore {
   proposeImprovement(scope: RunScope, p: ImprovementInput): Promise<{ approvalId: string; existed: boolean }>;
   /** Queues one phone call to one lead for approval (autonomy 2). Never calls. */
   proposeCall(scope: RunScope, p: { leadId: string; opener: string; script: string }): Promise<{ approvalId: string; existed: boolean }>;
+  /** Queues a guest invite to one meeting for one address for approval (autonomy 2). Never sends it and makes no link. */
+  proposeMeeting(scope: RunScope, p: { meetingId: string; to: string; ttlHours?: number | undefined }): Promise<{ approvalId: string; existed: boolean }>;
   /** Saves a note to memory (autonomy 1): company or market only; a founder lesson is written by the system, not the agent. */
   remember(scope: RunScope, m: { text: string; scope: 'company' | 'market' }): Promise<void>;
   /** Finds notes by words (autonomy 0). */
@@ -567,6 +569,15 @@ export const osTools = {
       return r.existed ? `Already queued as ${r.approvalId}. Do not propose it again.` : `Queued for approval as ${r.approvalId}. Nothing has been called. Do not retry; finish your task.`;
     },
   },
+  propose_meeting: {
+    minAutonomy: 2,
+    description: 'Propose inviting one person to one client meeting with a guest link, for the founder to approve. It does NOT send anything and makes no link until approved. ttlHours is how long the link works (1 to 168, default 48).',
+    input: z.object({ meetingId: z.uuid(), to: z.email().max(200), ttlHours: z.number().int().min(1).max(168).optional() }).strict(),
+    async run(store: OsStore, scope: RunScope, args: { meetingId: string; to: string; ttlHours?: number | undefined }) {
+      const r = await store.proposeMeeting(scope, args);
+      return r.existed ? `Already queued as ${r.approvalId}. Do not propose it again.` : `Queued for approval as ${r.approvalId}. Nothing has been sent. Do not retry; finish your task.`;
+    },
+  },
   remember: {
     minAutonomy: 1,
     description: 'Save one short, reusable fact to memory (company or market). Give facts, not instructions. It is a note with its source, never the authority on a client or a rule.',
@@ -638,6 +649,9 @@ export class MemoryOsStore implements OsStore {
     throw new ToolError('Proposals need the database store.');
   }
   async proposeSkillPatch(): Promise<{ approvalId: string; existed: boolean }> {
+    throw new ToolError('Proposals need the database store.');
+  }
+  async proposeMeeting(): Promise<{ approvalId: string; existed: boolean }> {
     throw new ToolError('Proposals need the database store.');
   }
   async proposeCall(): Promise<{ approvalId: string; existed: boolean }> {

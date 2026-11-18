@@ -1429,3 +1429,44 @@ export const callListItems = pgTable(
     check('call_list_items_status_ck', sql`${t.status} in ('queued','called','booked','skipped')`),
   ],
 );
+
+/** A client meeting (S10-1): optionally on a deal. The room itself is made by a meeting connector (S10-2). */
+export const meetings = pgTable(
+  'meetings',
+  {
+    id: id(),
+    workspaceId: workspaceId(),
+    dealId: uuid('deal_id'),
+    title: text('title').notNull(),
+    startsAt: timestamp('starts_at', { withTimezone: true }).notNull(),
+    status: text('status').notNull().default('planned'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    unique('meetings_ws_id_uq').on(t.workspaceId, t.id),
+    foreignKey({ name: 'meetings_deal_fk', columns: [t.workspaceId, t.dealId], foreignColumns: [deals.workspaceId, deals.id] }),
+    check('meetings_status_ck', sql`${t.status} in ('planned','open','closed','cancelled')`),
+  ],
+);
+
+/** A link a guest opens (S10-1). Only a hash of its secret is kept, so the table cannot give a link back. */
+export const guestLinks = pgTable(
+  'guest_links',
+  {
+    id: id(),
+    workspaceId: workspaceId(),
+    meetingId: uuid('meeting_id').notNull(),
+    tokenHash: text('token_hash').notNull(),
+    approvalId: uuid('approval_id'),
+    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+    usedCount: integer('used_count').notNull().default(0),
+    revokedAt: timestamp('revoked_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    unique('guest_links_ws_id_uq').on(t.workspaceId, t.id),
+    unique('guest_links_ws_hash_uq').on(t.workspaceId, t.tokenHash),
+    unique('guest_links_ws_approval_uq').on(t.workspaceId, t.approvalId),
+    foreignKey({ name: 'guest_links_meeting_fk', columns: [t.workspaceId, t.meetingId], foreignColumns: [meetings.workspaceId, meetings.id] }),
+  ],
+);
