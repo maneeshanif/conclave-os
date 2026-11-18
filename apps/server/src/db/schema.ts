@@ -1395,3 +1395,15 @@ export const improvements = pgTable(
   },
   (t) => [unique('improvements_ws_id_uq').on(t.workspaceId, t.id), check('improvements_status_ck', sql`${t.status} in ('proposed','eval_failed')`)],
 );
+
+/** The first-run wizard's answers (S9-7): one row per step, answered again by writing over it. Never a key or a secret. */
+export const setupSteps = pgTable(
+  'setup_steps',
+  {
+    workspaceId: workspaceId(),
+    step: text('step').notNull(),
+    data: jsonb('data').notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ name: 'setup_steps_pkey', columns: [t.workspaceId, t.step] })],
+);

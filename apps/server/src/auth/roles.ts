@@ -14,7 +14,7 @@ export const CONTENT_KINDS: readonly string[] = ['email.send', 'post.publish', '
 /** Paths only the owner may write to: how autonomous the company is. */
 const OWNER_ONLY = [/^\/api\/talent\/policy/, /^\/api\/owner/];
 /** Paths an admin and the owner may write to: how the company is set up. */
-const ADMIN_ONLY = [/^\/api\/settings/, /^\/api\/companies/, /^\/api\/departments/, /^\/api\/code-projects/, /^\/api\/office\/decor/, /^\/api\/office\/undo/, /^\/api\/runtime-pauses/, /^\/api\/browser/];
+const ADMIN_ONLY = [/^\/api\/settings/, /^\/api\/setup/, /^\/api\/companies/, /^\/api\/departments/, /^\/api\/code-projects/, /^\/api\/office\/decor/, /^\/api\/office\/undo/, /^\/api\/runtime-pauses/, /^\/api\/browser/];
 
 const rank: Record<Role, number> = { viewer: 0, member: 1, admin: 2, owner: 3 };
 

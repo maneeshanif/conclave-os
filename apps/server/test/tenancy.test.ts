@@ -58,6 +58,7 @@ const TABLES = [
   'runtime_pauses',
   'sequence_enrollments',
   'sequence_steps',
+  'setup_steps',
   'signals',
   'suppression',
   'tasks',
@@ -70,7 +71,7 @@ const TABLES = [
   'workspaces',
 ];
 /** Tables keyed by workspace with no `id` of their own, so no unique (workspace_id, id). */
-const NO_ID = ['members', 'workspace_settings'];
+const NO_ID = ['members', 'setup_steps', 'workspace_settings'];
 const TENANT_TABLES = TABLES.filter((t) => t !== 'workspaces');
 
 function freePort(): Promise<number> {
@@ -167,7 +168,7 @@ describe('tenancy', () => {
     }
   });
 
-  it('every tenant table has workspace_id and unique (workspace_id, id), except members and workspace_settings', async () => {
+  it('every tenant table has workspace_id and unique (workspace_id, id), except members, setup_steps and workspace_settings', async () => {
     const cols = await db.withOwner((c) =>
       c.query<{ table_name: string }>(
         `select table_name from information_schema.columns
