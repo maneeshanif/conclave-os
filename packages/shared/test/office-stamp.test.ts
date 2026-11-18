@@ -4,13 +4,14 @@ import { describe, expect, it } from 'vitest';
 import { addDepartmentRoom, addDeskToRoom, DESK_SPOTS, MAX_DESKS, RoomFull, StampError, findPath, nearestReachable, MAX_ADDED_DEPARTMENTS, PlotsFull, readOfficeMap, type OfficeMap, type OfficeMapJson } from '../src/office';
 
 const root = path.resolve(import.meta.dirname, '..', '..', '..');
-const base = JSON.parse(readFileSync(path.join(root, 'company', 'office.tmj'), 'utf8')) as OfficeMapJson;
+const base = JSON.parse(readFileSync(path.join(root, 'templates', 'companies', 'starter', 'office.tmj'), 'utf8')) as OfficeMapJson;
 const departments = readFileSync(path.join(root, 'company', 'departments.yaml'), 'utf8')
   .split(/\r?\n/)
   .flatMap((l) => {
     const m = /\{\s*key:\s*([a-z0-9-]+),.*active:\s*(true|false)/.exec(l);
     return m ? [{ key: m[1]!, active: m[2] === 'true' }] : [];
-  });
+  })
+  .filter((d) => !['product', 'engineering'].includes(d.key)); // the pristine town has no rooms for the two the company added
 const read = (j: OfficeMapJson, extra: { key: string; active: boolean }[] = []): OfficeMap => readOfficeMap(j, { file: 'office.tmj', departments: [...departments, ...extra] });
 const dept = (n: number) => ({ key: `team-${n}`, name: `Team ${n}` });
 const add = (j: OfficeMapJson, n: number) => addDepartmentRoom(j, dept(n));
@@ -40,7 +41,7 @@ describe('rooms that grow (S6B-1)', () => {
     for (const o of before.objects) expect(after.objects).toContainEqual(o);
     expect(after.rooms).toEqual(before.rooms);
     expect(after.entries).toEqual(before.entries);
-    expect(base).toEqual(JSON.parse(readFileSync(path.join(root, 'company', 'office.tmj'), 'utf8'))); // the input was not changed
+    expect(base).toEqual(JSON.parse(readFileSync(path.join(root, 'templates', 'companies', 'starter', 'office.tmj'), 'utf8'))); // the input was not changed
   });
 
   it('fills the room up to nine, says it is full after that, and a new desk can always be reached', () => {

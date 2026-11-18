@@ -4,14 +4,15 @@ import { describe, expect, it } from 'vitest';
 import { OBJECT_TYPES, OfficeMapError, readOfficeMap, type OfficeMapJson } from '../src/office';
 
 const root = path.resolve(import.meta.dirname, '..', '..', '..');
-const raw = (): OfficeMapJson => JSON.parse(readFileSync(path.join(root, 'company', 'office.tmj'), 'utf8')) as OfficeMapJson;
+const raw = (): OfficeMapJson => JSON.parse(readFileSync(path.join(root, 'templates', 'companies', 'starter', 'office.tmj'), 'utf8')) as OfficeMapJson;
 /** The departments file, read with a pattern: this package has no YAML reader, and the file is one flow-style line per department. */
 const departments = readFileSync(path.join(root, 'company', 'departments.yaml'), 'utf8')
   .split(/\r?\n/)
   .flatMap((l) => {
     const m = /\{\s*key:\s*([a-z0-9-]+),.*active:\s*(true|false)/.exec(l);
     return m ? [{ key: m[1]!, active: m[2] === 'true' }] : [];
-  });
+  })
+  .filter((d) => !['product', 'engineering'].includes(d.key)); // the starter map has no rooms for the two the company added
 const read = (j: unknown = raw(), deps = departments) => readOfficeMap(j, { file: 'company/office.tmj', departments: deps });
 /** A deep copy to break on purpose. */
 const copy = () => JSON.parse(JSON.stringify(raw())) as OfficeMapJson;
@@ -149,7 +150,7 @@ describe('a map with a mistake is refused, saying where (S6-1)', () => {
 });
 
 describe('the town (S6-17): one world with the headquarters and four districts', () => {
-  const json = JSON.parse(readFileSync(path.join(root, 'company', 'office.tmj'), 'utf8')) as OfficeMapJson;
+  const json = JSON.parse(readFileSync(path.join(root, 'templates', 'companies', 'starter', 'office.tmj'), 'utf8')) as OfficeMapJson;
 
   it('has a room for each district, named after it, and a way in from the street for each', () => {
     const m = read();
@@ -181,7 +182,11 @@ describe('the town (S6-17): one world with the headquarters and four districts',
     expect(count('track')).toBe(1);
   });
 
-  it('has the same town in the starter company template', () => {
-    expect(readFileSync(path.join(root, 'templates', 'companies', 'starter', 'office.tmj'), 'utf8')).toBe(readFileSync(path.join(root, 'company', 'office.tmj'), 'utf8'));
+  it('is the starter town in the shipped company, plus the rooms added since (Product and Engineering, S7-10)', () => {
+    const starter = JSON.parse(readFileSync(path.join(root, 'templates', 'companies', 'starter', 'office.tmj'), 'utf8')) as OfficeMapJson;
+    const company = JSON.parse(readFileSync(path.join(root, 'company', 'office.tmj'), 'utf8')) as OfficeMapJson;
+    const names = (j: OfficeMapJson) => (j.layers.find((l) => l.name === 'rooms')!.objects ?? []).map((r) => r.name);
+    expect(names(company)).toEqual(expect.arrayContaining(names(starter)));
+    expect(names(company).length - names(starter).length).toBe(2);
   });
 });
