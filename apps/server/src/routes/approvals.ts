@@ -1,6 +1,7 @@
 import { Hono, type Context } from 'hono';
 import type { QueryResultRow } from 'pg';
 import { z } from 'zod';
+import { lessonFromEdit } from '../memory/lessons';
 import { EmailPayload } from '../actions/email';
 import { DmPayload } from '../actions/dm';
 import { PostPayload } from '../actions/post';
@@ -74,7 +75,7 @@ export function approvalRoutes(deps: { workspaceId: string; bus: Bus; onDecided?
     const id = c.req.param('id');
 
     // Lock the row: a second decision for the same approval waits here, then sees it is no longer pending.
-    const [a] = await q<{ id: string; kind: string; status: string; payload: Record<string, unknown> }>(c, 'select id, kind, status, payload from approvals where id = $1 for update', [id]);
+    const [a] = await q<{ id: string; kind: string; status: string; payload: Record<string, unknown>; agent_id: string | null }>(c, 'select id, kind, status, payload, agent_id from approvals where id = $1 for update', [id]);
     if (!a) return c.json({ error: 'Not found' }, 404);
     if (a.status !== 'pending') return c.json({ error: `This approval was already decided (it is ${a.status}).`, status: a.status }, 409);
 
@@ -102,6 +103,11 @@ export function approvalRoutes(deps: { workspaceId: string; bus: Bus; onDecided?
       edited ? JSON.stringify(edited) : null,
       device,
     ]);
+    // Approve and teach (S8-2): an edit is a lesson for the agent that wrote the draft, saved as founder memory.
+    if (edited && a.agent_id) {
+      const lesson = lessonFromEdit(a.kind, a.payload, edited);
+      if (lesson) await q(c, "insert into memories (workspace_id, scope, agent_id, text, source, confidence) values ($1, 'founder', $2, $3, $4, 90)", [ws, a.agent_id, lesson, `approval:${id}`]);
+    }
     if (!approved) await q(c, "update outreach_messages set status = 'rejected' where approval_id = $1 and status = 'queued'", [id]);
     await q(c, "update posts set status = $2 where approval_id = $1 and status = 'proposed'", [id, approved ? 'approved' : 'rejected']);
     await q(c, "update dms set status = $2 where approval_id = $1 and status = 'proposed'", [id, approved ? 'approved' : 'rejected']);

@@ -15,6 +15,10 @@ Newest first. One entry per decision: what, why, and what it replaced.
 - **One test file, `slice3-e2e.test.ts`, runs the three "Done when" checks** on the real run loop, reaper, pause table and eval gate, with a scripted model: (1) a run killed halfway (its process lost, heartbeat stopped) is failed by the reaper, its task goes back to todo still holding the session id, and the next run starts from that session and finishes; (2) a plan limit pauses the runtime for every agent on it while an agent on the other runtime keeps working, the queued tasks wait, the pause lifts only at the reset time and wakes exactly the agents with work, who then finish; (3) the unchanged skill scores at the baseline, and a change that makes the 20 sample drafts long and hyped fails the gate with all 20 leads named.
 - **Slice 3 is tagged `slice-3-done`.** Not done and recorded rather than hidden: the eval set is 20 made-up leads and its baseline is the reference drafter's (real leads and a real-agent drafter are in NEEDS-YOU); breakers cover the os tools only until connectors are live; the lite-mode canvas switch waits for slice 6.
 
+## 2026-11-19 (S8-2: approve and teach)
+
+- Deciding an approval with an edit saves a founder memory for the agent that wrote the draft (confidence 90, source `approval:<id>`): what it was and what the founder made it, for email, post and DM. An approval as it was, a rejection, or an edit that changed nothing saves nothing. The next run for that agent is given it when its words match the task (S8-1).
+
 ## 2026-11-19 (S8-1: memory)
 
 - Table `memories` (scope founder/company/market, optional agent, text, source, confidence 0-100), forced RLS. Search is Postgres full text over any of the words ('simple' config, no stemming); meaning search waits for pgvector (NEEDS-YOU: confirm the embedded Postgres can load it). Tools `remember` (autonomy 1, company or market only; founder lessons are written by the system) and `recall` (autonomy 0). A run gets only matching notes, for its own agent, labelled as data and never as instructions.
