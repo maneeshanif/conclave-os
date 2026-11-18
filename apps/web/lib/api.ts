@@ -216,6 +216,30 @@ export interface Deployment {
   finishedAt: string | null;
 }
 
+export interface Scorecard {
+  agentKey: string;
+  name: string;
+  department: string | null;
+  tasksDone: number;
+  runs: number;
+  checksPassed: number;
+  accepted: number;
+  acceptedAsIs: number;
+  edited: number;
+  rejected: number;
+  costUsd: number;
+  costPerAccepted: number | null;
+  boundaryAttempts: number;
+  suggestion: { move: 'skill_patch' | 'different_persona' | 'bench'; why: string } | null;
+}
+
+export interface TalentRoom {
+  policy: { level: 'H0' | 'H1'; rosterCap: number; trialBudgetCapUsd: number; active: number };
+  bakeoffs: { id: string; department: string; query: string; status: string; createdAt: string; candidates: { source: string; key: string; name: string; boundaryAttempts: number; rating: number; costUsd: number }[] }[];
+  catalog: { source: string; roles: number; flagged: number }[];
+  hires: { approvalId: string; status: string; name: string | null; department: string | null }[];
+}
+
 export interface Signal {
   id: string;
   kind: string;
@@ -398,6 +422,8 @@ export const api = {
     }
   },
   rebuildBrief: () => call<Brief>('/api/brief/rebuild', { method: 'POST', body: '{}' }),
+  talent: () => call<TalentRoom>('/api/talent'),
+  scorecards: async () => (await call<{ scorecards: Scorecard[] }>('/api/scorecards')).scorecards,
   deployments: async () => (await call<{ deployments: Deployment[] }>('/api/deployments')).deployments,
   signals: (status?: string) => call<Signal[]>(`/api/signals${status ? `?status=${encodeURIComponent(status)}` : ''}`),
   qualifySignal: (id: string) => call<Signal>(`/api/signals/${id}/qualify`, { method: 'POST', body: '{}' }),

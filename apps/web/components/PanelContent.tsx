@@ -16,6 +16,7 @@ import { InboxView } from './InboxView';
 import { PipelineView } from './PipelineView';
 import { PushToggle } from './PushToggle';
 import { SignalsView } from './SignalsView';
+import { TalentView } from './TalentView';
 import { TasksView } from './TasksView';
 
 /** What is inside each panel: the page components as they were, one per panel id. */
@@ -35,6 +36,8 @@ export function PanelContent(state: PanelState): ReactNode {
       return null; // the list is drawn by the office screen, which owns the world, the drawer and the panels
     case 'deployments':
       return <DeploymentsView />;
+    case 'talent':
+      return <TalentView />;
     case 'approvals':
       return <ApprovalsInbox />;
     case 'needs-you':

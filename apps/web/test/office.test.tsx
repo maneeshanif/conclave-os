@@ -57,7 +57,7 @@ describe('the plain office (S6-8)', () => {
     expect(screen.getByRole('button', { name: /Closer/ }).textContent).toMatch(/Waiting for you to decide/);
   });
 
-  it('gives every object a button that opens its panel, and says "coming" for one with no page yet', async () => {
+  it('gives every object a button that opens its panel, (the Talent room included, since S8-8)', async () => {
     const open = vi.fn();
     render(<OfficeView client={client()} onPanel={open} />);
     await screen.findByRole('heading', { name: 'Outreach' });
@@ -72,8 +72,8 @@ describe('the plain office (S6-8)', () => {
       expect(open).toHaveBeenLastCalledWith(id);
     }
     expect(open).toHaveBeenCalledTimes(5);
-    expect(screen.queryByRole('button', { name: /Talent room/ })).toBeNull();
-    expect(screen.getByText(/Talent room/).textContent).toMatch(/coming/i);
+    fireEvent.click(screen.getByRole('button', { name: /Talent room/ }));
+    expect(open).toHaveBeenLastCalledWith('talent');
   });
 
   it('says an agent that is handing a task on is doing so, and lists it under the room of the desk it is standing at', async () => {

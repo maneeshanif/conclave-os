@@ -32,9 +32,9 @@ describe('what a tooltip says (S6-14b1)', () => {
     expect(describeThing({ kind: 'agent', id: 'a2' }, known)).toEqual({ title: 'Closer', line: 'Outreach. At the approvals desk. Waiting for you to decide.' });
   });
 
-  it('says what an object opens, and when it is not ready', () => {
+  it('says what an object opens (every object has a page now, so none says "coming soon")', () => {
     expect(describeThing({ kind: 'object', id: 'Approvals' }, known)).toEqual({ title: 'Approvals inbox', line: 'Click to open.' });
-    expect(describeThing({ kind: 'object', id: 'Jobs' }, known)).toEqual({ title: 'Talent room', line: 'Coming soon.' });
+    expect(describeThing({ kind: 'object', id: 'Jobs' }, known)).toEqual({ title: 'Talent room', line: 'Click to open.' });
   });
 
   it('names the room a board belongs to', () => {
