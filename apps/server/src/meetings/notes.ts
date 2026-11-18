@@ -64,3 +64,24 @@ export async function addMeetingNote(pool: pg.Pool, workspaceId: string, meeting
     return { id: r.rows[0]!.id };
   });
 }
+
+/**
+ * Puts a finished meeting's notes on its deal (S10-5): one task of kind `meeting_notes` (done, holding the notes, with the meeting as its
+ * source) and one open task for each action item, all attached to the deal. It happens once: the meeting is marked published in the same
+ * step that decides it, so two closings at once make one set. A meeting with no deal, not closed, or with no notes publishes nothing.
+ */
+export async function publishMeetingToDeal(pool: pg.Pool, workspaceId: string, meetingId: string): Promise<{ published: boolean; tasks: number }> {
+  return withWorkspace(pool, workspaceId, async ({ client: c }) => {
+    const m = (await c.query<{ title: string; deal_id: string | null; status: string }>("select title, deal_id, status from meetings where id = $1 and published_at is null for update", [meetingId])).rows[0];
+    if (!m || !m.deal_id || m.status !== 'closed') return { published: false, tasks: 0 };
+    const notes = (await c.query<{ text: string; action_items: string[] }>('select text, action_items from meeting_notes where meeting_id = $1 order by created_at, id', [meetingId])).rows;
+    if (!notes.length) return { published: false, tasks: 0 };
+    const items = [...new Set(notes.flatMap((n) => n.action_items))].slice(0, 30);
+    const body = `Source: meeting "${m.title}" (${meetingId}). Notes were taken with everyone's consent.\n\n${notes.map((n) => `- ${n.text}`).join('\n')}`.slice(0, 20_000);
+    await c.query("insert into tasks (workspace_id, title, body, kind, status, subject_type, subject_id, created_by, done_at) values ($1, $2, $3, 'meeting_notes', 'done', 'deal', $4, 'note-taker', now())", [workspaceId, `Notes: ${m.title}`.slice(0, 200), body, m.deal_id]);
+    for (const item of items) await c.query("insert into tasks (workspace_id, title, body, kind, subject_type, subject_id, created_by) values ($1, $2, $3, 'meeting_action', 'deal', $4, 'note-taker')", [workspaceId, item, `From the meeting "${m.title}" (${meetingId}).`, m.deal_id]);
+    await c.query('update meetings set published_at = now() where id = $1', [meetingId]);
+    await log(c, workspaceId, 'meeting.published', meetingId, { dealId: m.deal_id, actionItems: items.length });
+    return { published: true, tasks: items.length + 1 };
+  });
+}

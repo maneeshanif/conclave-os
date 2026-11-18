@@ -1442,6 +1442,8 @@ export const meetings = pgTable(
     status: text('status').notNull().default('planned'),
     // The room the meeting connector made (S10-2), once the meeting is open.
     room: text('room'),
+    // Set once the notes and action items have been put on the deal (S10-5), so it happens once.
+    publishedAt: timestamp('published_at', { withTimezone: true }),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [

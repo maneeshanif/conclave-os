@@ -582,6 +582,13 @@
       "when": 1795032019159,
       "tag": "0082_meeting_notes_rls",
       "breakpoints": true
+    },
+    {
+      "idx": 83,
+      "version": "7",
+      "when": 1795032479625,
+      "tag": "0083_meetings_published",
+      "breakpoints": true
     }
   ]
 }

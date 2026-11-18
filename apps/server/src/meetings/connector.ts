@@ -1,5 +1,6 @@
 import type pg from 'pg';
 import { withWorkspace } from '../db/tenant';
+import { publishMeetingToDeal } from './notes';
 
 /**
  * Where a client meeting's video runs (S10-2, SPEC 10, 12). One interface, two implementations: a local stand-in that only records the room (no
@@ -71,5 +72,7 @@ export async function closeMeeting(pool: pg.Pool, workspaceId: string, connector
   const won = await withWorkspace(pool, workspaceId, ({ client: c }) => c.query("update meetings set status = 'closed' where id = $1 and status = 'open'", [meetingId]));
   if (!won.rowCount) return { closed: false };
   await connector.closeRoom(m.room);
+  // A finished meeting puts its notes and action items on its deal, once (S10-5).
+  await publishMeetingToDeal(pool, workspaceId, meetingId).catch((err) => console.error('could not put the meeting notes on the deal:', (err as Error).message));
   return { closed: true };
 }
