@@ -1,6 +1,7 @@
 import { Hono, type Context } from 'hono';
 import type { QueryResultRow } from 'pg';
 import { z } from 'zod';
+import { mayDecide } from '../auth/roles';
 import { lessonFromEdit } from '../memory/lessons';
 import { EmailPayload } from '../actions/email';
 import { DmPayload } from '../actions/dm';
@@ -77,6 +78,9 @@ export function approvalRoutes(deps: { workspaceId: string; bus: Bus; onDecided?
     // Lock the row: a second decision for the same approval waits here, then sees it is no longer pending.
     const [a] = await q<{ id: string; kind: string; status: string; payload: Record<string, unknown>; agent_id: string | null }>(c, 'select id, kind, status, payload, agent_id from approvals where id = $1 for update', [id]);
     if (!a) return c.json({ error: 'Not found' }, 404);
+    // Team mode (S9-3): a member decides content and outreach only. Without a sign-in (local mode) the person at the machine is the owner.
+    const role = c.get('role');
+    if (role && !mayDecide(role, a.kind)) return c.json({ error: `A ${role} cannot decide a ${a.kind} approval.` }, 403);
     if (a.status !== 'pending') return c.json({ error: `This approval was already decided (it is ${a.status}).`, status: a.status }, 409);
 
     let edited: Record<string, unknown> | null = null;

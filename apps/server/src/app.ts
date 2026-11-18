@@ -19,11 +19,12 @@ import { breakerRoutes } from './routes/breakers';
 import { pushRoutes } from './routes/push';
 import type { Notifier } from './push';
 import { mcpRoutes } from './routes/mcp';
+import { isRole, mayRequest, type Role } from './auth/roles';
 import { ownerRoutes } from './routes/owner';
 import type { Dispatcher } from './workflows/dispatch';
 
 /** `tx` is the request's transaction. `after` holds work that must wait until it commits, such as starting a run. */
-export type AppEnv = { Variables: { tx: Tx; after: (() => Promise<void>)[]; owner?: SessionInfo } };
+export type AppEnv = { Variables: { tx: Tx; after: (() => Promise<void>)[]; owner?: SessionInfo; role?: Role } };
 
 export interface AppDeps {
   pool: Pool;
@@ -142,6 +143,11 @@ export function createApp(deps?: AppDeps) {
       const me = await auth.session(c.req.raw.headers).catch(() => null);
       if (!me) return c.json({ error: 'Sign in first.' }, 401);
       c.set('owner', me);
+      // Team mode (S9-3): the person's role in this workspace. Nobody on the list is a viewer.
+      const row = await withWorkspace(deps.pool, deps.workspaceId, ({ client }) => client.query<{ role: string }>('select role from members where user_id = $1', [me.userId])).catch(() => null);
+      const role: Role = row?.rows[0] && isRole(row.rows[0].role) ? row.rows[0].role : 'viewer';
+      c.set('role', role);
+      if (!mayRequest(role, c.req.method, c.req.path)) return c.json({ error: `A ${role} cannot do that.` }, 403);
       await next();
     };
     app.use('/api/*', wall);
