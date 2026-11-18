@@ -11,6 +11,7 @@ export interface SettingsClient {
   putPolicy(p: { level?: 'H0' | 'H1'; rosterCap?: number; trialBudgetCapUsd?: number }): Promise<unknown>;
   putAgent(key: string, p: { selfWriting?: boolean; autonomy?: number }): Promise<unknown>;
   putGuestHours(hours: number): Promise<unknown>;
+  putReleaseChannel(channel: 'stable' | 'beta' | 'nightly'): Promise<unknown>;
   patchSends(p: Partial<Pick<SendSettings, 'windowHours' | 'windowCap' | 'emailDailyCap'>>): Promise<unknown>;
   delegate(op: 'register' | 'on' | 'off' | 'revoke'): Promise<unknown>;
   putMandate(rule: { kind: 'email.send'; minStep: number; maxStep: number }): Promise<unknown>;
@@ -24,6 +25,7 @@ const real: SettingsClient = {
   putPolicy: api.putPolicy,
   putAgent: api.putConfigAgent,
   putGuestHours: api.putGuestHours,
+  putReleaseChannel: api.putReleaseChannel,
   patchSends: api.patchSends,
   delegate: api.delegateOp,
   putMandate: api.putMandate,
@@ -222,6 +224,19 @@ export function SettingsView({ client = real }: { client?: SettingsClient }) {
             Save
           </Button>
         </div>
+      </section>
+
+      <section aria-label="Updates">
+        <h3 className="font-semibold">Updates</h3>
+        <p className="text-slate-600">Which releases you are offered. Stable is the steadiest; beta sees beta and stable; nightly sees everything. An update is only offered if it is newer and passes its smoke check.</p>
+        <label>
+          Channel{' '}
+          <select aria-label="Release channel" className={field} value={cfg.releaseChannel} onChange={(e) => void change('Release channel', () => client.putReleaseChannel(e.target.value as 'stable' | 'beta' | 'nightly'))}>
+            <option value="stable">stable</option>
+            <option value="beta">beta</option>
+            <option value="nightly">nightly</option>
+          </select>
+        </label>
       </section>
 
       <section aria-label="Connectors">

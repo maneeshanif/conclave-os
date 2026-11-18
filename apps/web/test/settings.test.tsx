@@ -10,6 +10,7 @@ afterEach(cleanup);
 const cfg = (over: Partial<ConfigView> = {}): ConfigView => ({
   hiring: { level: 'H0', rosterCap: 20, trialBudgetCapUsd: 5, active: 7 },
   guestLinkHours: 48,
+  releaseChannel: 'stable',
   agents: [
     { key: 'wren', name: 'Wren', department: 'outreach', status: 'active', autonomy: 1, selfWriting: false, runtime: 'claude-cli' },
     { key: 'kofi', name: 'Kofi', department: 'engineering', status: 'active', autonomy: 0, selfWriting: true, runtime: 'codex' },
@@ -28,6 +29,7 @@ const client = (c: ConfigView | Error = cfg(), over: Partial<SettingsClient> = {
     putPolicy: vi.fn(async () => ({})),
     putAgent: vi.fn(async () => ({})),
     putGuestHours: vi.fn(async () => ({})),
+    putReleaseChannel: vi.fn(async () => ({})),
     patchSends: vi.fn(async () => ({})),
     delegate: vi.fn(async () => ({})),
     putMandate: vi.fn(async () => ({})),
@@ -110,6 +112,14 @@ describe('the Settings panel', () => {
     unmount();
     render(<SettingsView client={client(new Error('down'))} />);
     expect(await screen.findByText(/cannot reach the server/i)).toBeTruthy();
+  });
+
+  it('changes the release channel', async () => {
+    const c = client();
+    render(<SettingsView client={c} />);
+    await screen.findByLabelText('Updates');
+    fireEvent.change(screen.getByLabelText('Release channel'), { target: { value: 'beta' } });
+    await waitFor(() => expect(c.putReleaseChannel).toHaveBeenCalledWith('beta'));
   });
 
   it('opens from a link and from the bar', () => {

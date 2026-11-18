@@ -19,8 +19,12 @@ export async function checkBudget(
 ): Promise<{ over: boolean; spent: number; budget: number }> {
   const budget = Number(agent.monthly_budget_usd);
   return withWorkspace(pool, workspaceId, async ({ client: c }) => {
-    const r = await c.query<{ spent: string | null }>('select sum(cost_usd) as spent from runs where agent_id = $1 and started_at >= $2', [agent.id, monthStart(now)]);
-    const spent = Number(r.rows[0]!.spent ?? 0);
+    // The month's runs, plus any corrections made this month (A5): a correction adds or takes off an amount and the run rows are left as they were.
+    const r = await c.query<{ spent: string | null }>(
+      `select coalesce((select sum(cost_usd) from runs where agent_id = $1 and started_at >= $2), 0) + coalesce((select sum(usd) from spend_adjustments where agent_id = $1 and created_at >= $2), 0) as spent`,
+      [agent.id, monthStart(now)],
+    );
+    const spent = Math.max(0, Number(r.rows[0]!.spent ?? 0));
     const over = spent >= budget;
     if (over) {
       const marker = `agent: ${agent.id}\nmonth: ${monthKey(now)}\n`;

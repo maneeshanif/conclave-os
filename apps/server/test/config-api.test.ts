@@ -121,3 +121,15 @@ describe('the tool call log (Settings)', () => {
     expect(calls[0]).toMatchObject({ tool: 'send_email', decision: 'refused', agent: 'cfg-r', reason: 'no such tool' });
   });
 });
+
+describe('spend corrections (Settings, A5)', () => {
+  it('are added with a reason, counted in the month, audit-logged, and refused when empty or without a reason', async () => {
+    const ok = await call('POST', '/api/config/agents/cfg-r/spend', { usd: -2.5, reason: 'The CLI double counted a run' });
+    expect(ok.status).toBe(201);
+    expect(Number((await sql("select usd from spend_adjustments where reason like 'The CLI%'")).rows[0].usd)).toBe(-2.5);
+    expect((await sql("select count(*)::int as n from audit_log where action = 'config.spend_adjustment'")).rows[0].n).toBe(1);
+    expect((await call('POST', '/api/config/agents/cfg-r/spend', { usd: 0, reason: 'nothing' })).status).toBe(400);
+    expect((await call('POST', '/api/config/agents/cfg-r/spend', { usd: 3, reason: '' })).status).toBe(400);
+    expect((await call('POST', '/api/config/agents/nobody/spend', { usd: 3, reason: 'who' })).status).toBe(404);
+  });
+});

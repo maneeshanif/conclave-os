@@ -1154,12 +1154,15 @@ export const workspaceSettings = pgTable('workspace_settings', {
   trialBudgetCapUsd: numeric('trial_budget_cap_usd', { precision: 10, scale: 2 }).notNull().default('5'),
   // How long a guest link to a client meeting works by default, in hours (S10-1, set on the Settings screen).
   guestLinkHours: integer('guest_link_hours').notNull().default(48),
+  // Which release channel upgrades come from: stable, beta or nightly (A6).
+  releaseChannel: text('release_channel').notNull().default('stable'),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 },
 (t) => [
   // Sanity limits, the same ones the API enforces: a cap of zero or a window of a year is a mistake, not a setting.
   check('workspace_settings_limits_ck', sql`${t.windowHours} between 1 and 168 and ${t.windowCap} between 1 and 100000 and ${t.emailDailyCap} between 1 and 100000`),
   check('workspace_settings_hiring_ck', sql`${t.hiringLevel} in ('H0','H1') and ${t.rosterCap} between 1 and 500`),
+  check('workspace_settings_channel_ck', sql`${t.releaseChannel} in ('stable','beta','nightly')`),
 ]);
 
 /** Things that need a person: a failed executor, a send of unknown outcome, an agent's question. */
@@ -1637,5 +1640,23 @@ export const agentProbes = pgTable(
     unique('agent_probes_ws_id_uq').on(t.workspaceId, t.id),
     foreignKey({ name: 'agent_probes_agent_fk', columns: [t.workspaceId, t.agentId], foreignColumns: [agents.workspaceId, agents.id] }),
     index('agent_probes_agent_idx').on(t.workspaceId, t.agentId, t.at),
+  ],
+);
+
+/** A correction to an agent's spend (A5, P8): the run rows stay as they were, and a correction adds or takes off an amount with who and why. */
+export const spendAdjustments = pgTable(
+  'spend_adjustments',
+  {
+    id: id(),
+    workspaceId: workspaceId(),
+    agentId: uuid('agent_id').notNull(),
+    usd: numeric('usd', { precision: 10, scale: 4 }).notNull(),
+    reason: text('reason').notNull(),
+    createdBy: text('created_by').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    unique('spend_adjustments_ws_id_uq').on(t.workspaceId, t.id),
+    foreignKey({ name: 'spend_adjustments_agent_fk', columns: [t.workspaceId, t.agentId], foreignColumns: [agents.workspaceId, agents.id] }),
   ],
 );

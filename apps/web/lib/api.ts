@@ -221,6 +221,7 @@ export interface Deployment {
 export interface ConfigView {
   hiring: { level: 'H0' | 'H1'; rosterCap: number; trialBudgetCapUsd: number; active: number };
   guestLinkHours: number;
+  releaseChannel: 'stable' | 'beta' | 'nightly';
   agents: { key: string; name: string; department: string | null; status: string; autonomy: number; selfWriting: boolean; runtime: string }[];
   delegate: { registered: boolean; active: boolean; revoked: boolean; fingerprint: string | null; mandate: Record<string, unknown>; handDecisions: Record<string, number>; handDecisionsNeeded: number };
   connectors: { git: string; meeting: string; claudeAgentKey: string; httpWorkers: number };
@@ -486,6 +487,7 @@ export const api = {
   toolCalls: async () => (await call<{ calls: ToolCall[] }>('/api/config/tool-calls?limit=30')).calls,
   putPolicy: (p: { level?: 'H0' | 'H1'; rosterCap?: number; trialBudgetCapUsd?: number }) => call('/api/talent/policy', { method: 'PUT', body: JSON.stringify(p) }),
   putConfigAgent: (key: string, p: { selfWriting?: boolean; autonomy?: number }) => call(`/api/config/agents/${encodeURIComponent(key)}`, { method: 'PUT', body: JSON.stringify(p) }),
+  putReleaseChannel: (channel: 'stable' | 'beta' | 'nightly') => call('/api/config/release-channel', { method: 'PUT', body: JSON.stringify({ channel }) }),
   putGuestHours: (hours: number) => call('/api/config/guest-link-hours', { method: 'PUT', body: JSON.stringify({ hours }) }),
   patchSends: (p: Partial<Pick<SendSettings, 'windowHours' | 'windowCap' | 'emailDailyCap'>>) => call('/api/settings', { method: 'PATCH', body: JSON.stringify(p) }),
   delegateOp: (op: 'register' | 'on' | 'off' | 'revoke') =>

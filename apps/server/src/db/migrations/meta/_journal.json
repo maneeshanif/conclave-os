@@ -666,6 +666,27 @@
       "when": 1795038205728,
       "tag": "0094_guest_link_hours",
       "breakpoints": true
+    },
+    {
+      "idx": 95,
+      "version": "7",
+      "when": 1795038817998,
+      "tag": "0095_spend_adjustments",
+      "breakpoints": true
+    },
+    {
+      "idx": 96,
+      "version": "7",
+      "when": 1795038820997,
+      "tag": "0096_spend_adjustments_rls",
+      "breakpoints": true
+    },
+    {
+      "idx": 97,
+      "version": "7",
+      "when": 1795039146699,
+      "tag": "0097_release_channel",
+      "breakpoints": true
     }
   ]
 }

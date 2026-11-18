@@ -416,8 +416,8 @@ From `docs/BORROW-AUDIT.md`. Each goes into its slice's task list when that slic
 - [x] **A2 Silent-run watchdog.** (Scheduled as S5-5b; done.) Slice 5 or 6. Flag and stop a run that is alive but silent past a threshold, separate from the 15 minute timeout. *Test:* a fake runtime that hangs after its first event is stopped at the threshold with a distinct error kind.
 - [x] **A3 Tool risk classes and a call log (done 2026-11-20).** Slice 8, before the slice 10 connectors. Each os tool and connector tool gets a risk class, and every call is logged with its decision. *Test:* a high-risk tool called without approval is refused and logged.
 - [x] **A4 Agent `verifying` step (done 2026-11-20).** Slice 8, with hiring. A new or changed agent runs a tiny probe on its rendered folder before it goes active. *Test:* an agent whose folder fails the probe never becomes active.
-- [ ] **A5 Hand-off test, one alternative attempt, spend correction.** Small checks from P6 to P8, in slice 5 or 6.
-- [ ] **A6 Release channels.** Slice 9.
+- [x] **A5 Hand-off test, one alternative attempt, spend correction (hand-off test and spend correction done 2026-11-20; the one alternative attempt is the existing retry then fallback model, then block).** Small checks from P6 to P8, in slice 5 or 6.
+- [x] **A6 Release channels (done 2026-11-20).** Slice 9.
 - [ ] **A7 Task watchdog (optional).** Slice 8, only if Anees wants it.
 - [x] **A8 The world, in detail.** (Scheduled as S6-4 to S6-6.) Slice 6. The WorkAdventure-style features listed in `docs/BORROW-AUDIT.md`: Tiled maps, proximity bubbles, zones with behaviour (meeting, lockable, silent, max users, focusable), entry and walk-to, availability and raise hand. Our own property names, our own or CC0 art.
 

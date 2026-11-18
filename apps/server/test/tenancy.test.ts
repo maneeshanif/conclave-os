@@ -70,6 +70,7 @@ const TABLES = [
   'sequence_steps',
   'setup_steps',
   'signals',
+  'spend_adjustments',
   'suppression',
   'tasks',
   'thread_messages',
