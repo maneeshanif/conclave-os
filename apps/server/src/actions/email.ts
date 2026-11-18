@@ -19,6 +19,7 @@ export const EmailPayload = z.object({
 });
 export type EmailPayload = z.infer<typeof EmailPayload>;
 
+import type { ChannelConnector } from './channel-connector';
 import type { CallTransport } from './call-transport';
 import type { Deployer } from '../projects/deployer';
 import type { GitConnector } from '../projects/git-connector';
@@ -45,6 +46,8 @@ export interface ExecutorDeps {
   gitConnector?: GitConnector;
   /** How an approved call goes out (S9-8). Without one, an approved call is refused. */
   callTransport?: CallTransport;
+  /** How an approved reply goes back to a client channel (S10-6). Without one, an approved reply is refused. */
+  channelConnector?: ChannelConnector;
   /** The templates folder, whose skills an approved skill patch changes (S8-3). */
   templatesRoot?: string;
   /** Builds and serves an approved deploy (S7-8). Without one, an approved deploy is refused. */

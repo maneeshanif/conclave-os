@@ -23,6 +23,7 @@ const TABLES = [
   'campaigns',
   'catalog_roles',
   'channel_accounts',
+  'channel_messages',
   'circuit_breakers',
   'code_projects',
   'code_pull_requests',

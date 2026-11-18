@@ -8,6 +8,7 @@ import { browserPostTransport, outboxDmTransport, outboxPostTransport } from './
 import { playwrightDriver } from './browser/driver';
 import { playwrightPageOpener } from './browser/playwright';
 import { outboxCallTransport } from './actions/call-transport';
+import { outboxChannelConnector } from './actions/channel-connector';
 import { transportFromEnv, type EmailTransport } from './actions/transport';
 import type { Bus } from './bus';
 import type { ApprovalDecision } from './routes/approvals';
@@ -47,6 +48,8 @@ export function createOutreach(d: OutreachDeps): { transport: EmailTransport; ex
     dmTransport: outboxDmTransport(d.dataDir),
     // Calls are written to a folder and nothing is dialled; a real line is a connector a person switches on (S9-8).
     callTransport: outboxCallTransport(d.dataDir),
+    // Replies to clients' channel messages are written to a folder and nothing is posted (S10-6).
+    channelConnector: outboxChannelConnector(d.dataDir),
     // Generated assets are stored here. There is no generation connector until the founder chooses a generator (S5-8).
     dataDir: d.dataDir,
     // Used only for an account a person has logged in to by hand and switched to the browser (S5-3).

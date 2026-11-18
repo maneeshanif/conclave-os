@@ -589,6 +589,20 @@
       "when": 1795032479625,
       "tag": "0083_meetings_published",
       "breakpoints": true
+    },
+    {
+      "idx": 84,
+      "version": "7",
+      "when": 1795032804959,
+      "tag": "0084_channel_messages",
+      "breakpoints": true
+    },
+    {
+      "idx": 85,
+      "version": "7",
+      "when": 1795032807597,
+      "tag": "0085_channel_messages_rls",
+      "breakpoints": true
     }
   ]
 }

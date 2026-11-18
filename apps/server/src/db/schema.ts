@@ -1511,3 +1511,25 @@ export const meetingNotes = pgTable(
     foreignKey({ name: 'meeting_notes_meeting_fk', columns: [t.workspaceId, t.meetingId], foreignColumns: [meetings.workspaceId, meetings.id] }),
   ],
 );
+
+/** A client's message from Slack, Jira or a help desk (S10-6): data as written, with the task made to answer it. */
+export const channelMessages = pgTable(
+  'channel_messages',
+  {
+    id: id(),
+    workspaceId: workspaceId(),
+    channel: text('channel').notNull(),
+    externalId: text('external_id').notNull(),
+    fromName: text('from_name').notNull(),
+    body: text('body').notNull(),
+    status: text('status').notNull().default('new'),
+    taskId: uuid('task_id'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    unique('channel_messages_ws_id_uq').on(t.workspaceId, t.id),
+    unique('channel_messages_ws_channel_ext_uq').on(t.workspaceId, t.channel, t.externalId),
+    check('channel_messages_channel_ck', sql`${t.channel} in ('slack','jira','helpdesk')`),
+    check('channel_messages_status_ck', sql`${t.status} in ('new','replied')`),
+  ],
+);

@@ -285,6 +285,26 @@ ${tests.output}`);
     return out;
   }
 
+  /** A reply to a client's channel message (S10-6): the message must exist, the text makes no blocked claim. Never sends. */
+  async proposeChannelReply(scope: RunScope, p: { messageId: string; text: string }): Promise<{ approvalId: string; existed: boolean }> {
+    const claims = checkClaims(p.text, await this.companyText(scope.workspaceId));
+    if (!claims.ok) throw new ToolError(`Refused: ${claims.reasons.join('; ')}. Rewrite without it and propose again.`);
+    const out = await withWorkspace(this.pool, scope.workspaceId, async ({ client: c }) => {
+      const m = (await c.query<{ channel: string; from_name: string; status: string }>('select channel, from_name, status from channel_messages where id = $1', [p.messageId])).rows[0];
+      if (!m) throw new ToolError('No such message.');
+      const dedupe = `channel:${p.messageId}`;
+      const payload = { messageId: p.messageId, channel: m.channel, to: m.from_name, text: p.text };
+      const ins = await c.query<{ id: string }>(
+        "insert into approvals (workspace_id, kind, dedupe_key, agent_id, run_id, task_id, payload) values ($1, 'channel.reply', $2, $3, $4, $5, $6) on conflict (workspace_id, kind, dedupe_key) do nothing returning id",
+        [scope.workspaceId, dedupe, scope.agentId, scope.runId, scope.taskId ?? null, JSON.stringify(payload)],
+      );
+      if (ins.rows[0]) return { approvalId: ins.rows[0].id, existed: false };
+      return { approvalId: (await c.query<{ id: string }>("select id from approvals where kind = 'channel.reply' and dedupe_key = $1", [dedupe])).rows[0]!.id, existed: true };
+    });
+    if (!out.existed) this.onApproval(scope.workspaceId, out.approvalId);
+    return out;
+  }
+
   async addMeetingNote(scope: RunScope, n: { meetingId: string; text: string; actionItems?: string[] | undefined }): Promise<void> {
     try {
       await addMeetingNote(this.pool, scope.workspaceId, n.meetingId, { text: n.text, ...(n.actionItems ? { actionItems: n.actionItems } : {}) });
