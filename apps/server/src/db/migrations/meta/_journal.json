@@ -456,6 +456,20 @@
       "when": 1794972516888,
       "tag": "0064_agents_self_writing",
       "breakpoints": true
+    },
+    {
+      "idx": 65,
+      "version": "7",
+      "when": 1794972867866,
+      "tag": "0065_catalog_roles",
+      "breakpoints": true
+    },
+    {
+      "idx": 66,
+      "version": "7",
+      "when": 1794972870838,
+      "tag": "0066_catalog_roles_rls",
+      "breakpoints": true
     }
   ]
 }

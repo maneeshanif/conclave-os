@@ -19,6 +19,7 @@ const TABLES = [
   'audit_log',
   'briefs',
   'campaigns',
+  'catalog_roles',
   'channel_accounts',
   'circuit_breakers',
   'code_projects',

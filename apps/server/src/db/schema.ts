@@ -1294,3 +1294,26 @@ export const memories = pgTable(
     check('memories_confidence_ck', sql`${t.confidence} between 0 and 100`),
   ],
 );
+
+/** A persona imported from a catalog (S8-4). Text from strangers: kept with its source, pinned id and licence, scanned, and never granted a tool. */
+export const catalogRoles = pgTable(
+  'catalog_roles',
+  {
+    id: id(),
+    workspaceId: workspaceId(),
+    source: text('source').notNull(),
+    key: text('key').notNull(),
+    division: text('division').notNull(),
+    name: text('name').notNull(),
+    description: text('description'),
+    text: text('text').notNull(),
+    hash: text('hash').notNull(),
+    pinnedId: text('pinned_id').notNull(),
+    license: text('license').notNull(),
+    flagged: boolean('flagged').notNull().default(false),
+    flags: jsonb('flags').notNull().default(sql`'[]'::jsonb`),
+    droppedKeys: jsonb('dropped_keys').notNull().default(sql`'[]'::jsonb`),
+    importedAt: timestamp('imported_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [unique('catalog_roles_ws_id_uq').on(t.workspaceId, t.id), unique('catalog_roles_ws_source_key_uq').on(t.workspaceId, t.source, t.key)],
+);
