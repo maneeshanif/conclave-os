@@ -44,7 +44,7 @@ export interface OsStore {
   /** Queues a change to one of the agent's own skills for approval (autonomy 2), only if self-writing is on. Never changes the skill. */
   proposeSkillPatch(scope: RunScope, p: { skill: string; text: string; why: string }): Promise<{ approvalId: string; existed: boolean }>;
   /** Queues the winner of a scored bake-off as a hire for approval (autonomy 2). Never hires. */
-  proposeHire(scope: RunScope, p: { bakeoff: string }): Promise<{ approvalId: string; existed: boolean }>;
+  proposeHire(scope: RunScope, p: { bakeoff: string }): Promise<{ approvalId: string; existed: boolean; auto?: boolean }>;
   /** Saves a note to memory (autonomy 1): company or market only; a founder lesson is written by the system, not the agent. */
   remember(scope: RunScope, m: { text: string; scope: 'company' | 'market' }): Promise<void>;
   /** Finds notes by words (autonomy 0). */
@@ -520,6 +520,7 @@ export const osTools = {
     input: z.object({ bakeoff: z.uuid() }).strict(),
     async run(store: OsStore, scope: RunScope, args: { bakeoff: string }) {
       const r = await store.proposeHire(scope, args);
+      if (r.auto) return `Approved inside the hiring mandate as ${r.approvalId}; the trial starts shortly. Do not retry; finish your task.`;
       return r.existed ? `Already queued as ${r.approvalId}. Do not propose it again.` : `Queued for approval as ${r.approvalId}. Nothing has been hired. Do not retry; finish your task.`;
     },
   },
@@ -593,7 +594,7 @@ export class MemoryOsStore implements OsStore {
   async proposeSkillPatch(): Promise<{ approvalId: string; existed: boolean }> {
     throw new ToolError('Proposals need the database store.');
   }
-  async proposeHire(): Promise<{ approvalId: string; existed: boolean }> {
+  async proposeHire(): Promise<{ approvalId: string; existed: boolean; auto?: boolean }> {
     throw new ToolError('Proposals need the database store.');
   }
   async remember(): Promise<void> {

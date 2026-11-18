@@ -484,6 +484,13 @@
       "when": 1794973211671,
       "tag": "0068_bakeoffs_rls",
       "breakpoints": true
+    },
+    {
+      "idx": 69,
+      "version": "7",
+      "when": 1794973701862,
+      "tag": "0069_hiring_settings",
+      "breakpoints": true
     }
   ]
 }

@@ -1144,11 +1144,16 @@ export const workspaceSettings = pgTable('workspace_settings', {
   windowHours: integer('window_hours').notNull().default(5),
   windowCap: integer('window_cap').notNull().default(30),
   emailDailyCap: integer('email_daily_cap').notNull().default(100),
+  // How autonomous hiring may be (S8-6): H0 nothing alone, H1 trials inside a mandate. The roster cap counts active agents.
+  hiringLevel: text('hiring_level').notNull().default('H0'),
+  rosterCap: integer('roster_cap').notNull().default(20),
+  trialBudgetCapUsd: numeric('trial_budget_cap_usd', { precision: 10, scale: 2 }).notNull().default('5'),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 },
 (t) => [
   // Sanity limits, the same ones the API enforces: a cap of zero or a window of a year is a mistake, not a setting.
   check('workspace_settings_limits_ck', sql`${t.windowHours} between 1 and 168 and ${t.windowCap} between 1 and 100000 and ${t.emailDailyCap} between 1 and 100000`),
+  check('workspace_settings_hiring_ck', sql`${t.hiringLevel} in ('H0','H1') and ${t.rosterCap} between 1 and 500`),
 ]);
 
 /** Things that need a person: a failed executor, a send of unknown outcome, an agent's question. */

@@ -15,6 +15,12 @@ Newest first. One entry per decision: what, why, and what it replaced.
 - **One test file, `slice3-e2e.test.ts`, runs the three "Done when" checks** on the real run loop, reaper, pause table and eval gate, with a scripted model: (1) a run killed halfway (its process lost, heartbeat stopped) is failed by the reaper, its task goes back to todo still holding the session id, and the next run starts from that session and finishes; (2) a plan limit pauses the runtime for every agent on it while an agent on the other runtime keeps working, the queued tasks wait, the pause lifts only at the reset time and wakes exactly the agents with work, who then finish; (3) the unchanged skill scores at the baseline, and a change that makes the 20 sample drafts long and hyped fails the gate with all 20 leads named.
 - **Slice 3 is tagged `slice-3-done`.** Not done and recorded rather than hidden: the eval set is 20 made-up leads and its baseline is the reference drafter's (real leads and a real-agent drafter are in NEEDS-YOU); breakers cover the os tools only until connectors are live; the lite-mode canvas switch waits for slice 6.
 
+## 2026-11-19 (S8-6: hiring levels and the roster cap)
+
+- `workspace_settings` gets `hiring_level` (H0 default, H1), `roster_cap` (20) and `trial_budget_cap_usd` (5). H1 approves a pending catalog hire by itself, as `mandate:H1` (audit-logged), only if: the department is switched on, the budget is under the cap, the template adds no connector beyond `os`, and the roster has room. The executor still creates the agent at autonomy 0; making it active stays a person's call. Anything outside the mandate stays a normal card. H2 is refused until the delegate exists.
+- The roster cap counts agents with status `active`. A proposal is refused when it is full, and an approved hire fails at execution if it filled in the meantime.
+- Not built: a Settings control for the level and cap (they are set in code or SQL for now; the Talent room in S8-8 gets the switch).
+
 ## 2026-11-19 (S8-5: bake-off and propose_hire)
 
 - `runBakeOff` searches the catalog (up to three, unflagged only), runs the same trial task for each through an injected `Trial`, and ranks by boundary attempts first, then rating, then cost. The trial is a function so tests script it; the real one (the runtime in a scratch folder, no outside actions, rated by a reviewer) is not built yet and is listed in BUILD for slice 8's end. The rating is a deterministic stand-in (distinct words).

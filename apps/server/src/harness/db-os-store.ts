@@ -11,6 +11,7 @@ import { normalizeUrl } from '../signals';
 import { branchFacts, PrError, refHead, runTests } from '../projects/pr';
 import { createHash } from 'node:crypto';
 import { recallMemories, rememberMemory } from '../memory/memory';
+import { rosterRoom, tryAutoTrial } from '../talent/hiring';
 import { applySkillPatch, checkNewSkill, diffLines, locateSkill, readSkill, skillVersion } from '../memory/skills';
 import { PROJECT_KEY } from '../projects/projects';
 import { labelUntrusted } from './trust';
@@ -312,7 +313,9 @@ ${tests.output}`);
   }
 
   /** The winner of a scored bake-off as a hire card (S8-5), with every candidate's scores. Never hires. */
-  async proposeHire(scope: RunScope, p: { bakeoff: string }): Promise<{ approvalId: string; existed: boolean }> {
+  async proposeHire(scope: RunScope, p: { bakeoff: string }): Promise<{ approvalId: string; existed: boolean; auto?: boolean }> {
+    const room = await rosterRoom(this.pool, scope.workspaceId);
+    if (!room.ok) throw new ToolError(`The roster is full (${room.active} of ${room.cap} active agents). Bench someone or raise the cap before proposing a hire.`);
     const out = await withWorkspace(this.pool, scope.workspaceId, async ({ client: c }) => {
       const b = (await c.query<{ department: string; template: string; trial_task: string; candidates: { roleId: string; source: string; key: string; name: string; boundaryAttempts: number; rating: number; costUsd: number }[] }>('select department, template, trial_task, candidates from bakeoffs where id = $1', [p.bakeoff])).rows[0];
       if (!b) throw new ToolError('There is no such bake-off.');
@@ -339,8 +342,10 @@ ${tests.output}`);
       }
       return { approvalId: (await c.query<{ id: string }>("select id from approvals where kind = 'hire' and dedupe_key = $1", [dedupe])).rows[0]!.id, existed: true };
     });
-    if (!out.existed) this.onApproval(scope.workspaceId, out.approvalId);
-    return out;
+    if (out.existed) return out;
+    const auto = await tryAutoTrial(this.pool, scope.workspaceId, out.approvalId, this.templatesRoot);
+    if (!auto.auto) this.onApproval(scope.workspaceId, out.approvalId);
+    return { ...out, auto: auto.auto };
   }
 
   async remember(scope: RunScope, m: { text: string; scope: 'company' | 'market' }): Promise<void> {

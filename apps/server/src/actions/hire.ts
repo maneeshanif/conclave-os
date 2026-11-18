@@ -1,6 +1,7 @@
 import { appendFile } from 'node:fs/promises';
 import path from 'node:path';
 import { withWorkspace } from '../db/tenant';
+import { rosterRoom } from '../talent/hiring';
 import { readSettings } from '../settings';
 import type { ExecResult, ExecutorDeps } from './email';
 
@@ -40,6 +41,8 @@ export async function executeHire(deps: ExecutorDeps, approvalId: string): Promi
     await finish(false, { reason });
     return { status, reason };
   };
+  const room = await rosterRoom(deps.pool, ws);
+  if (!room.ok) return fail(`the roster is full (${room.active} of ${room.cap} active agents)`, 'failed');
   if (!deps.agentFactory) return fail('this server cannot add agents (no agent maker is set up)', 'refused');
   const persona = await withWorkspace(deps.pool, ws, async ({ client: c }) => (await c.query<{ text: string; source: string; pinned_id: string }>('select text, source, pinned_id from catalog_roles where id = $1 and not flagged', [p.winner.roleId])).rows[0]);
   if (!persona) return fail('the catalog role is gone or has been flagged', 'failed');
