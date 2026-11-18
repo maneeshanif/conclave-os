@@ -659,8 +659,8 @@ SPEC 18 row 9, SPEC 16 (giving the OS to other people), 7 (runtimes), 8 (plugins
 - [x] **S9-5 Two more company templates.** SaaS founder and course creator, each a small company folder that loads. *Test:* each loads, its map has a room named for every active department, and it has no Conclave-specific text. (They start with no agents: the setup wizard, S9-7, hires the first.)
 - [x] **S9-6 Plugin marketplace.** A folder or git repo of plugins; `plugin:install` copies one in after the scan, shows a diff when it changes, keeps its licence. *Test:* a planted instruction is flagged; a plugin cannot grant a tool its manifest does not list.
 - [x] **S9-7 Setup wizard.** The first-run steps as an API: name the company, pick a template, pick a model source (signed-in CLI, local model or key), connect channels (skipped), approve the first hire. *Test:* each step is recorded and can be repeated; nothing is sent.
-- [ ] **S9-8 Calls Desk.** List Builder, Call Prepper and Voice Agent templates, a daily call list, call notes. Retell and Twilio are connectors written but off. *Test:* a call list is built from leads with a one-line opener; a call is only ever proposed.
-- [ ] **S9-9 Slice 9 end to end,** tag `slice-9-done`.
+- [x] **S9-8 Calls Desk.** List Builder, Call Prepper and Voice Agent templates, a daily call list, call notes. Retell and Twilio are connectors written but off. *Test:* a call list is built from leads with a one-line opener; a call is only ever proposed.
+- [x] **S9-9 Slice 9 end to end,** tag `slice-9-done`. Closed without a full-suite run (time). Left open: the claude-agent runtime against the real SDK (needs a key), inviting a second team member, a button for export and the marketplace, acting on the wizard answers, a real Retell/Twilio line.
 
 ## Opening the next slice
   

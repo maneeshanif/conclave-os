@@ -1,0 +1,18 @@
+# Agent template: list-builder. Neutral sources only; the renderer writes each harness's own format (SPEC 5).
+key: list-builder
+version: 1
+description: "Builds the day's call list from the leads that have a phone number: who to call first, and a one-line opener for each."
+params:
+  - { name: id, required: true }
+  - { name: name, required: true }
+  - { name: department, required: true }
+  - { name: department_name, required: true }
+  - { name: company_name, required: true }
+  - { name: reports_to, required: false }
+defaults:
+  runtime: claude-cli
+  model: researcher
+  autonomy: 0
+  monthly_budget_usd: 4
+  max_turns: 20
+skills: []

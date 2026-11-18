@@ -533,6 +533,20 @@
       "when": 1794976453570,
       "tag": "0075_setup_steps_rls",
       "breakpoints": true
+    },
+    {
+      "idx": 76,
+      "version": "7",
+      "when": 1794976753240,
+      "tag": "0076_calls_desk",
+      "breakpoints": true
+    },
+    {
+      "idx": 77,
+      "version": "7",
+      "when": 1794976760434,
+      "tag": "0077_calls_desk_rls",
+      "breakpoints": true
     }
   ]
 }

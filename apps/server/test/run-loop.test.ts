@@ -62,6 +62,9 @@ class LateStore implements OsStore {
   proposeSkillPatch(s: RunScope, p: { skill: string; text: string; why: string }) {
     return this.inner.proposeSkillPatch(s, p);
   }
+  proposeCall(s: RunScope, p: { leadId: string; opener: string; script: string }) {
+    return this.inner.proposeCall(s, p);
+  }
   proposeHire(s: RunScope, p: { bakeoff: string }): Promise<{ approvalId: string; existed: boolean; auto?: boolean }> {
     return this.inner.proposeHire(s, p);
   }

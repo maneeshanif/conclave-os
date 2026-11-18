@@ -11,6 +11,7 @@ import { normalizeUrl } from '../signals';
 import { branchFacts, PrError, refHead, runTests } from '../projects/pr';
 import { createHash } from 'node:crypto';
 import { recallMemories, rememberMemory } from '../memory/memory';
+import { digits } from '../calls/desk';
 import { runEval } from '../research/improvements';
 import { rosterRoom, tryAutoTrial } from '../talent/hiring';
 import { applySkillPatch, checkNewSkill, diffLines, locateSkill, readSkill, skillVersion } from '../memory/skills';
@@ -278,6 +279,34 @@ ${tests.output}`);
       );
       if (ins.rows[0]) return { approvalId: ins.rows[0].id, existed: false };
       return { approvalId: (await c.query<{ id: string }>("select id from approvals where kind = 'pr.open' and dedupe_key = $1", [dedupe])).rows[0]!.id, existed: true };
+    });
+    if (!out.existed) this.onApproval(scope.workspaceId, out.approvalId);
+    return out;
+  }
+
+  /**
+   * One call to one lead (S9-8). Every rule is checked here, in code: the lead exists and has a phone number, is not marked do not contact,
+   * the number is not on the suppression list, and the opener and script make no blocked claim. It never calls.
+   */
+  async proposeCall(scope: RunScope, p: { leadId: string; opener: string; script: string }): Promise<{ approvalId: string; existed: boolean }> {
+    const claims = checkClaims(`${p.opener}
+${p.script}`, await this.companyText(scope.workspaceId));
+    if (!claims.ok) throw new ToolError(`Refused: ${claims.reasons.join('; ')}. Rewrite without it and propose again.`);
+    const out = await withWorkspace(this.pool, scope.workspaceId, async ({ client: c }) => {
+      const l = (await c.query<{ phone: string | null; stage: string; business_name: string | null }>('select phone, stage, business_name from leads where id = $1', [p.leadId])).rows[0];
+      if (!l) throw new ToolError('No such lead.');
+      if (!l.phone) throw new ToolError('This lead has no phone number. Block the task and say so.');
+      if (l.stage === 'do_not_contact') throw new ToolError('This lead is marked do not contact.');
+      const supp = (await c.query<{ value: string }>('select value from suppression')).rows.map((r) => digits(r.value));
+      if (supp.includes(digits(l.phone))) throw new ToolError('This number is on the suppression list. Do not call it.');
+      const dedupe = `call:${p.leadId}`;
+      const payload = { leadId: p.leadId, businessName: l.business_name, phone: l.phone, opener: p.opener, script: p.script };
+      const ins = await c.query<{ id: string }>(
+        "insert into approvals (workspace_id, kind, dedupe_key, agent_id, run_id, task_id, payload) values ($1, 'call.place', $2, $3, $4, $5, $6) on conflict (workspace_id, kind, dedupe_key) do nothing returning id",
+        [scope.workspaceId, dedupe, scope.agentId, scope.runId, scope.taskId ?? null, JSON.stringify(payload)],
+      );
+      if (ins.rows[0]) return { approvalId: ins.rows[0].id, existed: false };
+      return { approvalId: (await c.query<{ id: string }>("select id from approvals where kind = 'call.place' and dedupe_key = $1", [dedupe])).rows[0]!.id, existed: true };
     });
     if (!out.existed) this.onApproval(scope.workspaceId, out.approvalId);
     return out;

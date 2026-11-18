@@ -374,6 +374,7 @@ export const leads = pgTable(
     website: text('website'),
     contactName: text('contact_name'),
     email: text('email'),
+    phone: text('phone'), // for the Calls Desk (S9-8)
     stage: text('stage').notNull().default('new'), // new | contacted | replied | won | lost | do_not_contact
     ownerAgentId: uuid('owner_agent_id'),
     notes: text('notes'),
@@ -1406,4 +1407,25 @@ export const setupSteps = pgTable(
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [primaryKey({ name: 'setup_steps_pkey', columns: [t.workspaceId, t.step] })],
+);
+
+/** A day's call list (S9-8): one line per lead to call, with the opener, and what came of it. */
+export const callListItems = pgTable(
+  'call_list_items',
+  {
+    id: id(),
+    workspaceId: workspaceId(),
+    leadId: uuid('lead_id').notNull(),
+    day: text('day').notNull(),
+    opener: text('opener').notNull(),
+    status: text('status').notNull().default('queued'),
+    notes: text('notes'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    unique('call_list_items_ws_id_uq').on(t.workspaceId, t.id),
+    unique('call_list_items_ws_lead_day_uq').on(t.workspaceId, t.leadId, t.day),
+    foreignKey({ name: 'call_list_items_lead_fk', columns: [t.workspaceId, t.leadId], foreignColumns: [leads.workspaceId, leads.id] }),
+    check('call_list_items_status_ck', sql`${t.status} in ('queued','called','booked','skipped')`),
+  ],
 );

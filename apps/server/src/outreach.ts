@@ -7,6 +7,7 @@ import type { ExecutorDeps } from './actions/email';
 import { browserPostTransport, outboxDmTransport, outboxPostTransport } from './actions/post-transport';
 import { playwrightDriver } from './browser/driver';
 import { playwrightPageOpener } from './browser/playwright';
+import { outboxCallTransport } from './actions/call-transport';
 import { transportFromEnv, type EmailTransport } from './actions/transport';
 import type { Bus } from './bus';
 import type { ApprovalDecision } from './routes/approvals';
@@ -44,6 +45,8 @@ export function createOutreach(d: OutreachDeps): { transport: EmailTransport; ex
     // Posts go to a folder, like email. The browser transport needs a login done by hand and is switched on per account (S5-3).
     postTransport: outboxPostTransport(d.dataDir),
     dmTransport: outboxDmTransport(d.dataDir),
+    // Calls are written to a folder and nothing is dialled; a real line is a connector a person switches on (S9-8).
+    callTransport: outboxCallTransport(d.dataDir),
     // Generated assets are stored here. There is no generation connector until the founder chooses a generator (S5-8).
     dataDir: d.dataDir,
     // Used only for an account a person has logged in to by hand and switched to the browser (S5-3).

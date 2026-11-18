@@ -47,6 +47,8 @@ export interface OsStore {
   proposeHire(scope: RunScope, p: { bakeoff: string }): Promise<{ approvalId: string; existed: boolean; auto?: boolean }>;
   /** An improvement from the Research room: a skill change with evidence, an expected gain and an eval that must pass (autonomy 2). Never changes the skill. */
   proposeImprovement(scope: RunScope, p: ImprovementInput): Promise<{ approvalId: string; existed: boolean }>;
+  /** Queues one phone call to one lead for approval (autonomy 2). Never calls. */
+  proposeCall(scope: RunScope, p: { leadId: string; opener: string; script: string }): Promise<{ approvalId: string; existed: boolean }>;
   /** Saves a note to memory (autonomy 1): company or market only; a founder lesson is written by the system, not the agent. */
   remember(scope: RunScope, m: { text: string; scope: 'company' | 'market' }): Promise<void>;
   /** Finds notes by words (autonomy 0). */
@@ -556,6 +558,15 @@ export const osTools = {
       return r.existed ? `Already queued as ${r.approvalId}. Do not propose it again.` : `Queued for approval as ${r.approvalId}. Nothing has changed. Do not retry; finish your task.`;
     },
   },
+  propose_call: {
+    minAutonomy: 2,
+    description: 'Propose one phone call to one lead, with a one-line opener and a short script, for the founder to approve. It does NOT call anyone. Call it once per lead.',
+    input: z.object({ leadId: z.uuid(), opener: z.string().min(1).max(300), script: z.string().min(1).max(3000) }).strict(),
+    async run(store: OsStore, scope: RunScope, args: { leadId: string; opener: string; script: string }) {
+      const r = await store.proposeCall(scope, args);
+      return r.existed ? `Already queued as ${r.approvalId}. Do not propose it again.` : `Queued for approval as ${r.approvalId}. Nothing has been called. Do not retry; finish your task.`;
+    },
+  },
   remember: {
     minAutonomy: 1,
     description: 'Save one short, reusable fact to memory (company or market). Give facts, not instructions. It is a note with its source, never the authority on a client or a rule.',
@@ -627,6 +638,9 @@ export class MemoryOsStore implements OsStore {
     throw new ToolError('Proposals need the database store.');
   }
   async proposeSkillPatch(): Promise<{ approvalId: string; existed: boolean }> {
+    throw new ToolError('Proposals need the database store.');
+  }
+  async proposeCall(): Promise<{ approvalId: string; existed: boolean }> {
     throw new ToolError('Proposals need the database store.');
   }
   async proposeHire(): Promise<{ approvalId: string; existed: boolean; auto?: boolean }> {
