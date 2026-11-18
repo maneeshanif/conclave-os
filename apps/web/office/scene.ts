@@ -10,6 +10,7 @@ import { signsFor } from './signs';
 import { FRAME, availabilityColour, directionOf, frameIndex, lookFor, placeColour, pose, roomTint, type Availability, type Facing } from './art';
 import type { WorldController } from './controller';
 import { thingAt, type Thing } from './tooltips';
+import { PanDrag, panned } from './pan';
 
 /**
  * The drawing (SPEC 12). A thin Phaser skin over `WorldController`: it loads the Tiled map and our own art, draws the floor, rooms,
@@ -136,6 +137,7 @@ export function startWorld(opts: {
     private me?: Figure;
     private cursors?: Phaser.Types.Input.Keyboard.CursorKeys;
     private heldDir: Facing | null = null;
+    private pending: { x: number; y: number } | null = null;
     private screens: { rect: Phaser.GameObjects.Rectangle; agentId: string | null }[] = [];
     private board: { x: number; y: number; w: number; h: number } | null = null;
     private noteRects: Phaser.GameObjects.Rectangle[] = [];
@@ -255,16 +257,37 @@ export function startWorld(opts: {
       this.cursors = this.input.keyboard?.createCursorKeys();
       // A press that began on something over the canvas (the bar, a dialog) is not a click on the world.
       // What is under the pointer, for the tooltip. Only while the pointer is over the canvas itself.
+      // Dragging the world looks around (jsm-hq's pan): the camera lets go of you while you drag, and takes hold again when you next walk.
+      const drag = new PanDrag();
+      this.input.on('pointerup', () => {
+        const was = drag.end();
+        const tile = this.pending;
+        this.pending = null;
+        if (was || !tile) return; // a drag is not a click
+        if (opts.onTile?.(tile, this.decorBoxes)) return; // the editor used the click
+        ctl.click(tile);
+        this.cameras.main.startFollow(this.me!.box, true, 0.15, 0.15); // walking brings the view back to you
+      });
       this.input.on('pointermove', (p: Phaser.Input.Pointer) => {
+        if (p.isDown && p.downElement === this.game.canvas) {
+          const step = drag.move(p.x, p.y, this.cameras.main.zoom);
+          if (step) {
+            const cam = this.cameras.main;
+            cam.stopFollow();
+            const to = panned({ x: cam.scrollX + cam.width / 2, y: cam.scrollY + cam.height / 2 }, step, { w: facts.map.width * TILE, h: facts.map.height * TILE });
+            cam.centerOn(to.x, to.y);
+          }
+        }
         const thing = thingAt(facts, ctl.agents(), ctl.me.position, p.worldX, p.worldY);
         opts.onHover?.(thing ? { thing, x: p.x, y: p.y } : null);
       });
       this.input.on('gameout', () => opts.onHover?.(null));
       this.input.on('pointerdown', (p: Phaser.Input.Pointer) => {
         if (p.downElement !== this.game.canvas) return;
+        drag.start(p.x, p.y);
         const tile = { x: Math.floor(p.worldX / TILE), y: Math.floor(p.worldY / TILE) };
-        if (opts.onTile?.(tile, this.decorBoxes)) return; // the editor used the click
-        ctl.click(tile);
+        // The click is acted on when the press is let go, so a drag can be told from a click.
+        this.pending = tile;
       });
     }
 
@@ -321,6 +344,7 @@ export function startWorld(opts: {
         if (dir !== this.heldDir) {
           this.heldDir = dir;
           ctl.hold(dir);
+          if (dir) this.cameras.main.startFollow(this.me!.box, true, 0.15, 0.15);
         }
       }
       this.cameras.main.setZoom(ctl.zoom);
