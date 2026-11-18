@@ -46,6 +46,8 @@ const TABLES = [
   'hooks',
   'improvements',
   'leads',
+  'meeting_notes',
+  'meeting_people',
   'meetings',
   'members',
   'memories',

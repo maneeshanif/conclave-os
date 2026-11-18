@@ -568,6 +568,20 @@
       "when": 1795011610944,
       "tag": "0080_meetings_room",
       "breakpoints": true
+    },
+    {
+      "idx": 81,
+      "version": "7",
+      "when": 1795032010082,
+      "tag": "0081_meeting_notes",
+      "breakpoints": true
+    },
+    {
+      "idx": 82,
+      "version": "7",
+      "when": 1795032019159,
+      "tag": "0082_meeting_notes_rls",
+      "breakpoints": true
     }
   ]
 }

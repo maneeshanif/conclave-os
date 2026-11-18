@@ -11,6 +11,7 @@ import { normalizeUrl } from '../signals';
 import { branchFacts, PrError, refHead, runTests } from '../projects/pr';
 import { createHash } from 'node:crypto';
 import { recallMemories, rememberMemory } from '../memory/memory';
+import { addMeetingNote } from '../meetings/notes';
 import { digits } from '../calls/desk';
 import { runEval } from '../research/improvements';
 import { rosterRoom, tryAutoTrial } from '../talent/hiring';
@@ -282,6 +283,14 @@ ${tests.output}`);
     });
     if (!out.existed) this.onApproval(scope.workspaceId, out.approvalId);
     return out;
+  }
+
+  async addMeetingNote(scope: RunScope, n: { meetingId: string; text: string; actionItems?: string[] | undefined }): Promise<void> {
+    try {
+      await addMeetingNote(this.pool, scope.workspaceId, n.meetingId, { text: n.text, ...(n.actionItems ? { actionItems: n.actionItems } : {}) });
+    } catch (err) {
+      throw new ToolError((err as Error).message);
+    }
   }
 
   /** A guest invite (S10-1): the meeting must be there and not over. Makes nothing: the link is made by the executor after approval. */

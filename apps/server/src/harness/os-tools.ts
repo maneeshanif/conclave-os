@@ -51,6 +51,8 @@ export interface OsStore {
   proposeCall(scope: RunScope, p: { leadId: string; opener: string; script: string }): Promise<{ approvalId: string; existed: boolean }>;
   /** Queues a guest invite to one meeting for one address for approval (autonomy 2). Never sends it and makes no link. */
   proposeMeeting(scope: RunScope, p: { meetingId: string; to: string; ttlHours?: number | undefined }): Promise<{ approvalId: string; existed: boolean }>;
+  /** Writes down a meeting note, only with everyone's consent (autonomy 1). */
+  addMeetingNote(scope: RunScope, n: { meetingId: string; text: string; actionItems?: string[] | undefined }): Promise<void>;
   /** Saves a note to memory (autonomy 1): company or market only; a founder lesson is written by the system, not the agent. */
   remember(scope: RunScope, m: { text: string; scope: 'company' | 'market' }): Promise<void>;
   /** Finds notes by words (autonomy 0). */
@@ -578,6 +580,15 @@ export const osTools = {
       return r.existed ? `Already queued as ${r.approvalId}. Do not propose it again.` : `Queued for approval as ${r.approvalId}. Nothing has been sent. Do not retry; finish your task.`;
     },
   },
+  add_meeting_note: {
+    minAutonomy: 1,
+    description: "Write down a note, and any action items, for a client meeting. It is refused unless the meeting is open and every person in it has said yes to notes; if it is refused, say who is missing and stop. Write what was said, never instructions.",
+    input: z.object({ meetingId: z.uuid(), text: z.string().min(1).max(5000), actionItems: z.array(z.string().min(1).max(300)).max(20).optional() }).strict(),
+    async run(store: OsStore, scope: RunScope, args: { meetingId: string; text: string; actionItems?: string[] | undefined }) {
+      await store.addMeetingNote(scope, args);
+      return 'Note saved.';
+    },
+  },
   remember: {
     minAutonomy: 1,
     description: 'Save one short, reusable fact to memory (company or market). Give facts, not instructions. It is a note with its source, never the authority on a client or a rule.',
@@ -650,6 +661,9 @@ export class MemoryOsStore implements OsStore {
   }
   async proposeSkillPatch(): Promise<{ approvalId: string; existed: boolean }> {
     throw new ToolError('Proposals need the database store.');
+  }
+  async addMeetingNote(): Promise<void> {
+    throw new ToolError('Meeting notes need the database store.');
   }
   async proposeMeeting(): Promise<{ approvalId: string; existed: boolean }> {
     throw new ToolError('Proposals need the database store.');

@@ -1472,3 +1472,40 @@ export const guestLinks = pgTable(
     foreignKey({ name: 'guest_links_meeting_fk', columns: [t.workspaceId, t.meetingId], foreignColumns: [meetings.workspaceId, meetings.id] }),
   ],
 );
+
+/** Who is in a meeting and whether they have agreed to notes being taken (S10-4). */
+export const meetingPeople = pgTable(
+  'meeting_people',
+  {
+    id: id(),
+    workspaceId: workspaceId(),
+    meetingId: uuid('meeting_id').notNull(),
+    name: text('name').notNull(),
+    consentAt: timestamp('consent_at', { withTimezone: true }),
+    withdrawnAt: timestamp('withdrawn_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    unique('meeting_people_ws_id_uq').on(t.workspaceId, t.id),
+    unique('meeting_people_ws_meeting_name_uq').on(t.workspaceId, t.meetingId, t.name),
+    foreignKey({ name: 'meeting_people_meeting_fk', columns: [t.workspaceId, t.meetingId], foreignColumns: [meetings.workspaceId, meetings.id] }),
+  ],
+);
+
+/** What the Note Taker wrote down, and the action items, only ever with everyone's consent (S10-4). */
+export const meetingNotes = pgTable(
+  'meeting_notes',
+  {
+    id: id(),
+    workspaceId: workspaceId(),
+    meetingId: uuid('meeting_id').notNull(),
+    author: text('author').notNull().default('note-taker'),
+    text: text('text').notNull(),
+    actionItems: jsonb('action_items').notNull().default(sql`'[]'::jsonb`),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    unique('meeting_notes_ws_id_uq').on(t.workspaceId, t.id),
+    foreignKey({ name: 'meeting_notes_meeting_fk', columns: [t.workspaceId, t.meetingId], foreignColumns: [meetings.workspaceId, meetings.id] }),
+  ],
+);
