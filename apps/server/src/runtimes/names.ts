@@ -3,4 +3,4 @@ export const RUNTIMES = ['claude-cli', 'opencode', 'openai-agents', 'codex', 'ht
 export type RuntimeName = (typeof RUNTIMES)[number];
 
 /** Runtimes that exist in this build. Slice 0 builds the two CLI runtimes; slice 4 adds the in-process openai-agents runner; slice 7 adds codex. */
-export const BUILT_RUNTIMES: readonly RuntimeName[] = ['claude-cli', 'opencode', 'openai-agents', 'codex', 'http'];
+export const BUILT_RUNTIMES: readonly RuntimeName[] = ['claude-cli', 'opencode', 'openai-agents', 'codex', 'http', 'claude-agent'];

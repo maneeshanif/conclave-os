@@ -341,6 +341,7 @@ export async function renderWorkdir(agent: LoadedAgent, ctx: WorkdirContext): Pr
       files = await codexTarget(agent, t, rules, ctx);
       break;
     case 'http':
+    case 'claude-agent':
       files = httpTarget(agent, rules);
       break;
     default:

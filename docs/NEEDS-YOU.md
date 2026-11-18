@@ -84,3 +84,7 @@ Things the build parked for you. Each says what to do.
 ## The world library (S6-14a)
 
 - [ ] **Not blocking.** JSM HQ draws its office with PixiJS 8 and we use Phaser 4. I recommend staying with Phaser (see DECISIONS, 2026-11-14: our world needs a camera that follows, input, animation and Tiled maps, and the logic is already separate from the drawing). Tell me if you want a switch anyway. Its licence is MIT; I copied nothing and credited it in `docs/CREDITS.md`.
+
+## The claude-agent runtime (S9-2)
+
+- [ ] When you have an Anthropic API key: `pnpm add @anthropic-ai/claude-agent-sdk -F @conclave/server`, put `CLAUDE_AGENT_API_KEY=...` in `.env`, and run one agent with `runtime: claude-agent`. The runtime is tested only with a scripted SDK.
