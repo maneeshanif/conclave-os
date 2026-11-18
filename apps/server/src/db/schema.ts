@@ -1440,6 +1440,8 @@ export const meetings = pgTable(
     title: text('title').notNull(),
     startsAt: timestamp('starts_at', { withTimezone: true }).notNull(),
     status: text('status').notNull().default('planned'),
+    // The room the meeting connector made (S10-2), once the meeting is open.
+    room: text('room'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [

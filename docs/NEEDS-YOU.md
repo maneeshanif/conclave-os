@@ -88,3 +88,7 @@ Things the build parked for you. Each says what to do.
 ## The claude-agent runtime (S9-2)
 
 - [ ] When you have an Anthropic API key: `pnpm add @anthropic-ai/claude-agent-sdk -F @conclave/server`, put `CLAUDE_AGENT_API_KEY=...` in `.env`, and run one agent with `runtime: claude-agent`. The runtime is tested only with a scripted SDK.
+
+## Client meetings (S10-2)
+
+- [ ] When you want real video: set up a LiveKit server (Cloud or your own), then tell me the address and I will write the keys step. Until then rooms are only records. Nothing is tested against a real LiveKit.
