@@ -1,0 +1,6 @@
+# The departments of this company. Each one is a room in the office. Add more with the office's "add a department".
+departments:
+  - { key: chief-of-staff, name: Chief of Staff, room: 0,  active: true }
+  - { key: lead-gen,       name: Growth,       room: 1,  active: true }
+  - { key: outreach,       name: Onboarding Outreach,       room: 2,  active: true }
+  - { key: research,       name: Product Research,       room: 10, active: true }

@@ -1,0 +1,14 @@
+# The goal ladder for a course business. Example numbers: set your own.
+north_star: students who finish a course and would recommend it
+
+ladder:
+  - id: rung-1
+    target_usd: 1000
+    by: null
+    source: course sales
+
+current_rung: rung-1
+
+department_goals:
+  lead-gen: { metric: new_subscribers_per_week,   target: 40, serves: rung-1 }
+  outreach: { metric: enrolments_per_week,        target: 3,  serves: rung-1 }
