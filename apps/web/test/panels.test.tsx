@@ -9,7 +9,7 @@ afterEach(cleanup);
 
 describe('the list of panels and their addresses (S6-12a)', () => {
   it('has a panel for each page that used to be a route, a tasks panel and a run log', () => {
-    expect([...PANEL_IDS].sort()).toEqual(['approvals', 'boardroom', 'brief', 'campaigns', 'department-board', 'department-meeting', 'deployments', 'goals', 'health', 'ideas', 'inbox', 'needs-you', 'pipeline', 'rooms', 'run-log', 'signals', 'talent', 'tasks']);
+    expect([...PANEL_IDS].sort()).toEqual(['approvals', 'boardroom', 'brief', 'campaigns', 'department-board', 'department-meeting', 'deployments', 'goals', 'health', 'ideas', 'inbox', 'meetings', 'needs-you', 'pipeline', 'rooms', 'run-log', 'signals', 'talent', 'tasks']);
     for (const id of PANEL_IDS) expect(PANEL_LABELS[id].length, id).toBeGreaterThan(2);
   });
 

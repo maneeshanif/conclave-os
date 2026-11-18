@@ -20,6 +20,7 @@ const PLACES = {
   'dept-board': 'department-board',
   'dept-table': 'department-meeting',
   'deploy-board': 'deployments',
+  'meetings-board': 'meetings',
 } as const;
 
 describe('what each object opens (S6-7, S6-12b)', () => {

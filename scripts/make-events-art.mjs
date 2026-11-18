@@ -193,3 +193,17 @@ process.stdout.write(`wrote ${Object.keys(EVENT_FOOT).length} event pictures\n`)
   });
   save('obj-deploy-board', c);
 }
+// The meetings board (S10-3): a board with a row of little calendar cards and a camera dot, by the reception.
+{
+  const [w, h] = OBJECT_FOOT['meetings-board'];
+  const c = canvas(w * T, h * T);
+  c.rect(2, 3, w * T - 4, h * T - 8, '#1e3a5f');
+  c.frame(2, 3, w * T - 4, h * T - 8, INK);
+  c.rect(6, 7, w * T - 12, 4, '#38bdf8');
+  [0, 1, 2].forEach((i) => {
+    c.rect(9 + i * 17, 14, 13, 10, '#f8fafc');
+    c.rect(9 + i * 17, 14, 13, 3, '#f87171');
+  });
+  c.disc(w * T - 10, 20, 3, '#22c55e');
+  save('obj-meetings-board', c);
+}

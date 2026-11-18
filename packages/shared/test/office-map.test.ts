@@ -63,7 +63,7 @@ describe('the starter office map (S6-1)', () => {
   it('has every kind of object the office needs, each on the map with a name', () => {
     const m = read();
     for (const t of OBJECT_TYPES) expect(m.objects.filter((o) => o.type === t), t).toHaveLength(t === 'dept-board' || t === 'dept-table' ? 4 : 1); // a board and a table in each of the four department rooms
-    expect(OBJECT_TYPES).toEqual(expect.arrayContaining(['approvals-desk', 'whiteboard', 'screen', 'mailbox', 'jobboard', 'boardroom-table', 'task-board', 'needs-you-board', 'brief-desk', 'pipeline-board', 'campaign-board', 'signal-radio', 'idea-wall', 'terminal', 'dept-board', 'dept-table', 'deploy-board']));
+    expect(OBJECT_TYPES).toEqual(expect.arrayContaining(['approvals-desk', 'whiteboard', 'screen', 'mailbox', 'jobboard', 'boardroom-table', 'task-board', 'needs-you-board', 'brief-desk', 'pipeline-board', 'campaign-board', 'signal-radio', 'idea-wall', 'terminal', 'dept-board', 'dept-table', 'deploy-board', 'meetings-board']));
     // Furniture blocks the tiles it stands on, so an object is only required to be on the map.
     for (const o of m.objects) expect(o.x >= 0 && o.y >= 0 && o.x < m.width && o.y < m.height, o.name).toBe(true);
   });

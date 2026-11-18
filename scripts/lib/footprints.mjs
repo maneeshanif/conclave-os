@@ -20,6 +20,7 @@ export const OBJECT_FOOT = {
   'dept-board': [2, 1],
   'dept-table': [2, 2],
   'deploy-board': [2, 1],
+  'meetings-board': [2, 1],
 };
 
 /** Pictures drawn upright that have to lie the other way to fit their footprint, by object type: turn them this many degrees. */

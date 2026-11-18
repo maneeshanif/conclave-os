@@ -43897,6 +43897,16 @@
      "point": true,
      "rotation": 0,
      "visible": true
+    },
+    {
+     "id": 875,
+     "name": "Client meetings board",
+     "type": "meetings-board",
+     "x": 5888,
+     "y": 2144,
+     "point": true,
+     "rotation": 0,
+     "visible": true
     }
    ]
   },
@@ -52591,5 +52601,5 @@
   }
  ],
  "nextlayerid": 874,
- "nextobjectid": 874
+ "nextobjectid": 876
 }

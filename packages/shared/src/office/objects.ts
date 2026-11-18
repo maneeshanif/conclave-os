@@ -1,4 +1,4 @@
-export const OBJECT_TYPES = ['approvals-desk', 'whiteboard', 'screen', 'mailbox', 'jobboard', 'boardroom-table', 'task-board', 'needs-you-board', 'brief-desk', 'pipeline-board', 'campaign-board', 'signal-radio', 'idea-wall', 'terminal', 'dept-board', 'dept-table', 'deploy-board'] as const;
+export const OBJECT_TYPES = ['approvals-desk', 'whiteboard', 'screen', 'mailbox', 'jobboard', 'boardroom-table', 'task-board', 'needs-you-board', 'brief-desk', 'pipeline-board', 'campaign-board', 'signal-radio', 'idea-wall', 'terminal', 'dept-board', 'dept-table', 'deploy-board', 'meetings-board'] as const;
 export type ObjectType = (typeof OBJECT_TYPES)[number];
 
 /**
@@ -32,6 +32,8 @@ export const OBJECT_PANELS: Record<ObjectType, ObjectPanel> = {
   'dept-table': { panel: 'department-meeting', label: 'Meeting table', href: '/?panel=department-meeting', ready: true },
   // The Engineering room's board of what is live and what failed (S7-9).
   'deploy-board': { panel: 'deployments', label: 'Deployments', href: '/?panel=deployments', ready: true },
+  // In the Meeting Centre's reception, where clients arrive (S10-3).
+  'meetings-board': { panel: 'meetings', label: 'Client meetings', href: '/?panel=meetings', ready: true },
   terminal: { panel: 'run-log', label: 'Run logs', href: '/?panel=run-log', ready: true },
 };
 

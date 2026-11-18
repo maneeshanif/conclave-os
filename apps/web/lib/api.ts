@@ -216,6 +216,16 @@ export interface Deployment {
   finishedAt: string | null;
 }
 
+export interface Meeting {
+  id: string;
+  title: string;
+  startsAt: string;
+  status: 'planned' | 'open' | 'closed' | 'cancelled';
+  room: string | null;
+  dealId: string | null;
+  invites: number;
+}
+
 export interface Scorecard {
   agentKey: string;
   name: string;
@@ -422,6 +432,7 @@ export const api = {
     }
   },
   rebuildBrief: () => call<Brief>('/api/brief/rebuild', { method: 'POST', body: '{}' }),
+  meetings: async () => (await call<{ meetings: Meeting[] }>('/api/meetings')).meetings,
   talent: () => call<TalentRoom>('/api/talent'),
   scorecards: async () => (await call<{ scorecards: Scorecard[] }>('/api/scorecards')).scorecards,
   deployments: async () => (await call<{ deployments: Deployment[] }>('/api/deployments')).deployments,
