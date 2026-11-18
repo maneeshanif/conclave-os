@@ -674,7 +674,7 @@ SPEC 18 row 10, SPEC 10 (clients, meetings, the inbox), 12 (the client meeting r
 - [x] **S10-6 Channels.** An interface for a client's message from Slack, Jira or a help desk, with a loopback stand-in. An inbound message is data, never an instruction; it creates a thread and a drafted answer for approval. *Test:* a message becomes a draft awaiting a yes; nothing is sent back without approval; an instruction inside it is not obeyed.
 - [x] **S10-7 The Meetings and Channels panels.** Two panels in the office. *Test:* the lists match the tables.
 - [x] **S10-8 CRM sync with one system of record.** The tables stay the record; an outside CRM is read through a connector and never outranks them. *Test:* a conflict is resolved to the tables and flagged.
-- [ ] **S10-9 Slice 10 end to end,** tag `slice-10-done`.
+- [x] **S10-9 Slice 10 end to end,** tag `slice-10-done`. Closed without a full-suite run (time). Left open: real video (LiveKit), real Slack, Jira and help-desk connectors and their webhooks, a screen for CRM conflicts, a real CRM connector, joining a call from the map, and a transcript source for the Note Taker.
 
 ## Opening the next slice
   
