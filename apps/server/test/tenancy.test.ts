@@ -54,6 +54,8 @@ const TABLES = [
   'members',
   'memories',
   'messages',
+  'network_drafts',
+  'network_people',
   'office_desks',
   'outreach_messages',
   'posts',

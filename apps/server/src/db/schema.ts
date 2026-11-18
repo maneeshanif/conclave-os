@@ -1557,3 +1557,44 @@ export const crmConflicts = pgTable(
     check('crm_conflicts_status_ck', sql`${t.status} in ('open','resolved')`),
   ],
 );
+
+/** Founders worth knowing (S8-11b). Found and noted by agents; reached only by you. */
+export const networkPeople = pgTable(
+  'network_people',
+  {
+    id: id(),
+    workspaceId: workspaceId(),
+    name: text('name').notNull(),
+    nameKey: text('name_key').notNull(),
+    whereFound: text('where_found').notNull().default(''),
+    note: text('note').notNull().default(''),
+    status: text('status').notNull().default('new'),
+    lastTouch: timestamp('last_touch', { withTimezone: true }),
+    nextNudge: text('next_nudge'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    unique('network_people_ws_id_uq').on(t.workspaceId, t.id),
+    unique('network_people_ws_key_uq').on(t.workspaceId, t.nameKey),
+    check('network_people_status_ck', sql`${t.status} in ('new','in_touch','dropped')`),
+  ],
+);
+
+/** A message drafted for a person. The OS has no way to send it; you do, and then say so (S8-11b). */
+export const networkDrafts = pgTable(
+  'network_drafts',
+  {
+    id: id(),
+    workspaceId: workspaceId(),
+    personId: uuid('person_id').notNull(),
+    text: text('text').notNull(),
+    status: text('status').notNull().default('draft'),
+    sentAt: timestamp('sent_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    unique('network_drafts_ws_id_uq').on(t.workspaceId, t.id),
+    foreignKey({ name: 'network_drafts_person_fk', columns: [t.workspaceId, t.personId], foreignColumns: [networkPeople.workspaceId, networkPeople.id] }),
+    check('network_drafts_status_ck', sql`${t.status} in ('draft','sent_by_you','discarded')`),
+  ],
+);

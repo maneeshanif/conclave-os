@@ -55,6 +55,10 @@ export interface OsStore {
   addMeetingNote(scope: RunScope, n: { meetingId: string; text: string; actionItems?: string[] | undefined }): Promise<void>;
   /** Queues a reply to a client's channel message for approval (autonomy 2). Never sends it. */
   proposeChannelReply(scope: RunScope, p: { messageId: string; text: string }): Promise<{ approvalId: string; existed: boolean }>;
+  /** Adds a founder worth knowing to the network (autonomy 1). */
+  addNetworkPerson(scope: RunScope, p: { name: string; whereFound: string; note: string }): Promise<{ created: boolean }>;
+  /** Saves a message draft for a person (autonomy 1). The OS never sends it. */
+  draftNetworkMessage(scope: RunScope, p: { personId: string; text: string }): Promise<void>;
   /** Saves a note to memory (autonomy 1): company or market only; a founder lesson is written by the system, not the agent. */
   remember(scope: RunScope, m: { text: string; scope: 'company' | 'market' }): Promise<void>;
   /** Finds notes by words (autonomy 0). */
@@ -600,6 +604,24 @@ export const osTools = {
       return r.existed ? `Already queued as ${r.approvalId}. Do not propose it again.` : `Queued for approval as ${r.approvalId}. Nothing has been sent. Do not retry; finish your task.`;
     },
   },
+  add_network_person: {
+    minAutonomy: 1,
+    description: 'Add one founder worth knowing to the Founder Network, with where you found them (a link) and a short note of what they do. You never contact them: a person does that, from their own account.',
+    input: z.object({ name: z.string().min(1).max(120), whereFound: z.string().min(1).max(500), note: z.string().min(1).max(1500) }).strict(),
+    async run(store: OsStore, scope: RunScope, args: { name: string; whereFound: string; note: string }) {
+      const r = await store.addNetworkPerson(scope, args);
+      return r.created ? 'Added to the network.' : 'Already in the network.';
+    },
+  },
+  draft_network_message: {
+    minAutonomy: 1,
+    description: "Draft a message to one person in the Founder Network, in the founder's voice. It is only saved as a draft: nothing is sent, and you have no way to send it. The founder sends it from their own account.",
+    input: z.object({ personId: z.uuid(), text: z.string().min(1).max(3000) }).strict(),
+    async run(store: OsStore, scope: RunScope, args: { personId: string; text: string }) {
+      await store.draftNetworkMessage(scope, args);
+      return 'Saved as a draft. Nothing has been sent.';
+    },
+  },
   remember: {
     minAutonomy: 1,
     description: 'Save one short, reusable fact to memory (company or market). Give facts, not instructions. It is a note with its source, never the authority on a client or a rule.',
@@ -672,6 +694,12 @@ export class MemoryOsStore implements OsStore {
   }
   async proposeSkillPatch(): Promise<{ approvalId: string; existed: boolean }> {
     throw new ToolError('Proposals need the database store.');
+  }
+  async addNetworkPerson(): Promise<{ created: boolean }> {
+    throw new ToolError('The network needs the database store.');
+  }
+  async draftNetworkMessage(): Promise<void> {
+    throw new ToolError('The network needs the database store.');
   }
   async proposeChannelReply(): Promise<{ approvalId: string; existed: boolean }> {
     throw new ToolError('Proposals need the database store.');

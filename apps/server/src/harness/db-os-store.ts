@@ -11,6 +11,7 @@ import { normalizeUrl } from '../signals';
 import { branchFacts, PrError, refHead, runTests } from '../projects/pr';
 import { createHash } from 'node:crypto';
 import { recallMemories, rememberMemory } from '../memory/memory';
+import { addDraft, addPerson } from '../network/network';
 import { addMeetingNote } from '../meetings/notes';
 import { digits } from '../calls/desk';
 import { runEval } from '../research/improvements';
@@ -283,6 +284,24 @@ ${tests.output}`);
     });
     if (!out.existed) this.onApproval(scope.workspaceId, out.approvalId);
     return out;
+  }
+
+  async addNetworkPerson(scope: RunScope, p: { name: string; whereFound: string; note: string }): Promise<{ created: boolean }> {
+    try {
+      return { created: (await addPerson(this.pool, scope.workspaceId, p)).created };
+    } catch (err) {
+      throw new ToolError((err as Error).message);
+    }
+  }
+
+  async draftNetworkMessage(scope: RunScope, p: { personId: string; text: string }): Promise<void> {
+    const claims = checkClaims(p.text, await this.companyText(scope.workspaceId));
+    if (!claims.ok) throw new ToolError(`Refused: ${claims.reasons.join('; ')}. Rewrite without it and save again.`);
+    try {
+      await addDraft(this.pool, scope.workspaceId, p.personId, p.text);
+    } catch (err) {
+      throw new ToolError((err as Error).message);
+    }
   }
 
   /** A reply to a client's channel message (S10-6): the message must exist, the text makes no blocked claim. Never sends. */

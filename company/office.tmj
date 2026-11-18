@@ -44277,6 +44277,16 @@
      "point": true,
      "rotation": 0,
      "visible": true
+    },
+    {
+     "id": 901,
+     "name": "Founder Network board",
+     "type": "network-board",
+     "x": 576,
+     "y": 768,
+     "point": true,
+     "rotation": 0,
+     "visible": true
     }
    ]
   },
@@ -52971,5 +52981,5 @@
   }
  ],
  "nextlayerid": 874,
- "nextobjectid": 900
+ "nextobjectid": 902
 }

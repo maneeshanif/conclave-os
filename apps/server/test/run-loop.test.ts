@@ -62,6 +62,12 @@ class LateStore implements OsStore {
   proposeSkillPatch(s: RunScope, p: { skill: string; text: string; why: string }) {
     return this.inner.proposeSkillPatch(s, p);
   }
+  addNetworkPerson(s: RunScope, p: { name: string; whereFound: string; note: string }) {
+    return this.inner.addNetworkPerson(s, p);
+  }
+  draftNetworkMessage(s: RunScope, p: { personId: string; text: string }) {
+    return this.inner.draftNetworkMessage(s, p);
+  }
   proposeChannelReply(s: RunScope, p: { messageId: string; text: string }) {
     return this.inner.proposeChannelReply(s, p);
   }

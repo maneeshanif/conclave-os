@@ -216,6 +216,17 @@ export interface Deployment {
   finishedAt: string | null;
 }
 
+export interface NetworkPerson {
+  id: string;
+  name: string;
+  whereFound: string;
+  note: string;
+  status: 'new' | 'in_touch' | 'dropped';
+  lastTouch: string | null;
+  nextNudge: string | null;
+  drafts: { id: string; text: string; status: 'draft' | 'sent_by_you' | 'discarded' }[];
+}
+
 export interface ChannelMessage {
   id: string;
   channel: 'slack' | 'jira' | 'helpdesk';
@@ -442,6 +453,8 @@ export const api = {
     }
   },
   rebuildBrief: () => call<Brief>('/api/brief/rebuild', { method: 'POST', body: '{}' }),
+  networkPeople: async () => (await call<{ people: NetworkPerson[] }>('/api/network')).people,
+  networkSentByYou: (draftId: string, nudgeInDays?: number) => call<{ ok: boolean }>(`/api/network/drafts/${draftId}/sent`, { method: 'POST', body: JSON.stringify(nudgeInDays ? { nudgeInDays } : {}) }),
   channelMessages: async () => (await call<{ messages: ChannelMessage[] }>('/api/channels')).messages,
   meetings: async () => (await call<{ meetings: Meeting[] }>('/api/meetings')).meetings,
   talent: () => call<TalentRoom>('/api/talent'),

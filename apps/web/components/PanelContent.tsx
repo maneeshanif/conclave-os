@@ -15,6 +15,7 @@ import { HealthView } from './HealthView';
 import { IdeasView } from './IdeasView';
 import { InboxView } from './InboxView';
 import { MeetingsView } from './MeetingsView';
+import { NetworkView } from './NetworkView';
 import { PipelineView } from './PipelineView';
 import { PushToggle } from './PushToggle';
 import { SignalsView } from './SignalsView';
@@ -38,6 +39,8 @@ export function PanelContent(state: PanelState): ReactNode {
       return null; // the list is drawn by the office screen, which owns the world, the drawer and the panels
     case 'deployments':
       return <DeploymentsView />;
+    case 'network':
+      return <NetworkView />;
     case 'channels':
       return <ChannelsView />;
     case 'meetings':

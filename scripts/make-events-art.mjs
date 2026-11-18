@@ -218,3 +218,16 @@ process.stdout.write(`wrote ${Object.keys(EVENT_FOOT).length} event pictures\n`)
   c.rect(33, 17, 20, 7, '#c4b5fd');
   save('obj-channels-board', c);
 }
+// The Founder Network board (S8-11b): a board with little portrait cards joined by lines.
+{
+  const [w, h] = OBJECT_FOOT['network-board'];
+  const c = canvas(w * T, h * T);
+  c.rect(2, 3, w * T - 4, h * T - 8, '#14532d');
+  c.frame(2, 3, w * T - 4, h * T - 8, INK);
+  c.rect(6, 7, w * T - 12, 4, '#4ade80');
+  [0, 1, 2].forEach((i) => {
+    c.disc(14 + i * 18, 19, 4, '#f8fafc');
+    if (i) c.rect(8 + i * 18, 19, 4, 1, '#bbf7d0');
+  });
+  save('obj-network-board', c);
+}
