@@ -132,6 +132,14 @@ if (flavor === 'claude') {
     out({ type: 'turn.failed', error: { message: 'Not logged in. Please run codex login' } });
     process.exit(1);
   } else {
+    if (mode === 'edit') {
+      // A scripted coder: writes a page in its folder and commits it, like a real one would.
+      const { writeFileSync } = await import('node:fs');
+      const { execFileSync } = await import('node:child_process');
+      writeFileSync('index.html', '<h1>Built by the coder</h1>' + String.fromCharCode(10));
+      execFileSync('git', ['add', '.']);
+      execFileSync('git', ['-c', 'user.email=coder@localhost', '-c', 'user.name=Coder', 'commit', '-q', '-m', 'Add the home page']);
+    }
     const steps = mode === 'turns' ? 50 : 1;
     for (let i = 0; i < steps; i++) {
       out({ type: 'item.started', item: { id: `item_${i}`, type: 'command_execution', command: 'bash -lc ls', status: 'in_progress' } });
