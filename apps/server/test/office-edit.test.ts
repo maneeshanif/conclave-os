@@ -171,3 +171,42 @@ describe('doors (S6C-2)', () => {
     expect(JSON.stringify(await map())).toBe(before);
   });
 });
+
+describe('room size (S6C-2)', () => {
+  const grow = (b: unknown) => app.request('/api/office/room/grow', { method: 'POST', headers: json, body: JSON.stringify(b) });
+  const rooms = async () => ((await (await app.request('/api/office')).json()) as { map: { rooms: { name: string; x: number; y: number; w: number; h: number }[] } }).map.rooms;
+
+  it('makes the room under the tile bigger on the side asked, tells the office, and undo takes it back', async () => {
+    // The company's own map may have rooms on every side of some rooms, so look for a room and a side with free ground.
+    seen.length = 0;
+    let done: { name: string; w: number; h: number; side: string } | null = null;
+    for (const q of await rooms()) {
+      if (q.w * q.h > 400) continue; // skip the big parks and halls
+      for (const side of ['east', 'south', 'west', 'north']) {
+        const res = await grow({ x: q.x + 1, y: q.y + 1, side });
+        if (res.status === 200) {
+          done = { name: q.name, w: q.w, h: q.h, side };
+          break;
+        }
+      }
+      if (done) break;
+    }
+    expect(done).not.toBeNull();
+    const grown = (await rooms()).find((q) => q.name === done!.name)!;
+    expect(done!.side === 'east' || done!.side === 'west' ? grown.w : grown.h).toBe((done!.side === 'east' || done!.side === 'west' ? done!.w : done!.h) + 1);
+    expect(seen.some((m) => m.kind === 'office.changed')).toBe(true);
+    expect((await app.request('/api/office/undo', { method: 'POST', headers: json, body: '{}' })).status).toBe(200);
+    expect((await rooms()).find((q) => q.name === done!.name)).toMatchObject({ w: done!.w, h: done!.h });
+  });
+
+  it('refuses with the reason and writes nothing: into another room, outside any room, and a bad body', async () => {
+    const before = JSON.stringify(await map());
+    const cos = (await rooms()).find((q) => q.name === 'Chief of Staff')!;
+    const blocked = await grow({ x: cos.x + 1, y: cos.y + 1, side: 'east' });
+    expect(blocked.status).toBe(400);
+    expect(((await blocked.json()) as { error: string }).error).toMatch(/in the way/);
+    expect((await grow({ x: 0, y: 0, side: 'east' })).status).toBe(400);
+    expect((await grow({ x: 3, y: 3, side: 'up' })).status).toBe(400);
+    expect(JSON.stringify(await map())).toBe(before);
+  });
+});

@@ -1122,3 +1122,8 @@ See SPEC 19. Numbers 1 and 3 block slice 0: which CLIs on which account, and whe
 ## 2026-11-20 (Settings: connectors switch with no restart)
 
 - `workspace_settings.connectors` (jsonb, names only) holds which code host (`local`, `gh`) and meetings connector (`local`, `livekit`) is used. `SwitchableGit` and `SwitchableMeeting` read it at every call, falling back to the environment variable, then `local`. `PUT /api/config/connectors` (owner only, audit-logged) refuses unknown names and anything but names. Choosing `gh` or `livekit` does not make them work: they still need the sign-ins and keys in docs/NEEDS-YOU.md, and until then they refuse with their own message.
+
+## 2026-11-20 (S6C-2: room size and dragging pieces)
+
+- `growRoom` (shared, pure) makes a room one tile bigger on a side: its wall on that side moves out one tile with its doorways, and the old wall tiles become floor like the room. Refused if the tile beyond is a wall, another room (terraces are outdoors and do not count), scenery, a desk or an entry, off the map, or if it would cut anything off. `POST /api/office/room/grow {x, y, side}` picks the smallest room holding the tile; it goes through `writeMap`, so Undo works. Shrinking a room is not offered.
+- Dragging: with the Move tool a press on a piece grabs it (the press does not pan the view), and letting go on another tile moves it there, keeping the spot it was held by; the server's rules are the same as for the click-click move.

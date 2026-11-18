@@ -11,7 +11,7 @@ import type { Dispatcher } from '../workflows/dispatch';
 import { assignDesks, loadOffice } from '../office/desks';
 import { activityFeed } from '../office/activity';
 import { exclusive, undoMap, writeMap } from '../office/map-file';
-import { EditError, moveDecor, placeDecor, readOfficeMap, removeDecor, setDoor, type OfficeMapJson } from '@conclave/shared';
+import { EditError, growRoom, moveDecor, placeDecor, readOfficeMap, removeDecor, setDoor, type OfficeMapJson } from '@conclave/shared';
 import { officeState, teamCards } from '../office/state';
 
 class NotThere extends Error {}
@@ -221,6 +221,30 @@ export function officeRoutes(deps: { workspaceId: string; companyRoot: string; /
       });
       deps.bus?.publish({ kind: 'office.changed', workspaceId: deps.workspaceId });
       return c.json({ ok: true, opened });
+    } catch (err) {
+      if (err instanceof EditError) return c.json({ error: err.message }, 400);
+      throw err;
+    }
+  });
+
+  // Make the room under a tile one tile bigger on one side (S6C-2). One change, refused and unchanged if something is in the way.
+  const Grow = z.object({ x: z.number().int(), y: z.number().int(), side: z.enum(['north', 'south', 'east', 'west']) }).strict();
+  r.post('/room/grow', async (c) => {
+    const body = Grow.safeParse(await c.req.json().catch(() => null));
+    if (!body.success) return c.json({ error: 'Say which tile in the room, and which side.' }, 400);
+    try {
+      await exclusive(deps.companyRoot, async () => {
+        const json = JSON.parse(await readFile(mapFile(), 'utf8')) as OfficeMapJson;
+        const departments = await departmentsNow();
+        const rooms = readOfficeMap(json, { file: 'office.tmj', departments }).rooms;
+        const { x, y } = body.data;
+        // The smallest room that holds the tile, so a park around other rooms does not win over the room you clicked in.
+        const here = rooms.filter((q) => x >= q.x && x < q.x + q.w && y >= q.y && y < q.y + q.h).sort((a, b) => a.w * a.h - b.w * b.h)[0];
+        if (!here) throw new EditError('Click inside a room.');
+        await writeMap(mapFile(), JSON.stringify(growRoom(json, { room: here.name, side: body.data.side }, departments), null, 1) + '\n');
+      });
+      deps.bus?.publish({ kind: 'office.changed', workspaceId: deps.workspaceId });
+      return c.json({ ok: true });
     } catch (err) {
       if (err instanceof EditError) return c.json({ error: err.message }, 400);
       throw err;

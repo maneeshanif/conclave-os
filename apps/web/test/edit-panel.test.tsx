@@ -101,4 +101,8 @@ describe('what a click does while editing (S6B-9)', () => {
     expect(dragAction(move, { x: 0, y: 0 }, { x: 3, y: 3 }, decor)).toBeNull(); // nothing was held
     expect(dragAction({ kind: 'remove' }, { x: 11, y: 5 }, { x: 13, y: 6 }, decor)).toBeNull();
   });
+  it('has a room size tool: a click inside a room asks to grow it on the side picked (S6C-2)', () => {
+    expect(tileAction({ kind: 'grow', side: 'south' }, { x: 5, y: 6 }, [])).toEqual({ kind: 'grow', x: 5, y: 6, side: 'south' });
+  });
+
 });

@@ -202,3 +202,80 @@ export function setDoor(input: OfficeMapJson, p: { x: number; y: number; open: b
   for (const name of unreachable(after)) if (!was.has(name)) throw new EditError(`That would block the way to ${name}.`);
   return json;
 }
+
+export type Side = 'north' | 'south' | 'east' | 'west';
+export const SIDES: readonly Side[] = ['north', 'south', 'east', 'west'];
+
+/**
+ * Makes a room one tile bigger on one side (S6C-2): its wall on that side moves out by a tile, taking its doorways with it, and the tile the
+ * wall stood on becomes floor like the rest of the room. It is refused if the tile beyond is a wall, another room (a terrace is outdoors, so
+ * it does not count), a piece of scenery, a desk or an entry, if it would go off the map, or if it would cut anything off from the way in.
+ * Nothing changes if it is refused.
+ */
+export function growRoom(input: OfficeMapJson, p: { room: string; side: string }, departments: { key: string; active: boolean }[]): OfficeMapJson {
+  if (!(SIDES as readonly string[]).includes(p.side)) throw new EditError('A room grows to the north, south, east or west.');
+  const side = p.side as Side;
+  const file = 'office.tmj';
+  const before = readOfficeMap(input, { file, departments });
+  const r = before.rooms.find((x) => x.name === p.room);
+  if (!r) throw new EditError(`There is no room called "${p.room}".`);
+  const json = structuredClone(input);
+  const floor = layerOf(json, 'floor').data!;
+  const coll = layerOf(json, 'collision').data!;
+  const W = json.width;
+  const len = side === 'east' || side === 'west' ? r.h : r.w;
+  // Along the wall: -1 and len are its two corners, 0..len-1 the tiles in between.
+  const spots = (i: number) =>
+    side === 'east' ? { old: [r.x + r.w, r.y + i], neu: [r.x + r.w + 1, r.y + i], inner: [r.x + r.w - 1, r.y + i] }
+    : side === 'west' ? { old: [r.x - 1, r.y + i], neu: [r.x - 2, r.y + i], inner: [r.x, r.y + i] }
+    : side === 'south' ? { old: [r.x + i, r.y + r.h], neu: [r.x + i, r.y + r.h + 1], inner: [r.x + i, r.y + r.h - 1] }
+    : { old: [r.x + i, r.y - 1], neu: [r.x + i, r.y - 2], inner: [r.x + i, r.y] };
+  const decor = layerOf(json, 'decor').objects ?? [];
+  const objects = (json.layers.find((l) => l.name === 'objects')?.objects ?? []);
+  const covers = (o: TiledObject, x: number, y: number) => x >= o.x / T && x < (o.x + (o.width ?? T)) / T && y >= o.y / T && y < (o.y + (o.height ?? T)) / T;
+  const plan: { old: number; neu: number; inner: number; corner: boolean }[] = [];
+  for (let i = -1; i <= len; i++) {
+    const s = spots(i);
+    const [nx, ny] = s.neu as [number, number];
+    if (nx < 0 || ny < 0 || nx >= W || ny >= json.height) throw new EditError('That would go off the map.');
+    const corner = i === -1 || i === len;
+    const ni = ny * W + nx;
+    if (!corner || floor[ni] !== WALL) {
+      // Beyond the wall, the tile must be free: open ground that no other room, piece, desk or entry is using.
+      if (floor[ni] === WALL) throw new EditError('A wall is in the way.');
+      const other = before.rooms.find((o) => o.name !== r.name && o.kind !== 'terrace' && nx >= o.x - 1 && nx <= o.x + o.w && ny >= o.y - 1 && ny <= o.y + o.h);
+      if (other) throw new EditError(`${other.name} is in the way.`);
+      if (decor.some((o) => covers(o, nx, ny)) || objects.some((o) => covers(o, nx, ny))) throw new EditError('A piece of scenery is in the way.');
+      if (before.desks.some((d) => d.x === nx && d.y === ny)) throw new EditError('A desk is in the way.');
+      if (before.entries.some((e) => e.x === nx && e.y === ny)) throw new EditError('An entry is in the way.');
+    }
+    const [ox, oy] = s.old as [number, number];
+    const [ix, iy] = s.inner as [number, number];
+    plan.push({ old: oy * W + ox, neu: ni, inner: iy * W + ix, corner });
+  }
+  for (const t of plan) {
+    const wallValue = floor[t.old]!;
+    const wallColl = coll[t.old]!;
+    floor[t.neu] = wallValue;
+    coll[t.neu] = wallColl;
+    if (!t.corner) {
+      floor[t.old] = floor[t.inner]!;
+      coll[t.old] = 0;
+    }
+  }
+  const o = (layerOf(json, 'rooms').objects ?? []).find((x) => x.name === r.name);
+  if (!o) throw new EditError('That room is not in the map file.');
+  if (side === 'east') o.width = (o.width ?? 0) + T;
+  else if (side === 'south') o.height = (o.height ?? 0) + T;
+  else if (side === 'west') {
+    o.x -= T;
+    o.width = (o.width ?? 0) + T;
+  } else {
+    o.y -= T;
+    o.height = (o.height ?? 0) + T;
+  }
+  const after = readOfficeMap(json, { file, departments });
+  const was = unreachable(before);
+  for (const name of unreachable(after)) if (!was.has(name)) throw new EditError(`That would block the way to ${name}.`);
+  return json;
+}
