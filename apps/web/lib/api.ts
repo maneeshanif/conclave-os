@@ -203,6 +203,19 @@ export interface GoalsData {
 }
 
 /** The morning brief (S2-10): counted from the tables; the narrative is the chief of staff agent's own paragraph. */
+export interface Deployment {
+  id: string;
+  projectKey: string;
+  client: string | null;
+  ref: string | null;
+  status: 'building' | 'live' | 'failed';
+  url: string | null;
+  error: string | null;
+  approvedBy: string;
+  createdAt: string;
+  finishedAt: string | null;
+}
+
 export interface Signal {
   id: string;
   kind: string;
@@ -385,6 +398,7 @@ export const api = {
     }
   },
   rebuildBrief: () => call<Brief>('/api/brief/rebuild', { method: 'POST', body: '{}' }),
+  deployments: async () => (await call<{ deployments: Deployment[] }>('/api/deployments')).deployments,
   signals: (status?: string) => call<Signal[]>(`/api/signals${status ? `?status=${encodeURIComponent(status)}` : ''}`),
   qualifySignal: (id: string) => call<Signal>(`/api/signals/${id}/qualify`, { method: 'POST', body: '{}' }),
   dismissSignal: (id: string) => call<Signal>(`/api/signals/${id}/dismiss`, { method: 'POST', body: '{}' }),

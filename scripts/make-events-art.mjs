@@ -6,7 +6,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
 import { canvas } from './lib/pixel.mjs';
-import { EVENT_FOOT } from './lib/footprints.mjs';
+import { EVENT_FOOT, OBJECT_FOOT } from './lib/footprints.mjs';
 
 const out = path.resolve(import.meta.dirname, '..', 'apps', 'web', 'public', 'office', 'decor');
 mkdirSync(out, { recursive: true });
@@ -178,3 +178,18 @@ for (const [name, colour] of [['banner', '#7c3aed'], ['banner2', '#0891b2']]) {
   save('track', c);
 }
 process.stdout.write(`wrote ${Object.keys(EVENT_FOOT).length} event pictures\n`);
+
+// The deploy board (S7-9): a dark board with a row of status lights, green for live and red for failed. An office object, so it is named obj-<type>.
+{
+  const [w, h] = OBJECT_FOOT['deploy-board'];
+  const c = canvas(w * T, h * T);
+  c.rect(2, 3, w * T - 4, h * T - 8, '#1f2937');
+  c.frame(2, 3, w * T - 4, h * T - 8, INK);
+  c.rect(6, 7, w * T - 12, 4, '#6366f1');
+  const lights = ['#22c55e', '#22c55e', '#ef4444', '#22c55e', '#fbbf24'];
+  lights.forEach((col, i) => {
+    c.disc(12 + i * 11, 20, 3, col);
+    c.rect(8 + i * 11, 26, 8, 1, '#475569');
+  });
+  save('obj-deploy-board', c);
+}

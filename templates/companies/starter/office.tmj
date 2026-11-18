@@ -27,7 +27,7 @@
  ],
  "layers": [
   {
-   "id": 865,
+   "id": 866,
    "name": "floor",
    "type": "tilelayer",
    "width": 208,
@@ -4422,7 +4422,7 @@
     4,
     2,
     1,
-    1,
+    8,
     1,
     1,
     1,
@@ -21048,7 +21048,7 @@
    ]
   },
   {
-   "id": 866,
+   "id": 867,
    "name": "collision",
    "type": "tilelayer",
    "width": 208,
@@ -25443,8 +25443,8 @@
     0,
     1,
     0,
-    0,
-    0,
+    1,
+    1,
     0,
     0,
     1,
@@ -42069,7 +42069,7 @@
    ]
   },
   {
-   "id": 867,
+   "id": 868,
    "name": "rooms",
    "type": "objectgroup",
    "draworder": "topdown",
@@ -42289,7 +42289,7 @@
      ]
     },
     {
-     "id": 111,
+     "id": 112,
      "name": "Campus Green: Cafe",
      "type": "",
      "x": 160,
@@ -42307,7 +42307,7 @@
      ]
     },
     {
-     "id": 112,
+     "id": 113,
      "name": "Campus Green: Pavilion",
      "type": "",
      "x": 1120,
@@ -42325,7 +42325,7 @@
      ]
     },
     {
-     "id": 113,
+     "id": 114,
      "name": "Campus Green: Library",
      "type": "",
      "x": 160,
@@ -42343,7 +42343,7 @@
      ]
     },
     {
-     "id": 114,
+     "id": 115,
      "name": "Campus Green: Sports corner",
      "type": "",
      "x": 1088,
@@ -42361,7 +42361,7 @@
      ]
     },
     {
-     "id": 115,
+     "id": 116,
      "name": "Campus Green: Plaza",
      "type": "",
      "x": 608,
@@ -42379,7 +42379,7 @@
      ]
     },
     {
-     "id": 165,
+     "id": 166,
      "name": "Co-working Loft: Open floor",
      "type": "",
      "x": 1664,
@@ -42397,7 +42397,7 @@
      ]
     },
     {
-     "id": 166,
+     "id": 167,
      "name": "Co-working Loft: Pod 1",
      "type": "",
      "x": 2624,
@@ -42415,7 +42415,7 @@
      ]
     },
     {
-     "id": 167,
+     "id": 168,
      "name": "Co-working Loft: Pod 2",
      "type": "",
      "x": 2752,
@@ -42433,7 +42433,7 @@
      ]
     },
     {
-     "id": 168,
+     "id": 169,
      "name": "Co-working Loft: Pod 3",
      "type": "",
      "x": 2880,
@@ -42451,7 +42451,7 @@
      ]
     },
     {
-     "id": 169,
+     "id": 170,
      "name": "Co-working Loft: Meeting corner",
      "type": "",
      "x": 2592,
@@ -42469,7 +42469,7 @@
      ]
     },
     {
-     "id": 170,
+     "id": 171,
      "name": "Co-working Loft: Library",
      "type": "",
      "x": 1664,
@@ -42487,7 +42487,7 @@
      ]
     },
     {
-     "id": 171,
+     "id": 172,
      "name": "Co-working Loft: Kitchen",
      "type": "",
      "x": 2368,
@@ -42505,7 +42505,7 @@
      ]
     },
     {
-     "id": 282,
+     "id": 283,
      "name": "Game Night: Arcade",
      "type": "",
      "x": 3136,
@@ -42523,7 +42523,7 @@
      ]
     },
     {
-     "id": 283,
+     "id": 284,
      "name": "Game Night: Table tennis",
      "type": "",
      "x": 3136,
@@ -42541,7 +42541,7 @@
      ]
     },
     {
-     "id": 284,
+     "id": 285,
      "name": "Game Night: Snack bar",
      "type": "",
      "x": 3872,
@@ -42559,7 +42559,7 @@
      ]
     },
     {
-     "id": 285,
+     "id": 286,
      "name": "Game Night: Cinema nook",
      "type": "",
      "x": 3872,
@@ -42577,7 +42577,7 @@
      ]
     },
     {
-     "id": 329,
+     "id": 330,
      "name": "Rooftop: Sun deck",
      "type": "",
      "x": 4480,
@@ -42595,7 +42595,7 @@
      ]
     },
     {
-     "id": 330,
+     "id": 331,
      "name": "Rooftop: Bar",
      "type": "",
      "x": 5184,
@@ -42613,7 +42613,7 @@
      ]
     },
     {
-     "id": 331,
+     "id": 332,
      "name": "Rooftop: Green corner",
      "type": "",
      "x": 5152,
@@ -42631,7 +42631,7 @@
      ]
     },
     {
-     "id": 368,
+     "id": 369,
      "name": "Conference Campus: Auditorium",
      "type": "",
      "x": 96,
@@ -42649,7 +42649,7 @@
      ]
     },
     {
-     "id": 369,
+     "id": 370,
      "name": "Conference Campus: Workshop 1",
      "type": "",
      "x": 1120,
@@ -42667,7 +42667,7 @@
      ]
     },
     {
-     "id": 370,
+     "id": 371,
      "name": "Conference Campus: Workshop 2",
      "type": "",
      "x": 1408,
@@ -42685,7 +42685,7 @@
      ]
     },
     {
-     "id": 371,
+     "id": 372,
      "name": "Conference Campus: Workshop 3",
      "type": "",
      "x": 1696,
@@ -42703,7 +42703,7 @@
      ]
     },
     {
-     "id": 372,
+     "id": 373,
      "name": "Conference Campus: Kiosk",
      "type": "",
      "x": 1120,
@@ -42721,7 +42721,7 @@
      ]
     },
     {
-     "id": 373,
+     "id": 374,
      "name": "Conference Campus: Sports ground",
      "type": "",
      "x": 96,
@@ -42739,7 +42739,7 @@
      ]
     },
     {
-     "id": 374,
+     "id": 375,
      "name": "Conference Campus: Garden party",
      "type": "",
      "x": 1120,
@@ -42757,7 +42757,7 @@
      ]
     },
     {
-     "id": 504,
+     "id": 505,
      "name": "Hackathon Hall: Main hall",
      "type": "",
      "x": 2464,
@@ -42775,7 +42775,7 @@
      ]
     },
     {
-     "id": 505,
+     "id": 506,
      "name": "Hackathon Hall: Team A",
      "type": "",
      "x": 2080,
@@ -42793,7 +42793,7 @@
      ]
     },
     {
-     "id": 506,
+     "id": 507,
      "name": "Hackathon Hall: Team B",
      "type": "",
      "x": 2080,
@@ -42811,7 +42811,7 @@
      ]
     },
     {
-     "id": 507,
+     "id": 508,
      "name": "Hackathon Hall: Team C",
      "type": "",
      "x": 2080,
@@ -42829,7 +42829,7 @@
      ]
     },
     {
-     "id": 508,
+     "id": 509,
      "name": "Hackathon Hall: Team D",
      "type": "",
      "x": 3424,
@@ -42847,7 +42847,7 @@
      ]
     },
     {
-     "id": 509,
+     "id": 510,
      "name": "Hackathon Hall: Team E",
      "type": "",
      "x": 3424,
@@ -42865,7 +42865,7 @@
      ]
     },
     {
-     "id": 510,
+     "id": 511,
      "name": "Hackathon Hall: Team F",
      "type": "",
      "x": 3424,
@@ -42883,7 +42883,7 @@
      ]
     },
     {
-     "id": 613,
+     "id": 614,
      "name": "Job Fair: Fair floor",
      "type": "",
      "x": 3904,
@@ -42901,7 +42901,7 @@
      ]
     },
     {
-     "id": 614,
+     "id": 615,
      "name": "Job Fair: Talk stage",
      "type": "",
      "x": 4416,
@@ -42919,7 +42919,7 @@
      ]
     },
     {
-     "id": 615,
+     "id": 616,
      "name": "Job Fair: Recruiter lounge",
      "type": "",
      "x": 3904,
@@ -42937,7 +42937,7 @@
      ]
     },
     {
-     "id": 671,
+     "id": 672,
      "name": "Meeting Centre: Reception",
      "type": "",
      "x": 5856,
@@ -42955,7 +42955,7 @@
      ]
     },
     {
-     "id": 672,
+     "id": 673,
      "name": "Meeting Centre: Room 1",
      "type": "",
      "x": 5408,
@@ -42973,7 +42973,7 @@
      ]
     },
     {
-     "id": 673,
+     "id": 674,
      "name": "Meeting Centre: Room 2",
      "type": "",
      "x": 5664,
@@ -42991,7 +42991,7 @@
      ]
     },
     {
-     "id": 674,
+     "id": 675,
      "name": "Meeting Centre: Room 3",
      "type": "",
      "x": 6144,
@@ -43009,7 +43009,7 @@
      ]
     },
     {
-     "id": 675,
+     "id": 676,
      "name": "Meeting Centre: Room 4",
      "type": "",
      "x": 6368,
@@ -43027,7 +43027,7 @@
      ]
     },
     {
-     "id": 676,
+     "id": 677,
      "name": "Meeting Centre: Room 5",
      "type": "",
      "x": 5408,
@@ -43045,7 +43045,7 @@
      ]
     },
     {
-     "id": 677,
+     "id": 678,
      "name": "Meeting Centre: Room 6",
      "type": "",
      "x": 5664,
@@ -43063,7 +43063,7 @@
      ]
     },
     {
-     "id": 678,
+     "id": 679,
      "name": "Meeting Centre: Room 7",
      "type": "",
      "x": 6144,
@@ -43081,7 +43081,7 @@
      ]
     },
     {
-     "id": 679,
+     "id": 680,
      "name": "Meeting Centre: Room 8",
      "type": "",
      "x": 6368,
@@ -43099,7 +43099,7 @@
      ]
     },
     {
-     "id": 722,
+     "id": 723,
      "name": "Park",
      "type": "",
      "x": 1312,
@@ -43119,7 +43119,7 @@
    ]
   },
   {
-   "id": 868,
+   "id": 869,
    "name": "desks",
    "type": "objectgroup",
    "draworder": "topdown",
@@ -43659,7 +43659,7 @@
    ]
   },
   {
-   "id": 869,
+   "id": 870,
    "name": "objects",
    "type": "objectgroup",
    "draworder": "topdown",
@@ -43730,6 +43730,16 @@
     },
     {
      "id": 41,
+     "name": "Deployments board",
+     "type": "deploy-board",
+     "x": 544,
+     "y": 672,
+     "point": true,
+     "rotation": 0,
+     "visible": true
+    },
+    {
+     "id": 42,
      "name": "Mailbox",
      "type": "mailbox",
      "x": 736,
@@ -43739,7 +43749,7 @@
      "visible": true
     },
     {
-     "id": 42,
+     "id": 43,
      "name": "Task board",
      "type": "task-board",
      "x": 256,
@@ -43749,7 +43759,7 @@
      "visible": true
     },
     {
-     "id": 43,
+     "id": 44,
      "name": "Brief desk",
      "type": "brief-desk",
      "x": 256,
@@ -43759,7 +43769,7 @@
      "visible": true
     },
     {
-     "id": 44,
+     "id": 45,
      "name": "Needs you board",
      "type": "needs-you-board",
      "x": 288,
@@ -43769,7 +43779,7 @@
      "visible": true
     },
     {
-     "id": 45,
+     "id": 46,
      "name": "Pipeline board",
      "type": "pipeline-board",
      "x": 608,
@@ -43779,7 +43789,7 @@
      "visible": true
     },
     {
-     "id": 46,
+     "id": 47,
      "name": "Campaign board",
      "type": "campaign-board",
      "x": 928,
@@ -43789,7 +43799,7 @@
      "visible": true
     },
     {
-     "id": 47,
+     "id": 48,
      "name": "Idea wall",
      "type": "idea-wall",
      "x": 1184,
@@ -43799,7 +43809,7 @@
      "visible": true
     },
     {
-     "id": 48,
+     "id": 49,
      "name": "Signal radio",
      "type": "signal-radio",
      "x": 1216,
@@ -43809,7 +43819,7 @@
      "visible": true
     },
     {
-     "id": 49,
+     "id": 50,
      "name": "Chief of Staff board",
      "type": "dept-board",
      "x": 64,
@@ -43819,7 +43829,7 @@
      "visible": true
     },
     {
-     "id": 50,
+     "id": 51,
      "name": "Chief of Staff table",
      "type": "dept-table",
      "x": 192,
@@ -43829,7 +43839,7 @@
      "visible": true
     },
     {
-     "id": 51,
+     "id": 52,
      "name": "Lead Gen board",
      "type": "dept-board",
      "x": 384,
@@ -43839,7 +43849,7 @@
      "visible": true
     },
     {
-     "id": 52,
+     "id": 53,
      "name": "Lead Gen table",
      "type": "dept-table",
      "x": 512,
@@ -43849,7 +43859,7 @@
      "visible": true
     },
     {
-     "id": 53,
+     "id": 54,
      "name": "Outreach board",
      "type": "dept-board",
      "x": 704,
@@ -43859,7 +43869,7 @@
      "visible": true
     },
     {
-     "id": 54,
+     "id": 55,
      "name": "Outreach table",
      "type": "dept-table",
      "x": 832,
@@ -43869,7 +43879,7 @@
      "visible": true
     },
     {
-     "id": 55,
+     "id": 56,
      "name": "Research board",
      "type": "dept-board",
      "x": 1024,
@@ -43879,7 +43889,7 @@
      "visible": true
     },
     {
-     "id": 56,
+     "id": 57,
      "name": "Research table",
      "type": "dept-table",
      "x": 1152,
@@ -43891,7 +43901,7 @@
    ]
   },
   {
-   "id": 870,
+   "id": 871,
    "name": "decor",
    "type": "objectgroup",
    "draworder": "topdown",
@@ -43901,7 +43911,7 @@
    "y": 0,
    "objects": [
     {
-     "id": 57,
+     "id": 58,
      "name": "bookshelf",
      "type": "decor",
      "x": 160,
@@ -43912,7 +43922,7 @@
      "visible": true
     },
     {
-     "id": 58,
+     "id": 59,
      "name": "plant",
      "type": "decor",
      "x": 32,
@@ -43923,7 +43933,7 @@
      "visible": true
     },
     {
-     "id": 59,
+     "id": 60,
      "name": "bin",
      "type": "decor",
      "x": 256,
@@ -43934,7 +43944,7 @@
      "visible": true
     },
     {
-     "id": 60,
+     "id": 61,
      "name": "bookshelf",
      "type": "decor",
      "x": 480,
@@ -43945,7 +43955,7 @@
      "visible": true
     },
     {
-     "id": 61,
+     "id": 62,
      "name": "plant",
      "type": "decor",
      "x": 352,
@@ -43956,7 +43966,7 @@
      "visible": true
     },
     {
-     "id": 62,
+     "id": 63,
      "name": "bin",
      "type": "decor",
      "x": 576,
@@ -43967,7 +43977,7 @@
      "visible": true
     },
     {
-     "id": 63,
+     "id": 64,
      "name": "bookshelf",
      "type": "decor",
      "x": 800,
@@ -43978,7 +43988,7 @@
      "visible": true
     },
     {
-     "id": 64,
+     "id": 65,
      "name": "plant",
      "type": "decor",
      "x": 672,
@@ -43989,7 +43999,7 @@
      "visible": true
     },
     {
-     "id": 65,
+     "id": 66,
      "name": "bin",
      "type": "decor",
      "x": 896,
@@ -44000,7 +44010,7 @@
      "visible": true
     },
     {
-     "id": 66,
+     "id": 67,
      "name": "bookshelf",
      "type": "decor",
      "x": 1120,
@@ -44011,7 +44021,7 @@
      "visible": true
     },
     {
-     "id": 67,
+     "id": 68,
      "name": "plant",
      "type": "decor",
      "x": 992,
@@ -44022,7 +44032,7 @@
      "visible": true
     },
     {
-     "id": 68,
+     "id": 69,
      "name": "bin",
      "type": "decor",
      "x": 1216,
@@ -44033,7 +44043,7 @@
      "visible": true
     },
     {
-     "id": 69,
+     "id": 70,
      "name": "printer",
      "type": "decor",
      "x": 608,
@@ -44044,7 +44054,7 @@
      "visible": true
     },
     {
-     "id": 70,
+     "id": 71,
      "name": "coffee",
      "type": "decor",
      "x": 32,
@@ -44055,7 +44065,7 @@
      "visible": true
     },
     {
-     "id": 71,
+     "id": 72,
      "name": "plant",
      "type": "decor",
      "x": 32,
@@ -44066,7 +44076,7 @@
      "visible": true
     },
     {
-     "id": 72,
+     "id": 73,
      "name": "plant",
      "type": "decor",
      "x": 448,
@@ -44077,7 +44087,7 @@
      "visible": true
     },
     {
-     "id": 73,
+     "id": 74,
      "name": "bin",
      "type": "decor",
      "x": 448,
@@ -44088,7 +44098,7 @@
      "visible": true
     },
     {
-     "id": 74,
+     "id": 75,
      "name": "bookshelf",
      "type": "decor",
      "x": 192,
@@ -44099,7 +44109,7 @@
      "visible": true
     },
     {
-     "id": 75,
+     "id": 76,
      "name": "rug",
      "type": "decor",
      "x": 160,
@@ -44110,7 +44120,7 @@
      "visible": true
     },
     {
-     "id": 76,
+     "id": 77,
      "name": "rug",
      "type": "decor",
      "x": 576,
@@ -44121,21 +44131,10 @@
      "visible": true
     },
     {
-     "id": 77,
-     "name": "plant",
-     "type": "decor",
-     "x": 512,
-     "y": 960,
-     "width": 32,
-     "height": 32,
-     "rotation": 0,
-     "visible": true
-    },
-    {
      "id": 78,
      "name": "plant",
      "type": "decor",
-     "x": 736,
+     "x": 512,
      "y": 960,
      "width": 32,
      "height": 32,
@@ -44146,6 +44145,17 @@
      "id": 79,
      "name": "plant",
      "type": "decor",
+     "x": 736,
+     "y": 960,
+     "width": 32,
+     "height": 32,
+     "rotation": 0,
+     "visible": true
+    },
+    {
+     "id": 80,
+     "name": "plant",
+     "type": "decor",
      "x": 512,
      "y": 768,
      "width": 32,
@@ -44154,7 +44164,7 @@
      "visible": true
     },
     {
-     "id": 80,
+     "id": 81,
      "name": "clock",
      "type": "decor",
      "x": 416,
@@ -44165,7 +44175,7 @@
      "visible": true
     },
     {
-     "id": 81,
+     "id": 82,
      "name": "rug",
      "type": "decor",
      "x": 832,
@@ -44176,7 +44186,7 @@
      "visible": true
     },
     {
-     "id": 82,
+     "id": 83,
      "name": "sofa",
      "type": "decor",
      "x": 832,
@@ -44187,7 +44197,7 @@
      "visible": true
     },
     {
-     "id": 83,
+     "id": 84,
      "name": "sofa",
      "type": "decor",
      "x": 928,
@@ -44198,7 +44208,7 @@
      "visible": true
     },
     {
-     "id": 84,
+     "id": 85,
      "name": "armchair",
      "type": "decor",
      "x": 800,
@@ -44209,7 +44219,7 @@
      "visible": true
     },
     {
-     "id": 85,
+     "id": 86,
      "name": "armchair",
      "type": "decor",
      "x": 800,
@@ -44220,7 +44230,7 @@
      "visible": true
     },
     {
-     "id": 86,
+     "id": 87,
      "name": "plant",
      "type": "decor",
      "x": 992,
@@ -44231,7 +44241,7 @@
      "visible": true
     },
     {
-     "id": 87,
+     "id": 88,
      "name": "plant",
      "type": "decor",
      "x": 992,
@@ -44242,7 +44252,7 @@
      "visible": true
     },
     {
-     "id": 88,
+     "id": 89,
      "name": "coffee",
      "type": "decor",
      "x": 1152,
@@ -44253,7 +44263,7 @@
      "visible": true
     },
     {
-     "id": 89,
+     "id": 90,
      "name": "fridge",
      "type": "decor",
      "x": 1216,
@@ -44264,21 +44274,10 @@
      "visible": true
     },
     {
-     "id": 90,
-     "name": "cafe-table",
-     "type": "decor",
-     "x": 1088,
-     "y": 672,
-     "width": 64,
-     "height": 32,
-     "rotation": 0,
-     "visible": true
-    },
-    {
      "id": 91,
      "name": "cafe-table",
      "type": "decor",
-     "x": 1152,
+     "x": 1088,
      "y": 672,
      "width": 64,
      "height": 32,
@@ -44289,6 +44288,17 @@
      "id": 92,
      "name": "cafe-table",
      "type": "decor",
+     "x": 1152,
+     "y": 672,
+     "width": 64,
+     "height": 32,
+     "rotation": 0,
+     "visible": true
+    },
+    {
+     "id": 93,
+     "name": "cafe-table",
+     "type": "decor",
      "x": 1088,
      "y": 736,
      "width": 64,
@@ -44297,7 +44307,7 @@
      "visible": true
     },
     {
-     "id": 93,
+     "id": 94,
      "name": "bin",
      "type": "decor",
      "x": 1216,
@@ -44308,7 +44318,7 @@
      "visible": true
     },
     {
-     "id": 94,
+     "id": 95,
      "name": "plant",
      "type": "decor",
      "x": 1056,
@@ -44319,7 +44329,7 @@
      "visible": true
     },
     {
-     "id": 95,
+     "id": 96,
      "name": "pingpong",
      "type": "decor",
      "x": 96,
@@ -44330,7 +44340,7 @@
      "visible": true
     },
     {
-     "id": 96,
+     "id": 97,
      "name": "arcade",
      "type": "decor",
      "x": 320,
@@ -44341,7 +44351,7 @@
      "visible": true
     },
     {
-     "id": 97,
+     "id": 98,
      "name": "arcade",
      "type": "decor",
      "x": 384,
@@ -44352,7 +44362,7 @@
      "visible": true
     },
     {
-     "id": 98,
+     "id": 99,
      "name": "sofa",
      "type": "decor",
      "x": 288,
@@ -44363,7 +44373,7 @@
      "visible": true
     },
     {
-     "id": 99,
+     "id": 100,
      "name": "plant",
      "type": "decor",
      "x": 32,
@@ -44374,7 +44384,7 @@
      "visible": true
     },
     {
-     "id": 100,
+     "id": 101,
      "name": "plant",
      "type": "decor",
      "x": 448,
@@ -44385,21 +44395,10 @@
      "visible": true
     },
     {
-     "id": 101,
-     "name": "tree",
-     "type": "decor",
-     "x": 832,
-     "y": 864,
-     "width": 64,
-     "height": 64,
-     "rotation": 0,
-     "visible": true
-    },
-    {
      "id": 102,
      "name": "tree",
      "type": "decor",
-     "x": 1152,
+     "x": 832,
      "y": 864,
      "width": 64,
      "height": 64,
@@ -44410,7 +44409,7 @@
      "id": 103,
      "name": "tree",
      "type": "decor",
-     "x": 1056,
+     "x": 1152,
      "y": 864,
      "width": 64,
      "height": 64,
@@ -44419,6 +44418,17 @@
     },
     {
      "id": 104,
+     "name": "tree",
+     "type": "decor",
+     "x": 1056,
+     "y": 864,
+     "width": 64,
+     "height": 64,
+     "rotation": 0,
+     "visible": true
+    },
+    {
+     "id": 105,
      "name": "cafe-table",
      "type": "decor",
      "x": 928,
@@ -44429,7 +44439,7 @@
      "visible": true
     },
     {
-     "id": 105,
+     "id": 106,
      "name": "sofa",
      "type": "decor",
      "x": 1056,
@@ -44440,7 +44450,7 @@
      "visible": true
     },
     {
-     "id": 106,
+     "id": 107,
      "name": "plant",
      "type": "decor",
      "x": 800,
@@ -44451,7 +44461,7 @@
      "visible": true
     },
     {
-     "id": 107,
+     "id": 108,
      "name": "plant",
      "type": "decor",
      "x": 1216,
@@ -44462,7 +44472,7 @@
      "visible": true
     },
     {
-     "id": 116,
+     "id": 117,
      "name": "coffee",
      "type": "decor",
      "x": 160,
@@ -44473,7 +44483,7 @@
      "visible": true
     },
     {
-     "id": 117,
+     "id": 118,
      "name": "fridge",
      "type": "decor",
      "x": 448,
@@ -44484,21 +44494,10 @@
      "visible": true
     },
     {
-     "id": 118,
-     "name": "cafe-table",
-     "type": "decor",
-     "x": 192,
-     "y": 1280,
-     "width": 64,
-     "height": 32,
-     "rotation": 0,
-     "visible": true
-    },
-    {
      "id": 119,
      "name": "cafe-table",
      "type": "decor",
-     "x": 320,
+     "x": 192,
      "y": 1280,
      "width": 64,
      "height": 32,
@@ -44509,6 +44508,17 @@
      "id": 120,
      "name": "cafe-table",
      "type": "decor",
+     "x": 320,
+     "y": 1280,
+     "width": 64,
+     "height": 32,
+     "rotation": 0,
+     "visible": true
+    },
+    {
+     "id": 121,
+     "name": "cafe-table",
+     "type": "decor",
      "x": 384,
      "y": 1312,
      "width": 64,
@@ -44517,7 +44527,7 @@
      "visible": true
     },
     {
-     "id": 121,
+     "id": 122,
      "name": "plant",
      "type": "decor",
      "x": 160,
@@ -44528,7 +44538,7 @@
      "visible": true
     },
     {
-     "id": 122,
+     "id": 123,
      "name": "bin",
      "type": "decor",
      "x": 448,
@@ -44539,7 +44549,7 @@
      "visible": true
     },
     {
-     "id": 123,
+     "id": 124,
      "name": "rug",
      "type": "decor",
      "x": 1216,
@@ -44550,7 +44560,7 @@
      "visible": true
     },
     {
-     "id": 124,
+     "id": 125,
      "name": "sofa",
      "type": "decor",
      "x": 1152,
@@ -44561,7 +44571,7 @@
      "visible": true
     },
     {
-     "id": 125,
+     "id": 126,
      "name": "sofa",
      "type": "decor",
      "x": 1312,
@@ -44572,7 +44582,7 @@
      "visible": true
     },
     {
-     "id": 126,
+     "id": 127,
      "name": "armchair",
      "type": "decor",
      "x": 1152,
@@ -44583,7 +44593,7 @@
      "visible": true
     },
     {
-     "id": 127,
+     "id": 128,
      "name": "armchair",
      "type": "decor",
      "x": 1376,
@@ -44594,7 +44604,7 @@
      "visible": true
     },
     {
-     "id": 128,
+     "id": 129,
      "name": "plant",
      "type": "decor",
      "x": 1120,
@@ -44605,7 +44615,7 @@
      "visible": true
     },
     {
-     "id": 129,
+     "id": 130,
      "name": "plant",
      "type": "decor",
      "x": 1408,
@@ -44616,21 +44626,10 @@
      "visible": true
     },
     {
-     "id": 130,
-     "name": "bookshelf",
-     "type": "decor",
-     "x": 160,
-     "y": 1728,
-     "width": 64,
-     "height": 32,
-     "rotation": 0,
-     "visible": true
-    },
-    {
      "id": 131,
      "name": "bookshelf",
      "type": "decor",
-     "x": 224,
+     "x": 160,
      "y": 1728,
      "width": 64,
      "height": 32,
@@ -44641,7 +44640,7 @@
      "id": 132,
      "name": "bookshelf",
      "type": "decor",
-     "x": 352,
+     "x": 224,
      "y": 1728,
      "width": 64,
      "height": 32,
@@ -44652,7 +44651,7 @@
      "id": 133,
      "name": "bookshelf",
      "type": "decor",
-     "x": 416,
+     "x": 352,
      "y": 1728,
      "width": 64,
      "height": 32,
@@ -44661,6 +44660,17 @@
     },
     {
      "id": 134,
+     "name": "bookshelf",
+     "type": "decor",
+     "x": 416,
+     "y": 1728,
+     "width": 64,
+     "height": 32,
+     "rotation": 0,
+     "visible": true
+    },
+    {
+     "id": 135,
      "name": "rug",
      "type": "decor",
      "x": 224,
@@ -44671,7 +44681,7 @@
      "visible": true
     },
     {
-     "id": 135,
+     "id": 136,
      "name": "armchair",
      "type": "decor",
      "x": 192,
@@ -44682,7 +44692,7 @@
      "visible": true
     },
     {
-     "id": 136,
+     "id": 137,
      "name": "armchair",
      "type": "decor",
      "x": 384,
@@ -44693,7 +44703,7 @@
      "visible": true
     },
     {
-     "id": 137,
+     "id": 138,
      "name": "sofa",
      "type": "decor",
      "x": 256,
@@ -44704,7 +44714,7 @@
      "visible": true
     },
     {
-     "id": 138,
+     "id": 139,
      "name": "plant",
      "type": "decor",
      "x": 448,
@@ -44715,7 +44725,7 @@
      "visible": true
     },
     {
-     "id": 139,
+     "id": 140,
      "name": "pingpong",
      "type": "decor",
      "x": 1120,
@@ -44726,7 +44736,7 @@
      "visible": true
     },
     {
-     "id": 140,
+     "id": 141,
      "name": "pingpong",
      "type": "decor",
      "x": 1280,
@@ -44737,7 +44747,7 @@
      "visible": true
     },
     {
-     "id": 141,
+     "id": 142,
      "name": "arcade",
      "type": "decor",
      "x": 1120,
@@ -44748,7 +44758,7 @@
      "visible": true
     },
     {
-     "id": 142,
+     "id": 143,
      "name": "arcade",
      "type": "decor",
      "x": 1184,
@@ -44759,7 +44769,7 @@
      "visible": true
     },
     {
-     "id": 143,
+     "id": 144,
      "name": "sofa",
      "type": "decor",
      "x": 1312,
@@ -44770,7 +44780,7 @@
      "visible": true
     },
     {
-     "id": 144,
+     "id": 145,
      "name": "bin",
      "type": "decor",
      "x": 1440,
@@ -44781,21 +44791,10 @@
      "visible": true
     },
     {
-     "id": 145,
-     "name": "tree",
-     "type": "decor",
-     "x": 608,
-     "y": 1440,
-     "width": 64,
-     "height": 64,
-     "rotation": 0,
-     "visible": true
-    },
-    {
      "id": 146,
      "name": "tree",
      "type": "decor",
-     "x": 928,
+     "x": 608,
      "y": 1440,
      "width": 64,
      "height": 64,
@@ -44806,6 +44805,17 @@
      "id": 147,
      "name": "tree",
      "type": "decor",
+     "x": 928,
+     "y": 1440,
+     "width": 64,
+     "height": 64,
+     "rotation": 0,
+     "visible": true
+    },
+    {
+     "id": 148,
+     "name": "tree",
+     "type": "decor",
      "x": 608,
      "y": 1632,
      "width": 64,
@@ -44814,7 +44824,7 @@
      "visible": true
     },
     {
-     "id": 148,
+     "id": 149,
      "name": "tree",
      "type": "decor",
      "x": 928,
@@ -44825,7 +44835,7 @@
      "visible": true
     },
     {
-     "id": 149,
+     "id": 150,
      "name": "cafe-table",
      "type": "decor",
      "x": 736,
@@ -44836,7 +44846,7 @@
      "visible": true
     },
     {
-     "id": 150,
+     "id": 151,
      "name": "cafe-table",
      "type": "decor",
      "x": 832,
@@ -44847,7 +44857,7 @@
      "visible": true
     },
     {
-     "id": 151,
+     "id": 152,
      "name": "clock",
      "type": "decor",
      "x": 800,
@@ -44858,7 +44868,7 @@
      "visible": true
     },
     {
-     "id": 152,
+     "id": 153,
      "name": "tree",
      "type": "decor",
      "x": 576,
@@ -44869,7 +44879,7 @@
      "visible": true
     },
     {
-     "id": 153,
+     "id": 154,
      "name": "tree",
      "type": "decor",
      "x": 640,
@@ -44880,7 +44890,7 @@
      "visible": true
     },
     {
-     "id": 154,
+     "id": 155,
      "name": "tree",
      "type": "decor",
      "x": 928,
@@ -44891,7 +44901,7 @@
      "visible": true
     },
     {
-     "id": 155,
+     "id": 156,
      "name": "tree",
      "type": "decor",
      "x": 992,
@@ -44902,7 +44912,7 @@
      "visible": true
     },
     {
-     "id": 156,
+     "id": 157,
      "name": "tree",
      "type": "decor",
      "x": 576,
@@ -44913,7 +44923,7 @@
      "visible": true
     },
     {
-     "id": 157,
+     "id": 158,
      "name": "tree",
      "type": "decor",
      "x": 640,
@@ -44924,7 +44934,7 @@
      "visible": true
     },
     {
-     "id": 158,
+     "id": 159,
      "name": "tree",
      "type": "decor",
      "x": 928,
@@ -44935,7 +44945,7 @@
      "visible": true
     },
     {
-     "id": 159,
+     "id": 160,
      "name": "tree",
      "type": "decor",
      "x": 992,
@@ -44946,21 +44956,10 @@
      "visible": true
     },
     {
-     "id": 160,
-     "name": "tree",
-     "type": "decor",
-     "x": 96,
-     "y": 1472,
-     "width": 64,
-     "height": 64,
-     "rotation": 0,
-     "visible": true
-    },
-    {
      "id": 161,
      "name": "tree",
      "type": "decor",
-     "x": 1472,
+     "x": 96,
      "y": 1472,
      "width": 64,
      "height": 64,
@@ -44971,6 +44970,17 @@
      "id": 162,
      "name": "tree",
      "type": "decor",
+     "x": 1472,
+     "y": 1472,
+     "width": 64,
+     "height": 64,
+     "rotation": 0,
+     "visible": true
+    },
+    {
+     "id": 163,
+     "name": "tree",
+     "type": "decor",
      "x": 96,
      "y": 1632,
      "width": 64,
@@ -44979,7 +44989,7 @@
      "visible": true
     },
     {
-     "id": 163,
+     "id": 164,
      "name": "tree",
      "type": "decor",
      "x": 1472,
@@ -44990,7 +45000,7 @@
      "visible": true
     },
     {
-     "id": 172,
+     "id": 173,
      "name": "desk",
      "type": "decor",
      "x": 1728,
@@ -45001,7 +45011,7 @@
      "visible": true
     },
     {
-     "id": 173,
+     "id": 174,
      "name": "chair",
      "type": "decor",
      "x": 1728,
@@ -45019,22 +45029,11 @@
      ]
     },
     {
-     "id": 174,
+     "id": 175,
      "name": "desk",
      "type": "decor",
      "x": 1728,
      "y": 1344,
-     "width": 32,
-     "height": 32,
-     "rotation": 0,
-     "visible": true
-    },
-    {
-     "id": 175,
-     "name": "chair",
-     "type": "decor",
-     "x": 1728,
-     "y": 1312,
      "width": 32,
      "height": 32,
      "rotation": 0,
@@ -45042,10 +45041,10 @@
     },
     {
      "id": 176,
-     "name": "desk",
+     "name": "chair",
      "type": "decor",
      "x": 1728,
-     "y": 1440,
+     "y": 1312,
      "width": 32,
      "height": 32,
      "rotation": 0,
@@ -45053,6 +45052,17 @@
     },
     {
      "id": 177,
+     "name": "desk",
+     "type": "decor",
+     "x": 1728,
+     "y": 1440,
+     "width": 32,
+     "height": 32,
+     "rotation": 0,
+     "visible": true
+    },
+    {
+     "id": 178,
      "name": "chair",
      "type": "decor",
      "x": 1728,
@@ -45070,7 +45080,7 @@
      ]
     },
     {
-     "id": 178,
+     "id": 179,
      "name": "desk",
      "type": "decor",
      "x": 1760,
@@ -45081,7 +45091,7 @@
      "visible": true
     },
     {
-     "id": 179,
+     "id": 180,
      "name": "chair",
      "type": "decor",
      "x": 1760,
@@ -45099,22 +45109,11 @@
      ]
     },
     {
-     "id": 180,
+     "id": 181,
      "name": "desk",
      "type": "decor",
      "x": 1760,
      "y": 1344,
-     "width": 32,
-     "height": 32,
-     "rotation": 0,
-     "visible": true
-    },
-    {
-     "id": 181,
-     "name": "chair",
-     "type": "decor",
-     "x": 1760,
-     "y": 1312,
      "width": 32,
      "height": 32,
      "rotation": 0,
@@ -45122,10 +45121,10 @@
     },
     {
      "id": 182,
-     "name": "desk",
+     "name": "chair",
      "type": "decor",
      "x": 1760,
-     "y": 1440,
+     "y": 1312,
      "width": 32,
      "height": 32,
      "rotation": 0,
@@ -45133,6 +45132,17 @@
     },
     {
      "id": 183,
+     "name": "desk",
+     "type": "decor",
+     "x": 1760,
+     "y": 1440,
+     "width": 32,
+     "height": 32,
+     "rotation": 0,
+     "visible": true
+    },
+    {
+     "id": 184,
      "name": "chair",
      "type": "decor",
      "x": 1760,
@@ -45150,7 +45160,7 @@
      ]
     },
     {
-     "id": 184,
+     "id": 185,
      "name": "desk",
      "type": "decor",
      "x": 1792,
@@ -45161,7 +45171,7 @@
      "visible": true
     },
     {
-     "id": 185,
+     "id": 186,
      "name": "chair",
      "type": "decor",
      "x": 1792,
@@ -45179,22 +45189,11 @@
      ]
     },
     {
-     "id": 186,
+     "id": 187,
      "name": "desk",
      "type": "decor",
      "x": 1792,
      "y": 1344,
-     "width": 32,
-     "height": 32,
-     "rotation": 0,
-     "visible": true
-    },
-    {
-     "id": 187,
-     "name": "chair",
-     "type": "decor",
-     "x": 1792,
-     "y": 1312,
      "width": 32,
      "height": 32,
      "rotation": 0,
@@ -45202,10 +45201,10 @@
     },
     {
      "id": 188,
-     "name": "desk",
+     "name": "chair",
      "type": "decor",
      "x": 1792,
-     "y": 1440,
+     "y": 1312,
      "width": 32,
      "height": 32,
      "rotation": 0,
@@ -45213,6 +45212,17 @@
     },
     {
      "id": 189,
+     "name": "desk",
+     "type": "decor",
+     "x": 1792,
+     "y": 1440,
+     "width": 32,
+     "height": 32,
+     "rotation": 0,
+     "visible": true
+    },
+    {
+     "id": 190,
      "name": "chair",
      "type": "decor",
      "x": 1792,
@@ -45230,7 +45240,7 @@
      ]
     },
     {
-     "id": 190,
+     "id": 191,
      "name": "desk",
      "type": "decor",
      "x": 1824,
@@ -45241,7 +45251,7 @@
      "visible": true
     },
     {
-     "id": 191,
+     "id": 192,
      "name": "chair",
      "type": "decor",
      "x": 1824,
@@ -45259,22 +45269,11 @@
      ]
     },
     {
-     "id": 192,
+     "id": 193,
      "name": "desk",
      "type": "decor",
      "x": 1824,
      "y": 1344,
-     "width": 32,
-     "height": 32,
-     "rotation": 0,
-     "visible": true
-    },
-    {
-     "id": 193,
-     "name": "chair",
-     "type": "decor",
-     "x": 1824,
-     "y": 1312,
      "width": 32,
      "height": 32,
      "rotation": 0,
@@ -45282,10 +45281,10 @@
     },
     {
      "id": 194,
-     "name": "desk",
+     "name": "chair",
      "type": "decor",
      "x": 1824,
-     "y": 1440,
+     "y": 1312,
      "width": 32,
      "height": 32,
      "rotation": 0,
@@ -45293,6 +45292,17 @@
     },
     {
      "id": 195,
+     "name": "desk",
+     "type": "decor",
+     "x": 1824,
+     "y": 1440,
+     "width": 32,
+     "height": 32,
+     "rotation": 0,
+     "visible": true
+    },
+    {
+     "id": 196,
      "name": "chair",
      "type": "decor",
      "x": 1824,
@@ -45310,7 +45320,7 @@
      ]
     },
     {
-     "id": 196,
+     "id": 197,
      "name": "desk",
      "type": "decor",
      "x": 1984,
@@ -45321,7 +45331,7 @@
      "visible": true
     },
     {
-     "id": 197,
+     "id": 198,
      "name": "chair",
      "type": "decor",
      "x": 1984,
@@ -45339,22 +45349,11 @@
      ]
     },
     {
-     "id": 198,
+     "id": 199,
      "name": "desk",
      "type": "decor",
      "x": 1984,
      "y": 1344,
-     "width": 32,
-     "height": 32,
-     "rotation": 0,
-     "visible": true
-    },
-    {
-     "id": 199,
-     "name": "chair",
-     "type": "decor",
-     "x": 1984,
-     "y": 1312,
      "width": 32,
      "height": 32,
      "rotation": 0,
@@ -45362,10 +45361,10 @@
     },
     {
      "id": 200,
-     "name": "desk",
+     "name": "chair",
      "type": "decor",
      "x": 1984,
-     "y": 1440,
+     "y": 1312,
      "width": 32,
      "height": 32,
      "rotation": 0,
@@ -45373,6 +45372,17 @@
     },
     {
      "id": 201,
+     "name": "desk",
+     "type": "decor",
+     "x": 1984,
+     "y": 1440,
+     "width": 32,
+     "height": 32,
+     "rotation": 0,
+     "visible": true
+    },
+    {
+     "id": 202,
      "name": "chair",
      "type": "decor",
      "x": 1984,
@@ -45390,7 +45400,7 @@
      ]
     },
     {
-     "id": 202,
+     "id": 203,
      "name": "desk",
      "type": "decor",
      "x": 2016,
@@ -45401,7 +45411,7 @@
      "visible": true
     },
     {
-     "id": 203,
+     "id": 204,
      "name": "chair",
      "type": "decor",
      "x": 2016,
@@ -45419,22 +45429,11 @@
      ]
     },
     {
-     "id": 204,
+     "id": 205,
      "name": "desk",
      "type": "decor",
      "x": 2016,
      "y": 1344,
-     "width": 32,
-     "height": 32,
-     "rotation": 0,
-     "visible": true
-    },
-    {
-     "id": 205,
-     "name": "chair",
-     "type": "decor",
-     "x": 2016,
-     "y": 1312,
      "width": 32,
      "height": 32,
      "rotation": 0,
@@ -45442,10 +45441,10 @@
     },
     {
      "id": 206,
-     "name": "desk",
+     "name": "chair",
      "type": "decor",
      "x": 2016,
-     "y": 1440,
+     "y": 1312,
      "width": 32,
      "height": 32,
      "rotation": 0,
@@ -45453,6 +45452,17 @@
     },
     {
      "id": 207,
+     "name": "desk",
+     "type": "decor",
+     "x": 2016,
+     "y": 1440,
+     "width": 32,
+     "height": 32,
+     "rotation": 0,
+     "visible": true
+    },
+    {
+     "id": 208,
      "name": "chair",
      "type": "decor",
      "x": 2016,
@@ -45470,7 +45480,7 @@
      ]
     },
     {
-     "id": 208,
+     "id": 209,
      "name": "desk",
      "type": "decor",
      "x": 2048,
@@ -45481,7 +45491,7 @@
      "visible": true
     },
     {
-     "id": 209,
+     "id": 210,
      "name": "chair",
      "type": "decor",
      "x": 2048,
@@ -45499,22 +45509,11 @@
      ]
     },
     {
-     "id": 210,
+     "id": 211,
      "name": "desk",
      "type": "decor",
      "x": 2048,
      "y": 1344,
-     "width": 32,
-     "height": 32,
-     "rotation": 0,
-     "visible": true
-    },
-    {
-     "id": 211,
-     "name": "chair",
-     "type": "decor",
-     "x": 2048,
-     "y": 1312,
      "width": 32,
      "height": 32,
      "rotation": 0,
@@ -45522,10 +45521,10 @@
     },
     {
      "id": 212,
-     "name": "desk",
+     "name": "chair",
      "type": "decor",
      "x": 2048,
-     "y": 1440,
+     "y": 1312,
      "width": 32,
      "height": 32,
      "rotation": 0,
@@ -45533,6 +45532,17 @@
     },
     {
      "id": 213,
+     "name": "desk",
+     "type": "decor",
+     "x": 2048,
+     "y": 1440,
+     "width": 32,
+     "height": 32,
+     "rotation": 0,
+     "visible": true
+    },
+    {
+     "id": 214,
      "name": "chair",
      "type": "decor",
      "x": 2048,
@@ -45550,7 +45560,7 @@
      ]
     },
     {
-     "id": 214,
+     "id": 215,
      "name": "desk",
      "type": "decor",
      "x": 2080,
@@ -45561,7 +45571,7 @@
      "visible": true
     },
     {
-     "id": 215,
+     "id": 216,
      "name": "chair",
      "type": "decor",
      "x": 2080,
@@ -45579,22 +45589,11 @@
      ]
     },
     {
-     "id": 216,
+     "id": 217,
      "name": "desk",
      "type": "decor",
      "x": 2080,
      "y": 1344,
-     "width": 32,
-     "height": 32,
-     "rotation": 0,
-     "visible": true
-    },
-    {
-     "id": 217,
-     "name": "chair",
-     "type": "decor",
-     "x": 2080,
-     "y": 1312,
      "width": 32,
      "height": 32,
      "rotation": 0,
@@ -45602,10 +45601,10 @@
     },
     {
      "id": 218,
-     "name": "desk",
+     "name": "chair",
      "type": "decor",
      "x": 2080,
-     "y": 1440,
+     "y": 1312,
      "width": 32,
      "height": 32,
      "rotation": 0,
@@ -45613,6 +45612,17 @@
     },
     {
      "id": 219,
+     "name": "desk",
+     "type": "decor",
+     "x": 2080,
+     "y": 1440,
+     "width": 32,
+     "height": 32,
+     "rotation": 0,
+     "visible": true
+    },
+    {
+     "id": 220,
      "name": "chair",
      "type": "decor",
      "x": 2080,
@@ -45630,7 +45640,7 @@
      ]
     },
     {
-     "id": 220,
+     "id": 221,
      "name": "desk",
      "type": "decor",
      "x": 2240,
@@ -45641,7 +45651,7 @@
      "visible": true
     },
     {
-     "id": 221,
+     "id": 222,
      "name": "chair",
      "type": "decor",
      "x": 2240,
@@ -45659,22 +45669,11 @@
      ]
     },
     {
-     "id": 222,
+     "id": 223,
      "name": "desk",
      "type": "decor",
      "x": 2240,
      "y": 1344,
-     "width": 32,
-     "height": 32,
-     "rotation": 0,
-     "visible": true
-    },
-    {
-     "id": 223,
-     "name": "chair",
-     "type": "decor",
-     "x": 2240,
-     "y": 1312,
      "width": 32,
      "height": 32,
      "rotation": 0,
@@ -45682,10 +45681,10 @@
     },
     {
      "id": 224,
-     "name": "desk",
+     "name": "chair",
      "type": "decor",
      "x": 2240,
-     "y": 1440,
+     "y": 1312,
      "width": 32,
      "height": 32,
      "rotation": 0,
@@ -45693,6 +45692,17 @@
     },
     {
      "id": 225,
+     "name": "desk",
+     "type": "decor",
+     "x": 2240,
+     "y": 1440,
+     "width": 32,
+     "height": 32,
+     "rotation": 0,
+     "visible": true
+    },
+    {
+     "id": 226,
      "name": "chair",
      "type": "decor",
      "x": 2240,
@@ -45710,7 +45720,7 @@
      ]
     },
     {
-     "id": 226,
+     "id": 227,
      "name": "desk",
      "type": "decor",
      "x": 2272,
@@ -45721,7 +45731,7 @@
      "visible": true
     },
     {
-     "id": 227,
+     "id": 228,
      "name": "chair",
      "type": "decor",
      "x": 2272,
@@ -45739,22 +45749,11 @@
      ]
     },
     {
-     "id": 228,
+     "id": 229,
      "name": "desk",
      "type": "decor",
      "x": 2272,
      "y": 1344,
-     "width": 32,
-     "height": 32,
-     "rotation": 0,
-     "visible": true
-    },
-    {
-     "id": 229,
-     "name": "chair",
-     "type": "decor",
-     "x": 2272,
-     "y": 1312,
      "width": 32,
      "height": 32,
      "rotation": 0,
@@ -45762,10 +45761,10 @@
     },
     {
      "id": 230,
-     "name": "desk",
+     "name": "chair",
      "type": "decor",
      "x": 2272,
-     "y": 1440,
+     "y": 1312,
      "width": 32,
      "height": 32,
      "rotation": 0,
@@ -45773,6 +45772,17 @@
     },
     {
      "id": 231,
+     "name": "desk",
+     "type": "decor",
+     "x": 2272,
+     "y": 1440,
+     "width": 32,
+     "height": 32,
+     "rotation": 0,
+     "visible": true
+    },
+    {
+     "id": 232,
      "name": "chair",
      "type": "decor",
      "x": 2272,
@@ -45790,7 +45800,7 @@
      ]
     },
     {
-     "id": 232,
+     "id": 233,
      "name": "desk",
      "type": "decor",
      "x": 2304,
@@ -45801,7 +45811,7 @@
      "visible": true
     },
     {
-     "id": 233,
+     "id": 234,
      "name": "chair",
      "type": "decor",
      "x": 2304,
@@ -45819,22 +45829,11 @@
      ]
     },
     {
-     "id": 234,
+     "id": 235,
      "name": "desk",
      "type": "decor",
      "x": 2304,
      "y": 1344,
-     "width": 32,
-     "height": 32,
-     "rotation": 0,
-     "visible": true
-    },
-    {
-     "id": 235,
-     "name": "chair",
-     "type": "decor",
-     "x": 2304,
-     "y": 1312,
      "width": 32,
      "height": 32,
      "rotation": 0,
@@ -45842,6 +45841,17 @@
     },
     {
      "id": 236,
+     "name": "chair",
+     "type": "decor",
+     "x": 2304,
+     "y": 1312,
+     "width": 32,
+     "height": 32,
+     "rotation": 0,
+     "visible": true
+    },
+    {
+     "id": 237,
      "name": "desk",
      "type": "decor",
      "x": 2304,
@@ -45852,7 +45862,7 @@
      "visible": true
     },
     {
-     "id": 237,
+     "id": 238,
      "name": "chair",
      "type": "decor",
      "x": 2304,
@@ -45870,7 +45880,7 @@
      ]
     },
     {
-     "id": 238,
+     "id": 239,
      "name": "desk",
      "type": "decor",
      "x": 2336,
@@ -45881,7 +45891,7 @@
      "visible": true
     },
     {
-     "id": 239,
+     "id": 240,
      "name": "chair",
      "type": "decor",
      "x": 2336,
@@ -45899,7 +45909,7 @@
      ]
     },
     {
-     "id": 240,
+     "id": 241,
      "name": "desk",
      "type": "decor",
      "x": 2336,
@@ -45910,7 +45920,7 @@
      "visible": true
     },
     {
-     "id": 241,
+     "id": 242,
      "name": "chair",
      "type": "decor",
      "x": 2336,
@@ -45921,7 +45931,7 @@
      "visible": true
     },
     {
-     "id": 242,
+     "id": 243,
      "name": "desk",
      "type": "decor",
      "x": 2336,
@@ -45932,7 +45942,7 @@
      "visible": true
     },
     {
-     "id": 243,
+     "id": 244,
      "name": "chair",
      "type": "decor",
      "x": 2336,
@@ -45950,7 +45960,7 @@
      ]
     },
     {
-     "id": 244,
+     "id": 245,
      "name": "printer",
      "type": "decor",
      "x": 2464,
@@ -45961,7 +45971,7 @@
      "visible": true
     },
     {
-     "id": 245,
+     "id": 246,
      "name": "bin",
      "type": "decor",
      "x": 2464,
@@ -45972,7 +45982,7 @@
      "visible": true
     },
     {
-     "id": 246,
+     "id": 247,
      "name": "plant",
      "type": "decor",
      "x": 1664,
@@ -45983,7 +45993,7 @@
      "visible": true
     },
     {
-     "id": 247,
+     "id": 248,
      "name": "plant",
      "type": "decor",
      "x": 2496,
@@ -45994,7 +46004,7 @@
      "visible": true
     },
     {
-     "id": 248,
+     "id": 249,
      "name": "armchair",
      "type": "decor",
      "x": 2624,
@@ -46005,7 +46015,7 @@
      "visible": true
     },
     {
-     "id": 249,
+     "id": 250,
      "name": "plant",
      "type": "decor",
      "x": 2656,
@@ -46016,7 +46026,7 @@
      "visible": true
     },
     {
-     "id": 250,
+     "id": 251,
      "name": "armchair",
      "type": "decor",
      "x": 2752,
@@ -46027,7 +46037,7 @@
      "visible": true
     },
     {
-     "id": 251,
+     "id": 252,
      "name": "plant",
      "type": "decor",
      "x": 2784,
@@ -46038,7 +46048,7 @@
      "visible": true
     },
     {
-     "id": 252,
+     "id": 253,
      "name": "armchair",
      "type": "decor",
      "x": 2880,
@@ -46049,7 +46059,7 @@
      "visible": true
     },
     {
-     "id": 253,
+     "id": 254,
      "name": "plant",
      "type": "decor",
      "x": 2912,
@@ -46060,7 +46070,7 @@
      "visible": true
     },
     {
-     "id": 254,
+     "id": 255,
      "name": "rug",
      "type": "decor",
      "x": 2688,
@@ -46071,7 +46081,7 @@
      "visible": true
     },
     {
-     "id": 255,
+     "id": 256,
      "name": "sofa",
      "type": "decor",
      "x": 2624,
@@ -46082,7 +46092,7 @@
      "visible": true
     },
     {
-     "id": 256,
+     "id": 257,
      "name": "sofa",
      "type": "decor",
      "x": 2848,
@@ -46093,7 +46103,7 @@
      "visible": true
     },
     {
-     "id": 257,
+     "id": 258,
      "name": "cafe-table",
      "type": "decor",
      "x": 2720,
@@ -46104,7 +46114,7 @@
      "visible": true
     },
     {
-     "id": 258,
+     "id": 259,
      "name": "armchair",
      "type": "decor",
      "x": 2624,
@@ -46115,7 +46125,7 @@
      "visible": true
     },
     {
-     "id": 259,
+     "id": 260,
      "name": "plant",
      "type": "decor",
      "x": 2944,
@@ -46126,21 +46136,10 @@
      "visible": true
     },
     {
-     "id": 260,
-     "name": "bookshelf",
-     "type": "decor",
-     "x": 1696,
-     "y": 1664,
-     "width": 64,
-     "height": 32,
-     "rotation": 0,
-     "visible": true
-    },
-    {
      "id": 261,
      "name": "bookshelf",
      "type": "decor",
-     "x": 1760,
+     "x": 1696,
      "y": 1664,
      "width": 64,
      "height": 32,
@@ -46151,7 +46150,7 @@
      "id": 262,
      "name": "bookshelf",
      "type": "decor",
-     "x": 1824,
+     "x": 1760,
      "y": 1664,
      "width": 64,
      "height": 32,
@@ -46162,7 +46161,7 @@
      "id": 263,
      "name": "bookshelf",
      "type": "decor",
-     "x": 1888,
+     "x": 1824,
      "y": 1664,
      "width": 64,
      "height": 32,
@@ -46173,7 +46172,7 @@
      "id": 264,
      "name": "bookshelf",
      "type": "decor",
-     "x": 1952,
+     "x": 1888,
      "y": 1664,
      "width": 64,
      "height": 32,
@@ -46184,7 +46183,7 @@
      "id": 265,
      "name": "bookshelf",
      "type": "decor",
-     "x": 2016,
+     "x": 1952,
      "y": 1664,
      "width": 64,
      "height": 32,
@@ -46193,6 +46192,17 @@
     },
     {
      "id": 266,
+     "name": "bookshelf",
+     "type": "decor",
+     "x": 2016,
+     "y": 1664,
+     "width": 64,
+     "height": 32,
+     "rotation": 0,
+     "visible": true
+    },
+    {
+     "id": 267,
      "name": "rug",
      "type": "decor",
      "x": 1760,
@@ -46203,7 +46213,7 @@
      "visible": true
     },
     {
-     "id": 267,
+     "id": 268,
      "name": "sofa",
      "type": "decor",
      "x": 1792,
@@ -46214,7 +46224,7 @@
      "visible": true
     },
     {
-     "id": 268,
+     "id": 269,
      "name": "armchair",
      "type": "decor",
      "x": 1728,
@@ -46225,7 +46235,7 @@
      "visible": true
     },
     {
-     "id": 269,
+     "id": 270,
      "name": "armchair",
      "type": "decor",
      "x": 1920,
@@ -46236,7 +46246,7 @@
      "visible": true
     },
     {
-     "id": 270,
+     "id": 271,
      "name": "plant",
      "type": "decor",
      "x": 2240,
@@ -46247,7 +46257,7 @@
      "visible": true
     },
     {
-     "id": 271,
+     "id": 272,
      "name": "tree",
      "type": "decor",
      "x": 2176,
@@ -46258,7 +46268,7 @@
      "visible": true
     },
     {
-     "id": 272,
+     "id": 273,
      "name": "coffee",
      "type": "decor",
      "x": 2400,
@@ -46269,7 +46279,7 @@
      "visible": true
     },
     {
-     "id": 273,
+     "id": 274,
      "name": "coffee",
      "type": "decor",
      "x": 2496,
@@ -46280,7 +46290,7 @@
      "visible": true
     },
     {
-     "id": 274,
+     "id": 275,
      "name": "fridge",
      "type": "decor",
      "x": 2624,
@@ -46291,7 +46301,7 @@
      "visible": true
     },
     {
-     "id": 275,
+     "id": 276,
      "name": "fridge",
      "type": "decor",
      "x": 2688,
@@ -46302,21 +46312,10 @@
      "visible": true
     },
     {
-     "id": 276,
-     "name": "cafe-table",
-     "type": "decor",
-     "x": 2432,
-     "y": 1792,
-     "width": 64,
-     "height": 32,
-     "rotation": 0,
-     "visible": true
-    },
-    {
      "id": 277,
      "name": "cafe-table",
      "type": "decor",
-     "x": 2560,
+     "x": 2432,
      "y": 1792,
      "width": 64,
      "height": 32,
@@ -46327,7 +46326,7 @@
      "id": 278,
      "name": "cafe-table",
      "type": "decor",
-     "x": 2720,
+     "x": 2560,
      "y": 1792,
      "width": 64,
      "height": 32,
@@ -46336,6 +46335,17 @@
     },
     {
      "id": 279,
+     "name": "cafe-table",
+     "type": "decor",
+     "x": 2720,
+     "y": 1792,
+     "width": 64,
+     "height": 32,
+     "rotation": 0,
+     "visible": true
+    },
+    {
+     "id": 280,
      "name": "bin",
      "type": "decor",
      "x": 2944,
@@ -46346,7 +46356,7 @@
      "visible": true
     },
     {
-     "id": 280,
+     "id": 281,
      "name": "plant",
      "type": "decor",
      "x": 2944,
@@ -46357,21 +46367,10 @@
      "visible": true
     },
     {
-     "id": 286,
-     "name": "arcade",
-     "type": "decor",
-     "x": 3168,
-     "y": 1120,
-     "width": 32,
-     "height": 64,
-     "rotation": 0,
-     "visible": true
-    },
-    {
      "id": 287,
      "name": "arcade",
      "type": "decor",
-     "x": 3232,
+     "x": 3168,
      "y": 1120,
      "width": 32,
      "height": 64,
@@ -46382,7 +46381,7 @@
      "id": 288,
      "name": "arcade",
      "type": "decor",
-     "x": 3296,
+     "x": 3232,
      "y": 1120,
      "width": 32,
      "height": 64,
@@ -46393,7 +46392,7 @@
      "id": 289,
      "name": "arcade",
      "type": "decor",
-     "x": 3360,
+     "x": 3296,
      "y": 1120,
      "width": 32,
      "height": 64,
@@ -46404,7 +46403,7 @@
      "id": 290,
      "name": "arcade",
      "type": "decor",
-     "x": 3424,
+     "x": 3360,
      "y": 1120,
      "width": 32,
      "height": 64,
@@ -46415,7 +46414,7 @@
      "id": 291,
      "name": "arcade",
      "type": "decor",
-     "x": 3488,
+     "x": 3424,
      "y": 1120,
      "width": 32,
      "height": 64,
@@ -46426,7 +46425,7 @@
      "id": 292,
      "name": "arcade",
      "type": "decor",
-     "x": 3552,
+     "x": 3488,
      "y": 1120,
      "width": 32,
      "height": 64,
@@ -46437,7 +46436,7 @@
      "id": 293,
      "name": "arcade",
      "type": "decor",
-     "x": 3616,
+     "x": 3552,
      "y": 1120,
      "width": 32,
      "height": 64,
@@ -46448,7 +46447,7 @@
      "id": 294,
      "name": "arcade",
      "type": "decor",
-     "x": 3680,
+     "x": 3616,
      "y": 1120,
      "width": 32,
      "height": 64,
@@ -46459,8 +46458,8 @@
      "id": 295,
      "name": "arcade",
      "type": "decor",
-     "x": 3200,
-     "y": 1280,
+     "x": 3680,
+     "y": 1120,
      "width": 32,
      "height": 64,
      "rotation": 0,
@@ -46470,7 +46469,7 @@
      "id": 296,
      "name": "arcade",
      "type": "decor",
-     "x": 3328,
+     "x": 3200,
      "y": 1280,
      "width": 32,
      "height": 64,
@@ -46481,7 +46480,7 @@
      "id": 297,
      "name": "arcade",
      "type": "decor",
-     "x": 3456,
+     "x": 3328,
      "y": 1280,
      "width": 32,
      "height": 64,
@@ -46492,7 +46491,7 @@
      "id": 298,
      "name": "arcade",
      "type": "decor",
-     "x": 3584,
+     "x": 3456,
      "y": 1280,
      "width": 32,
      "height": 64,
@@ -46503,7 +46502,7 @@
      "id": 299,
      "name": "arcade",
      "type": "decor",
-     "x": 3712,
+     "x": 3584,
      "y": 1280,
      "width": 32,
      "height": 64,
@@ -46512,6 +46511,17 @@
     },
     {
      "id": 300,
+     "name": "arcade",
+     "type": "decor",
+     "x": 3712,
+     "y": 1280,
+     "width": 32,
+     "height": 64,
+     "rotation": 0,
+     "visible": true
+    },
+    {
+     "id": 301,
      "name": "rug",
      "type": "decor",
      "x": 3584,
@@ -46522,7 +46532,7 @@
      "visible": true
     },
     {
-     "id": 301,
+     "id": 302,
      "name": "sofa",
      "type": "decor",
      "x": 3648,
@@ -46533,7 +46543,7 @@
      "visible": true
     },
     {
-     "id": 302,
+     "id": 303,
      "name": "plant",
      "type": "decor",
      "x": 3776,
@@ -46544,21 +46554,10 @@
      "visible": true
     },
     {
-     "id": 303,
-     "name": "pingpong",
-     "type": "decor",
-     "x": 3200,
-     "y": 1504,
-     "width": 96,
-     "height": 64,
-     "rotation": 0,
-     "visible": true
-    },
-    {
      "id": 304,
      "name": "pingpong",
      "type": "decor",
-     "x": 3424,
+     "x": 3200,
      "y": 1504,
      "width": 96,
      "height": 64,
@@ -46569,6 +46568,17 @@
      "id": 305,
      "name": "pingpong",
      "type": "decor",
+     "x": 3424,
+     "y": 1504,
+     "width": 96,
+     "height": 64,
+     "rotation": 0,
+     "visible": true
+    },
+    {
+     "id": 306,
+     "name": "pingpong",
+     "type": "decor",
      "x": 3200,
      "y": 1664,
      "width": 96,
@@ -46577,7 +46587,7 @@
      "visible": true
     },
     {
-     "id": 306,
+     "id": 307,
      "name": "pingpong",
      "type": "decor",
      "x": 3424,
@@ -46588,7 +46598,7 @@
      "visible": true
     },
     {
-     "id": 307,
+     "id": 308,
      "name": "sofa",
      "type": "decor",
      "x": 3616,
@@ -46599,7 +46609,7 @@
      "visible": true
     },
     {
-     "id": 308,
+     "id": 309,
      "name": "sofa",
      "type": "decor",
      "x": 3616,
@@ -46610,7 +46620,7 @@
      "visible": true
     },
     {
-     "id": 309,
+     "id": 310,
      "name": "armchair",
      "type": "decor",
      "x": 3744,
@@ -46621,7 +46631,7 @@
      "visible": true
     },
     {
-     "id": 310,
+     "id": 311,
      "name": "plant",
      "type": "decor",
      "x": 3776,
@@ -46632,7 +46642,7 @@
      "visible": true
     },
     {
-     "id": 311,
+     "id": 312,
      "name": "plant",
      "type": "decor",
      "x": 3136,
@@ -46643,7 +46653,7 @@
      "visible": true
     },
     {
-     "id": 312,
+     "id": 313,
      "name": "coffee",
      "type": "decor",
      "x": 3904,
@@ -46654,7 +46664,7 @@
      "visible": true
     },
     {
-     "id": 313,
+     "id": 314,
      "name": "coffee",
      "type": "decor",
      "x": 4000,
@@ -46665,7 +46675,7 @@
      "visible": true
     },
     {
-     "id": 314,
+     "id": 315,
      "name": "fridge",
      "type": "decor",
      "x": 4288,
@@ -46676,21 +46686,10 @@
      "visible": true
     },
     {
-     "id": 315,
-     "name": "cafe-table",
-     "type": "decor",
-     "x": 3936,
-     "y": 1248,
-     "width": 64,
-     "height": 32,
-     "rotation": 0,
-     "visible": true
-    },
-    {
      "id": 316,
      "name": "cafe-table",
      "type": "decor",
-     "x": 4064,
+     "x": 3936,
      "y": 1248,
      "width": 64,
      "height": 32,
@@ -46701,7 +46700,7 @@
      "id": 317,
      "name": "cafe-table",
      "type": "decor",
-     "x": 4192,
+     "x": 4064,
      "y": 1248,
      "width": 64,
      "height": 32,
@@ -46710,6 +46709,17 @@
     },
     {
      "id": 318,
+     "name": "cafe-table",
+     "type": "decor",
+     "x": 4192,
+     "y": 1248,
+     "width": 64,
+     "height": 32,
+     "rotation": 0,
+     "visible": true
+    },
+    {
+     "id": 319,
      "name": "bin",
      "type": "decor",
      "x": 4288,
@@ -46720,7 +46730,7 @@
      "visible": true
     },
     {
-     "id": 319,
+     "id": 320,
      "name": "rug",
      "type": "decor",
      "x": 3968,
@@ -46731,7 +46741,7 @@
      "visible": true
     },
     {
-     "id": 320,
+     "id": 321,
      "name": "sofa",
      "type": "decor",
      "x": 3936,
@@ -46742,7 +46752,7 @@
      "visible": true
     },
     {
-     "id": 321,
+     "id": 322,
      "name": "sofa",
      "type": "decor",
      "x": 4064,
@@ -46753,7 +46763,7 @@
      "visible": true
     },
     {
-     "id": 322,
+     "id": 323,
      "name": "armchair",
      "type": "decor",
      "x": 3936,
@@ -46764,7 +46774,7 @@
      "visible": true
     },
     {
-     "id": 323,
+     "id": 324,
      "name": "armchair",
      "type": "decor",
      "x": 4160,
@@ -46775,7 +46785,7 @@
      "visible": true
     },
     {
-     "id": 324,
+     "id": 325,
      "name": "sofa",
      "type": "decor",
      "x": 4000,
@@ -46786,7 +46796,7 @@
      "visible": true
     },
     {
-     "id": 325,
+     "id": 326,
      "name": "plant",
      "type": "decor",
      "x": 4288,
@@ -46797,7 +46807,7 @@
      "visible": true
     },
     {
-     "id": 326,
+     "id": 327,
      "name": "plant",
      "type": "decor",
      "x": 4288,
@@ -46808,7 +46818,7 @@
      "visible": true
     },
     {
-     "id": 327,
+     "id": 328,
      "name": "tree",
      "type": "decor",
      "x": 4224,
@@ -46819,7 +46829,7 @@
      "visible": true
     },
     {
-     "id": 332,
+     "id": 333,
      "name": "rug",
      "type": "decor",
      "x": 4544,
@@ -46830,7 +46840,7 @@
      "visible": true
     },
     {
-     "id": 333,
+     "id": 334,
      "name": "sofa",
      "type": "decor",
      "x": 4576,
@@ -46841,7 +46851,7 @@
      "visible": true
     },
     {
-     "id": 334,
+     "id": 335,
      "name": "sofa",
      "type": "decor",
      "x": 4672,
@@ -46852,7 +46862,7 @@
      "visible": true
     },
     {
-     "id": 335,
+     "id": 336,
      "name": "armchair",
      "type": "decor",
      "x": 4544,
@@ -46863,7 +46873,7 @@
      "visible": true
     },
     {
-     "id": 336,
+     "id": 337,
      "name": "rug",
      "type": "decor",
      "x": 4896,
@@ -46874,7 +46884,7 @@
      "visible": true
     },
     {
-     "id": 337,
+     "id": 338,
      "name": "sofa",
      "type": "decor",
      "x": 4928,
@@ -46885,7 +46895,7 @@
      "visible": true
     },
     {
-     "id": 338,
+     "id": 339,
      "name": "sofa",
      "type": "decor",
      "x": 5024,
@@ -46896,7 +46906,7 @@
      "visible": true
     },
     {
-     "id": 339,
+     "id": 340,
      "name": "armchair",
      "type": "decor",
      "x": 4896,
@@ -46907,7 +46917,7 @@
      "visible": true
     },
     {
-     "id": 340,
+     "id": 341,
      "name": "cafe-table",
      "type": "decor",
      "x": 4576,
@@ -46918,7 +46928,7 @@
      "visible": true
     },
     {
-     "id": 341,
+     "id": 342,
      "name": "cafe-table",
      "type": "decor",
      "x": 4672,
@@ -46929,7 +46939,7 @@
      "visible": true
     },
     {
-     "id": 342,
+     "id": 343,
      "name": "cafe-table",
      "type": "decor",
      "x": 4928,
@@ -46940,7 +46950,7 @@
      "visible": true
     },
     {
-     "id": 343,
+     "id": 344,
      "name": "cafe-table",
      "type": "decor",
      "x": 4992,
@@ -46951,21 +46961,10 @@
      "visible": true
     },
     {
-     "id": 344,
-     "name": "tree",
-     "type": "decor",
-     "x": 4480,
-     "y": 1120,
-     "width": 64,
-     "height": 64,
-     "rotation": 0,
-     "visible": true
-    },
-    {
      "id": 345,
      "name": "tree",
      "type": "decor",
-     "x": 5056,
+     "x": 4480,
      "y": 1120,
      "width": 64,
      "height": 64,
@@ -46976,8 +46975,8 @@
      "id": 346,
      "name": "tree",
      "type": "decor",
-     "x": 4480,
-     "y": 1696,
+     "x": 5056,
+     "y": 1120,
      "width": 64,
      "height": 64,
      "rotation": 0,
@@ -46987,7 +46986,7 @@
      "id": 347,
      "name": "tree",
      "type": "decor",
-     "x": 5056,
+     "x": 4480,
      "y": 1696,
      "width": 64,
      "height": 64,
@@ -46998,8 +46997,8 @@
      "id": 348,
      "name": "tree",
      "type": "decor",
-     "x": 4704,
-     "y": 1344,
+     "x": 5056,
+     "y": 1696,
      "width": 64,
      "height": 64,
      "rotation": 0,
@@ -47009,8 +47008,8 @@
      "id": 349,
      "name": "tree",
      "type": "decor",
-     "x": 4864,
-     "y": 1472,
+     "x": 4704,
+     "y": 1344,
      "width": 64,
      "height": 64,
      "rotation": 0,
@@ -47020,7 +47019,7 @@
      "id": 350,
      "name": "tree",
      "type": "decor",
-     "x": 4640,
+     "x": 4864,
      "y": 1472,
      "width": 64,
      "height": 64,
@@ -47031,6 +47030,17 @@
      "id": 351,
      "name": "tree",
      "type": "decor",
+     "x": 4640,
+     "y": 1472,
+     "width": 64,
+     "height": 64,
+     "rotation": 0,
+     "visible": true
+    },
+    {
+     "id": 352,
+     "name": "tree",
+     "type": "decor",
      "x": 4960,
      "y": 1440,
      "width": 64,
@@ -47039,7 +47049,7 @@
      "visible": true
     },
     {
-     "id": 352,
+     "id": 353,
      "name": "tree",
      "type": "decor",
      "x": 4864,
@@ -47050,7 +47060,7 @@
      "visible": true
     },
     {
-     "id": 353,
+     "id": 354,
      "name": "coffee",
      "type": "decor",
      "x": 5216,
@@ -47061,7 +47071,7 @@
      "visible": true
     },
     {
-     "id": 354,
+     "id": 355,
      "name": "coffee",
      "type": "decor",
      "x": 5312,
@@ -47072,7 +47082,7 @@
      "visible": true
     },
     {
-     "id": 355,
+     "id": 356,
      "name": "fridge",
      "type": "decor",
      "x": 5472,
@@ -47083,21 +47093,10 @@
      "visible": true
     },
     {
-     "id": 356,
-     "name": "cafe-table",
-     "type": "decor",
-     "x": 5216,
-     "y": 1248,
-     "width": 64,
-     "height": 32,
-     "rotation": 0,
-     "visible": true
-    },
-    {
      "id": 357,
      "name": "cafe-table",
      "type": "decor",
-     "x": 5344,
+     "x": 5216,
      "y": 1248,
      "width": 64,
      "height": 32,
@@ -47108,6 +47107,17 @@
      "id": 358,
      "name": "cafe-table",
      "type": "decor",
+     "x": 5344,
+     "y": 1248,
+     "width": 64,
+     "height": 32,
+     "rotation": 0,
+     "visible": true
+    },
+    {
+     "id": 359,
+     "name": "cafe-table",
+     "type": "decor",
      "x": 5440,
      "y": 1312,
      "width": 64,
@@ -47116,7 +47126,7 @@
      "visible": true
     },
     {
-     "id": 359,
+     "id": 360,
      "name": "bin",
      "type": "decor",
      "x": 5504,
@@ -47127,21 +47137,10 @@
      "visible": true
     },
     {
-     "id": 360,
-     "name": "tree",
-     "type": "decor",
-     "x": 5184,
-     "y": 1472,
-     "width": 64,
-     "height": 64,
-     "rotation": 0,
-     "visible": true
-    },
-    {
      "id": 361,
      "name": "tree",
      "type": "decor",
-     "x": 5472,
+     "x": 5184,
      "y": 1472,
      "width": 64,
      "height": 64,
@@ -47152,6 +47151,17 @@
      "id": 362,
      "name": "tree",
      "type": "decor",
+     "x": 5472,
+     "y": 1472,
+     "width": 64,
+     "height": 64,
+     "rotation": 0,
+     "visible": true
+    },
+    {
+     "id": 363,
+     "name": "tree",
+     "type": "decor",
      "x": 5184,
      "y": 1664,
      "width": 64,
@@ -47160,7 +47170,7 @@
      "visible": true
     },
     {
-     "id": 363,
+     "id": 364,
      "name": "tree",
      "type": "decor",
      "x": 5472,
@@ -47171,7 +47181,7 @@
      "visible": true
     },
     {
-     "id": 364,
+     "id": 365,
      "name": "sofa",
      "type": "decor",
      "x": 5312,
@@ -47182,7 +47192,7 @@
      "visible": true
     },
     {
-     "id": 365,
+     "id": 366,
      "name": "plant",
      "type": "decor",
      "x": 5280,
@@ -47193,7 +47203,7 @@
      "visible": true
     },
     {
-     "id": 366,
+     "id": 367,
      "name": "plant",
      "type": "decor",
      "x": 5408,
@@ -47204,7 +47214,7 @@
      "visible": true
     },
     {
-     "id": 375,
+     "id": 376,
      "name": "screen-wide",
      "type": "decor",
      "x": 416,
@@ -47215,7 +47225,7 @@
      "visible": true
     },
     {
-     "id": 376,
+     "id": 377,
      "name": "stage",
      "type": "decor",
      "x": 352,
@@ -47226,7 +47236,7 @@
      "visible": true
     },
     {
-     "id": 377,
+     "id": 378,
      "name": "lectern",
      "type": "decor",
      "x": 448,
@@ -47237,7 +47247,7 @@
      "visible": true
     },
     {
-     "id": 378,
+     "id": 379,
      "name": "banner",
      "type": "decor",
      "x": 128,
@@ -47248,7 +47258,7 @@
      "visible": true
     },
     {
-     "id": 379,
+     "id": 380,
      "name": "banner2",
      "type": "decor",
      "x": 864,
@@ -47259,21 +47269,10 @@
      "visible": true
     },
     {
-     "id": 380,
-     "name": "seat",
-     "type": "decor",
-     "x": 160,
-     "y": 2400,
-     "width": 32,
-     "height": 32,
-     "rotation": 0,
-     "visible": true
-    },
-    {
      "id": 381,
      "name": "seat",
      "type": "decor",
-     "x": 192,
+     "x": 160,
      "y": 2400,
      "width": 32,
      "height": 32,
@@ -47284,7 +47283,7 @@
      "id": 382,
      "name": "seat",
      "type": "decor",
-     "x": 224,
+     "x": 192,
      "y": 2400,
      "width": 32,
      "height": 32,
@@ -47295,7 +47294,7 @@
      "id": 383,
      "name": "seat",
      "type": "decor",
-     "x": 256,
+     "x": 224,
      "y": 2400,
      "width": 32,
      "height": 32,
@@ -47306,7 +47305,7 @@
      "id": 384,
      "name": "seat",
      "type": "decor",
-     "x": 288,
+     "x": 256,
      "y": 2400,
      "width": 32,
      "height": 32,
@@ -47317,7 +47316,7 @@
      "id": 385,
      "name": "seat",
      "type": "decor",
-     "x": 320,
+     "x": 288,
      "y": 2400,
      "width": 32,
      "height": 32,
@@ -47328,7 +47327,7 @@
      "id": 386,
      "name": "seat",
      "type": "decor",
-     "x": 352,
+     "x": 320,
      "y": 2400,
      "width": 32,
      "height": 32,
@@ -47339,7 +47338,7 @@
      "id": 387,
      "name": "seat",
      "type": "decor",
-     "x": 384,
+     "x": 352,
      "y": 2400,
      "width": 32,
      "height": 32,
@@ -47350,7 +47349,7 @@
      "id": 388,
      "name": "seat",
      "type": "decor",
-     "x": 608,
+     "x": 384,
      "y": 2400,
      "width": 32,
      "height": 32,
@@ -47361,7 +47360,7 @@
      "id": 389,
      "name": "seat",
      "type": "decor",
-     "x": 640,
+     "x": 608,
      "y": 2400,
      "width": 32,
      "height": 32,
@@ -47372,7 +47371,7 @@
      "id": 390,
      "name": "seat",
      "type": "decor",
-     "x": 672,
+     "x": 640,
      "y": 2400,
      "width": 32,
      "height": 32,
@@ -47383,7 +47382,7 @@
      "id": 391,
      "name": "seat",
      "type": "decor",
-     "x": 704,
+     "x": 672,
      "y": 2400,
      "width": 32,
      "height": 32,
@@ -47394,7 +47393,7 @@
      "id": 392,
      "name": "seat",
      "type": "decor",
-     "x": 736,
+     "x": 704,
      "y": 2400,
      "width": 32,
      "height": 32,
@@ -47405,7 +47404,7 @@
      "id": 393,
      "name": "seat",
      "type": "decor",
-     "x": 768,
+     "x": 736,
      "y": 2400,
      "width": 32,
      "height": 32,
@@ -47416,7 +47415,7 @@
      "id": 394,
      "name": "seat",
      "type": "decor",
-     "x": 800,
+     "x": 768,
      "y": 2400,
      "width": 32,
      "height": 32,
@@ -47427,7 +47426,7 @@
      "id": 395,
      "name": "seat",
      "type": "decor",
-     "x": 832,
+     "x": 800,
      "y": 2400,
      "width": 32,
      "height": 32,
@@ -47438,8 +47437,8 @@
      "id": 396,
      "name": "seat",
      "type": "decor",
-     "x": 160,
-     "y": 2464,
+     "x": 832,
+     "y": 2400,
      "width": 32,
      "height": 32,
      "rotation": 0,
@@ -47449,7 +47448,7 @@
      "id": 397,
      "name": "seat",
      "type": "decor",
-     "x": 192,
+     "x": 160,
      "y": 2464,
      "width": 32,
      "height": 32,
@@ -47460,7 +47459,7 @@
      "id": 398,
      "name": "seat",
      "type": "decor",
-     "x": 224,
+     "x": 192,
      "y": 2464,
      "width": 32,
      "height": 32,
@@ -47471,7 +47470,7 @@
      "id": 399,
      "name": "seat",
      "type": "decor",
-     "x": 256,
+     "x": 224,
      "y": 2464,
      "width": 32,
      "height": 32,
@@ -47482,7 +47481,7 @@
      "id": 400,
      "name": "seat",
      "type": "decor",
-     "x": 288,
+     "x": 256,
      "y": 2464,
      "width": 32,
      "height": 32,
@@ -47493,7 +47492,7 @@
      "id": 401,
      "name": "seat",
      "type": "decor",
-     "x": 320,
+     "x": 288,
      "y": 2464,
      "width": 32,
      "height": 32,
@@ -47504,7 +47503,7 @@
      "id": 402,
      "name": "seat",
      "type": "decor",
-     "x": 352,
+     "x": 320,
      "y": 2464,
      "width": 32,
      "height": 32,
@@ -47515,7 +47514,7 @@
      "id": 403,
      "name": "seat",
      "type": "decor",
-     "x": 384,
+     "x": 352,
      "y": 2464,
      "width": 32,
      "height": 32,
@@ -47526,7 +47525,7 @@
      "id": 404,
      "name": "seat",
      "type": "decor",
-     "x": 608,
+     "x": 384,
      "y": 2464,
      "width": 32,
      "height": 32,
@@ -47537,7 +47536,7 @@
      "id": 405,
      "name": "seat",
      "type": "decor",
-     "x": 640,
+     "x": 608,
      "y": 2464,
      "width": 32,
      "height": 32,
@@ -47548,7 +47547,7 @@
      "id": 406,
      "name": "seat",
      "type": "decor",
-     "x": 672,
+     "x": 640,
      "y": 2464,
      "width": 32,
      "height": 32,
@@ -47559,7 +47558,7 @@
      "id": 407,
      "name": "seat",
      "type": "decor",
-     "x": 704,
+     "x": 672,
      "y": 2464,
      "width": 32,
      "height": 32,
@@ -47570,7 +47569,7 @@
      "id": 408,
      "name": "seat",
      "type": "decor",
-     "x": 736,
+     "x": 704,
      "y": 2464,
      "width": 32,
      "height": 32,
@@ -47581,7 +47580,7 @@
      "id": 409,
      "name": "seat",
      "type": "decor",
-     "x": 768,
+     "x": 736,
      "y": 2464,
      "width": 32,
      "height": 32,
@@ -47592,7 +47591,7 @@
      "id": 410,
      "name": "seat",
      "type": "decor",
-     "x": 800,
+     "x": 768,
      "y": 2464,
      "width": 32,
      "height": 32,
@@ -47603,7 +47602,7 @@
      "id": 411,
      "name": "seat",
      "type": "decor",
-     "x": 832,
+     "x": 800,
      "y": 2464,
      "width": 32,
      "height": 32,
@@ -47614,8 +47613,8 @@
      "id": 412,
      "name": "seat",
      "type": "decor",
-     "x": 160,
-     "y": 2528,
+     "x": 832,
+     "y": 2464,
      "width": 32,
      "height": 32,
      "rotation": 0,
@@ -47625,7 +47624,7 @@
      "id": 413,
      "name": "seat",
      "type": "decor",
-     "x": 192,
+     "x": 160,
      "y": 2528,
      "width": 32,
      "height": 32,
@@ -47636,7 +47635,7 @@
      "id": 414,
      "name": "seat",
      "type": "decor",
-     "x": 224,
+     "x": 192,
      "y": 2528,
      "width": 32,
      "height": 32,
@@ -47647,7 +47646,7 @@
      "id": 415,
      "name": "seat",
      "type": "decor",
-     "x": 256,
+     "x": 224,
      "y": 2528,
      "width": 32,
      "height": 32,
@@ -47658,7 +47657,7 @@
      "id": 416,
      "name": "seat",
      "type": "decor",
-     "x": 288,
+     "x": 256,
      "y": 2528,
      "width": 32,
      "height": 32,
@@ -47669,7 +47668,7 @@
      "id": 417,
      "name": "seat",
      "type": "decor",
-     "x": 320,
+     "x": 288,
      "y": 2528,
      "width": 32,
      "height": 32,
@@ -47680,7 +47679,7 @@
      "id": 418,
      "name": "seat",
      "type": "decor",
-     "x": 352,
+     "x": 320,
      "y": 2528,
      "width": 32,
      "height": 32,
@@ -47691,7 +47690,7 @@
      "id": 419,
      "name": "seat",
      "type": "decor",
-     "x": 384,
+     "x": 352,
      "y": 2528,
      "width": 32,
      "height": 32,
@@ -47702,7 +47701,7 @@
      "id": 420,
      "name": "seat",
      "type": "decor",
-     "x": 608,
+     "x": 384,
      "y": 2528,
      "width": 32,
      "height": 32,
@@ -47713,7 +47712,7 @@
      "id": 421,
      "name": "seat",
      "type": "decor",
-     "x": 640,
+     "x": 608,
      "y": 2528,
      "width": 32,
      "height": 32,
@@ -47724,7 +47723,7 @@
      "id": 422,
      "name": "seat",
      "type": "decor",
-     "x": 672,
+     "x": 640,
      "y": 2528,
      "width": 32,
      "height": 32,
@@ -47735,7 +47734,7 @@
      "id": 423,
      "name": "seat",
      "type": "decor",
-     "x": 704,
+     "x": 672,
      "y": 2528,
      "width": 32,
      "height": 32,
@@ -47746,7 +47745,7 @@
      "id": 424,
      "name": "seat",
      "type": "decor",
-     "x": 736,
+     "x": 704,
      "y": 2528,
      "width": 32,
      "height": 32,
@@ -47757,7 +47756,7 @@
      "id": 425,
      "name": "seat",
      "type": "decor",
-     "x": 768,
+     "x": 736,
      "y": 2528,
      "width": 32,
      "height": 32,
@@ -47768,7 +47767,7 @@
      "id": 426,
      "name": "seat",
      "type": "decor",
-     "x": 800,
+     "x": 768,
      "y": 2528,
      "width": 32,
      "height": 32,
@@ -47779,7 +47778,7 @@
      "id": 427,
      "name": "seat",
      "type": "decor",
-     "x": 832,
+     "x": 800,
      "y": 2528,
      "width": 32,
      "height": 32,
@@ -47790,8 +47789,8 @@
      "id": 428,
      "name": "seat",
      "type": "decor",
-     "x": 160,
-     "y": 2592,
+     "x": 832,
+     "y": 2528,
      "width": 32,
      "height": 32,
      "rotation": 0,
@@ -47801,7 +47800,7 @@
      "id": 429,
      "name": "seat",
      "type": "decor",
-     "x": 192,
+     "x": 160,
      "y": 2592,
      "width": 32,
      "height": 32,
@@ -47812,7 +47811,7 @@
      "id": 430,
      "name": "seat",
      "type": "decor",
-     "x": 224,
+     "x": 192,
      "y": 2592,
      "width": 32,
      "height": 32,
@@ -47823,7 +47822,7 @@
      "id": 431,
      "name": "seat",
      "type": "decor",
-     "x": 256,
+     "x": 224,
      "y": 2592,
      "width": 32,
      "height": 32,
@@ -47834,7 +47833,7 @@
      "id": 432,
      "name": "seat",
      "type": "decor",
-     "x": 288,
+     "x": 256,
      "y": 2592,
      "width": 32,
      "height": 32,
@@ -47845,7 +47844,7 @@
      "id": 433,
      "name": "seat",
      "type": "decor",
-     "x": 320,
+     "x": 288,
      "y": 2592,
      "width": 32,
      "height": 32,
@@ -47856,7 +47855,7 @@
      "id": 434,
      "name": "seat",
      "type": "decor",
-     "x": 352,
+     "x": 320,
      "y": 2592,
      "width": 32,
      "height": 32,
@@ -47867,7 +47866,7 @@
      "id": 435,
      "name": "seat",
      "type": "decor",
-     "x": 384,
+     "x": 352,
      "y": 2592,
      "width": 32,
      "height": 32,
@@ -47878,7 +47877,7 @@
      "id": 436,
      "name": "seat",
      "type": "decor",
-     "x": 608,
+     "x": 384,
      "y": 2592,
      "width": 32,
      "height": 32,
@@ -47889,7 +47888,7 @@
      "id": 437,
      "name": "seat",
      "type": "decor",
-     "x": 640,
+     "x": 608,
      "y": 2592,
      "width": 32,
      "height": 32,
@@ -47900,7 +47899,7 @@
      "id": 438,
      "name": "seat",
      "type": "decor",
-     "x": 672,
+     "x": 640,
      "y": 2592,
      "width": 32,
      "height": 32,
@@ -47911,7 +47910,7 @@
      "id": 439,
      "name": "seat",
      "type": "decor",
-     "x": 704,
+     "x": 672,
      "y": 2592,
      "width": 32,
      "height": 32,
@@ -47922,7 +47921,7 @@
      "id": 440,
      "name": "seat",
      "type": "decor",
-     "x": 736,
+     "x": 704,
      "y": 2592,
      "width": 32,
      "height": 32,
@@ -47933,7 +47932,7 @@
      "id": 441,
      "name": "seat",
      "type": "decor",
-     "x": 768,
+     "x": 736,
      "y": 2592,
      "width": 32,
      "height": 32,
@@ -47944,7 +47943,7 @@
      "id": 442,
      "name": "seat",
      "type": "decor",
-     "x": 800,
+     "x": 768,
      "y": 2592,
      "width": 32,
      "height": 32,
@@ -47955,7 +47954,7 @@
      "id": 443,
      "name": "seat",
      "type": "decor",
-     "x": 832,
+     "x": 800,
      "y": 2592,
      "width": 32,
      "height": 32,
@@ -47966,8 +47965,8 @@
      "id": 444,
      "name": "seat",
      "type": "decor",
-     "x": 160,
-     "y": 2656,
+     "x": 832,
+     "y": 2592,
      "width": 32,
      "height": 32,
      "rotation": 0,
@@ -47977,7 +47976,7 @@
      "id": 445,
      "name": "seat",
      "type": "decor",
-     "x": 192,
+     "x": 160,
      "y": 2656,
      "width": 32,
      "height": 32,
@@ -47988,7 +47987,7 @@
      "id": 446,
      "name": "seat",
      "type": "decor",
-     "x": 224,
+     "x": 192,
      "y": 2656,
      "width": 32,
      "height": 32,
@@ -47999,7 +47998,7 @@
      "id": 447,
      "name": "seat",
      "type": "decor",
-     "x": 256,
+     "x": 224,
      "y": 2656,
      "width": 32,
      "height": 32,
@@ -48010,7 +48009,7 @@
      "id": 448,
      "name": "seat",
      "type": "decor",
-     "x": 288,
+     "x": 256,
      "y": 2656,
      "width": 32,
      "height": 32,
@@ -48021,7 +48020,7 @@
      "id": 449,
      "name": "seat",
      "type": "decor",
-     "x": 320,
+     "x": 288,
      "y": 2656,
      "width": 32,
      "height": 32,
@@ -48032,7 +48031,7 @@
      "id": 450,
      "name": "seat",
      "type": "decor",
-     "x": 352,
+     "x": 320,
      "y": 2656,
      "width": 32,
      "height": 32,
@@ -48043,7 +48042,7 @@
      "id": 451,
      "name": "seat",
      "type": "decor",
-     "x": 384,
+     "x": 352,
      "y": 2656,
      "width": 32,
      "height": 32,
@@ -48054,7 +48053,7 @@
      "id": 452,
      "name": "seat",
      "type": "decor",
-     "x": 608,
+     "x": 384,
      "y": 2656,
      "width": 32,
      "height": 32,
@@ -48065,7 +48064,7 @@
      "id": 453,
      "name": "seat",
      "type": "decor",
-     "x": 640,
+     "x": 608,
      "y": 2656,
      "width": 32,
      "height": 32,
@@ -48076,7 +48075,7 @@
      "id": 454,
      "name": "seat",
      "type": "decor",
-     "x": 672,
+     "x": 640,
      "y": 2656,
      "width": 32,
      "height": 32,
@@ -48087,7 +48086,7 @@
      "id": 455,
      "name": "seat",
      "type": "decor",
-     "x": 704,
+     "x": 672,
      "y": 2656,
      "width": 32,
      "height": 32,
@@ -48098,7 +48097,7 @@
      "id": 456,
      "name": "seat",
      "type": "decor",
-     "x": 736,
+     "x": 704,
      "y": 2656,
      "width": 32,
      "height": 32,
@@ -48109,7 +48108,7 @@
      "id": 457,
      "name": "seat",
      "type": "decor",
-     "x": 768,
+     "x": 736,
      "y": 2656,
      "width": 32,
      "height": 32,
@@ -48120,7 +48119,7 @@
      "id": 458,
      "name": "seat",
      "type": "decor",
-     "x": 800,
+     "x": 768,
      "y": 2656,
      "width": 32,
      "height": 32,
@@ -48131,7 +48130,7 @@
      "id": 459,
      "name": "seat",
      "type": "decor",
-     "x": 832,
+     "x": 800,
      "y": 2656,
      "width": 32,
      "height": 32,
@@ -48140,6 +48139,17 @@
     },
     {
      "id": 460,
+     "name": "seat",
+     "type": "decor",
+     "x": 832,
+     "y": 2656,
+     "width": 32,
+     "height": 32,
+     "rotation": 0,
+     "visible": true
+    },
+    {
+     "id": 461,
      "name": "plant",
      "type": "decor",
      "x": 96,
@@ -48150,7 +48160,7 @@
      "visible": true
     },
     {
-     "id": 461,
+     "id": 462,
      "name": "plant",
      "type": "decor",
      "x": 896,
@@ -48161,7 +48171,7 @@
      "visible": true
     },
     {
-     "id": 462,
+     "id": 463,
      "name": "screen-wide",
      "type": "decor",
      "x": 1152,
@@ -48172,21 +48182,10 @@
      "visible": true
     },
     {
-     "id": 463,
-     "name": "cafe-table",
-     "type": "decor",
-     "x": 1120,
-     "y": 2240,
-     "width": 64,
-     "height": 32,
-     "rotation": 0,
-     "visible": true
-    },
-    {
      "id": 464,
      "name": "cafe-table",
      "type": "decor",
-     "x": 1216,
+     "x": 1120,
      "y": 2240,
      "width": 64,
      "height": 32,
@@ -48197,6 +48196,17 @@
      "id": 465,
      "name": "cafe-table",
      "type": "decor",
+     "x": 1216,
+     "y": 2240,
+     "width": 64,
+     "height": 32,
+     "rotation": 0,
+     "visible": true
+    },
+    {
+     "id": 466,
+     "name": "cafe-table",
+     "type": "decor",
      "x": 1120,
      "y": 2304,
      "width": 64,
@@ -48205,7 +48215,7 @@
      "visible": true
     },
     {
-     "id": 466,
+     "id": 467,
      "name": "plant",
      "type": "decor",
      "x": 1280,
@@ -48216,7 +48226,7 @@
      "visible": true
     },
     {
-     "id": 467,
+     "id": 468,
      "name": "screen-wide",
      "type": "decor",
      "x": 1440,
@@ -48227,21 +48237,10 @@
      "visible": true
     },
     {
-     "id": 468,
-     "name": "cafe-table",
-     "type": "decor",
-     "x": 1408,
-     "y": 2240,
-     "width": 64,
-     "height": 32,
-     "rotation": 0,
-     "visible": true
-    },
-    {
      "id": 469,
      "name": "cafe-table",
      "type": "decor",
-     "x": 1504,
+     "x": 1408,
      "y": 2240,
      "width": 64,
      "height": 32,
@@ -48252,6 +48251,17 @@
      "id": 470,
      "name": "cafe-table",
      "type": "decor",
+     "x": 1504,
+     "y": 2240,
+     "width": 64,
+     "height": 32,
+     "rotation": 0,
+     "visible": true
+    },
+    {
+     "id": 471,
+     "name": "cafe-table",
+     "type": "decor",
      "x": 1408,
      "y": 2304,
      "width": 64,
@@ -48260,7 +48270,7 @@
      "visible": true
     },
     {
-     "id": 471,
+     "id": 472,
      "name": "plant",
      "type": "decor",
      "x": 1568,
@@ -48271,7 +48281,7 @@
      "visible": true
     },
     {
-     "id": 472,
+     "id": 473,
      "name": "screen-wide",
      "type": "decor",
      "x": 1728,
@@ -48282,21 +48292,10 @@
      "visible": true
     },
     {
-     "id": 473,
-     "name": "cafe-table",
-     "type": "decor",
-     "x": 1696,
-     "y": 2240,
-     "width": 64,
-     "height": 32,
-     "rotation": 0,
-     "visible": true
-    },
-    {
      "id": 474,
      "name": "cafe-table",
      "type": "decor",
-     "x": 1792,
+     "x": 1696,
      "y": 2240,
      "width": 64,
      "height": 32,
@@ -48307,6 +48306,17 @@
      "id": 475,
      "name": "cafe-table",
      "type": "decor",
+     "x": 1792,
+     "y": 2240,
+     "width": 64,
+     "height": 32,
+     "rotation": 0,
+     "visible": true
+    },
+    {
+     "id": 476,
+     "name": "cafe-table",
+     "type": "decor",
      "x": 1696,
      "y": 2304,
      "width": 64,
@@ -48315,7 +48325,7 @@
      "visible": true
     },
     {
-     "id": 476,
+     "id": 477,
      "name": "plant",
      "type": "decor",
      "x": 1856,
@@ -48326,7 +48336,7 @@
      "visible": true
     },
     {
-     "id": 477,
+     "id": 478,
      "name": "coffee",
      "type": "decor",
      "x": 1120,
@@ -48337,7 +48347,7 @@
      "visible": true
     },
     {
-     "id": 478,
+     "id": 479,
      "name": "fridge",
      "type": "decor",
      "x": 1408,
@@ -48348,7 +48358,7 @@
      "visible": true
     },
     {
-     "id": 479,
+     "id": 480,
      "name": "cafe-table",
      "type": "decor",
      "x": 1152,
@@ -48359,7 +48369,7 @@
      "visible": true
     },
     {
-     "id": 480,
+     "id": 481,
      "name": "cafe-table",
      "type": "decor",
      "x": 1280,
@@ -48370,7 +48380,7 @@
      "visible": true
     },
     {
-     "id": 481,
+     "id": 482,
      "name": "cafe-table",
      "type": "decor",
      "x": 1248,
@@ -48381,7 +48391,7 @@
      "visible": true
     },
     {
-     "id": 482,
+     "id": 483,
      "name": "regdesk",
      "type": "decor",
      "x": 896,
@@ -48392,7 +48402,7 @@
      "visible": true
     },
     {
-     "id": 483,
+     "id": 484,
      "name": "signboard",
      "type": "decor",
      "x": 1088,
@@ -48403,7 +48413,7 @@
      "visible": true
     },
     {
-     "id": 484,
+     "id": 485,
      "name": "banner",
      "type": "decor",
      "x": 832,
@@ -48414,7 +48424,7 @@
      "visible": true
     },
     {
-     "id": 485,
+     "id": 486,
      "name": "banner2",
      "type": "decor",
      "x": 1184,
@@ -48425,7 +48435,7 @@
      "visible": true
     },
     {
-     "id": 486,
+     "id": 487,
      "name": "track",
      "type": "decor",
      "x": 128,
@@ -48436,7 +48446,7 @@
      "visible": true
     },
     {
-     "id": 487,
+     "id": 488,
      "name": "court",
      "type": "decor",
      "x": 640,
@@ -48447,7 +48457,7 @@
      "visible": true
     },
     {
-     "id": 488,
+     "id": 489,
      "name": "sofa",
      "type": "decor",
      "x": 672,
@@ -48458,7 +48468,7 @@
      "visible": true
     },
     {
-     "id": 489,
+     "id": 490,
      "name": "sofa",
      "type": "decor",
      "x": 768,
@@ -48469,7 +48479,7 @@
      "visible": true
     },
     {
-     "id": 490,
+     "id": 491,
      "name": "bin",
      "type": "decor",
      "x": 928,
@@ -48480,7 +48490,7 @@
      "visible": true
     },
     {
-     "id": 491,
+     "id": 492,
      "name": "banquet",
      "type": "decor",
      "x": 1184,
@@ -48491,7 +48501,7 @@
      "visible": true
     },
     {
-     "id": 492,
+     "id": 493,
      "name": "banquet",
      "type": "decor",
      "x": 1312,
@@ -48502,21 +48512,10 @@
      "visible": true
     },
     {
-     "id": 493,
-     "name": "banquet",
-     "type": "decor",
-     "x": 1440,
-     "y": 2976,
-     "width": 64,
-     "height": 64,
-     "rotation": 0,
-     "visible": true
-    },
-    {
      "id": 494,
      "name": "banquet",
      "type": "decor",
-     "x": 1568,
+     "x": 1440,
      "y": 2976,
      "width": 64,
      "height": 64,
@@ -48527,7 +48526,7 @@
      "id": 495,
      "name": "banquet",
      "type": "decor",
-     "x": 1696,
+     "x": 1568,
      "y": 2976,
      "width": 64,
      "height": 64,
@@ -48536,6 +48535,17 @@
     },
     {
      "id": 496,
+     "name": "banquet",
+     "type": "decor",
+     "x": 1696,
+     "y": 2976,
+     "width": 64,
+     "height": 64,
+     "rotation": 0,
+     "visible": true
+    },
+    {
+     "id": 497,
      "name": "tree",
      "type": "decor",
      "x": 1120,
@@ -48546,7 +48556,7 @@
      "visible": true
     },
     {
-     "id": 497,
+     "id": 498,
      "name": "tree",
      "type": "decor",
      "x": 1856,
@@ -48557,7 +48567,7 @@
      "visible": true
     },
     {
-     "id": 498,
+     "id": 499,
      "name": "tree",
      "type": "decor",
      "x": 1824,
@@ -48568,7 +48578,7 @@
      "visible": true
     },
     {
-     "id": 499,
+     "id": 500,
      "name": "tree",
      "type": "decor",
      "x": 64,
@@ -48579,7 +48589,7 @@
      "visible": true
     },
     {
-     "id": 500,
+     "id": 501,
      "name": "tree",
      "type": "decor",
      "x": 928,
@@ -48590,7 +48600,7 @@
      "visible": true
     },
     {
-     "id": 501,
+     "id": 502,
      "name": "tree",
      "type": "decor",
      "x": 1888,
@@ -48601,7 +48611,7 @@
      "visible": true
     },
     {
-     "id": 502,
+     "id": 503,
      "name": "tree",
      "type": "decor",
      "x": 96,
@@ -48612,7 +48622,7 @@
      "visible": true
     },
     {
-     "id": 511,
+     "id": 512,
      "name": "screen-wide",
      "type": "decor",
      "x": 2848,
@@ -48623,7 +48633,7 @@
      "visible": true
     },
     {
-     "id": 512,
+     "id": 513,
      "name": "stage",
      "type": "decor",
      "x": 2784,
@@ -48634,7 +48644,7 @@
      "visible": true
     },
     {
-     "id": 513,
+     "id": 514,
      "name": "lectern",
      "type": "decor",
      "x": 2880,
@@ -48645,7 +48655,7 @@
      "visible": true
     },
     {
-     "id": 514,
+     "id": 515,
      "name": "rug",
      "type": "decor",
      "x": 2784,
@@ -48656,7 +48666,7 @@
      "visible": true
     },
     {
-     "id": 515,
+     "id": 516,
      "name": "banner",
      "type": "decor",
      "x": 2528,
@@ -48667,7 +48677,7 @@
      "visible": true
     },
     {
-     "id": 516,
+     "id": 517,
      "name": "banner2",
      "type": "decor",
      "x": 3264,
@@ -48678,21 +48688,10 @@
      "visible": true
     },
     {
-     "id": 517,
-     "name": "seat",
-     "type": "decor",
-     "x": 2560,
-     "y": 2432,
-     "width": 32,
-     "height": 32,
-     "rotation": 0,
-     "visible": true
-    },
-    {
      "id": 518,
      "name": "seat",
      "type": "decor",
-     "x": 2592,
+     "x": 2560,
      "y": 2432,
      "width": 32,
      "height": 32,
@@ -48703,7 +48702,7 @@
      "id": 519,
      "name": "seat",
      "type": "decor",
-     "x": 2624,
+     "x": 2592,
      "y": 2432,
      "width": 32,
      "height": 32,
@@ -48714,7 +48713,7 @@
      "id": 520,
      "name": "seat",
      "type": "decor",
-     "x": 2656,
+     "x": 2624,
      "y": 2432,
      "width": 32,
      "height": 32,
@@ -48725,7 +48724,7 @@
      "id": 521,
      "name": "seat",
      "type": "decor",
-     "x": 2688,
+     "x": 2656,
      "y": 2432,
      "width": 32,
      "height": 32,
@@ -48736,7 +48735,7 @@
      "id": 522,
      "name": "seat",
      "type": "decor",
-     "x": 2720,
+     "x": 2688,
      "y": 2432,
      "width": 32,
      "height": 32,
@@ -48747,7 +48746,7 @@
      "id": 523,
      "name": "seat",
      "type": "decor",
-     "x": 3008,
+     "x": 2720,
      "y": 2432,
      "width": 32,
      "height": 32,
@@ -48758,7 +48757,7 @@
      "id": 524,
      "name": "seat",
      "type": "decor",
-     "x": 3040,
+     "x": 3008,
      "y": 2432,
      "width": 32,
      "height": 32,
@@ -48769,7 +48768,7 @@
      "id": 525,
      "name": "seat",
      "type": "decor",
-     "x": 3072,
+     "x": 3040,
      "y": 2432,
      "width": 32,
      "height": 32,
@@ -48780,7 +48779,7 @@
      "id": 526,
      "name": "seat",
      "type": "decor",
-     "x": 3104,
+     "x": 3072,
      "y": 2432,
      "width": 32,
      "height": 32,
@@ -48791,7 +48790,7 @@
      "id": 527,
      "name": "seat",
      "type": "decor",
-     "x": 3136,
+     "x": 3104,
      "y": 2432,
      "width": 32,
      "height": 32,
@@ -48802,7 +48801,7 @@
      "id": 528,
      "name": "seat",
      "type": "decor",
-     "x": 3168,
+     "x": 3136,
      "y": 2432,
      "width": 32,
      "height": 32,
@@ -48813,8 +48812,8 @@
      "id": 529,
      "name": "seat",
      "type": "decor",
-     "x": 2560,
-     "y": 2496,
+     "x": 3168,
+     "y": 2432,
      "width": 32,
      "height": 32,
      "rotation": 0,
@@ -48824,7 +48823,7 @@
      "id": 530,
      "name": "seat",
      "type": "decor",
-     "x": 2592,
+     "x": 2560,
      "y": 2496,
      "width": 32,
      "height": 32,
@@ -48835,7 +48834,7 @@
      "id": 531,
      "name": "seat",
      "type": "decor",
-     "x": 2624,
+     "x": 2592,
      "y": 2496,
      "width": 32,
      "height": 32,
@@ -48846,7 +48845,7 @@
      "id": 532,
      "name": "seat",
      "type": "decor",
-     "x": 2656,
+     "x": 2624,
      "y": 2496,
      "width": 32,
      "height": 32,
@@ -48857,7 +48856,7 @@
      "id": 533,
      "name": "seat",
      "type": "decor",
-     "x": 2688,
+     "x": 2656,
      "y": 2496,
      "width": 32,
      "height": 32,
@@ -48868,7 +48867,7 @@
      "id": 534,
      "name": "seat",
      "type": "decor",
-     "x": 2720,
+     "x": 2688,
      "y": 2496,
      "width": 32,
      "height": 32,
@@ -48879,7 +48878,7 @@
      "id": 535,
      "name": "seat",
      "type": "decor",
-     "x": 3008,
+     "x": 2720,
      "y": 2496,
      "width": 32,
      "height": 32,
@@ -48890,7 +48889,7 @@
      "id": 536,
      "name": "seat",
      "type": "decor",
-     "x": 3040,
+     "x": 3008,
      "y": 2496,
      "width": 32,
      "height": 32,
@@ -48901,7 +48900,7 @@
      "id": 537,
      "name": "seat",
      "type": "decor",
-     "x": 3072,
+     "x": 3040,
      "y": 2496,
      "width": 32,
      "height": 32,
@@ -48912,7 +48911,7 @@
      "id": 538,
      "name": "seat",
      "type": "decor",
-     "x": 3104,
+     "x": 3072,
      "y": 2496,
      "width": 32,
      "height": 32,
@@ -48923,7 +48922,7 @@
      "id": 539,
      "name": "seat",
      "type": "decor",
-     "x": 3136,
+     "x": 3104,
      "y": 2496,
      "width": 32,
      "height": 32,
@@ -48934,7 +48933,7 @@
      "id": 540,
      "name": "seat",
      "type": "decor",
-     "x": 3168,
+     "x": 3136,
      "y": 2496,
      "width": 32,
      "height": 32,
@@ -48945,8 +48944,8 @@
      "id": 541,
      "name": "seat",
      "type": "decor",
-     "x": 2560,
-     "y": 2560,
+     "x": 3168,
+     "y": 2496,
      "width": 32,
      "height": 32,
      "rotation": 0,
@@ -48956,7 +48955,7 @@
      "id": 542,
      "name": "seat",
      "type": "decor",
-     "x": 2592,
+     "x": 2560,
      "y": 2560,
      "width": 32,
      "height": 32,
@@ -48967,7 +48966,7 @@
      "id": 543,
      "name": "seat",
      "type": "decor",
-     "x": 2624,
+     "x": 2592,
      "y": 2560,
      "width": 32,
      "height": 32,
@@ -48978,7 +48977,7 @@
      "id": 544,
      "name": "seat",
      "type": "decor",
-     "x": 2656,
+     "x": 2624,
      "y": 2560,
      "width": 32,
      "height": 32,
@@ -48989,7 +48988,7 @@
      "id": 545,
      "name": "seat",
      "type": "decor",
-     "x": 2688,
+     "x": 2656,
      "y": 2560,
      "width": 32,
      "height": 32,
@@ -49000,7 +48999,7 @@
      "id": 546,
      "name": "seat",
      "type": "decor",
-     "x": 2720,
+     "x": 2688,
      "y": 2560,
      "width": 32,
      "height": 32,
@@ -49011,7 +49010,7 @@
      "id": 547,
      "name": "seat",
      "type": "decor",
-     "x": 3008,
+     "x": 2720,
      "y": 2560,
      "width": 32,
      "height": 32,
@@ -49022,7 +49021,7 @@
      "id": 548,
      "name": "seat",
      "type": "decor",
-     "x": 3040,
+     "x": 3008,
      "y": 2560,
      "width": 32,
      "height": 32,
@@ -49033,7 +49032,7 @@
      "id": 549,
      "name": "seat",
      "type": "decor",
-     "x": 3072,
+     "x": 3040,
      "y": 2560,
      "width": 32,
      "height": 32,
@@ -49044,7 +49043,7 @@
      "id": 550,
      "name": "seat",
      "type": "decor",
-     "x": 3104,
+     "x": 3072,
      "y": 2560,
      "width": 32,
      "height": 32,
@@ -49055,7 +49054,7 @@
      "id": 551,
      "name": "seat",
      "type": "decor",
-     "x": 3136,
+     "x": 3104,
      "y": 2560,
      "width": 32,
      "height": 32,
@@ -49066,7 +49065,7 @@
      "id": 552,
      "name": "seat",
      "type": "decor",
-     "x": 3168,
+     "x": 3136,
      "y": 2560,
      "width": 32,
      "height": 32,
@@ -49075,12 +49074,12 @@
     },
     {
      "id": 553,
-     "name": "banquet",
+     "name": "seat",
      "type": "decor",
-     "x": 2656,
-     "y": 2720,
-     "width": 64,
-     "height": 64,
+     "x": 3168,
+     "y": 2560,
+     "width": 32,
+     "height": 32,
      "rotation": 0,
      "visible": true
     },
@@ -49088,7 +49087,7 @@
      "id": 554,
      "name": "banquet",
      "type": "decor",
-     "x": 2848,
+     "x": 2656,
      "y": 2720,
      "width": 64,
      "height": 64,
@@ -49099,7 +49098,7 @@
      "id": 555,
      "name": "banquet",
      "type": "decor",
-     "x": 3040,
+     "x": 2848,
      "y": 2720,
      "width": 64,
      "height": 64,
@@ -49110,8 +49109,8 @@
      "id": 556,
      "name": "banquet",
      "type": "decor",
-     "x": 2656,
-     "y": 2880,
+     "x": 3040,
+     "y": 2720,
      "width": 64,
      "height": 64,
      "rotation": 0,
@@ -49121,7 +49120,7 @@
      "id": 557,
      "name": "banquet",
      "type": "decor",
-     "x": 2848,
+     "x": 2656,
      "y": 2880,
      "width": 64,
      "height": 64,
@@ -49132,7 +49131,7 @@
      "id": 558,
      "name": "banquet",
      "type": "decor",
-     "x": 3040,
+     "x": 2848,
      "y": 2880,
      "width": 64,
      "height": 64,
@@ -49141,6 +49140,17 @@
     },
     {
      "id": 559,
+     "name": "banquet",
+     "type": "decor",
+     "x": 3040,
+     "y": 2880,
+     "width": 64,
+     "height": 64,
+     "rotation": 0,
+     "visible": true
+    },
+    {
+     "id": 560,
      "name": "coffee",
      "type": "decor",
      "x": 2496,
@@ -49151,7 +49161,7 @@
      "visible": true
     },
     {
-     "id": 560,
+     "id": 561,
      "name": "coffee",
      "type": "decor",
      "x": 2592,
@@ -49162,7 +49172,7 @@
      "visible": true
     },
     {
-     "id": 561,
+     "id": 562,
      "name": "fridge",
      "type": "decor",
      "x": 3232,
@@ -49173,7 +49183,7 @@
      "visible": true
     },
     {
-     "id": 562,
+     "id": 563,
      "name": "plant",
      "type": "decor",
      "x": 2496,
@@ -49184,7 +49194,7 @@
      "visible": true
     },
     {
-     "id": 563,
+     "id": 564,
      "name": "plant",
      "type": "decor",
      "x": 3296,
@@ -49195,7 +49205,7 @@
      "visible": true
     },
     {
-     "id": 564,
+     "id": 565,
      "name": "desk",
      "type": "decor",
      "x": 2112,
@@ -49204,38 +49214,38 @@
      "height": 32,
      "rotation": 0,
      "visible": true
-    },
-    {
-     "id": 565,
-     "name": "chair",
-     "type": "decor",
-     "x": 2112,
-     "y": 2240,
-     "width": 32,
-     "height": 32,
-     "rotation": 0,
-     "visible": true,
-     "properties": [
-      {
-       "name": "turn",
-       "type": "int",
-       "value": 180
-      }
-     ]
     },
     {
      "id": 566,
-     "name": "desk",
+     "name": "chair",
      "type": "decor",
-     "x": 2208,
-     "y": 2208,
+     "x": 2112,
+     "y": 2240,
      "width": 32,
      "height": 32,
      "rotation": 0,
-     "visible": true
+     "visible": true,
+     "properties": [
+      {
+       "name": "turn",
+       "type": "int",
+       "value": 180
+      }
+     ]
     },
     {
      "id": 567,
+     "name": "desk",
+     "type": "decor",
+     "x": 2208,
+     "y": 2208,
+     "width": 32,
+     "height": 32,
+     "rotation": 0,
+     "visible": true
+    },
+    {
+     "id": 568,
      "name": "chair",
      "type": "decor",
      "x": 2208,
@@ -49253,7 +49263,7 @@
      ]
     },
     {
-     "id": 568,
+     "id": 569,
      "name": "desk",
      "type": "decor",
      "x": 2304,
@@ -49264,7 +49274,7 @@
      "visible": true
     },
     {
-     "id": 569,
+     "id": 570,
      "name": "chair",
      "type": "decor",
      "x": 2304,
@@ -49282,7 +49292,7 @@
      ]
     },
     {
-     "id": 570,
+     "id": 571,
      "name": "cafe-table",
      "type": "decor",
      "x": 2144,
@@ -49293,22 +49303,11 @@
      "visible": true
     },
     {
-     "id": 571,
+     "id": 572,
      "name": "plant",
      "type": "decor",
      "x": 2368,
      "y": 2368,
-     "width": 32,
-     "height": 32,
-     "rotation": 0,
-     "visible": true
-    },
-    {
-     "id": 572,
-     "name": "desk",
-     "type": "decor",
-     "x": 2112,
-     "y": 2528,
      "width": 32,
      "height": 32,
      "rotation": 0,
@@ -49316,6 +49315,17 @@
     },
     {
      "id": 573,
+     "name": "desk",
+     "type": "decor",
+     "x": 2112,
+     "y": 2528,
+     "width": 32,
+     "height": 32,
+     "rotation": 0,
+     "visible": true
+    },
+    {
+     "id": 574,
      "name": "chair",
      "type": "decor",
      "x": 2112,
@@ -49333,7 +49343,7 @@
      ]
     },
     {
-     "id": 574,
+     "id": 575,
      "name": "desk",
      "type": "decor",
      "x": 2208,
@@ -49342,27 +49352,27 @@
      "height": 32,
      "rotation": 0,
      "visible": true
-    },
-    {
-     "id": 575,
-     "name": "chair",
-     "type": "decor",
-     "x": 2208,
-     "y": 2560,
-     "width": 32,
-     "height": 32,
-     "rotation": 0,
-     "visible": true,
-     "properties": [
-      {
-       "name": "turn",
-       "type": "int",
-       "value": 180
-      }
-     ]
     },
     {
      "id": 576,
+     "name": "chair",
+     "type": "decor",
+     "x": 2208,
+     "y": 2560,
+     "width": 32,
+     "height": 32,
+     "rotation": 0,
+     "visible": true,
+     "properties": [
+      {
+       "name": "turn",
+       "type": "int",
+       "value": 180
+      }
+     ]
+    },
+    {
+     "id": 577,
      "name": "desk",
      "type": "decor",
      "x": 2304,
@@ -49373,7 +49383,7 @@
      "visible": true
     },
     {
-     "id": 577,
+     "id": 578,
      "name": "chair",
      "type": "decor",
      "x": 2304,
@@ -49391,7 +49401,7 @@
      ]
     },
     {
-     "id": 578,
+     "id": 579,
      "name": "cafe-table",
      "type": "decor",
      "x": 2144,
@@ -49402,7 +49412,7 @@
      "visible": true
     },
     {
-     "id": 579,
+     "id": 580,
      "name": "plant",
      "type": "decor",
      "x": 2368,
@@ -49413,7 +49423,7 @@
      "visible": true
     },
     {
-     "id": 580,
+     "id": 581,
      "name": "desk",
      "type": "decor",
      "x": 2112,
@@ -49422,38 +49432,38 @@
      "height": 32,
      "rotation": 0,
      "visible": true
-    },
-    {
-     "id": 581,
-     "name": "chair",
-     "type": "decor",
-     "x": 2112,
-     "y": 2880,
-     "width": 32,
-     "height": 32,
-     "rotation": 0,
-     "visible": true,
-     "properties": [
-      {
-       "name": "turn",
-       "type": "int",
-       "value": 180
-      }
-     ]
     },
     {
      "id": 582,
-     "name": "desk",
+     "name": "chair",
      "type": "decor",
-     "x": 2208,
-     "y": 2848,
+     "x": 2112,
+     "y": 2880,
      "width": 32,
      "height": 32,
      "rotation": 0,
-     "visible": true
+     "visible": true,
+     "properties": [
+      {
+       "name": "turn",
+       "type": "int",
+       "value": 180
+      }
+     ]
     },
     {
      "id": 583,
+     "name": "desk",
+     "type": "decor",
+     "x": 2208,
+     "y": 2848,
+     "width": 32,
+     "height": 32,
+     "rotation": 0,
+     "visible": true
+    },
+    {
+     "id": 584,
      "name": "chair",
      "type": "decor",
      "x": 2208,
@@ -49471,7 +49481,7 @@
      ]
     },
     {
-     "id": 584,
+     "id": 585,
      "name": "desk",
      "type": "decor",
      "x": 2304,
@@ -49482,7 +49492,7 @@
      "visible": true
     },
     {
-     "id": 585,
+     "id": 586,
      "name": "chair",
      "type": "decor",
      "x": 2304,
@@ -49500,7 +49510,7 @@
      ]
     },
     {
-     "id": 586,
+     "id": 587,
      "name": "cafe-table",
      "type": "decor",
      "x": 2144,
@@ -49511,7 +49521,7 @@
      "visible": true
     },
     {
-     "id": 587,
+     "id": 588,
      "name": "plant",
      "type": "decor",
      "x": 2368,
@@ -49522,7 +49532,7 @@
      "visible": true
     },
     {
-     "id": 588,
+     "id": 589,
      "name": "desk",
      "type": "decor",
      "x": 3456,
@@ -49531,38 +49541,38 @@
      "height": 32,
      "rotation": 0,
      "visible": true
-    },
-    {
-     "id": 589,
-     "name": "chair",
-     "type": "decor",
-     "x": 3456,
-     "y": 2240,
-     "width": 32,
-     "height": 32,
-     "rotation": 0,
-     "visible": true,
-     "properties": [
-      {
-       "name": "turn",
-       "type": "int",
-       "value": 180
-      }
-     ]
     },
     {
      "id": 590,
-     "name": "desk",
+     "name": "chair",
      "type": "decor",
-     "x": 3552,
-     "y": 2208,
+     "x": 3456,
+     "y": 2240,
      "width": 32,
      "height": 32,
      "rotation": 0,
-     "visible": true
+     "visible": true,
+     "properties": [
+      {
+       "name": "turn",
+       "type": "int",
+       "value": 180
+      }
+     ]
     },
     {
      "id": 591,
+     "name": "desk",
+     "type": "decor",
+     "x": 3552,
+     "y": 2208,
+     "width": 32,
+     "height": 32,
+     "rotation": 0,
+     "visible": true
+    },
+    {
+     "id": 592,
      "name": "chair",
      "type": "decor",
      "x": 3552,
@@ -49580,7 +49590,7 @@
      ]
     },
     {
-     "id": 592,
+     "id": 593,
      "name": "desk",
      "type": "decor",
      "x": 3648,
@@ -49591,7 +49601,7 @@
      "visible": true
     },
     {
-     "id": 593,
+     "id": 594,
      "name": "chair",
      "type": "decor",
      "x": 3648,
@@ -49609,7 +49619,7 @@
      ]
     },
     {
-     "id": 594,
+     "id": 595,
      "name": "cafe-table",
      "type": "decor",
      "x": 3488,
@@ -49620,7 +49630,7 @@
      "visible": true
     },
     {
-     "id": 595,
+     "id": 596,
      "name": "plant",
      "type": "decor",
      "x": 3712,
@@ -49631,7 +49641,7 @@
      "visible": true
     },
     {
-     "id": 596,
+     "id": 597,
      "name": "desk",
      "type": "decor",
      "x": 3456,
@@ -49640,38 +49650,38 @@
      "height": 32,
      "rotation": 0,
      "visible": true
-    },
-    {
-     "id": 597,
-     "name": "chair",
-     "type": "decor",
-     "x": 3456,
-     "y": 2560,
-     "width": 32,
-     "height": 32,
-     "rotation": 0,
-     "visible": true,
-     "properties": [
-      {
-       "name": "turn",
-       "type": "int",
-       "value": 180
-      }
-     ]
     },
     {
      "id": 598,
-     "name": "desk",
+     "name": "chair",
      "type": "decor",
-     "x": 3552,
-     "y": 2528,
+     "x": 3456,
+     "y": 2560,
      "width": 32,
      "height": 32,
      "rotation": 0,
-     "visible": true
+     "visible": true,
+     "properties": [
+      {
+       "name": "turn",
+       "type": "int",
+       "value": 180
+      }
+     ]
     },
     {
      "id": 599,
+     "name": "desk",
+     "type": "decor",
+     "x": 3552,
+     "y": 2528,
+     "width": 32,
+     "height": 32,
+     "rotation": 0,
+     "visible": true
+    },
+    {
+     "id": 600,
      "name": "chair",
      "type": "decor",
      "x": 3552,
@@ -49689,7 +49699,7 @@
      ]
     },
     {
-     "id": 600,
+     "id": 601,
      "name": "desk",
      "type": "decor",
      "x": 3648,
@@ -49700,7 +49710,7 @@
      "visible": true
     },
     {
-     "id": 601,
+     "id": 602,
      "name": "chair",
      "type": "decor",
      "x": 3648,
@@ -49718,7 +49728,7 @@
      ]
     },
     {
-     "id": 602,
+     "id": 603,
      "name": "cafe-table",
      "type": "decor",
      "x": 3488,
@@ -49729,7 +49739,7 @@
      "visible": true
     },
     {
-     "id": 603,
+     "id": 604,
      "name": "plant",
      "type": "decor",
      "x": 3712,
@@ -49740,7 +49750,7 @@
      "visible": true
     },
     {
-     "id": 604,
+     "id": 605,
      "name": "desk",
      "type": "decor",
      "x": 3456,
@@ -49749,38 +49759,38 @@
      "height": 32,
      "rotation": 0,
      "visible": true
-    },
-    {
-     "id": 605,
-     "name": "chair",
-     "type": "decor",
-     "x": 3456,
-     "y": 2880,
-     "width": 32,
-     "height": 32,
-     "rotation": 0,
-     "visible": true,
-     "properties": [
-      {
-       "name": "turn",
-       "type": "int",
-       "value": 180
-      }
-     ]
     },
     {
      "id": 606,
-     "name": "desk",
+     "name": "chair",
      "type": "decor",
-     "x": 3552,
-     "y": 2848,
+     "x": 3456,
+     "y": 2880,
      "width": 32,
      "height": 32,
      "rotation": 0,
-     "visible": true
+     "visible": true,
+     "properties": [
+      {
+       "name": "turn",
+       "type": "int",
+       "value": 180
+      }
+     ]
     },
     {
      "id": 607,
+     "name": "desk",
+     "type": "decor",
+     "x": 3552,
+     "y": 2848,
+     "width": 32,
+     "height": 32,
+     "rotation": 0,
+     "visible": true
+    },
+    {
+     "id": 608,
      "name": "chair",
      "type": "decor",
      "x": 3552,
@@ -49798,7 +49808,7 @@
      ]
     },
     {
-     "id": 608,
+     "id": 609,
      "name": "desk",
      "type": "decor",
      "x": 3648,
@@ -49809,7 +49819,7 @@
      "visible": true
     },
     {
-     "id": 609,
+     "id": 610,
      "name": "chair",
      "type": "decor",
      "x": 3648,
@@ -49827,7 +49837,7 @@
      ]
     },
     {
-     "id": 610,
+     "id": 611,
      "name": "cafe-table",
      "type": "decor",
      "x": 3488,
@@ -49838,7 +49848,7 @@
      "visible": true
     },
     {
-     "id": 611,
+     "id": 612,
      "name": "plant",
      "type": "decor",
      "x": 3712,
@@ -49849,21 +49859,10 @@
      "visible": true
     },
     {
-     "id": 616,
+     "id": 617,
      "name": "regdesk",
      "type": "decor",
      "x": 4480,
-     "y": 2176,
-     "width": 64,
-     "height": 32,
-     "rotation": 0,
-     "visible": true
-    },
-    {
-     "id": 617,
-     "name": "signboard",
-     "type": "decor",
-     "x": 4352,
      "y": 2176,
      "width": 64,
      "height": 32,
@@ -49874,7 +49873,7 @@
      "id": 618,
      "name": "signboard",
      "type": "decor",
-     "x": 4672,
+     "x": 4352,
      "y": 2176,
      "width": 64,
      "height": 32,
@@ -49883,6 +49882,17 @@
     },
     {
      "id": 619,
+     "name": "signboard",
+     "type": "decor",
+     "x": 4672,
+     "y": 2176,
+     "width": 64,
+     "height": 32,
+     "rotation": 0,
+     "visible": true
+    },
+    {
+     "id": 620,
      "name": "banner",
      "type": "decor",
      "x": 4256,
@@ -49893,7 +49903,7 @@
      "visible": true
     },
     {
-     "id": 620,
+     "id": 621,
      "name": "banner2",
      "type": "decor",
      "x": 4832,
@@ -49904,21 +49914,10 @@
      "visible": true
     },
     {
-     "id": 621,
+     "id": 622,
      "name": "booth2",
      "type": "decor",
      "x": 3968,
-     "y": 2336,
-     "width": 64,
-     "height": 32,
-     "rotation": 0,
-     "visible": true
-    },
-    {
-     "id": 622,
-     "name": "booth3",
-     "type": "decor",
-     "x": 4672,
      "y": 2336,
      "width": 64,
      "height": 32,
@@ -49929,7 +49928,7 @@
      "id": 623,
      "name": "booth3",
      "type": "decor",
-     "x": 4064,
+     "x": 4672,
      "y": 2336,
      "width": 64,
      "height": 32,
@@ -49938,9 +49937,9 @@
     },
     {
      "id": 624,
-     "name": "booth",
+     "name": "booth3",
      "type": "decor",
-     "x": 4768,
+     "x": 4064,
      "y": 2336,
      "width": 64,
      "height": 32,
@@ -49951,7 +49950,7 @@
      "id": 625,
      "name": "booth",
      "type": "decor",
-     "x": 4160,
+     "x": 4768,
      "y": 2336,
      "width": 64,
      "height": 32,
@@ -49960,9 +49959,9 @@
     },
     {
      "id": 626,
-     "name": "booth2",
+     "name": "booth",
      "type": "decor",
-     "x": 4864,
+     "x": 4160,
      "y": 2336,
      "width": 64,
      "height": 32,
@@ -49973,7 +49972,7 @@
      "id": 627,
      "name": "booth2",
      "type": "decor",
-     "x": 4256,
+     "x": 4864,
      "y": 2336,
      "width": 64,
      "height": 32,
@@ -49982,9 +49981,9 @@
     },
     {
      "id": 628,
-     "name": "booth3",
+     "name": "booth2",
      "type": "decor",
-     "x": 4960,
+     "x": 4256,
      "y": 2336,
      "width": 64,
      "height": 32,
@@ -49995,7 +49994,7 @@
      "id": 629,
      "name": "booth3",
      "type": "decor",
-     "x": 4352,
+     "x": 4960,
      "y": 2336,
      "width": 64,
      "height": 32,
@@ -50004,6 +50003,17 @@
     },
     {
      "id": 630,
+     "name": "booth3",
+     "type": "decor",
+     "x": 4352,
+     "y": 2336,
+     "width": 64,
+     "height": 32,
+     "rotation": 0,
+     "visible": true
+    },
+    {
+     "id": 631,
      "name": "booth",
      "type": "decor",
      "x": 5056,
@@ -50014,21 +50024,10 @@
      "visible": true
     },
     {
-     "id": 631,
+     "id": 632,
      "name": "booth2",
      "type": "decor",
      "x": 3968,
-     "y": 2528,
-     "width": 64,
-     "height": 32,
-     "rotation": 0,
-     "visible": true
-    },
-    {
-     "id": 632,
-     "name": "booth3",
-     "type": "decor",
-     "x": 4672,
      "y": 2528,
      "width": 64,
      "height": 32,
@@ -50039,7 +50038,7 @@
      "id": 633,
      "name": "booth3",
      "type": "decor",
-     "x": 4064,
+     "x": 4672,
      "y": 2528,
      "width": 64,
      "height": 32,
@@ -50048,9 +50047,9 @@
     },
     {
      "id": 634,
-     "name": "booth",
+     "name": "booth3",
      "type": "decor",
-     "x": 4768,
+     "x": 4064,
      "y": 2528,
      "width": 64,
      "height": 32,
@@ -50061,7 +50060,7 @@
      "id": 635,
      "name": "booth",
      "type": "decor",
-     "x": 4160,
+     "x": 4768,
      "y": 2528,
      "width": 64,
      "height": 32,
@@ -50070,9 +50069,9 @@
     },
     {
      "id": 636,
-     "name": "booth2",
+     "name": "booth",
      "type": "decor",
-     "x": 4864,
+     "x": 4160,
      "y": 2528,
      "width": 64,
      "height": 32,
@@ -50083,7 +50082,7 @@
      "id": 637,
      "name": "booth2",
      "type": "decor",
-     "x": 4256,
+     "x": 4864,
      "y": 2528,
      "width": 64,
      "height": 32,
@@ -50092,9 +50091,9 @@
     },
     {
      "id": 638,
-     "name": "booth3",
+     "name": "booth2",
      "type": "decor",
-     "x": 4960,
+     "x": 4256,
      "y": 2528,
      "width": 64,
      "height": 32,
@@ -50105,7 +50104,7 @@
      "id": 639,
      "name": "booth3",
      "type": "decor",
-     "x": 4352,
+     "x": 4960,
      "y": 2528,
      "width": 64,
      "height": 32,
@@ -50114,6 +50113,17 @@
     },
     {
      "id": 640,
+     "name": "booth3",
+     "type": "decor",
+     "x": 4352,
+     "y": 2528,
+     "width": 64,
+     "height": 32,
+     "rotation": 0,
+     "visible": true
+    },
+    {
+     "id": 641,
      "name": "booth",
      "type": "decor",
      "x": 5056,
@@ -50124,21 +50134,10 @@
      "visible": true
     },
     {
-     "id": 641,
-     "name": "banner",
-     "type": "decor",
-     "x": 3968,
-     "y": 2240,
-     "width": 32,
-     "height": 64,
-     "rotation": 0,
-     "visible": true
-    },
-    {
      "id": 642,
      "name": "banner",
      "type": "decor",
-     "x": 4160,
+     "x": 3968,
      "y": 2240,
      "width": 32,
      "height": 64,
@@ -50149,7 +50148,7 @@
      "id": 643,
      "name": "banner",
      "type": "decor",
-     "x": 4736,
+     "x": 4160,
      "y": 2240,
      "width": 32,
      "height": 64,
@@ -50158,6 +50157,17 @@
     },
     {
      "id": 644,
+     "name": "banner",
+     "type": "decor",
+     "x": 4736,
+     "y": 2240,
+     "width": 32,
+     "height": 64,
+     "rotation": 0,
+     "visible": true
+    },
+    {
+     "id": 645,
      "name": "banner2",
      "type": "decor",
      "x": 5024,
@@ -50168,7 +50178,7 @@
      "visible": true
     },
     {
-     "id": 645,
+     "id": 646,
      "name": "banner",
      "type": "decor",
      "x": 3968,
@@ -50179,21 +50189,10 @@
      "visible": true
     },
     {
-     "id": 646,
-     "name": "banner2",
-     "type": "decor",
-     "x": 4320,
-     "y": 2624,
-     "width": 32,
-     "height": 64,
-     "rotation": 0,
-     "visible": true
-    },
-    {
      "id": 647,
      "name": "banner2",
      "type": "decor",
-     "x": 4832,
+     "x": 4320,
      "y": 2624,
      "width": 32,
      "height": 64,
@@ -50204,7 +50203,7 @@
      "id": 648,
      "name": "banner2",
      "type": "decor",
-     "x": 5088,
+     "x": 4832,
      "y": 2624,
      "width": 32,
      "height": 64,
@@ -50213,6 +50212,17 @@
     },
     {
      "id": 649,
+     "name": "banner2",
+     "type": "decor",
+     "x": 5088,
+     "y": 2624,
+     "width": 32,
+     "height": 64,
+     "rotation": 0,
+     "visible": true
+    },
+    {
+     "id": 650,
      "name": "plant",
      "type": "decor",
      "x": 3904,
@@ -50223,7 +50233,7 @@
      "visible": true
     },
     {
-     "id": 650,
+     "id": 651,
      "name": "plant",
      "type": "decor",
      "x": 5216,
@@ -50234,7 +50244,7 @@
      "visible": true
     },
     {
-     "id": 651,
+     "id": 652,
      "name": "stage",
      "type": "decor",
      "x": 4448,
@@ -50245,7 +50255,7 @@
      "visible": true
     },
     {
-     "id": 652,
+     "id": 653,
      "name": "lectern",
      "type": "decor",
      "x": 4544,
@@ -50256,21 +50266,10 @@
      "visible": true
     },
     {
-     "id": 653,
-     "name": "seat",
-     "type": "decor",
-     "x": 4448,
-     "y": 2912,
-     "width": 32,
-     "height": 32,
-     "rotation": 0,
-     "visible": true
-    },
-    {
      "id": 654,
      "name": "seat",
      "type": "decor",
-     "x": 4480,
+     "x": 4448,
      "y": 2912,
      "width": 32,
      "height": 32,
@@ -50281,7 +50280,7 @@
      "id": 655,
      "name": "seat",
      "type": "decor",
-     "x": 4512,
+     "x": 4480,
      "y": 2912,
      "width": 32,
      "height": 32,
@@ -50292,7 +50291,7 @@
      "id": 656,
      "name": "seat",
      "type": "decor",
-     "x": 4544,
+     "x": 4512,
      "y": 2912,
      "width": 32,
      "height": 32,
@@ -50303,7 +50302,7 @@
      "id": 657,
      "name": "seat",
      "type": "decor",
-     "x": 4576,
+     "x": 4544,
      "y": 2912,
      "width": 32,
      "height": 32,
@@ -50314,7 +50313,7 @@
      "id": 658,
      "name": "seat",
      "type": "decor",
-     "x": 4608,
+     "x": 4576,
      "y": 2912,
      "width": 32,
      "height": 32,
@@ -50325,7 +50324,7 @@
      "id": 659,
      "name": "seat",
      "type": "decor",
-     "x": 4640,
+     "x": 4608,
      "y": 2912,
      "width": 32,
      "height": 32,
@@ -50336,7 +50335,7 @@
      "id": 660,
      "name": "seat",
      "type": "decor",
-     "x": 4672,
+     "x": 4640,
      "y": 2912,
      "width": 32,
      "height": 32,
@@ -50345,6 +50344,17 @@
     },
     {
      "id": 661,
+     "name": "seat",
+     "type": "decor",
+     "x": 4672,
+     "y": 2912,
+     "width": 32,
+     "height": 32,
+     "rotation": 0,
+     "visible": true
+    },
+    {
+     "id": 662,
      "name": "rug",
      "type": "decor",
      "x": 3968,
@@ -50355,7 +50365,7 @@
      "visible": true
     },
     {
-     "id": 662,
+     "id": 663,
      "name": "sofa",
      "type": "decor",
      "x": 3936,
@@ -50366,7 +50376,7 @@
      "visible": true
     },
     {
-     "id": 663,
+     "id": 664,
      "name": "sofa",
      "type": "decor",
      "x": 4032,
@@ -50377,7 +50387,7 @@
      "visible": true
     },
     {
-     "id": 664,
+     "id": 665,
      "name": "armchair",
      "type": "decor",
      "x": 4160,
@@ -50388,7 +50398,7 @@
      "visible": true
     },
     {
-     "id": 665,
+     "id": 666,
      "name": "coffee",
      "type": "decor",
      "x": 4224,
@@ -50399,7 +50409,7 @@
      "visible": true
     },
     {
-     "id": 666,
+     "id": 667,
      "name": "plant",
      "type": "decor",
      "x": 4288,
@@ -50410,21 +50420,10 @@
      "visible": true
     },
     {
-     "id": 667,
-     "name": "cafe-table",
-     "type": "decor",
-     "x": 4800,
-     "y": 2848,
-     "width": 64,
-     "height": 32,
-     "rotation": 0,
-     "visible": true
-    },
-    {
      "id": 668,
      "name": "cafe-table",
      "type": "decor",
-     "x": 4928,
+     "x": 4800,
      "y": 2848,
      "width": 64,
      "height": 32,
@@ -50435,6 +50434,17 @@
      "id": 669,
      "name": "cafe-table",
      "type": "decor",
+     "x": 4928,
+     "y": 2848,
+     "width": 64,
+     "height": 32,
+     "rotation": 0,
+     "visible": true
+    },
+    {
+     "id": 670,
+     "name": "cafe-table",
+     "type": "decor",
      "x": 5056,
      "y": 2848,
      "width": 64,
@@ -50443,7 +50453,7 @@
      "visible": true
     },
     {
-     "id": 680,
+     "id": 681,
      "name": "regdesk",
      "type": "decor",
      "x": 5920,
@@ -50454,7 +50464,7 @@
      "visible": true
     },
     {
-     "id": 681,
+     "id": 682,
      "name": "sofa",
      "type": "decor",
      "x": 5888,
@@ -50465,7 +50475,7 @@
      "visible": true
     },
     {
-     "id": 682,
+     "id": 683,
      "name": "plant",
      "type": "decor",
      "x": 5856,
@@ -50476,7 +50486,7 @@
      "visible": true
     },
     {
-     "id": 683,
+     "id": 684,
      "name": "plant",
      "type": "decor",
      "x": 6080,
@@ -50487,23 +50497,12 @@
      "visible": true
     },
     {
-     "id": 684,
+     "id": 685,
      "name": "screen-wide",
      "type": "decor",
      "x": 5440,
      "y": 2176,
      "width": 96,
-     "height": 32,
-     "rotation": 0,
-     "visible": true
-    },
-    {
-     "id": 685,
-     "name": "cafe-table",
-     "type": "decor",
-     "x": 5408,
-     "y": 2240,
-     "width": 64,
      "height": 32,
      "rotation": 0,
      "visible": true
@@ -50512,7 +50511,7 @@
      "id": 686,
      "name": "cafe-table",
      "type": "decor",
-     "x": 5504,
+     "x": 5408,
      "y": 2240,
      "width": 64,
      "height": 32,
@@ -50521,6 +50520,17 @@
     },
     {
      "id": 687,
+     "name": "cafe-table",
+     "type": "decor",
+     "x": 5504,
+     "y": 2240,
+     "width": 64,
+     "height": 32,
+     "rotation": 0,
+     "visible": true
+    },
+    {
+     "id": 688,
      "name": "plant",
      "type": "decor",
      "x": 5568,
@@ -50531,7 +50541,7 @@
      "visible": true
     },
     {
-     "id": 688,
+     "id": 689,
      "name": "screen-wide",
      "type": "decor",
      "x": 5696,
@@ -50542,7 +50552,7 @@
      "visible": true
     },
     {
-     "id": 689,
+     "id": 690,
      "name": "cafe-table",
      "type": "decor",
      "x": 5664,
@@ -50553,7 +50563,7 @@
      "visible": true
     },
     {
-     "id": 690,
+     "id": 691,
      "name": "cafe-table",
      "type": "decor",
      "x": 5760,
@@ -50564,7 +50574,7 @@
      "visible": true
     },
     {
-     "id": 691,
+     "id": 692,
      "name": "plant",
      "type": "decor",
      "x": 5792,
@@ -50575,7 +50585,7 @@
      "visible": true
     },
     {
-     "id": 692,
+     "id": 693,
      "name": "screen-wide",
      "type": "decor",
      "x": 6176,
@@ -50586,7 +50596,7 @@
      "visible": true
     },
     {
-     "id": 693,
+     "id": 694,
      "name": "cafe-table",
      "type": "decor",
      "x": 6144,
@@ -50597,7 +50607,7 @@
      "visible": true
     },
     {
-     "id": 694,
+     "id": 695,
      "name": "cafe-table",
      "type": "decor",
      "x": 6240,
@@ -50608,7 +50618,7 @@
      "visible": true
     },
     {
-     "id": 695,
+     "id": 696,
      "name": "plant",
      "type": "decor",
      "x": 6272,
@@ -50619,7 +50629,7 @@
      "visible": true
     },
     {
-     "id": 696,
+     "id": 697,
      "name": "screen-wide",
      "type": "decor",
      "x": 6400,
@@ -50630,7 +50640,7 @@
      "visible": true
     },
     {
-     "id": 697,
+     "id": 698,
      "name": "cafe-table",
      "type": "decor",
      "x": 6368,
@@ -50641,7 +50651,7 @@
      "visible": true
     },
     {
-     "id": 698,
+     "id": 699,
      "name": "cafe-table",
      "type": "decor",
      "x": 6464,
@@ -50652,7 +50662,7 @@
      "visible": true
     },
     {
-     "id": 699,
+     "id": 700,
      "name": "plant",
      "type": "decor",
      "x": 6528,
@@ -50663,7 +50673,7 @@
      "visible": true
     },
     {
-     "id": 700,
+     "id": 701,
      "name": "screen-wide",
      "type": "decor",
      "x": 5440,
@@ -50674,7 +50684,7 @@
      "visible": true
     },
     {
-     "id": 701,
+     "id": 702,
      "name": "cafe-table",
      "type": "decor",
      "x": 5408,
@@ -50685,7 +50695,7 @@
      "visible": true
     },
     {
-     "id": 702,
+     "id": 703,
      "name": "cafe-table",
      "type": "decor",
      "x": 5504,
@@ -50696,7 +50706,7 @@
      "visible": true
     },
     {
-     "id": 703,
+     "id": 704,
      "name": "plant",
      "type": "decor",
      "x": 5568,
@@ -50707,7 +50717,7 @@
      "visible": true
     },
     {
-     "id": 704,
+     "id": 705,
      "name": "screen-wide",
      "type": "decor",
      "x": 5696,
@@ -50718,7 +50728,7 @@
      "visible": true
     },
     {
-     "id": 705,
+     "id": 706,
      "name": "cafe-table",
      "type": "decor",
      "x": 5664,
@@ -50729,7 +50739,7 @@
      "visible": true
     },
     {
-     "id": 706,
+     "id": 707,
      "name": "cafe-table",
      "type": "decor",
      "x": 5760,
@@ -50740,7 +50750,7 @@
      "visible": true
     },
     {
-     "id": 707,
+     "id": 708,
      "name": "plant",
      "type": "decor",
      "x": 5792,
@@ -50751,7 +50761,7 @@
      "visible": true
     },
     {
-     "id": 708,
+     "id": 709,
      "name": "screen-wide",
      "type": "decor",
      "x": 6176,
@@ -50762,7 +50772,7 @@
      "visible": true
     },
     {
-     "id": 709,
+     "id": 710,
      "name": "cafe-table",
      "type": "decor",
      "x": 6144,
@@ -50773,7 +50783,7 @@
      "visible": true
     },
     {
-     "id": 710,
+     "id": 711,
      "name": "cafe-table",
      "type": "decor",
      "x": 6240,
@@ -50784,7 +50794,7 @@
      "visible": true
     },
     {
-     "id": 711,
+     "id": 712,
      "name": "plant",
      "type": "decor",
      "x": 6272,
@@ -50795,7 +50805,7 @@
      "visible": true
     },
     {
-     "id": 712,
+     "id": 713,
      "name": "screen-wide",
      "type": "decor",
      "x": 6400,
@@ -50806,7 +50816,7 @@
      "visible": true
     },
     {
-     "id": 713,
+     "id": 714,
      "name": "cafe-table",
      "type": "decor",
      "x": 6368,
@@ -50817,7 +50827,7 @@
      "visible": true
     },
     {
-     "id": 714,
+     "id": 715,
      "name": "cafe-table",
      "type": "decor",
      "x": 6464,
@@ -50828,7 +50838,7 @@
      "visible": true
     },
     {
-     "id": 715,
+     "id": 716,
      "name": "plant",
      "type": "decor",
      "x": 6528,
@@ -50839,7 +50849,7 @@
      "visible": true
     },
     {
-     "id": 716,
+     "id": 717,
      "name": "sofa",
      "type": "decor",
      "x": 5440,
@@ -50850,21 +50860,10 @@
      "visible": true
     },
     {
-     "id": 717,
+     "id": 718,
      "name": "sofa",
      "type": "decor",
      "x": 6304,
-     "y": 2464,
-     "width": 64,
-     "height": 32,
-     "rotation": 0,
-     "visible": true
-    },
-    {
-     "id": 718,
-     "name": "coffee",
-     "type": "decor",
-     "x": 5920,
      "y": 2464,
      "width": 64,
      "height": 32,
@@ -50875,7 +50874,7 @@
      "id": 719,
      "name": "coffee",
      "type": "decor",
-     "x": 6016,
+     "x": 5920,
      "y": 2464,
      "width": 64,
      "height": 32,
@@ -50884,6 +50883,17 @@
     },
     {
      "id": 720,
+     "name": "coffee",
+     "type": "decor",
+     "x": 6016,
+     "y": 2464,
+     "width": 64,
+     "height": 32,
+     "rotation": 0,
+     "visible": true
+    },
+    {
+     "id": 721,
      "name": "fridge",
      "type": "decor",
      "x": 6496,
@@ -50894,7 +50904,7 @@
      "visible": true
     },
     {
-     "id": 723,
+     "id": 724,
      "name": "tree",
      "type": "decor",
      "x": 1408,
@@ -50905,7 +50915,7 @@
      "visible": true
     },
     {
-     "id": 724,
+     "id": 725,
      "name": "tree",
      "type": "decor",
      "x": 1568,
@@ -50916,7 +50926,7 @@
      "visible": true
     },
     {
-     "id": 725,
+     "id": 726,
      "name": "cafe-table",
      "type": "decor",
      "x": 1440,
@@ -50927,7 +50937,7 @@
      "visible": true
     },
     {
-     "id": 726,
+     "id": 727,
      "name": "sofa",
      "type": "decor",
      "x": 1504,
@@ -50938,7 +50948,7 @@
      "visible": true
     },
     {
-     "id": 727,
+     "id": 728,
      "name": "plant",
      "type": "decor",
      "x": 1632,
@@ -50949,7 +50959,7 @@
      "visible": true
     },
     {
-     "id": 728,
+     "id": 729,
      "name": "bookshelf",
      "type": "decor",
      "x": 1600,
@@ -50960,7 +50970,7 @@
      "visible": true
     },
     {
-     "id": 729,
+     "id": 730,
      "name": "tree",
      "type": "decor",
      "x": 1728,
@@ -50971,7 +50981,7 @@
      "visible": true
     },
     {
-     "id": 730,
+     "id": 731,
      "name": "tree",
      "type": "decor",
      "x": 1888,
@@ -50982,7 +50992,7 @@
      "visible": true
     },
     {
-     "id": 731,
+     "id": 732,
      "name": "cafe-table",
      "type": "decor",
      "x": 1760,
@@ -50993,7 +51003,7 @@
      "visible": true
     },
     {
-     "id": 732,
+     "id": 733,
      "name": "sofa",
      "type": "decor",
      "x": 1824,
@@ -51004,7 +51014,7 @@
      "visible": true
     },
     {
-     "id": 733,
+     "id": 734,
      "name": "plant",
      "type": "decor",
      "x": 1952,
@@ -51015,7 +51025,7 @@
      "visible": true
     },
     {
-     "id": 734,
+     "id": 735,
      "name": "bookshelf",
      "type": "decor",
      "x": 1920,
@@ -51026,7 +51036,7 @@
      "visible": true
     },
     {
-     "id": 735,
+     "id": 736,
      "name": "tree",
      "type": "decor",
      "x": 2048,
@@ -51037,7 +51047,7 @@
      "visible": true
     },
     {
-     "id": 736,
+     "id": 737,
      "name": "tree",
      "type": "decor",
      "x": 2208,
@@ -51048,7 +51058,7 @@
      "visible": true
     },
     {
-     "id": 737,
+     "id": 738,
      "name": "cafe-table",
      "type": "decor",
      "x": 2080,
@@ -51059,7 +51069,7 @@
      "visible": true
     },
     {
-     "id": 738,
+     "id": 739,
      "name": "sofa",
      "type": "decor",
      "x": 2144,
@@ -51070,7 +51080,7 @@
      "visible": true
     },
     {
-     "id": 739,
+     "id": 740,
      "name": "plant",
      "type": "decor",
      "x": 2272,
@@ -51081,7 +51091,7 @@
      "visible": true
     },
     {
-     "id": 740,
+     "id": 741,
      "name": "bookshelf",
      "type": "decor",
      "x": 2240,
@@ -51092,7 +51102,7 @@
      "visible": true
     },
     {
-     "id": 741,
+     "id": 742,
      "name": "tree",
      "type": "decor",
      "x": 2368,
@@ -51103,7 +51113,7 @@
      "visible": true
     },
     {
-     "id": 742,
+     "id": 743,
      "name": "tree",
      "type": "decor",
      "x": 2528,
@@ -51114,7 +51124,7 @@
      "visible": true
     },
     {
-     "id": 743,
+     "id": 744,
      "name": "cafe-table",
      "type": "decor",
      "x": 2400,
@@ -51125,7 +51135,7 @@
      "visible": true
     },
     {
-     "id": 744,
+     "id": 745,
      "name": "sofa",
      "type": "decor",
      "x": 2464,
@@ -51136,7 +51146,7 @@
      "visible": true
     },
     {
-     "id": 745,
+     "id": 746,
      "name": "plant",
      "type": "decor",
      "x": 2592,
@@ -51147,7 +51157,7 @@
      "visible": true
     },
     {
-     "id": 746,
+     "id": 747,
      "name": "bookshelf",
      "type": "decor",
      "x": 2560,
@@ -51158,7 +51168,7 @@
      "visible": true
     },
     {
-     "id": 747,
+     "id": 748,
      "name": "tree",
      "type": "decor",
      "x": 2688,
@@ -51169,7 +51179,7 @@
      "visible": true
     },
     {
-     "id": 748,
+     "id": 749,
      "name": "tree",
      "type": "decor",
      "x": 2848,
@@ -51180,7 +51190,7 @@
      "visible": true
     },
     {
-     "id": 749,
+     "id": 750,
      "name": "cafe-table",
      "type": "decor",
      "x": 2720,
@@ -51191,7 +51201,7 @@
      "visible": true
     },
     {
-     "id": 750,
+     "id": 751,
      "name": "sofa",
      "type": "decor",
      "x": 2784,
@@ -51202,7 +51212,7 @@
      "visible": true
     },
     {
-     "id": 751,
+     "id": 752,
      "name": "plant",
      "type": "decor",
      "x": 2912,
@@ -51213,7 +51223,7 @@
      "visible": true
     },
     {
-     "id": 752,
+     "id": 753,
      "name": "bookshelf",
      "type": "decor",
      "x": 2880,
@@ -51224,7 +51234,7 @@
      "visible": true
     },
     {
-     "id": 753,
+     "id": 754,
      "name": "tree",
      "type": "decor",
      "x": 3008,
@@ -51235,7 +51245,7 @@
      "visible": true
     },
     {
-     "id": 754,
+     "id": 755,
      "name": "tree",
      "type": "decor",
      "x": 3168,
@@ -51246,7 +51256,7 @@
      "visible": true
     },
     {
-     "id": 755,
+     "id": 756,
      "name": "cafe-table",
      "type": "decor",
      "x": 3040,
@@ -51257,7 +51267,7 @@
      "visible": true
     },
     {
-     "id": 756,
+     "id": 757,
      "name": "sofa",
      "type": "decor",
      "x": 3104,
@@ -51268,7 +51278,7 @@
      "visible": true
     },
     {
-     "id": 757,
+     "id": 758,
      "name": "plant",
      "type": "decor",
      "x": 3232,
@@ -51279,7 +51289,7 @@
      "visible": true
     },
     {
-     "id": 758,
+     "id": 759,
      "name": "bookshelf",
      "type": "decor",
      "x": 3200,
@@ -51290,7 +51300,7 @@
      "visible": true
     },
     {
-     "id": 759,
+     "id": 760,
      "name": "tree",
      "type": "decor",
      "x": 3328,
@@ -51301,7 +51311,7 @@
      "visible": true
     },
     {
-     "id": 760,
+     "id": 761,
      "name": "tree",
      "type": "decor",
      "x": 3488,
@@ -51312,7 +51322,7 @@
      "visible": true
     },
     {
-     "id": 761,
+     "id": 762,
      "name": "cafe-table",
      "type": "decor",
      "x": 3360,
@@ -51323,7 +51333,7 @@
      "visible": true
     },
     {
-     "id": 762,
+     "id": 763,
      "name": "sofa",
      "type": "decor",
      "x": 3424,
@@ -51334,7 +51344,7 @@
      "visible": true
     },
     {
-     "id": 763,
+     "id": 764,
      "name": "plant",
      "type": "decor",
      "x": 3552,
@@ -51345,7 +51355,7 @@
      "visible": true
     },
     {
-     "id": 764,
+     "id": 765,
      "name": "bookshelf",
      "type": "decor",
      "x": 3520,
@@ -51356,7 +51366,7 @@
      "visible": true
     },
     {
-     "id": 765,
+     "id": 766,
      "name": "tree",
      "type": "decor",
      "x": 3648,
@@ -51367,7 +51377,7 @@
      "visible": true
     },
     {
-     "id": 766,
+     "id": 767,
      "name": "tree",
      "type": "decor",
      "x": 3808,
@@ -51378,7 +51388,7 @@
      "visible": true
     },
     {
-     "id": 767,
+     "id": 768,
      "name": "cafe-table",
      "type": "decor",
      "x": 3680,
@@ -51389,7 +51399,7 @@
      "visible": true
     },
     {
-     "id": 768,
+     "id": 769,
      "name": "sofa",
      "type": "decor",
      "x": 3744,
@@ -51400,7 +51410,7 @@
      "visible": true
     },
     {
-     "id": 769,
+     "id": 770,
      "name": "plant",
      "type": "decor",
      "x": 3872,
@@ -51411,7 +51421,7 @@
      "visible": true
     },
     {
-     "id": 770,
+     "id": 771,
      "name": "bookshelf",
      "type": "decor",
      "x": 3840,
@@ -51422,7 +51432,7 @@
      "visible": true
     },
     {
-     "id": 771,
+     "id": 772,
      "name": "tree",
      "type": "decor",
      "x": 3968,
@@ -51433,7 +51443,7 @@
      "visible": true
     },
     {
-     "id": 772,
+     "id": 773,
      "name": "tree",
      "type": "decor",
      "x": 4128,
@@ -51444,7 +51454,7 @@
      "visible": true
     },
     {
-     "id": 773,
+     "id": 774,
      "name": "cafe-table",
      "type": "decor",
      "x": 4000,
@@ -51455,7 +51465,7 @@
      "visible": true
     },
     {
-     "id": 774,
+     "id": 775,
      "name": "sofa",
      "type": "decor",
      "x": 4064,
@@ -51466,7 +51476,7 @@
      "visible": true
     },
     {
-     "id": 775,
+     "id": 776,
      "name": "plant",
      "type": "decor",
      "x": 4192,
@@ -51477,7 +51487,7 @@
      "visible": true
     },
     {
-     "id": 776,
+     "id": 777,
      "name": "bookshelf",
      "type": "decor",
      "x": 4160,
@@ -51488,7 +51498,7 @@
      "visible": true
     },
     {
-     "id": 777,
+     "id": 778,
      "name": "tree",
      "type": "decor",
      "x": 4288,
@@ -51499,7 +51509,7 @@
      "visible": true
     },
     {
-     "id": 778,
+     "id": 779,
      "name": "tree",
      "type": "decor",
      "x": 4448,
@@ -51510,7 +51520,7 @@
      "visible": true
     },
     {
-     "id": 779,
+     "id": 780,
      "name": "cafe-table",
      "type": "decor",
      "x": 4320,
@@ -51521,7 +51531,7 @@
      "visible": true
     },
     {
-     "id": 780,
+     "id": 781,
      "name": "sofa",
      "type": "decor",
      "x": 4384,
@@ -51532,7 +51542,7 @@
      "visible": true
     },
     {
-     "id": 781,
+     "id": 782,
      "name": "plant",
      "type": "decor",
      "x": 4512,
@@ -51543,7 +51553,7 @@
      "visible": true
     },
     {
-     "id": 782,
+     "id": 783,
      "name": "bookshelf",
      "type": "decor",
      "x": 4480,
@@ -51554,7 +51564,7 @@
      "visible": true
     },
     {
-     "id": 783,
+     "id": 784,
      "name": "tree",
      "type": "decor",
      "x": 4608,
@@ -51565,7 +51575,7 @@
      "visible": true
     },
     {
-     "id": 784,
+     "id": 785,
      "name": "tree",
      "type": "decor",
      "x": 4768,
@@ -51576,7 +51586,7 @@
      "visible": true
     },
     {
-     "id": 785,
+     "id": 786,
      "name": "cafe-table",
      "type": "decor",
      "x": 4640,
@@ -51587,7 +51597,7 @@
      "visible": true
     },
     {
-     "id": 786,
+     "id": 787,
      "name": "sofa",
      "type": "decor",
      "x": 4704,
@@ -51598,7 +51608,7 @@
      "visible": true
     },
     {
-     "id": 787,
+     "id": 788,
      "name": "plant",
      "type": "decor",
      "x": 4832,
@@ -51609,7 +51619,7 @@
      "visible": true
     },
     {
-     "id": 788,
+     "id": 789,
      "name": "bookshelf",
      "type": "decor",
      "x": 4800,
@@ -51620,7 +51630,7 @@
      "visible": true
     },
     {
-     "id": 789,
+     "id": 790,
      "name": "tree",
      "type": "decor",
      "x": 4928,
@@ -51631,7 +51641,7 @@
      "visible": true
     },
     {
-     "id": 790,
+     "id": 791,
      "name": "tree",
      "type": "decor",
      "x": 5088,
@@ -51642,7 +51652,7 @@
      "visible": true
     },
     {
-     "id": 791,
+     "id": 792,
      "name": "cafe-table",
      "type": "decor",
      "x": 4960,
@@ -51653,7 +51663,7 @@
      "visible": true
     },
     {
-     "id": 792,
+     "id": 793,
      "name": "sofa",
      "type": "decor",
      "x": 5024,
@@ -51664,7 +51674,7 @@
      "visible": true
     },
     {
-     "id": 793,
+     "id": 794,
      "name": "plant",
      "type": "decor",
      "x": 5152,
@@ -51675,7 +51685,7 @@
      "visible": true
     },
     {
-     "id": 794,
+     "id": 795,
      "name": "bookshelf",
      "type": "decor",
      "x": 5120,
@@ -51686,7 +51696,7 @@
      "visible": true
     },
     {
-     "id": 795,
+     "id": 796,
      "name": "tree",
      "type": "decor",
      "x": 5248,
@@ -51697,7 +51707,7 @@
      "visible": true
     },
     {
-     "id": 796,
+     "id": 797,
      "name": "tree",
      "type": "decor",
      "x": 5408,
@@ -51708,7 +51718,7 @@
      "visible": true
     },
     {
-     "id": 797,
+     "id": 798,
      "name": "cafe-table",
      "type": "decor",
      "x": 5280,
@@ -51719,7 +51729,7 @@
      "visible": true
     },
     {
-     "id": 798,
+     "id": 799,
      "name": "sofa",
      "type": "decor",
      "x": 5344,
@@ -51730,7 +51740,7 @@
      "visible": true
     },
     {
-     "id": 799,
+     "id": 800,
      "name": "plant",
      "type": "decor",
      "x": 5472,
@@ -51741,7 +51751,7 @@
      "visible": true
     },
     {
-     "id": 800,
+     "id": 801,
      "name": "bookshelf",
      "type": "decor",
      "x": 5440,
@@ -51752,7 +51762,7 @@
      "visible": true
     },
     {
-     "id": 801,
+     "id": 802,
      "name": "tree",
      "type": "decor",
      "x": 5568,
@@ -51763,7 +51773,7 @@
      "visible": true
     },
     {
-     "id": 802,
+     "id": 803,
      "name": "tree",
      "type": "decor",
      "x": 5728,
@@ -51774,7 +51784,7 @@
      "visible": true
     },
     {
-     "id": 803,
+     "id": 804,
      "name": "cafe-table",
      "type": "decor",
      "x": 5600,
@@ -51785,7 +51795,7 @@
      "visible": true
     },
     {
-     "id": 804,
+     "id": 805,
      "name": "sofa",
      "type": "decor",
      "x": 5664,
@@ -51796,7 +51806,7 @@
      "visible": true
     },
     {
-     "id": 805,
+     "id": 806,
      "name": "plant",
      "type": "decor",
      "x": 5792,
@@ -51807,7 +51817,7 @@
      "visible": true
     },
     {
-     "id": 806,
+     "id": 807,
      "name": "bookshelf",
      "type": "decor",
      "x": 5760,
@@ -51818,7 +51828,7 @@
      "visible": true
     },
     {
-     "id": 807,
+     "id": 808,
      "name": "tree",
      "type": "decor",
      "x": 5888,
@@ -51829,7 +51839,7 @@
      "visible": true
     },
     {
-     "id": 808,
+     "id": 809,
      "name": "tree",
      "type": "decor",
      "x": 6048,
@@ -51840,7 +51850,7 @@
      "visible": true
     },
     {
-     "id": 809,
+     "id": 810,
      "name": "cafe-table",
      "type": "decor",
      "x": 5920,
@@ -51851,7 +51861,7 @@
      "visible": true
     },
     {
-     "id": 810,
+     "id": 811,
      "name": "sofa",
      "type": "decor",
      "x": 5984,
@@ -51862,7 +51872,7 @@
      "visible": true
     },
     {
-     "id": 811,
+     "id": 812,
      "name": "plant",
      "type": "decor",
      "x": 6112,
@@ -51873,7 +51883,7 @@
      "visible": true
     },
     {
-     "id": 812,
+     "id": 813,
      "name": "bookshelf",
      "type": "decor",
      "x": 6080,
@@ -51884,7 +51894,7 @@
      "visible": true
     },
     {
-     "id": 813,
+     "id": 814,
      "name": "tree",
      "type": "decor",
      "x": 6208,
@@ -51895,7 +51905,7 @@
      "visible": true
     },
     {
-     "id": 814,
+     "id": 815,
      "name": "tree",
      "type": "decor",
      "x": 6368,
@@ -51906,7 +51916,7 @@
      "visible": true
     },
     {
-     "id": 815,
+     "id": 816,
      "name": "cafe-table",
      "type": "decor",
      "x": 6240,
@@ -51917,7 +51927,7 @@
      "visible": true
     },
     {
-     "id": 816,
+     "id": 817,
      "name": "sofa",
      "type": "decor",
      "x": 6304,
@@ -51928,7 +51938,7 @@
      "visible": true
     },
     {
-     "id": 817,
+     "id": 818,
      "name": "plant",
      "type": "decor",
      "x": 6432,
@@ -51939,7 +51949,7 @@
      "visible": true
     },
     {
-     "id": 818,
+     "id": 819,
      "name": "bookshelf",
      "type": "decor",
      "x": 6400,
@@ -51950,21 +51960,10 @@
      "visible": true
     },
     {
-     "id": 819,
-     "name": "plant",
-     "type": "decor",
-     "x": 128,
-     "y": 1088,
-     "width": 32,
-     "height": 32,
-     "rotation": 0,
-     "visible": true
-    },
-    {
      "id": 820,
      "name": "plant",
      "type": "decor",
-     "x": 416,
+     "x": 128,
      "y": 1088,
      "width": 32,
      "height": 32,
@@ -51975,7 +51974,7 @@
      "id": 821,
      "name": "plant",
      "type": "decor",
-     "x": 704,
+     "x": 416,
      "y": 1088,
      "width": 32,
      "height": 32,
@@ -51986,7 +51985,7 @@
      "id": 822,
      "name": "plant",
      "type": "decor",
-     "x": 992,
+     "x": 704,
      "y": 1088,
      "width": 32,
      "height": 32,
@@ -51997,7 +51996,7 @@
      "id": 823,
      "name": "plant",
      "type": "decor",
-     "x": 1280,
+     "x": 992,
      "y": 1088,
      "width": 32,
      "height": 32,
@@ -52008,7 +52007,7 @@
      "id": 824,
      "name": "plant",
      "type": "decor",
-     "x": 1568,
+     "x": 1280,
      "y": 1088,
      "width": 32,
      "height": 32,
@@ -52019,7 +52018,7 @@
      "id": 825,
      "name": "plant",
      "type": "decor",
-     "x": 1856,
+     "x": 1568,
      "y": 1088,
      "width": 32,
      "height": 32,
@@ -52030,7 +52029,7 @@
      "id": 826,
      "name": "plant",
      "type": "decor",
-     "x": 2144,
+     "x": 1856,
      "y": 1088,
      "width": 32,
      "height": 32,
@@ -52041,7 +52040,7 @@
      "id": 827,
      "name": "plant",
      "type": "decor",
-     "x": 2432,
+     "x": 2144,
      "y": 1088,
      "width": 32,
      "height": 32,
@@ -52052,7 +52051,7 @@
      "id": 828,
      "name": "plant",
      "type": "decor",
-     "x": 2720,
+     "x": 2432,
      "y": 1088,
      "width": 32,
      "height": 32,
@@ -52063,7 +52062,7 @@
      "id": 829,
      "name": "plant",
      "type": "decor",
-     "x": 3008,
+     "x": 2720,
      "y": 1088,
      "width": 32,
      "height": 32,
@@ -52074,7 +52073,7 @@
      "id": 830,
      "name": "plant",
      "type": "decor",
-     "x": 3296,
+     "x": 3008,
      "y": 1088,
      "width": 32,
      "height": 32,
@@ -52085,7 +52084,7 @@
      "id": 831,
      "name": "plant",
      "type": "decor",
-     "x": 3584,
+     "x": 3296,
      "y": 1088,
      "width": 32,
      "height": 32,
@@ -52096,7 +52095,7 @@
      "id": 832,
      "name": "plant",
      "type": "decor",
-     "x": 3872,
+     "x": 3584,
      "y": 1088,
      "width": 32,
      "height": 32,
@@ -52107,7 +52106,7 @@
      "id": 833,
      "name": "plant",
      "type": "decor",
-     "x": 4160,
+     "x": 3872,
      "y": 1088,
      "width": 32,
      "height": 32,
@@ -52118,7 +52117,7 @@
      "id": 834,
      "name": "plant",
      "type": "decor",
-     "x": 4448,
+     "x": 4160,
      "y": 1088,
      "width": 32,
      "height": 32,
@@ -52129,7 +52128,7 @@
      "id": 835,
      "name": "plant",
      "type": "decor",
-     "x": 4736,
+     "x": 4448,
      "y": 1088,
      "width": 32,
      "height": 32,
@@ -52140,7 +52139,7 @@
      "id": 836,
      "name": "plant",
      "type": "decor",
-     "x": 5024,
+     "x": 4736,
      "y": 1088,
      "width": 32,
      "height": 32,
@@ -52151,7 +52150,7 @@
      "id": 837,
      "name": "plant",
      "type": "decor",
-     "x": 5312,
+     "x": 5024,
      "y": 1088,
      "width": 32,
      "height": 32,
@@ -52162,7 +52161,7 @@
      "id": 838,
      "name": "plant",
      "type": "decor",
-     "x": 5600,
+     "x": 5312,
      "y": 1088,
      "width": 32,
      "height": 32,
@@ -52173,7 +52172,7 @@
      "id": 839,
      "name": "plant",
      "type": "decor",
-     "x": 5888,
+     "x": 5600,
      "y": 1088,
      "width": 32,
      "height": 32,
@@ -52184,7 +52183,7 @@
      "id": 840,
      "name": "plant",
      "type": "decor",
-     "x": 6176,
+     "x": 5888,
      "y": 1088,
      "width": 32,
      "height": 32,
@@ -52195,7 +52194,7 @@
      "id": 841,
      "name": "plant",
      "type": "decor",
-     "x": 6464,
+     "x": 6176,
      "y": 1088,
      "width": 32,
      "height": 32,
@@ -52206,8 +52205,8 @@
      "id": 842,
      "name": "plant",
      "type": "decor",
-     "x": 128,
-     "y": 2112,
+     "x": 6464,
+     "y": 1088,
      "width": 32,
      "height": 32,
      "rotation": 0,
@@ -52217,7 +52216,7 @@
      "id": 843,
      "name": "plant",
      "type": "decor",
-     "x": 416,
+     "x": 128,
      "y": 2112,
      "width": 32,
      "height": 32,
@@ -52228,7 +52227,7 @@
      "id": 844,
      "name": "plant",
      "type": "decor",
-     "x": 704,
+     "x": 416,
      "y": 2112,
      "width": 32,
      "height": 32,
@@ -52239,7 +52238,7 @@
      "id": 845,
      "name": "plant",
      "type": "decor",
-     "x": 992,
+     "x": 704,
      "y": 2112,
      "width": 32,
      "height": 32,
@@ -52250,7 +52249,7 @@
      "id": 846,
      "name": "plant",
      "type": "decor",
-     "x": 1280,
+     "x": 992,
      "y": 2112,
      "width": 32,
      "height": 32,
@@ -52261,7 +52260,7 @@
      "id": 847,
      "name": "plant",
      "type": "decor",
-     "x": 1568,
+     "x": 1280,
      "y": 2112,
      "width": 32,
      "height": 32,
@@ -52272,7 +52271,7 @@
      "id": 848,
      "name": "plant",
      "type": "decor",
-     "x": 1856,
+     "x": 1568,
      "y": 2112,
      "width": 32,
      "height": 32,
@@ -52283,7 +52282,7 @@
      "id": 849,
      "name": "plant",
      "type": "decor",
-     "x": 2144,
+     "x": 1856,
      "y": 2112,
      "width": 32,
      "height": 32,
@@ -52294,7 +52293,7 @@
      "id": 850,
      "name": "plant",
      "type": "decor",
-     "x": 2432,
+     "x": 2144,
      "y": 2112,
      "width": 32,
      "height": 32,
@@ -52305,7 +52304,7 @@
      "id": 851,
      "name": "plant",
      "type": "decor",
-     "x": 2720,
+     "x": 2432,
      "y": 2112,
      "width": 32,
      "height": 32,
@@ -52316,7 +52315,7 @@
      "id": 852,
      "name": "plant",
      "type": "decor",
-     "x": 3008,
+     "x": 2720,
      "y": 2112,
      "width": 32,
      "height": 32,
@@ -52327,7 +52326,7 @@
      "id": 853,
      "name": "plant",
      "type": "decor",
-     "x": 3296,
+     "x": 3008,
      "y": 2112,
      "width": 32,
      "height": 32,
@@ -52338,7 +52337,7 @@
      "id": 854,
      "name": "plant",
      "type": "decor",
-     "x": 3584,
+     "x": 3296,
      "y": 2112,
      "width": 32,
      "height": 32,
@@ -52349,7 +52348,7 @@
      "id": 855,
      "name": "plant",
      "type": "decor",
-     "x": 3872,
+     "x": 3584,
      "y": 2112,
      "width": 32,
      "height": 32,
@@ -52360,7 +52359,7 @@
      "id": 856,
      "name": "plant",
      "type": "decor",
-     "x": 4160,
+     "x": 3872,
      "y": 2112,
      "width": 32,
      "height": 32,
@@ -52371,7 +52370,7 @@
      "id": 857,
      "name": "plant",
      "type": "decor",
-     "x": 4448,
+     "x": 4160,
      "y": 2112,
      "width": 32,
      "height": 32,
@@ -52382,7 +52381,7 @@
      "id": 858,
      "name": "plant",
      "type": "decor",
-     "x": 4736,
+     "x": 4448,
      "y": 2112,
      "width": 32,
      "height": 32,
@@ -52393,7 +52392,7 @@
      "id": 859,
      "name": "plant",
      "type": "decor",
-     "x": 5024,
+     "x": 4736,
      "y": 2112,
      "width": 32,
      "height": 32,
@@ -52404,7 +52403,7 @@
      "id": 860,
      "name": "plant",
      "type": "decor",
-     "x": 5312,
+     "x": 5024,
      "y": 2112,
      "width": 32,
      "height": 32,
@@ -52415,7 +52414,7 @@
      "id": 861,
      "name": "plant",
      "type": "decor",
-     "x": 5600,
+     "x": 5312,
      "y": 2112,
      "width": 32,
      "height": 32,
@@ -52426,7 +52425,7 @@
      "id": 862,
      "name": "plant",
      "type": "decor",
-     "x": 5888,
+     "x": 5600,
      "y": 2112,
      "width": 32,
      "height": 32,
@@ -52437,7 +52436,7 @@
      "id": 863,
      "name": "plant",
      "type": "decor",
-     "x": 6176,
+     "x": 5888,
      "y": 2112,
      "width": 32,
      "height": 32,
@@ -52446,6 +52445,17 @@
     },
     {
      "id": 864,
+     "name": "plant",
+     "type": "decor",
+     "x": 6176,
+     "y": 2112,
+     "width": 32,
+     "height": 32,
+     "rotation": 0,
+     "visible": true
+    },
+    {
+     "id": 865,
      "name": "plant",
      "type": "decor",
      "x": 6464,
@@ -52458,7 +52468,7 @@
    ]
   },
   {
-   "id": 871,
+   "id": 872,
    "name": "entries",
    "type": "objectgroup",
    "draworder": "topdown",
@@ -52468,7 +52478,7 @@
    "y": 0,
    "objects": [
     {
-     "id": 108,
+     "id": 109,
      "name": "door",
      "type": "",
      "x": 608,
@@ -52478,7 +52488,7 @@
      "visible": true
     },
     {
-     "id": 109,
+     "id": 110,
      "name": "lounge",
      "type": "",
      "x": 896,
@@ -52488,7 +52498,7 @@
      "visible": true
     },
     {
-     "id": 110,
+     "id": 111,
      "name": "boardroom",
      "type": "",
      "x": 224,
@@ -52498,7 +52508,7 @@
      "visible": true
     },
     {
-     "id": 164,
+     "id": 165,
      "name": "campus-lounge",
      "type": "",
      "x": 288,
@@ -52508,7 +52518,7 @@
      "visible": true
     },
     {
-     "id": 281,
+     "id": 282,
      "name": "loft-lounge",
      "type": "",
      "x": 1888,
@@ -52518,7 +52528,7 @@
      "visible": true
     },
     {
-     "id": 328,
+     "id": 329,
      "name": "arcade-lounge",
      "type": "",
      "x": 4064,
@@ -52528,7 +52538,7 @@
      "visible": true
     },
     {
-     "id": 367,
+     "id": 368,
      "name": "rooftop-lounge",
      "type": "",
      "x": 4576,
@@ -52538,7 +52548,7 @@
      "visible": true
     },
     {
-     "id": 503,
+     "id": 504,
      "name": "conference-lounge",
      "type": "",
      "x": 992,
@@ -52548,7 +52558,7 @@
      "visible": true
     },
     {
-     "id": 612,
+     "id": 613,
      "name": "hackathon-lounge",
      "type": "",
      "x": 2912,
@@ -52558,7 +52568,7 @@
      "visible": true
     },
     {
-     "id": 670,
+     "id": 671,
      "name": "jobfair-lounge",
      "type": "",
      "x": 4032,
@@ -52568,7 +52578,7 @@
      "visible": true
     },
     {
-     "id": 721,
+     "id": 722,
      "name": "meeting-lounge",
      "type": "",
      "x": 5728,
@@ -52580,6 +52590,6 @@
    ]
   }
  ],
- "nextlayerid": 873,
- "nextobjectid": 873
+ "nextlayerid": 874,
+ "nextobjectid": 874
 }

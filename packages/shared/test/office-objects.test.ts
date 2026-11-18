@@ -19,6 +19,7 @@ const PLACES = {
   terminal: 'run-log',
   'dept-board': 'department-board',
   'dept-table': 'department-meeting',
+  'deploy-board': 'deployments',
 } as const;
 
 describe('what each object opens (S6-7, S6-12b)', () => {

@@ -15,6 +15,11 @@ Newest first. One entry per decision: what, why, and what it replaced.
 - **One test file, `slice3-e2e.test.ts`, runs the three "Done when" checks** on the real run loop, reaper, pause table and eval gate, with a scripted model: (1) a run killed halfway (its process lost, heartbeat stopped) is failed by the reaper, its task goes back to todo still holding the session id, and the next run starts from that session and finishes; (2) a plan limit pauses the runtime for every agent on it while an agent on the other runtime keeps working, the queued tasks wait, the pause lifts only at the reset time and wakes exactly the agents with work, who then finish; (3) the unchanged skill scores at the baseline, and a change that makes the 20 sample drafts long and hyped fails the gate with all 20 leads named.
 - **Slice 3 is tagged `slice-3-done`.** Not done and recorded rather than hidden: the eval set is 20 made-up leads and its baseline is the reference drafter's (real leads and a real-agent drafter are in NEEDS-YOU); breakers cover the os tools only until connectors are live; the lite-mode canvas switch waits for slice 6.
 
+## 2026-11-18 (S7-9: the Deployments panel)
+
+- Read-only `GET /api/deployments` (newest first, up to 200), a `deployments` panel (`/?panel=deployments`) and a new office object `deploy-board` that opens it. The view shows text as text, a failed row's reason, and links only a loopback preview address. Its picture is code-drawn (obj-deploy-board.png, from make-events-art.mjs).
+- The board stands in the Hall for now (next to the terminal); S7-10 moves it into the Engineering room.
+
 ## 2026-11-18 (S7-8: deploy and the deployments table)
 
 - `propose_deploy` (autonomy 2) queues a `deploy` approval for a project's default branch (refused if the project has no commits). The executor claims once, records a `deployments` row (client, commit, status, URL, error, approver), and asks the deployer to build and serve. A failed build is recorded as failed with the output and nothing is served.
