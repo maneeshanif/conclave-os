@@ -65,6 +65,17 @@ export function OfficeView({ client = realOfficeClient, openId = null, onPanel }
     if (openId) void openDrawer(openId);
   }, [openId]);
 
+  // The terminal follows a run that is going: look again every few seconds while the drawer is open on one.
+  const watching = open?.agent.id;
+  const going = Boolean(open?.run);
+  useEffect(() => {
+    if (!watching || !going) return;
+    const t = setInterval(() => {
+      client.drawer(watching).then(setOpen, () => undefined);
+    }, 3000);
+    return () => clearInterval(t);
+  }, [client, watching, going]);
+
   async function openDrawer(id: string) {
     setSent(false);
     setText('');
@@ -175,6 +186,15 @@ export function OfficeView({ client = realOfficeClient, openId = null, onPanel }
             </Button>
           </div>
           <p className="text-sm text-neutral-600">{open.run ? `Run ${open.run.status}.` : 'No run going.'}</p>
+          {open.terminal?.lines.length ? (
+            <pre aria-label={`${open.agent.name} terminal`} className="max-h-48 overflow-auto whitespace-pre-wrap rounded bg-neutral-900 p-2 font-mono text-xs text-green-300">
+              {open.terminal.lines.map((l, i) => (
+                <div key={i} className={l.kind === 'error' ? 'text-red-300' : l.kind === 'say' ? 'text-neutral-300' : undefined}>
+                  {l.text}
+                </div>
+              ))}
+            </pre>
+          ) : null}
           {open.tasks.length ? (
             <ul className="list-disc pl-5 text-sm">
               {open.tasks.map((t) => (

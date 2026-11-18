@@ -80,6 +80,8 @@ export interface AgentDrawer {
   agent: { id: string; key: string; name: string; department: string | null; status: string };
   run: { id: string; status: string } | null;
   tasks: { id: string; title: string; status: string }[];
+  /** The last steps of the agent's latest run, one line each (S6C-6). */
+  terminal?: { runId: string; status: string; lines: { kind: 'call' | 'result' | 'error' | 'say' | 'note'; text: string }[] } | null;
 }
 
 export interface Agent {

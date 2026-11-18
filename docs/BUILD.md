@@ -608,7 +608,7 @@ Anees asked for the leftovers to go in a second slice, and for places like those
 - [ ] **S6C-3 Talk in bubbles (audio, video, screen sharing). NOT DONE.** Needs a camera, a microphone and a WebRTC server to test for real. To do on a machine that has them; loopback only, mute and camera buttons, a lock for a bubble.
 - [ ] **S6C-4 Your avatar in parts. NOT DONE.** Needs layered art (skin, hair, clothes, accessories) that does not exist yet.
 - [ ] **S6C-5 Chat sync and sign-in with Slack or Discord. NOT DONE.** Needs accounts and keys that Anees creates; slice 10, behind an approval.
-- [ ] **S6C-6 jsm-hq's conveyor and live terminal. NOT DONE.** Work items as parcels on a belt into a gate, and a live terminal of a run in an agent's drawer. Needs a design pass first.
+- [~] **S6C-6 jsm-hq's conveyor and live terminal. Live terminal DONE (drawer shows the last steps of the latest run, follows a run that is going); conveyor NOT DONE (needs a design pass).** Work items as parcels on a belt into a gate, and a live terminal of a run in an agent's drawer. Needs a design pass first.
 - [ ] **S6C-7 Themed places.** Sci-fi, medieval and nature offices like the templates Anees showed. Needs new tiles and furniture art (dark metal, stone and timber, forest); better made with Google Flow when it is connected.
 - [ ] **S6C-8 Replace the code-drawn event art with generated art.** The stage, booths and seats are drawn from rectangles. When Google Flow is connected, generate pictures of the same sizes (`scripts/lib/footprints.mjs`) and drop them in; nothing else changes.
 

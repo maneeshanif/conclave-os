@@ -4,6 +4,7 @@ import { readFile, readdir } from 'node:fs/promises';
 import path from 'node:path';
 import { Hono } from 'hono';
 import { z } from 'zod';
+import { terminalLines } from '../office/terminal';
 import type { AppEnv } from '../app';
 import type { Bus } from '../bus';
 import type { Dispatcher } from '../workflows/dispatch';
@@ -68,7 +69,10 @@ export function officeRoutes(deps: { workspaceId: string; companyRoot: string; /
       "select id, title, status, priority, created_at from tasks where assignee_id = $1 and status not in ('done','cancelled') order by created_at desc limit 50",
       [id],
     );
-    return c.json({ agent: a.rows[0], run: run.rows[0] ?? null, tasks: tasks.rows });
+    // The live terminal (S6C-6): the last steps of the agent's latest run, running or not.
+    const latest = (await tx.query<{ id: string; status: string }>('select id, status from runs where agent_id = $1 order by started_at desc nulls last, id desc limit 1', [id])).rows[0];
+    const events = latest ? (await tx.query<{ type: string; data: Record<string, unknown> }>('select type, data from (select id, type, data from run_events where run_id = $1 order by id desc limit 200) e order by id', [latest.id])).rows : [];
+    return c.json({ agent: a.rows[0], run: run.rows[0] ?? null, tasks: tasks.rows, terminal: latest ? { runId: latest.id, status: latest.status, lines: terminalLines(events) } : null });
   });
 
   const Message = z.object({ text: z.string().trim().min(1).max(20_000) });
