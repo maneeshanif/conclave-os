@@ -40,6 +40,7 @@ const TABLES = [
   'hooks',
   'leads',
   'members',
+  'memories',
   'messages',
   'office_desks',
   'outreach_messages',

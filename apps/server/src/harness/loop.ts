@@ -14,6 +14,7 @@ import type { RunTokens } from './run-tokens';
 import type { RuntimeName } from '../runtimes/names';
 import type { ErrorKind, RunEvent, Runtime } from '../runtimes/types';
 import { agentWorkDir } from '../paths';
+import { memoryBlock } from '../memory/memory';
 
 export interface LoopDeps {
   pool: pg.Pool;
@@ -95,7 +96,7 @@ export async function checkoutTask(pool: pg.Pool, workspaceId: string, agentId: 
   });
 }
 
-function buildContext(agent: AgentRow, task: TaskRow): { instructions: string; taskInput: string } {
+function buildContext(agent: AgentRow, task: TaskRow, memory = ''): { instructions: string; taskInput: string } {
   const instructions = [
     '# This run',
     `You are ${agent.name}${agent.department ? `, in ${agent.department}` : ''}.`,
@@ -103,6 +104,7 @@ function buildContext(agent: AgentRow, task: TaskRow): { instructions: string; t
     task.goal_title ? `It serves the goal: ${task.goal_title}` : '',
     'Read the full task with get_task. When the work is done, call complete_task with your answer.',
     'If you cannot continue, call block_task with the reason, or ask_founder with one specific question.',
+    memory,
   ]
     .filter(Boolean)
     .join('\n');
@@ -251,7 +253,8 @@ export async function executeRun(deps: LoopDeps, workspaceId: string, agentId: s
       await note({ from, to, model: toAlias, reason });
     };
 
-    const { instructions, taskInput } = buildContext(agent, task);
+    const memory = await memoryBlock(deps.pool, workspaceId, agent.id, `${task.title} ${task.body ?? ''}`).catch(() => '');
+    const { instructions, taskInput } = buildContext(agent, task, memory);
     input = taskInput;
     let tools: { allow: string[]; deny: string[] } = { allow: [], deny: [] };
     let allowedOs: string[] | undefined;

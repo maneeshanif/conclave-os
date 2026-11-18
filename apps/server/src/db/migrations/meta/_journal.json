@@ -435,6 +435,20 @@
       "when": 1794967503972,
       "tag": "0061_deployments_rls",
       "breakpoints": true
+    },
+    {
+      "idx": 62,
+      "version": "7",
+      "when": 1794971736309,
+      "tag": "0062_memories",
+      "breakpoints": true
+    },
+    {
+      "idx": 63,
+      "version": "7",
+      "when": 1794971739433,
+      "tag": "0063_memories_rls",
+      "breakpoints": true
     }
   ]
 }

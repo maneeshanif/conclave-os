@@ -9,6 +9,7 @@ import { checkHook } from '../hooks';
 import { checkBrief, estimateCredits, type Shot } from '../video/briefs';
 import { normalizeUrl } from '../signals';
 import { branchFacts, PrError, refHead, runTests } from '../projects/pr';
+import { recallMemories, rememberMemory } from '../memory/memory';
 import { PROJECT_KEY } from '../projects/projects';
 import { labelUntrusted } from './trust';
 import { checkEvidence } from '../boardroom/evidence';
@@ -274,6 +275,15 @@ ${tests.output}`);
     });
     if (!out.existed) this.onApproval(scope.workspaceId, out.approvalId);
     return out;
+  }
+
+  async remember(scope: RunScope, m: { text: string; scope: 'company' | 'market' }): Promise<void> {
+    await rememberMemory(this.pool, scope.workspaceId, { scope: m.scope, text: m.text, source: `run:${scope.runId}`, agentId: scope.agentId });
+  }
+
+  async recall(scope: RunScope, query: string): Promise<{ scope: string; source: string; text: string }[]> {
+    const rows = await recallMemories(this.pool, scope.workspaceId, { query, agentId: scope.agentId });
+    return rows.map((r) => ({ scope: r.scope, source: r.source, text: r.text }));
   }
 
   /** A deploy of a project's default branch (S7-8). Refused for an unknown project or one with nothing committed. Never builds or serves. */

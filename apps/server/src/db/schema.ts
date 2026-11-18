@@ -1271,3 +1271,24 @@ export const deployments = pgTable(
     check('deployments_status_ck', sql`${t.status} in ('building','live','failed')`),
   ],
 );
+
+/** What the company has learned (S8-1): notes with a scope, a source and a confidence. Never the authority on a table or a rule. */
+export const memories = pgTable(
+  'memories',
+  {
+    id: id(),
+    workspaceId: workspaceId(),
+    scope: text('scope').notNull(),
+    agentId: uuid('agent_id'),
+    text: text('text').notNull(),
+    source: text('source').notNull(),
+    confidence: integer('confidence').notNull().default(60),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    unique('memories_ws_id_uq').on(t.workspaceId, t.id),
+    foreignKey({ name: 'memories_agent_fk', columns: [t.workspaceId, t.agentId], foreignColumns: [agents.workspaceId, agents.id] }),
+    check('memories_scope_ck', sql`${t.scope} in ('founder','company','market')`),
+    check('memories_confidence_ck', sql`${t.confidence} between 0 and 100`),
+  ],
+);

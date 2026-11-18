@@ -630,6 +630,23 @@ SPEC 18 row 7, SPEC 5 (permissions, runtimes), 8 (plugins), 13 (code from folder
 - [x] **S7-10 Engineering and Product rooms.** The Engineering department active with a Tech Lead, coder and code reviewer seeded, and the Product department's room, using the add-a-department flow. *Test:* both rooms exist on the map with desks; the seeded agents sit in them.
 - [x] **S7-11 Slice 7 end to end.** SPEC 18 row 7. One test: a spec becomes a task for the coder; a worktree is made; a scripted runtime changes a file; the tests pass; `propose_pr` makes an approval; you approve; the pull request is recorded on the local connector; a deploy approval builds it and serves a preview on loopback; it appears in the Deployments panel. The full suite runs once. Tag `slice-7-done`.
 
+## Slice 8: Learning, hiring, the delegate and Research
+
+SPEC 18 row 8, SPEC 9 (learning loop and hiring), 6 (the delegate), 5 (templates). **Goal:** an edit you make changes the next draft; the Talent room runs a bake-off between three catalog candidates and proposes the winner; the delegate clears one routine approval and refuses one outside its limit; Research proposes a change that passes its eval. Built with local stand-ins: catalog text comes from a local folder at a pinned id (never fetched at run time), bake-off candidates are scored by checks in code, and nothing hires without an approval. Words-only search first (Postgres full text); meaning search waits for pgvector, which needs a check that the embedded Postgres can load it (parked in NEEDS-YOU).
+
+- [x] **S8-1 Memory.** Table `memories` (forced RLS): scope (founder, company, market), agent (optional), text, source, confidence, date. `remember` and `recall` os tools (autonomy 1 to write, 0 to read) with words-only search; only matching rows enter a prompt. *Test:* a remembered fact is recalled by words and only for its scope; a run's context holds only matching rows; memory never outranks a table.
+- [ ] **S8-2 Approve and teach.** Editing a draft before approving it saves the difference as a founder lesson for that agent; the next run for that agent is given it. *Test:* an edit changes the next run's context; an unedited approval saves nothing.
+- [ ] **S8-3 Reflect and skill patches.** After a run with more than a few steps, a cheap scripted reviewer saves a memory or proposes a skill patch (`propose_skill_patch`, a diff with a version bump); approving applies it, the old version stays in git. Self-writing is off for a new agent until switched on. *Test:* a patch changes nothing until approved; off by default; version goes up.
+- [ ] **S8-4 Talent catalog import.** Import persona files from a local folder at a pinned id: scan for instructions to call tools, fetch pages or ignore rules, keep each source's licence, show a diff when it changes. *Test:* a planted instruction is flagged; the licence is kept; a persona cannot grant a tool.
+- [ ] **S8-5 Bake-off and propose_hire.** Search the catalog, frame up to three candidates with the closest template, run one trial task each with no outside actions, score boundaries first, and queue a `hire` approval for the winner with the scores. *Test:* three candidates run; boundary attempts rank last; a hire needs approval and uses the agent-create executor.
+- [ ] **S8-6 Hiring levels and the roster cap.** H0 (default) and H1 (trial by itself inside a mandate), cap 20 active agents. *Test:* H0 does nothing alone; H1 stays inside the mandate; over the cap is refused.
+- [ ] **S8-7 Weekly scorecards.** Per agent: tasks done, checks passed, approvals accepted, edited or rejected, cost per accepted output, boundary attempts; a weak agent gets a suggestion. *Test:* counted from the tables.
+- [ ] **S8-8 The Talent room.** A panel and room object for candidates, bake-offs and scorecards. *Test:* the list matches the tables; it opens from its object and a link.
+- [ ] **S8-9 Gap check.** Weekly: two of three signals confirm a gap; choose hire, escalate, queue or decline. *Test:* one signal is not a gap.
+- [ ] **S8-10 The delegate.** A mandate (classes of approval it may clear) and a ledger; it clears one routine approval and refuses one outside its limit; every action is logged and can be undone where possible. *Test:* inside clears, outside refuses, ledger records both, kill switch stops it.
+- [ ] **S8-11 Research and improvement proposals; Founder Network.** An improvement proposal carries evidence, expected gain and an eval that must pass before it ships. *Test:* a proposal whose eval fails cannot be approved.
+- [ ] **S8-12 Slice 8 end to end,** full suite (two workers), tag `slice-8-done`.
+
 ## Opening the next slice
   
 When slice 0 is in daily use, paste this:
