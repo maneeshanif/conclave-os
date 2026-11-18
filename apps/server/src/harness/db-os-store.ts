@@ -311,6 +311,38 @@ ${tests.output}`);
     return out;
   }
 
+  /** The winner of a scored bake-off as a hire card (S8-5), with every candidate's scores. Never hires. */
+  async proposeHire(scope: RunScope, p: { bakeoff: string }): Promise<{ approvalId: string; existed: boolean }> {
+    const out = await withWorkspace(this.pool, scope.workspaceId, async ({ client: c }) => {
+      const b = (await c.query<{ department: string; template: string; trial_task: string; candidates: { roleId: string; source: string; key: string; name: string; boundaryAttempts: number; rating: number; costUsd: number }[] }>('select department, template, trial_task, candidates from bakeoffs where id = $1', [p.bakeoff])).rows[0];
+      if (!b) throw new ToolError('There is no such bake-off.');
+      const w = b.candidates[0];
+      if (!w) throw new ToolError('That bake-off has no candidates.');
+      if (w.boundaryAttempts > 0) throw new ToolError('Every candidate tried to cross a boundary, so none can be proposed.');
+      const dedupe = `hire:${p.bakeoff}`;
+      const payload = {
+        bakeoffId: p.bakeoff,
+        department: b.department,
+        template: b.template,
+        trialTask: b.trial_task,
+        winner: { roleId: w.roleId, source: w.source, key: w.key, name: w.name },
+        scores: b.candidates.map((x) => ({ source: x.source, key: x.key, name: x.name, boundaryAttempts: x.boundaryAttempts, rating: x.rating, costUsd: x.costUsd })),
+        budgetUsd: 3,
+      };
+      const ins = await c.query<{ id: string }>(
+        "insert into approvals (workspace_id, kind, dedupe_key, agent_id, run_id, task_id, payload) values ($1, 'hire', $2, $3, $4, $5, $6) on conflict (workspace_id, kind, dedupe_key) do nothing returning id",
+        [scope.workspaceId, dedupe, scope.agentId, scope.runId, scope.taskId ?? null, JSON.stringify(payload)],
+      );
+      if (ins.rows[0]) {
+        await c.query("update bakeoffs set status = 'proposed' where id = $1", [p.bakeoff]);
+        return { approvalId: ins.rows[0].id, existed: false };
+      }
+      return { approvalId: (await c.query<{ id: string }>("select id from approvals where kind = 'hire' and dedupe_key = $1", [dedupe])).rows[0]!.id, existed: true };
+    });
+    if (!out.existed) this.onApproval(scope.workspaceId, out.approvalId);
+    return out;
+  }
+
   async remember(scope: RunScope, m: { text: string; scope: 'company' | 'market' }): Promise<void> {
     await rememberMemory(this.pool, scope.workspaceId, { scope: m.scope, text: m.text, source: `run:${scope.runId}`, agentId: scope.agentId });
   }

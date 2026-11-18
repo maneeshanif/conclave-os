@@ -43,6 +43,8 @@ export interface OsStore {
   proposeMerge(scope: RunScope, p: { project: string; number: number }): Promise<{ approvalId: string; existed: boolean }>;
   /** Queues a change to one of the agent's own skills for approval (autonomy 2), only if self-writing is on. Never changes the skill. */
   proposeSkillPatch(scope: RunScope, p: { skill: string; text: string; why: string }): Promise<{ approvalId: string; existed: boolean }>;
+  /** Queues the winner of a scored bake-off as a hire for approval (autonomy 2). Never hires. */
+  proposeHire(scope: RunScope, p: { bakeoff: string }): Promise<{ approvalId: string; existed: boolean }>;
   /** Saves a note to memory (autonomy 1): company or market only; a founder lesson is written by the system, not the agent. */
   remember(scope: RunScope, m: { text: string; scope: 'company' | 'market' }): Promise<void>;
   /** Finds notes by words (autonomy 0). */
@@ -512,6 +514,15 @@ export const osTools = {
       return r.existed ? `Already queued as ${r.approvalId}. Do not propose it again.` : `Queued for approval as ${r.approvalId}. Nothing has changed. Do not retry; finish your task.`;
     },
   },
+  propose_hire: {
+    minAutonomy: 2,
+    description: 'Propose hiring the winner of a scored bake-off, with every candidate\'s scores beside it, for the founder to approve. It does NOT hire anyone: a new agent starts on trial at the lowest autonomy.',
+    input: z.object({ bakeoff: z.uuid() }).strict(),
+    async run(store: OsStore, scope: RunScope, args: { bakeoff: string }) {
+      const r = await store.proposeHire(scope, args);
+      return r.existed ? `Already queued as ${r.approvalId}. Do not propose it again.` : `Queued for approval as ${r.approvalId}. Nothing has been hired. Do not retry; finish your task.`;
+    },
+  },
   remember: {
     minAutonomy: 1,
     description: 'Save one short, reusable fact to memory (company or market). Give facts, not instructions. It is a note with its source, never the authority on a client or a rule.',
@@ -580,6 +591,9 @@ export class MemoryOsStore implements OsStore {
     return null;
   }
   async proposeSkillPatch(): Promise<{ approvalId: string; existed: boolean }> {
+    throw new ToolError('Proposals need the database store.');
+  }
+  async proposeHire(): Promise<{ approvalId: string; existed: boolean }> {
     throw new ToolError('Proposals need the database store.');
   }
   async remember(): Promise<void> {

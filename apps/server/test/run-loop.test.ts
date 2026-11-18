@@ -59,6 +59,9 @@ class LateStore implements OsStore {
   proposeSkillPatch(s: RunScope, p: { skill: string; text: string; why: string }) {
     return this.inner.proposeSkillPatch(s, p);
   }
+  proposeHire(s: RunScope, p: { bakeoff: string }) {
+    return this.inner.proposeHire(s, p);
+  }
   remember(s: RunScope, m: { text: string; scope: 'company' | 'market' }) {
     return this.inner.remember(s, m);
   }

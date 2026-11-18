@@ -470,6 +470,20 @@
       "when": 1794972870838,
       "tag": "0066_catalog_roles_rls",
       "breakpoints": true
+    },
+    {
+      "idx": 67,
+      "version": "7",
+      "when": 1794973201014,
+      "tag": "0067_bakeoffs",
+      "breakpoints": true
+    },
+    {
+      "idx": 68,
+      "version": "7",
+      "when": 1794973211671,
+      "tag": "0068_bakeoffs_rls",
+      "breakpoints": true
     }
   ]
 }

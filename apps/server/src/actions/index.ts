@@ -3,6 +3,7 @@ import { executeEmail, recoverApprovals, releaseApproved, type ExecResult, type 
 import { executeDm, recoverDms, releaseDms } from './dm';
 import { executePost, recoverPosts, releasePosts } from './post';
 import { executeVideoBrief, recoverVideo, releaseVideo } from './video';
+import { executeHire, recoverHires, releaseHires } from './hire';
 import { executeSkillPatch, recoverSkills, releaseSkills } from './skill';
 import { executeDeploy, recoverDeploys, releaseDeploys } from './deploy';
 import { executeMerge, executeRepoCreate, recoverRepo, releaseRepo } from './repo';
@@ -21,7 +22,7 @@ export function createExecutors(deps: ExecutorDeps) {
     const existing = inFlight.get(approvalId);
     if (existing) return existing;
     const p = kindOf(approvalId)
-      .then((kind) => (kind === 'post.publish' ? executePost(deps, approvalId) : kind === 'dm.send' ? executeDm(deps, approvalId) : kind === 'video.brief' ? executeVideoBrief(deps, approvalId) : kind === 'agent.create' ? executeAgentCreate(deps, approvalId) : kind === 'pr.open' ? executePrOpen(deps, approvalId) : kind === 'repo.create' ? executeRepoCreate(deps, approvalId) : kind === 'pr.merge' ? executeMerge(deps, approvalId) : kind === 'deploy' ? executeDeploy(deps, approvalId) : kind === 'skill.patch' ? executeSkillPatch(deps, approvalId) : executeEmail(deps, approvalId)))
+      .then((kind) => (kind === 'post.publish' ? executePost(deps, approvalId) : kind === 'dm.send' ? executeDm(deps, approvalId) : kind === 'video.brief' ? executeVideoBrief(deps, approvalId) : kind === 'agent.create' ? executeAgentCreate(deps, approvalId) : kind === 'pr.open' ? executePrOpen(deps, approvalId) : kind === 'repo.create' ? executeRepoCreate(deps, approvalId) : kind === 'pr.merge' ? executeMerge(deps, approvalId) : kind === 'deploy' ? executeDeploy(deps, approvalId) : kind === 'skill.patch' ? executeSkillPatch(deps, approvalId) : kind === 'hire' ? executeHire(deps, approvalId) : executeEmail(deps, approvalId)))
       .finally(() => inFlight.delete(approvalId));
     inFlight.set(approvalId, p);
     return p;
@@ -38,7 +39,8 @@ export function createExecutors(deps: ExecutorDeps) {
       const repos = await recoverRepo(deps);
       const deploys = await recoverDeploys(deps);
       const skills = await recoverSkills(deps);
-      return { ...mail, resumed: [...mail.resumed, ...posts.resumed, ...dms.resumed, ...video.resumed, ...agents.resumed, ...prs.resumed, ...repos.resumed, ...deploys.resumed, ...skills.resumed], unknown: [...mail.unknown, ...posts.unknown, ...dms.unknown, ...video.unknown, ...prs.unknown, ...repos.unknown, ...deploys.unknown, ...skills.unknown], held: [...mail.held, ...dms.held] };
+      const hires = await recoverHires(deps);
+      return { ...mail, resumed: [...mail.resumed, ...posts.resumed, ...dms.resumed, ...video.resumed, ...agents.resumed, ...prs.resumed, ...repos.resumed, ...deploys.resumed, ...skills.resumed, ...hires.resumed], unknown: [...mail.unknown, ...posts.unknown, ...dms.unknown, ...video.unknown, ...prs.unknown, ...repos.unknown, ...deploys.unknown, ...skills.unknown, ...hires.unknown], held: [...mail.held, ...dms.held] };
     },
     release: async () => {
       const mail = await releaseApproved(deps);
@@ -50,7 +52,8 @@ export function createExecutors(deps: ExecutorDeps) {
       const repos = await releaseRepo(deps);
       const deploys = await releaseDeploys(deps);
       const skills = await releaseSkills(deps);
-      return { released: [...mail.released, ...posts, ...dms.released, ...video, ...agents, ...prs, ...repos, ...deploys, ...skills], held: [...mail.held, ...dms.held] };
+      const hires = await releaseHires(deps);
+      return { released: [...mail.released, ...posts, ...dms.released, ...video, ...agents, ...prs, ...repos, ...deploys, ...skills, ...hires], held: [...mail.held, ...dms.held] };
     },
   };
 }

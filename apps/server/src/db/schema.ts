@@ -1317,3 +1317,20 @@ export const catalogRoles = pgTable(
   },
   (t) => [unique('catalog_roles_ws_id_uq').on(t.workspaceId, t.id), unique('catalog_roles_ws_source_key_uq').on(t.workspaceId, t.source, t.key)],
 );
+
+/** A bake-off (S8-5): candidates from the catalog, each run through the same trial and scored, boundaries first. */
+export const bakeoffs = pgTable(
+  'bakeoffs',
+  {
+    id: id(),
+    workspaceId: workspaceId(),
+    department: text('department').notNull(),
+    query: text('query').notNull(),
+    template: text('template').notNull(),
+    trialTask: text('trial_task').notNull(),
+    status: text('status').notNull().default('scored'),
+    candidates: jsonb('candidates').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [unique('bakeoffs_ws_id_uq').on(t.workspaceId, t.id), check('bakeoffs_status_ck', sql`${t.status} in ('scored','proposed')`)],
+);
