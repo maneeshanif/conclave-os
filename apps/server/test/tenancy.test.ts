@@ -42,6 +42,7 @@ const TABLES = [
   'funnels',
   'goals',
   'hooks',
+  'improvements',
   'leads',
   'members',
   'memories',

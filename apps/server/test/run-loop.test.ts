@@ -56,6 +56,9 @@ class LateStore implements OsStore {
   getLead(s: RunScope, id: string) {
     return this.inner.getLead(s, id);
   }
+  proposeImprovement(s: RunScope, p: import('../src/harness/os-tools').ImprovementInput) {
+    return this.inner.proposeImprovement(s, p);
+  }
   proposeSkillPatch(s: RunScope, p: { skill: string; text: string; why: string }) {
     return this.inner.proposeSkillPatch(s, p);
   }

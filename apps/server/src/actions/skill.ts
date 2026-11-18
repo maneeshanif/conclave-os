@@ -1,5 +1,6 @@
 import { writeFile } from 'node:fs/promises';
 import { withWorkspace } from '../db/tenant';
+import { runEval, type EvalCase } from '../research/improvements';
 import { readSkill, skillFileFor, type SkillHome } from '../memory/skills';
 import { readSettings } from '../settings';
 import type { ExecResult, ExecutorDeps } from './email';
@@ -14,6 +15,8 @@ interface Payload {
   owner: SkillHome['owner'];
   before: string;
   after: string;
+  /** Set for an improvement from the Research room: its eval is run again here, and the patch is not written unless it passes. */
+  evalCases?: EvalCase[];
 }
 
 export async function executeSkillPatch(deps: ExecutorDeps, approvalId: string): Promise<ExecResult> {
@@ -41,6 +44,10 @@ export async function executeSkillPatch(deps: ExecutorDeps, approvalId: string):
   if (!deps.templatesRoot) return fail('this server has no templates folder to change', 'refused');
   const file = await skillFileFor(deps.templatesRoot, p.owner, p.skill);
   if (!file) return fail(`the skill "${p.skill}" is no longer there`, 'failed');
+  if (p.evalCases) {
+    const ev = runEval(p.after, p.evalCases);
+    if (!ev.ok) return fail(`the eval no longer passes: ${ev.failures.join('; ')}`, 'failed');
+  }
   try {
     if ((await readSkill(file)) !== p.before) return fail('the skill changed after it was proposed, so this patch no longer applies', 'failed');
     await writeFile(file, p.after, 'utf8');

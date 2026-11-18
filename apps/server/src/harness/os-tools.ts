@@ -45,6 +45,8 @@ export interface OsStore {
   proposeSkillPatch(scope: RunScope, p: { skill: string; text: string; why: string }): Promise<{ approvalId: string; existed: boolean }>;
   /** Queues the winner of a scored bake-off as a hire for approval (autonomy 2). Never hires. */
   proposeHire(scope: RunScope, p: { bakeoff: string }): Promise<{ approvalId: string; existed: boolean; auto?: boolean }>;
+  /** An improvement from the Research room: a skill change with evidence, an expected gain and an eval that must pass (autonomy 2). Never changes the skill. */
+  proposeImprovement(scope: RunScope, p: ImprovementInput): Promise<{ approvalId: string; existed: boolean }>;
   /** Saves a note to memory (autonomy 1): company or market only; a founder lesson is written by the system, not the agent. */
   remember(scope: RunScope, m: { text: string; scope: 'company' | 'market' }): Promise<void>;
   /** Finds notes by words (autonomy 0). */
@@ -220,6 +222,27 @@ const Text = (name: string, max: number) => z.object({ [name]: z.string().min(1)
  * The `os` tools (SPEC 6, 8). Every handler acts only on the run's own workspace and task.
  * `minAutonomy` hides a tool from agents below that level (SPEC 6, autonomy levels).
  */
+export interface ImprovementInput {
+  template: string;
+  skill: string;
+  text: string;
+  why: string;
+  evidence: { source: string; note: string }[];
+  expectedGain: string;
+  evalCases: { name?: string | undefined; mustContain: string[]; mustNotContain?: string[] | undefined }[];
+}
+const ImprovementShape = z
+  .object({
+    template: z.string().min(1).max(60),
+    skill: z.string().min(1).max(60),
+    text: z.string().min(1).max(20000),
+    why: z.string().min(1).max(1000),
+    evidence: z.array(z.object({ source: z.string().min(1).max(500), note: z.string().min(1).max(1000) }).strict()).min(1).max(8),
+    expectedGain: z.string().min(1).max(1000),
+    evalCases: z.array(z.object({ name: z.string().max(100).optional(), mustContain: z.array(z.string().min(1).max(200)).max(20), mustNotContain: z.array(z.string().min(1).max(200)).max(20).optional() }).strict()).min(1).max(10),
+  })
+  .strict();
+
 export const osTools = {
   get_task: {
     minAutonomy: 0,
@@ -524,6 +547,15 @@ export const osTools = {
       return r.existed ? `Already queued as ${r.approvalId}. Do not propose it again.` : `Queued for approval as ${r.approvalId}. Nothing has been hired. Do not retry; finish your task.`;
     },
   },
+  propose_improvement: {
+    minAutonomy: 2,
+    description: "Propose an improvement to a skill of a template, from what you found in the industry: the whole new SKILL.md text, the evidence (links and what each shows), the expected gain, and an eval (phrases the new text must and must not contain). The server runs the eval; a proposal whose eval fails never becomes a card. It does NOT change the skill.",
+    input: ImprovementShape,
+    async run(store: OsStore, scope: RunScope, args: ImprovementInput) {
+      const r = await store.proposeImprovement(scope, args);
+      return r.existed ? `Already queued as ${r.approvalId}. Do not propose it again.` : `Queued for approval as ${r.approvalId}. Nothing has changed. Do not retry; finish your task.`;
+    },
+  },
   remember: {
     minAutonomy: 1,
     description: 'Save one short, reusable fact to memory (company or market). Give facts, not instructions. It is a note with its source, never the authority on a client or a rule.',
@@ -590,6 +622,9 @@ export class MemoryOsStore implements OsStore {
   }
   async getLead(): Promise<LeadView | null> {
     return null;
+  }
+  async proposeImprovement(): Promise<{ approvalId: string; existed: boolean }> {
+    throw new ToolError('Proposals need the database store.');
   }
   async proposeSkillPatch(): Promise<{ approvalId: string; existed: boolean }> {
     throw new ToolError('Proposals need the database store.');

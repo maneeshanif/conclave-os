@@ -1377,3 +1377,21 @@ export const delegateLedger = pgTable(
     check('delegate_ledger_outcome_ck', sql`${t.outcome} in ('cleared','refused')`),
   ],
 );
+
+/** An improvement the Research room proposes (S8-11): evidence, an expected gain, and the result of the eval that has to pass first. */
+export const improvements = pgTable(
+  'improvements',
+  {
+    id: id(),
+    workspaceId: workspaceId(),
+    approvalId: uuid('approval_id'),
+    skill: text('skill').notNull(),
+    why: text('why').notNull(),
+    expectedGain: text('expected_gain').notNull(),
+    evidence: jsonb('evidence').notNull(),
+    status: text('status').notNull(),
+    evalOutput: text('eval_output').notNull().default(''),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [unique('improvements_ws_id_uq').on(t.workspaceId, t.id), check('improvements_status_ck', sql`${t.status} in ('proposed','eval_failed')`)],
+);

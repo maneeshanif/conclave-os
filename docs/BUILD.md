@@ -644,7 +644,8 @@ SPEC 18 row 8, SPEC 9 (learning loop and hiring), 6 (the delegate), 5 (templates
 - [x] **S8-8 The Talent room.** A panel and room object for candidates, bake-offs and scorecards. *Test:* the list matches the tables; it opens from its object and a link.
 - [x] **S8-9 Gap check.** Weekly: two of three signals confirm a gap; choose hire, escalate, queue or decline. *Test:* one signal is not a gap.
 - [x] **S8-10 The delegate.** A mandate (classes of approval it may clear) and a ledger; it clears one routine approval and refuses one outside its limit; every action is logged and can be undone where possible. *Test:* inside clears, outside refuses, ledger records both, kill switch stops it.
-- [ ] **S8-11 Research and improvement proposals; Founder Network.** An improvement proposal carries evidence, expected gain and an eval that must pass before it ships. *Test:* a proposal whose eval fails cannot be approved.
+- [x] **S8-11 Research and improvement proposals (done); Founder Network (not done, see S8-11b).** An improvement proposal carries evidence, expected gain and an eval that must pass before it ships. *Test:* a proposal whose eval fails cannot be approved.
+- [ ] **S8-11b Founder Network room.** People (name, where you met, last touch, next nudge), a note on each, message drafts in your voice that you send yourself, reminders. *Test:* a draft is never sent by the OS; a nudge appears when due. Not started: it needs a design pass on how people are found (X and LinkedIn research needs the browser and logins).
 - [ ] **S8-12 Slice 8 end to end,** full suite (two workers), tag `slice-8-done`.
 
 ## Opening the next slice

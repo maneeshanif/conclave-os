@@ -11,6 +11,7 @@ import { normalizeUrl } from '../signals';
 import { branchFacts, PrError, refHead, runTests } from '../projects/pr';
 import { createHash } from 'node:crypto';
 import { recallMemories, rememberMemory } from '../memory/memory';
+import { runEval } from '../research/improvements';
 import { rosterRoom, tryAutoTrial } from '../talent/hiring';
 import { applySkillPatch, checkNewSkill, diffLines, locateSkill, readSkill, skillVersion } from '../memory/skills';
 import { PROJECT_KEY } from '../projects/projects';
@@ -19,7 +20,7 @@ import { checkEvidence } from '../boardroom/evidence';
 import { checkDm, dmEligible, dmSuppressed, isDmChannel, normalizeHandle } from '../dms';
 import { checkPost, hashText, isPostPlatform } from '../posts';
 import { addSignal, cleanExcerpt, looksLikeInstructions } from '../signals';
-import { ToolError, type AddHookInput, type AddLeadInput, type AddSignalInput, type BriefView, type DealView, type DraftKind, type LeadView, type OsStore, type ProposedEmail, type TaskView } from './os-tools';
+import { ToolError, type ImprovementInput, type AddHookInput, type AddLeadInput, type AddSignalInput, type BriefView, type DealView, type DraftKind, type LeadView, type OsStore, type ProposedEmail, type TaskView } from './os-tools';
 import type { RunScope } from './run-tokens';
 
 /** The `os` tools on the real database. Every write is scoped to the run's own workspace and task. */
@@ -279,6 +280,45 @@ ${tests.output}`);
       return { approvalId: (await c.query<{ id: string }>("select id from approvals where kind = 'pr.open' and dedupe_key = $1", [dedupe])).rows[0]!.id, existed: true };
     });
     if (!out.existed) this.onApproval(scope.workspaceId, out.approvalId);
+    return out;
+  }
+
+  /**
+   * An improvement from the Research room (S8-11): the same card as a skill patch, with the evidence, the expected gain and the eval result.
+   * The server runs the eval first. A proposal whose eval fails is recorded as such and never becomes a card, so it cannot be approved.
+   */
+  async proposeImprovement(scope: RunScope, p: ImprovementInput): Promise<{ approvalId: string; existed: boolean }> {
+    if (!this.templatesRoot) throw new ToolError('This server cannot change skills.');
+    const home = await locateSkill(this.templatesRoot, p.template, p.skill).catch(() => null);
+    if (!home) throw new ToolError(`"${p.skill}" is not a skill of the template "${p.template}".`);
+    const before = await readSkill(home.file);
+    const bad = checkNewSkill(p.skill, before, p.text);
+    if (bad) throw new ToolError(bad);
+    const after = applySkillPatch(before, p.text);
+    const cases = p.evalCases.map((c) => ({ ...(c.name ? { name: c.name } : {}), mustContain: c.mustContain, ...(c.mustNotContain ? { mustNotContain: c.mustNotContain } : {}) }));
+    const ev = runEval(after, cases);
+    const record = (status: 'proposed' | 'eval_failed', approvalId: string | null) =>
+      withWorkspace(this.pool, scope.workspaceId, ({ client: c }) =>
+        c.query('insert into improvements (workspace_id, approval_id, skill, why, expected_gain, evidence, status, eval_output) values ($1, $2, $3, $4, $5, $6, $7, $8)', [scope.workspaceId, approvalId, p.skill, p.why, p.expectedGain, JSON.stringify(p.evidence), status, ev.failures.join('\n')]),
+      );
+    if (!ev.ok) {
+      await record('eval_failed', null);
+      throw new ToolError(`The eval failed, so nothing was proposed: ${ev.failures.join('; ')}. Fix the text or the eval and propose again.`);
+    }
+    const payload = { improvement: 'true', skill: p.skill, owner: home.owner, why: p.why, expectedGain: p.expectedGain, evidence: p.evidence, evalCases: cases, eval: ev, fromVersion: skillVersion(before), toVersion: skillVersion(after), before, after, diff: diffLines(before, after) };
+    const dedupe = `improve:${p.skill}:${createHash('sha256').update(after).digest('hex').slice(0, 16)}`;
+    const out = await withWorkspace(this.pool, scope.workspaceId, async ({ client: c }) => {
+      const ins = await c.query<{ id: string }>(
+        "insert into approvals (workspace_id, kind, dedupe_key, agent_id, run_id, task_id, payload) values ($1, 'skill.patch', $2, $3, $4, $5, $6) on conflict (workspace_id, kind, dedupe_key) do nothing returning id",
+        [scope.workspaceId, dedupe, scope.agentId, scope.runId, scope.taskId ?? null, JSON.stringify(payload)],
+      );
+      if (ins.rows[0]) return { approvalId: ins.rows[0].id, existed: false };
+      return { approvalId: (await c.query<{ id: string }>("select id from approvals where kind = 'skill.patch' and dedupe_key = $1", [dedupe])).rows[0]!.id, existed: true };
+    });
+    if (!out.existed) {
+      await record('proposed', out.approvalId);
+      this.onApproval(scope.workspaceId, out.approvalId);
+    }
     return out;
   }
 
