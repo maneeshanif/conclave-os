@@ -3,7 +3,7 @@
  * panel now, and the open one is kept in the address (`/?panel=approvals`) so it can be linked to and survives a reload.
  * Pure: it only turns ids and addresses into each other.
  */
-export const PANEL_IDS = ['tasks', 'approvals', 'needs-you', 'brief', 'inbox', 'pipeline', 'campaigns', 'goals', 'signals', 'ideas', 'health', 'run-log', 'department-board', 'department-meeting', 'boardroom', 'rooms', 'deployments', 'talent', 'meetings', 'channels', 'network', 'settings'] as const;
+export const PANEL_IDS = ['tasks', 'approvals', 'needs-you', 'brief', 'inbox', 'pipeline', 'campaigns', 'goals', 'signals', 'ideas', 'health', 'run-log', 'department-board', 'department-meeting', 'boardroom', 'rooms', 'deployments', 'talent', 'meetings', 'channels', 'network', 'settings', 'pulls'] as const;
 export type PanelId = (typeof PANEL_IDS)[number];
 
 export const PANEL_LABELS: Record<PanelId, string> = {
@@ -29,6 +29,7 @@ export const PANEL_LABELS: Record<PanelId, string> = {
   channels: 'Client messages',
   network: 'Founder Network',
   settings: 'Settings',
+  pulls: 'Pull requests',
 };
 
 export interface PanelState {

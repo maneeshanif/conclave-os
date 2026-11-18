@@ -218,6 +218,26 @@ export interface Deployment {
   finishedAt: string | null;
 }
 
+export interface PullRequest {
+  id: string;
+  project: string;
+  number: number;
+  title: string;
+  summary: string;
+  branch: string;
+  base: string;
+  head: string;
+  status: 'open' | 'merged' | 'closed';
+  connector: string;
+  url: string | null;
+  approvedBy: string;
+  mergedBy: string | null;
+  createdAt: string;
+  mergedAt: string | null;
+  testsPassed: boolean;
+  mergeRequest: string | null;
+}
+
 export interface ConfigView {
   hiring: { level: 'H0' | 'H1'; rosterCap: number; trialBudgetCapUsd: number; active: number };
   guestLinkHours: number;
@@ -483,6 +503,7 @@ export const api = {
     }
   },
   rebuildBrief: () => call<Brief>('/api/brief/rebuild', { method: 'POST', body: '{}' }),
+  pulls: async () => (await call<{ pulls: PullRequest[] }>('/api/pull-requests')).pulls,
   config: () => call<ConfigView>('/api/config'),
   sendSettings: () => call<SendSettings>('/api/settings'),
   toolCalls: async () => (await call<{ calls: ToolCall[] }>('/api/config/tool-calls?limit=30')).calls,

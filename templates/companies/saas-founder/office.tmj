@@ -43927,6 +43927,16 @@
      "point": true,
      "rotation": 0,
      "visible": true
+    },
+    {
+     "id": 881,
+     "name": "Pull requests board",
+     "type": "pr-board",
+     "x": 640,
+     "y": 768,
+     "point": true,
+     "rotation": 0,
+     "visible": true
     }
    ]
   },
@@ -52621,5 +52631,5 @@
   }
  ],
  "nextlayerid": 874,
- "nextobjectid": 880
+ "nextobjectid": 882
 }

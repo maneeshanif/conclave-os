@@ -18,6 +18,7 @@ import { MeetingsView } from './MeetingsView';
 import { NetworkView } from './NetworkView';
 import { PipelineView } from './PipelineView';
 import { PushToggle } from './PushToggle';
+import { PullsView } from './PullsView';
 import { SettingsView } from './SettingsView';
 import { SignalsView } from './SignalsView';
 import { TalentView } from './TalentView';
@@ -40,6 +41,8 @@ export function PanelContent(state: PanelState): ReactNode {
       return null; // the list is drawn by the office screen, which owns the world, the drawer and the panels
     case 'deployments':
       return <DeploymentsView />;
+    case 'pulls':
+      return <PullsView />;
     case 'settings':
       return <SettingsView />;
     case 'network':

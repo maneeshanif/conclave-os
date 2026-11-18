@@ -231,3 +231,15 @@ process.stdout.write(`wrote ${Object.keys(EVENT_FOOT).length} event pictures\n`)
   });
   save('obj-network-board', c);
 }
+// The pull requests board: a board with a merge arrow and three status lights.
+{
+  const [w, h] = OBJECT_FOOT['pr-board'];
+  const c = canvas(w * T, h * T);
+  c.rect(2, 3, w * T - 4, h * T - 8, '#312e81');
+  c.frame(2, 3, w * T - 4, h * T - 8, INK);
+  c.rect(6, 7, w * T - 12, 4, '#818cf8');
+  c.rect(10, 18, 22, 2, '#e0e7ff');
+  c.rect(30, 15, 3, 8, '#e0e7ff');
+  ['#22c55e', '#fbbf24', '#a78bfa'].forEach((col, i) => c.disc(40 + i * 8, 19, 3, col));
+  save('obj-pr-board', c);
+}

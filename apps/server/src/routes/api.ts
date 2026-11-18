@@ -26,6 +26,7 @@ import { channelRoutes } from './channels';
 import { configRoutes } from './config';
 import { meetingRoutes } from './meetings';
 import { networkRoutes } from './network';
+import { pullRoutes } from './pulls';
 import { setupRoutes } from './setup';
 import { talentRoutes } from './talent';
 import { codeProjectRoutes } from './projects';
@@ -64,7 +65,7 @@ export function apiRoutes(deps: { workspaceId: string; dispatcher: Dispatcher; b
   // A malformed id is a 404, not a database error.
   // Settings is a single record with actions (/settings/release-held), not a collection of ids.
   const idGuard = async (c: Context<AppEnv>, next: () => Promise<void>) =>
-    c.req.param('kind') === 'settings' || c.req.param('kind') === 'brief' || c.req.param('kind') === 'company' || c.req.param('kind') === 'runtime-pauses' || c.req.param('kind') === 'health' || c.req.param('kind') === 'office' || c.req.param('kind') === 'departments' || c.req.param('kind') === 'code-projects' || c.req.param('kind') === 'deployments' || c.req.param('kind') === 'scorecards' || c.req.param('kind') === 'talent' || c.req.param('kind') === 'setup' || c.req.param('kind') === 'meetings' || c.req.param('kind') === 'channels' || c.req.param('kind') === 'config' || c.req.param('kind') === 'network' || c.req.param('kind') === 'browser' || (c.req.param('kind') === 'leads' && c.req.param('id') === 'import') || z.uuid().safeParse(c.req.param('id')).success ? next() : c.json({ error: 'Not found' }, 404);
+    c.req.param('kind') === 'settings' || c.req.param('kind') === 'brief' || c.req.param('kind') === 'company' || c.req.param('kind') === 'runtime-pauses' || c.req.param('kind') === 'health' || c.req.param('kind') === 'office' || c.req.param('kind') === 'departments' || c.req.param('kind') === 'code-projects' || c.req.param('kind') === 'deployments' || c.req.param('kind') === 'scorecards' || c.req.param('kind') === 'talent' || c.req.param('kind') === 'setup' || c.req.param('kind') === 'meetings' || c.req.param('kind') === 'channels' || c.req.param('kind') === 'config' || c.req.param('kind') === 'pull-requests' || c.req.param('kind') === 'network' || c.req.param('kind') === 'browser' || (c.req.param('kind') === 'leads' && c.req.param('id') === 'import') || z.uuid().safeParse(c.req.param('id')).success ? next() : c.json({ error: 'Not found' }, 404);
   r.use('/:kind/:id/*', idGuard);
   r.use('/:kind/:id', idGuard);
 
@@ -73,6 +74,7 @@ export function apiRoutes(deps: { workspaceId: string; dispatcher: Dispatcher; b
   r.route('/code-projects', codeProjectRoutes({ workspaceId: ws }));
   r.route('/deployments', deploymentRoutes());
   r.route('/channels', channelRoutes());
+  r.route('/pull-requests', pullRoutes());
   if (deps.pool) r.route('/config', configRoutes({ workspaceId: ws, pool: deps.pool, ...(deps.dataDir ? { dataDir: deps.dataDir } : {}) }));
   if (deps.pool) r.route('/network', networkRoutes({ workspaceId: ws, pool: deps.pool }));
   if (deps.pool) r.route('/meetings', meetingRoutes({ workspaceId: ws, pool: deps.pool }));
