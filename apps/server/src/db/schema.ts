@@ -1598,3 +1598,24 @@ export const networkDrafts = pgTable(
     check('network_drafts_status_ck', sql`${t.status} in ('draft','sent_by_you','discarded')`),
   ],
 );
+
+/** Every call to a tool the model can make, and what was decided (A3). Written for audit; nothing depends on it. */
+export const toolCalls = pgTable(
+  'tool_calls',
+  {
+    id: bigserial('id', { mode: 'number' }).primaryKey(),
+    workspaceId: workspaceId(),
+    runId: uuid('run_id'),
+    agentId: uuid('agent_id'),
+    tool: text('tool').notNull(),
+    risk: text('risk').notNull(),
+    decision: text('decision').notNull(),
+    reason: text('reason'),
+    at: timestamp('at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    unique('tool_calls_ws_id_uq').on(t.workspaceId, t.id),
+    check('tool_calls_decision_ck', sql`${t.decision} in ('allowed','refused')`),
+    index('tool_calls_ws_at_idx').on(t.workspaceId, t.at),
+  ],
+);

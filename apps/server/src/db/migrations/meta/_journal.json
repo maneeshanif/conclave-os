@@ -631,6 +631,20 @@
       "when": 1795034229064,
       "tag": "0089_network_rls",
       "breakpoints": true
+    },
+    {
+      "idx": 90,
+      "version": "7",
+      "when": 1795035886724,
+      "tag": "0090_tool_calls",
+      "breakpoints": true
+    },
+    {
+      "idx": 91,
+      "version": "7",
+      "when": 1795035889315,
+      "tag": "0091_tool_calls_rls",
+      "breakpoints": true
     }
   ]
 }

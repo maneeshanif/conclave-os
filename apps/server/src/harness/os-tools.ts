@@ -59,6 +59,10 @@ export interface OsStore {
   addNetworkPerson(scope: RunScope, p: { name: string; whereFound: string; note: string }): Promise<{ created: boolean }>;
   /** Saves a message draft for a person (autonomy 1). The OS never sends it. */
   draftNetworkMessage(scope: RunScope, p: { personId: string; text: string }): Promise<void>;
+  /** Writes down one tool call and what was decided (A3). Optional: a store without a log still works. */
+  logToolCall?(scope: RunScope, e: { tool: string; risk: string; decision: 'allowed' | 'refused'; reason?: string }): Promise<void>;
+  /** Whether an approval has been approved by a person (A3), for a tool that acts outside. */
+  approvalIsApproved?(scope: RunScope, approvalId: string): Promise<boolean>;
   /** Saves a note to memory (autonomy 1): company or market only; a founder lesson is written by the system, not the agent. */
   remember(scope: RunScope, m: { text: string; scope: 'company' | 'market' }): Promise<void>;
   /** Finds notes by words (autonomy 0). */
@@ -665,17 +669,54 @@ export const osTools = {
 
 export type OsToolName = keyof typeof osTools;
 
-export async function callOsTool(store: OsStore, scope: RunScope, name: string, args: unknown): Promise<string> {
-  const tool = (osTools as Record<string, (typeof osTools)[OsToolName]>)[name];
-  if (!tool) throw new ToolError(`Unknown tool "${name}".`);
+/**
+ * What a tool can do to the world (A3). `read` only looks; `write` changes the company's own tables (a note, a lead, a task); `propose` only queues an
+ * approval and never acts; `external` would act beyond this machine, and is refused unless an approved approval is given with the call. Every os
+ * tool has a class (a new tool without one does not compile), and none of them is `external`: the model never performs an outside action (rule 1).
+ */
+export type Risk = 'read' | 'write' | 'propose' | 'external';
+
+const READ_TOOLS = ['get_task', 'get_decisions', 'get_lead', 'get_posts', 'get_deal', 'get_brief', 'recall'] as const;
+const PROPOSE_TOOLS = ['propose_video_brief', 'propose_post', 'propose_dm', 'propose_pr', 'propose_repo', 'propose_merge', 'propose_skill_patch', 'propose_hire', 'propose_improvement', 'propose_call', 'propose_meeting', 'propose_channel_reply', 'propose_deploy', 'propose_email'] as const;
+export const TOOL_RISK: Record<OsToolName, Risk> = Object.fromEntries(
+  (Object.keys(osTools) as OsToolName[]).map((n) => [n, (READ_TOOLS as readonly string[]).includes(n) ? 'read' : (PROPOSE_TOOLS as readonly string[]).includes(n) ? 'propose' : 'write']),
+) as Record<OsToolName, Risk>;
+
+/** A set of tools and their classes. The os tools are one; a test (or a later connector) can be another. */
+export interface ToolRegistry {
+  tools: Record<string, { minAutonomy: number; input: z.ZodType; run: (store: OsStore, scope: RunScope, args: never) => Promise<string> }>;
+  risk: Record<string, Risk>;
+}
+
+const OS_REGISTRY: ToolRegistry = { tools: osTools as unknown as ToolRegistry['tools'], risk: TOOL_RISK };
+
+/** Runs a tool call through every check, and writes down what was decided and why. Writing the log never holds a call up and never fails it. */
+export async function callTool(reg: ToolRegistry, store: OsStore, scope: RunScope, name: string, args: unknown, opts: { approvalId?: string } = {}): Promise<string> {
+  const tool = Object.hasOwn(reg.tools, name) ? reg.tools[name] : undefined;
+  const risk: Risk | 'unknown' = tool ? (reg.risk[name] ?? 'write') : 'unknown';
+  const note = (decision: 'allowed' | 'refused', reason?: string) => store.logToolCall?.(scope, { tool: name, risk, decision, ...(reason ? { reason } : {}) })?.catch(() => undefined);
+  const refuse = async (reason: string, message: string): Promise<never> => {
+    await note('refused', reason);
+    throw new ToolError(message);
+  };
+  if (!tool) return refuse('no such tool', `Unknown tool "${name}".`);
   // A low-trust run is held to its list, and with no list it fails closed (A1). The list is checked before the level.
   const list = scope.trust === 'low' ? (scope.allowedTools ?? []) : scope.allowedTools;
-  if (list && !list.includes(name)) throw new ToolError(`Unknown tool "${name}".`);
-  if (tool.minAutonomy > (await store.autonomy(scope))) throw new ToolError(`Unknown tool "${name}".`);
+  if (list && !list.includes(name)) return refuse('not granted to this run', `Unknown tool "${name}".`);
+  if (tool.minAutonomy > (await store.autonomy(scope))) return refuse("above this agent's autonomy", `Unknown tool "${name}".`);
   const parsed = tool.input.safeParse(args ?? {});
-  if (!parsed.success) throw new ToolError(`Bad input for ${name}: ${parsed.error.issues.map((i) => i.message).join('; ')}`);
+  if (!parsed.success) {
+    const why = parsed.error.issues.map((i) => i.message).join('; ');
+    return refuse(`bad input: ${why}`, `Bad input for ${name}: ${why}`);
+  }
+  if (risk === 'external' && !(opts.approvalId && (await store.approvalIsApproved?.(scope, opts.approvalId)))) {
+    return refuse('external tool called without an approved approval', `The tool "${name}" acts outside this machine, so it needs an approval first.`);
+  }
+  await note('allowed');
   return (tool.run as (s: OsStore, sc: RunScope, a: unknown) => Promise<string>)(store, scope, parsed.data);
 }
+
+export const callOsTool = (store: OsStore, scope: RunScope, name: string, args: unknown): Promise<string> => callTool(OS_REGISTRY, store, scope, name, args);
 
 /** Memory store for tests and for running without a database. */
 export class MemoryOsStore implements OsStore {

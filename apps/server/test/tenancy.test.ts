@@ -73,6 +73,7 @@ const TABLES = [
   'tasks',
   'thread_messages',
   'threads',
+  'tool_calls',
   'video_assets',
   'video_briefs',
   'video_ideas',

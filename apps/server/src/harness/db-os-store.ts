@@ -286,6 +286,18 @@ ${tests.output}`);
     return out;
   }
 
+  async logToolCall(scope: RunScope, e: { tool: string; risk: string; decision: 'allowed' | 'refused'; reason?: string }): Promise<void> {
+    await withWorkspace(this.pool, scope.workspaceId, ({ client: c }) =>
+      c.query('insert into tool_calls (workspace_id, run_id, agent_id, tool, risk, decision, reason) values ($1, $2, $3, $4, $5, $6, $7)', [scope.workspaceId, scope.runId, scope.agentId, e.tool.slice(0, 80), e.risk, e.decision, e.reason?.slice(0, 500) ?? null]),
+    );
+  }
+
+  async approvalIsApproved(scope: RunScope, approvalId: string): Promise<boolean> {
+    if (!/^[0-9a-f-]{36}$/i.test(approvalId)) return false;
+    const r = await withWorkspace(this.pool, scope.workspaceId, ({ client: c }) => c.query<{ status: string }>('select status from approvals where id = $1', [approvalId]));
+    return ['approved', 'executing', 'executed'].includes(r.rows[0]?.status ?? '');
+  }
+
   async addNetworkPerson(scope: RunScope, p: { name: string; whereFound: string; note: string }): Promise<{ created: boolean }> {
     try {
       return { created: (await addPerson(this.pool, scope.workspaceId, p)).created };
