@@ -1,4 +1,5 @@
 import { rmSync, writeFileSync } from 'node:fs';
+import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { serve } from '@hono/node-server';
 import { createNodeWebSocket } from '@hono/node-ws';
@@ -25,6 +26,7 @@ import { Breakers } from './harness/breakers';
 import { ReaperStatus } from './health';
 import { RunTokens } from './harness/run-tokens';
 import { createCliRuntime } from './runtimes/cli';
+import { createHttpRuntime } from './runtimes/http';
 import { createOpenAIAgentsRuntime } from './runtimes/openai-agents';
 import { companyName, openSystem, ownerAccess } from './system';
 import { LocalDispatcher, type Dispatcher, type RunRequestEvent } from './workflows/dispatch';
@@ -81,11 +83,23 @@ for (const r of await renderAll(sys)) console.log(`agent ${r.id}: ${r.runtime} f
 const reaped = await reapStaleRuns(sys.app, sys.workspace.id);
 if (reaped) console.log(`${reaped} run(s) from a previous server were marked failed`);
 
+// Workers for the http runtime (S9-1): HTTP_WORKERS is a JSON map from an agent key (or "*") to an address, on this machine unless HTTP_ALLOW_REMOTE=1.
+const workerMap: Record<string, string> = (() => {
+  try {
+    return JSON.parse(process.env.HTTP_WORKERS ?? '{}') as Record<string, string>;
+  } catch {
+    console.error('HTTP_WORKERS is not valid JSON, so no http worker is set up.');
+    return {};
+  }
+})();
+const workerUrl = (req: { agentKey: string }) => workerMap[req.agentKey] ?? workerMap['*'];
+const readStanding = (req: { workspaceDir: string }) => readFile(path.join(req.workspaceDir, 'INSTRUCTIONS.md'), 'utf8');
+
 const loopBase: Omit<LoopDeps, 'workspaceSlug' | 'prepare'> = {
   pool: sys.app,
   tokens,
   bus,
-  runtimes: { 'claude-cli': createCliRuntime('claude-cli'), opencode: createCliRuntime('opencode'), codex: createCliRuntime('codex'), 'openai-agents': createOpenAIAgentsRuntime({ osUrl: sys.osUrl }) },
+  runtimes: { 'claude-cli': createCliRuntime('claude-cli'), opencode: createCliRuntime('opencode'), codex: createCliRuntime('codex'), 'openai-agents': createOpenAIAgentsRuntime({ osUrl: sys.osUrl }), http: createHttpRuntime({ osUrl: sys.osUrl, url: workerUrl, instructionsFor: readStanding, allowRemote: process.env.HTTP_ALLOW_REMOTE === '1' }) },
   dataDir: sys.dataDir,
   templatesRoot: sys.templatesRoot,
   // A run that says nothing for this long is stopped (A2). RUN_SILENCE_MINUTES changes it; 0 turns it off.

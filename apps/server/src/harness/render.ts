@@ -281,6 +281,20 @@ async function codexTarget(agent: LoadedAgent, t: Template, rules: string, ctx: 
   };
 }
 
+/**
+ * Files for the http target (S9-1). The worker is its own program elsewhere, so there is nothing to configure for it: the standing rules and the
+ * role become one INSTRUCTIONS.md, which the runtime sends with each run. What the worker may do through the os tools is decided by the server
+ * (the run token and the granted tool list), not by anything written here.
+ */
+function httpTarget(agent: LoadedAgent, rules: string) {
+  return { 'INSTRUCTIONS.md': `${rules.trim()}
+
+# Your role
+
+${agent.body.trim()}
+` };
+}
+
 /** Harness files that must never exist inside `work/`, where the agent can write. */
 const PLANTABLE = ['CLAUDE.md', 'CLAUDE.local.md', 'AGENTS.md', 'opencode.json', 'opencode.jsonc', '.claude', '.opencode', '.mcp.json', 'INSTRUCTIONS.md', '.skills', '.runner.json', '.codex-mcp.json'];
 
@@ -325,6 +339,9 @@ export async function renderWorkdir(agent: LoadedAgent, ctx: WorkdirContext): Pr
       break;
     case 'codex':
       files = await codexTarget(agent, t, rules, ctx);
+      break;
+    case 'http':
+      files = httpTarget(agent, rules);
       break;
     default:
       throw new Error(`Runtime "${agent.role.runtime}" is not built in this slice, so it has no render target yet.`);

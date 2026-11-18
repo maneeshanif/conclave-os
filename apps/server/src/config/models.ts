@@ -27,7 +27,7 @@ export const models: Readonly<Record<string, ModelAlias>> = {
   writer: { name: '', on: ['claude-cli', 'claude-agent'] },
   'strong-writer': { name: 'opus', on: ['claude-cli', 'claude-agent'] },
   researcher: { name: 'sonnet', on: ['claude-cli', 'claude-agent'] },
-  'any-model': { name: '', on: ['opencode', 'codex'] },
+  'any-model': { name: '', on: ['opencode', 'codex', 'http'] },
   'local-worker': {
     name: 'qwen3:8b',
     on: ['openai-agents', 'opencode'],

@@ -648,6 +648,20 @@ SPEC 18 row 8, SPEC 9 (learning loop and hiring), 6 (the delegate), 5 (templates
 - [ ] **S8-11b Founder Network room.** People (name, where you met, last touch, next nudge), a note on each, message drafts in your voice that you send yourself, reminders. *Test:* a draft is never sent by the OS; a nudge appears when due. Not started: it needs a design pass on how people are found (X and LinkedIn research needs the browser and logins).
 - [x] **S8-12 Slice 8 end to end,** tag `slice-8-done`. Done without a full-suite run (stopped for time at your request); run `pnpm test -- --maxWorkers=2` when you can. Left open: S8-11b Founder Network; a real bake-off trial runner (the runtime in a scratch folder, rated by a reviewer); the weekly jobs that run the gap check and the scorecards; the delegate learning your judgment and its weekly digest; meaning search (pgvector).
 
+## Slice 9: API keys and a product for others
+
+SPEC 18 row 9, SPEC 16 (giving the OS to other people), 7 (runtimes), 8 (plugins). **Goal:** someone else installs it with their own key or local model and runs a different company from a template. Built with local stand-ins: the `claude-agent` runtime takes its SDK as an injected function (the real one needs an API key, which only a person adds); the marketplace is a folder or a git repo; nothing is hosted.
+
+- [x] **S9-1 The `http` runtime.** POSTs the task to a worker on this machine and reads back run events (NDJSON or one JSON answer); the worker calls the os tools with the run token. Passes the conformance suite; a render target writes INSTRUCTIONS.md. *Test:* conformance 1 to 7; no secret or environment is sent; the token is hidden if the worker repeats it; a remote worker is refused unless allowed.
+- [ ] **S9-2 The `claude-agent` runtime.** Claude Agent SDK hosted by the OS, with the SDK injected. Only with an API key held in the server; the key goes to the SDK and nowhere else. *Test:* conformance with a scripted SDK; the key is never in events; it is refused with no key.
+- [ ] **S9-3 Roles in team mode.** owner, admin, member, viewer on the existing login: who may approve, who may only read. *Test:* a viewer cannot decide an approval or change a setting; a member can approve content and outreach, not a hire, merge or deploy; the owner can do everything.
+- [ ] **S9-4 Export and import of a company.** `export` writes a company folder as a template with secrets removed, plus its plugin list; `import` makes a company from one. *Test:* a round trip gives the same departments, agents and map; a planted secret is removed; an import over an existing company is refused.
+- [ ] **S9-5 Two more company templates.** SaaS founder and course creator, each a small company folder that loads. *Test:* each loads, has no Conclave-specific text, and renders its agents.
+- [ ] **S9-6 Plugin marketplace.** A folder or git repo of plugins; `plugin:install` copies one in after the scan, shows a diff when it changes, keeps its licence. *Test:* a planted instruction is flagged; a plugin cannot grant a tool its manifest does not list.
+- [ ] **S9-7 Setup wizard.** The first-run steps as an API: name the company, pick a template, pick a model source (signed-in CLI, local model or key), connect channels (skipped), approve the first hire. *Test:* each step is recorded and can be repeated; nothing is sent.
+- [ ] **S9-8 Calls Desk.** List Builder, Call Prepper and Voice Agent templates, a daily call list, call notes. Retell and Twilio are connectors written but off. *Test:* a call list is built from leads with a one-line opener; a call is only ever proposed.
+- [ ] **S9-9 Slice 9 end to end,** tag `slice-9-done`.
+
 ## Opening the next slice
   
 When slice 0 is in daily use, paste this:
