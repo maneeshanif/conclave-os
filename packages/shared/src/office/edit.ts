@@ -279,3 +279,82 @@ export function growRoom(input: OfficeMapJson, p: { room: string; side: string }
   for (const name of unreachable(after)) if (!was.has(name)) throw new EditError(`That would block the way to ${name}.`);
   return json;
 }
+
+/**
+ * Makes a room one tile smaller on one side (S6C-2): the reverse of `growRoom`. Its wall on that side moves in by a tile, taking its
+ * doorways, and the tile the wall stood on becomes open ground like what lies beyond it. Refused if the room would get too small (under
+ * two tiles across), if scenery, a desk or an entry stands on the tile that would become wall, if another room shares that wall, or if it
+ * would cut anything off. The two corners stay as they are. Nothing changes if it is refused.
+ */
+export function shrinkRoom(input: OfficeMapJson, p: { room: string; side: string }, departments: { key: string; active: boolean }[]): OfficeMapJson {
+  if (!(SIDES as readonly string[]).includes(p.side)) throw new EditError('A room shrinks from the north, south, east or west.');
+  const side = p.side as Side;
+  const file = 'office.tmj';
+  const before = readOfficeMap(input, { file, departments });
+  const r = before.rooms.find((x) => x.name === p.room);
+  if (!r) throw new EditError(`There is no room called "${p.room}".`);
+  const across = side === 'east' || side === 'west' ? r.w : r.h;
+  if (across <= 2) throw new EditError('That room is too small to shrink any more.');
+  const json = structuredClone(input);
+  const floor = layerOf(json, 'floor').data!;
+  const coll = layerOf(json, 'collision').data!;
+  const W = json.width;
+  const len = side === 'east' || side === 'west' ? r.h : r.w;
+  const spot = (i: number) =>
+    side === 'east' ? { old: [r.x + r.w, r.y + i], inner: [r.x + r.w - 1, r.y + i], beyond: [r.x + r.w + 1, r.y + i] }
+    : side === 'west' ? { old: [r.x - 1, r.y + i], inner: [r.x, r.y + i], beyond: [r.x - 2, r.y + i] }
+    : side === 'south' ? { old: [r.x + i, r.y + r.h], inner: [r.x + i, r.y + r.h - 1], beyond: [r.x + i, r.y + r.h + 1] }
+    : { old: [r.x + i, r.y - 1], inner: [r.x + i, r.y], beyond: [r.x + i, r.y - 2] };
+  const decor = layerOf(json, 'decor').objects ?? [];
+  const objects = json.layers.find((l) => l.name === 'objects')?.objects ?? [];
+  const covers = (o: TiledObject, x: number, y: number) => x >= o.x / T && x < (o.x + (o.width ?? T)) / T && y >= o.y / T && y < (o.y + (o.height ?? T)) / T;
+  const plan: { old: number; inner: number; beyond: number }[] = [];
+  for (let i = 0; i < len; i++) {
+    const s = spot(i);
+    const [ix, iy] = s.inner as [number, number];
+    const [bx, by] = s.beyond as [number, number];
+    const [ox, oy] = s.old as [number, number];
+    if (bx < 0 || by < 0 || bx >= W || by >= json.height) throw new EditError('That would go off the map.');
+    if (decor.some((o) => covers(o, ix, iy)) || objects.some((o) => covers(o, ix, iy))) throw new EditError('A piece of scenery is in the way.');
+    if (before.desks.some((d) => d.x === ix && d.y === iy)) throw new EditError('A desk is in the way.');
+    if (before.entries.some((e) => e.x === ix && e.y === iy)) throw new EditError('An entry is in the way.');
+    const shared = before.rooms.find((o) => o.name !== r.name && o.kind !== 'terrace' && bx >= o.x - 1 && bx <= o.x + o.w && by >= o.y - 1 && by <= o.y + o.h);
+    if (shared) throw new EditError(`${shared.name} shares that wall.`);
+    if (floor[by * W + bx] === WALL) throw new EditError('Another wall is right behind it.');
+    plan.push({ old: oy * W + ox, inner: iy * W + ix, beyond: by * W + bx });
+  }
+  // A corner tile at the end of the wall (nothing of a shared wall behind it) goes back to open ground, so a grow can be undone exactly.
+  const corners: { old: number; beyond: number }[] = [];
+  for (const i of [-1, len]) {
+    const s = spot(i);
+    const [ox, oy] = s.old as [number, number];
+    const [bx, by] = s.beyond as [number, number];
+    if (bx < 0 || by < 0 || bx >= W || by >= json.height) continue;
+    if (floor[oy * W + ox] === WALL && floor[by * W + bx] !== WALL) corners.push({ old: oy * W + ox, beyond: by * W + bx });
+  }
+  for (const c of corners) {
+    floor[c.old] = floor[c.beyond]!;
+    coll[c.old] = coll[c.beyond]!;
+  }
+  for (const t of plan) {
+    floor[t.inner] = floor[t.old]!;
+    coll[t.inner] = coll[t.old]!;
+    floor[t.old] = floor[t.beyond]!;
+    coll[t.old] = coll[t.beyond]!;
+  }
+  const o = (layerOf(json, 'rooms').objects ?? []).find((x) => x.name === r.name);
+  if (!o) throw new EditError('That room is not in the map file.');
+  if (side === 'east') o.width = (o.width ?? 0) - T;
+  else if (side === 'south') o.height = (o.height ?? 0) - T;
+  else if (side === 'west') {
+    o.x += T;
+    o.width = (o.width ?? 0) - T;
+  } else {
+    o.y += T;
+    o.height = (o.height ?? 0) - T;
+  }
+  const after = readOfficeMap(json, { file, departments });
+  const was = unreachable(before);
+  for (const name of unreachable(after)) if (!was.has(name)) throw new EditError(`That would block the way to ${name}.`);
+  return json;
+}

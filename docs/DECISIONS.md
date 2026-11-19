@@ -1144,3 +1144,7 @@ See SPEC 19. Numbers 1 and 3 block slice 0: which CLIs on which account, and whe
 ## 2026-11-20 (a calendar file of the meetings)
 
 - `GET /api/meetings/calendar.ics` gives an iCalendar download (title, time, state; an hour long). It carries no guest link, room name or address, escapes the title so it cannot add a field, and folds lines at 75 characters. It is a download on the Meetings panel, not a subscribe-by-URL feed: a calendar app cannot send our sign-in cookie, and a secret URL would be a new thing to leak.
+
+## 2026-11-20 (S6C-2: shrinking a room)
+
+- `shrinkRoom` is the reverse of `growRoom`: the wall on that side moves in one tile with its doorways; the old wall tiles take the value of what lies beyond; end-of-wall corner stubs go back to open ground, so grow then shrink gives back exactly the same floor and collision layers (tested). Refused if the room would get under two tiles across, scenery, a desk or an entry is on the new wall tile, another room shares the wall, or it would cut something off. Same route as growing (`shrink: true`), same Undo.

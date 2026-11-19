@@ -83,7 +83,7 @@ export function OfficeWorld({ client, onOpen, onPanel, onOpenList, onFail }: { c
       setEditMessage('Now click where it goes.');
       return true;
     }
-    const done = action.kind === 'place' ? api.placeDecor({ name: action.name, x: action.x, y: action.y, ...(action.turn ? { turn: action.turn } : {}) }) : action.kind === 'move' ? api.moveDecor(action.id, { x: action.x, y: action.y }) : action.kind === 'door' ? api.toggleDoor({ x: action.x, y: action.y }) : action.kind === 'grow' ? api.growRoom({ x: action.x, y: action.y, side: action.side }) : api.removeDecor(action.id);
+    const done = action.kind === 'place' ? api.placeDecor({ name: action.name, x: action.x, y: action.y, ...(action.turn ? { turn: action.turn } : {}) }) : action.kind === 'move' ? api.moveDecor(action.id, { x: action.x, y: action.y }) : action.kind === 'door' ? api.toggleDoor({ x: action.x, y: action.y }) : action.kind === 'grow' ? api.growRoom({ x: action.x, y: action.y, side: action.side, ...(action.shrink ? { shrink: true } : {}) }) : api.removeDecor(action.id);
     void done.then(
       () => {
         try {

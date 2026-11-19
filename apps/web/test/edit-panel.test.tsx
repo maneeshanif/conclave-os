@@ -105,4 +105,8 @@ describe('what a click does while editing (S6B-9)', () => {
     expect(tileAction({ kind: 'grow', side: 'south' }, { x: 5, y: 6 }, [])).toEqual({ kind: 'grow', x: 5, y: 6, side: 'south' });
   });
 
+  it('the room size tool can shrink: the click carries that (S6C-2)', () => {
+    expect(tileAction({ kind: 'grow', side: 'west', shrink: true }, { x: 5, y: 6 }, [])).toEqual({ kind: 'grow', x: 5, y: 6, side: 'west', shrink: true });
+  });
+
 });

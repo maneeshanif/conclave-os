@@ -209,4 +209,34 @@ describe('room size (S6C-2)', () => {
     expect((await grow({ x: 3, y: 3, side: 'up' })).status).toBe(400);
     expect(JSON.stringify(await map())).toBe(before);
   });
+describe('room size, smaller (S6C-2)', () => {
+  const grow = (b: unknown) => app.request('/api/office/room/grow', { method: 'POST', headers: json, body: JSON.stringify(b) });
+  const rooms = async () => ((await (await app.request('/api/office')).json()) as { map: { rooms: { name: string; x: number; y: number; w: number; h: number }[] } }).map.rooms;
+
+  it('shrinks the room it grew, to the size it was, and refuses to shrink a wall another room shares', async () => {
+    let found: { name: string; x: number; y: number; w: number; h: number; side: string } | null = null;
+    for (const q of await rooms()) {
+      if (q.w * q.h > 400) continue;
+      for (const side of ['east', 'south', 'west', 'north']) {
+        if ((await grow({ x: q.x + 1, y: q.y + 1, side })).status === 200) {
+          found = { ...q, side };
+          break;
+        }
+      }
+      if (found) break;
+    }
+    expect(found).not.toBeNull();
+    const f = found!;
+    const bigger = (await rooms()).find((q) => q.name === f.name)!;
+    expect(bigger.w * bigger.h).toBeGreaterThan(f.w * f.h);
+    const res = await grow({ x: bigger.x + 1, y: bigger.y + 1, side: f.side, shrink: true });
+    expect(await res.clone().json()).toEqual({ ok: true });
+    expect((await rooms()).find((q) => q.name === f.name)).toMatchObject({ w: f.w, h: f.h });
+    const cos = (await rooms()).find((q) => q.name === 'Chief of Staff')!;
+    const shared = await grow({ x: cos.x + 1, y: cos.y + 1, side: 'east', shrink: true });
+    expect(shared.status).toBe(400);
+    expect(((await shared.json()) as { error: string }).error).toMatch(/shares that wall|in the way/);
+  });
+});
+
 });

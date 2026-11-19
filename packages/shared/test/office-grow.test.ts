@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { EditError, growRoom, readOfficeMap, type OfficeMapJson } from '../src/office';
+import { EditError, growRoom, readOfficeMap, shrinkRoom, type OfficeMapJson } from '../src/office';
 
 /** Making a room bigger in the office editor (S6C-2). */
 const root = path.resolve(import.meta.dirname, '..', '..', '..');
@@ -65,5 +65,50 @@ describe('growing a room (S6C-2)', () => {
     }
     expect(steps).toBeGreaterThan(0);
     expect(room(j, 'Research').w).toBe(room(base, 'Research').w + steps);
+  });
+});
+
+describe('shrinking a room (S6C-2)', () => {
+  it('undoes a grow exactly: grow east then shrink east gives back the same map', () => {
+    for (const side of ['east', 'south'] as const) {
+      const bigger = growRoom(base, { room: 'Research', side }, departments);
+      const back = shrinkRoom(bigger, { room: 'Research', side }, departments);
+      expect(floor(back)).toEqual(floor(base));
+      expect(back.layers.find((l) => l.name === 'collision')!.data).toEqual(base.layers.find((l) => l.name === 'collision')!.data);
+      expect(room(back, 'Research')).toMatchObject({ w: room(base, 'Research').w, h: room(base, 'Research').h });
+    }
+  });
+
+  it('makes the room a tile smaller with the wall a tile in, and the old wall tiles open ground', () => {
+    const before = room(base, 'Research');
+    const wider = growRoom(base, { room: 'Research', side: 'east' }, departments);
+    const smaller = shrinkRoom(wider, { room: 'Research', side: 'east' }, departments);
+    expect(room(smaller, 'Research').w).toBe(before.w);
+    expect(() => shrinkRoom(base, { room: 'Research', side: 'east' }, departments)).toThrow(/desk is in the way|in the way/); // a desk stands against that wall
+    const m = read(wider);
+    const after = read(shrinkRoom(wider, { room: 'Research', side: 'east' }, departments));
+    for (let y = before.y; y < before.y + before.h; y++) {
+      expect(m.walls[y]![before.x + before.w + 1]).toBe(true); // the wall of the bigger room
+      expect(after.walls[y]![before.x + before.w + 1]).toBe(read(base).walls[y]![before.x + before.w + 1]); // what is beyond is as it was
+      expect(after.walls[y]![before.x + before.w]).toBe(true); // the wall is back where it was
+    }
+  });
+
+  it('refuses when the wall is shared with another room, when it is too small, and for a room that is not there', () => {
+    expect(() => shrinkRoom(base, { room: 'Chief of Staff', side: 'east' }, departments)).toThrow(/shares that wall/);
+    expect(() => shrinkRoom(base, { room: 'Nowhere', side: 'east' }, departments)).toThrow(/no room called/);
+    expect(() => shrinkRoom(base, { room: 'Research', side: 'sideways' }, departments)).toThrow(/north, south, east or west/);
+    let j = base;
+    let steps = 0;
+    for (; steps < 20; steps++) {
+      try {
+        j = shrinkRoom(j, { room: 'Research', side: 'east' }, departments);
+      } catch (err) {
+        expect(err).toBeInstanceOf(EditError);
+        break;
+      }
+    }
+    expect(room(j, 'Research').w).toBeGreaterThanOrEqual(2);
+    expect(steps).toBeLessThan(20);
   });
 });

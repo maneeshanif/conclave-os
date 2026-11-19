@@ -48,7 +48,7 @@ Also in Paperclip and already ours: heartbeats and atomic checkout, run tokens, 
 | Feature | Status |
 | --- | --- |
 | 2D top-down world on Tiled maps, walk by keys or click | done |
-| Map editor in the app (place, remove, move, drag, doors, room size) | done; making a room smaller and adding a new wing are not built |
+| Map editor in the app (place, remove, move, drag, doors, bigger and smaller rooms) | done; adding a whole new wing is not built |
 | Rooms with behaviour (max users, locked, silent, focusable) | done in the map model and the office rules |
 | Walk up to someone and a bubble opens | partial: text bubbles and chat are done; audio and video are blocked (S6C-3: a camera, a microphone and a media server are needed to test) |
 | Screen sharing | blocked, same reason |

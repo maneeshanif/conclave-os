@@ -30,13 +30,16 @@ export function EditPanel({ tool, message, onTool, onDone, onUndo }: { tool: Edi
       ) : null}
       {tool?.kind === 'grow' ? (
         <div className="space-y-1">
-          <p className="text-xs text-neutral-300">Pick a side, then click inside the room to make it a tile bigger that way.</p>
+          <p className="text-xs text-neutral-300">Pick a side, then click inside the room to make it a tile {tool.shrink ? 'smaller' : 'bigger'} that way.</p>
           <div className="flex gap-1">
             {(['north', 'south', 'east', 'west'] as const).map((s) => (
-              <button key={s} type="button" aria-pressed={tool.side === s} className={`px-btn px-2 py-1 text-xs ${tool.side === s ? 'ring-2 ring-white' : ''}`} onClick={() => onTool({ kind: 'grow', side: s })}>
+              <button key={s} type="button" aria-pressed={tool.side === s} className={`px-btn px-2 py-1 text-xs ${tool.side === s ? 'ring-2 ring-white' : ''}`} onClick={() => onTool({ kind: 'grow', side: s, ...(tool.shrink ? { shrink: true } : {}) })}>
                 {s[0]!.toUpperCase() + s.slice(1)}
               </button>
             ))}
+            <button type="button" aria-pressed={Boolean(tool.shrink)} className={`px-btn px-2 py-1 text-xs ${tool.shrink ? 'ring-2 ring-white' : ''}`} onClick={() => onTool({ kind: 'grow', side: tool.side, ...(tool.shrink ? {} : { shrink: true }) })}>
+              Smaller
+            </button>
           </div>
         </div>
       ) : null}
