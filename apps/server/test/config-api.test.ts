@@ -186,4 +186,21 @@ describe('low trust (P4)', () => {
   });
 });
 
+describe('diagnostics', () => {
+  it('reports keys only as set or not set, never a value, and lists an agent whose folder failed its check', async () => {
+    const { keyStatuses } = await import('../src/diagnostics');
+    const k = keyStatuses({ RESEND_API_KEY: 're_secret_value', OPENAI_API_KEY: '   ', OUTREACH_FROM: 'a@b.c' });
+    expect(k.find((x) => x.name === 'RESEND_API_KEY')).toMatchObject({ set: true, usedByCode: true });
+    expect(k.find((x) => x.name === 'OPENAI_API_KEY')!.set).toBe(false); // blank is not set
+    expect(k.find((x) => x.name === 'LIVEKIT_API_KEY')).toMatchObject({ set: false, usedByCode: false });
+    expect(JSON.stringify(k)).not.toContain('re_secret_value');
+    await sql("insert into agent_probes (workspace_id, agent_id, ok, problems) select $1, id, false, '[\"AGENT.md is missing\"]'::jsonb from agents where key = 'cfg-r'", [ws()]);
+    const d = ((await config()) as unknown as { diagnostics: { node: string; keys: { name: string }[]; failedProbes: { key: string; problems: string[] }[] } }).diagnostics;
+    expect(d.node).toBe(process.version);
+    expect(d.keys.length).toBeGreaterThan(5);
+    expect(d.failedProbes).toEqual([{ key: 'cfg-r', problems: ['AGENT.md is missing'] }]);
+    await sql("delete from agent_probes where agent_id in (select id from agents where key = 'cfg-r')");
+  });
+});
+
 });

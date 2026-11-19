@@ -8,6 +8,7 @@ import { CHOICES, chosen, isChoice } from '../connectors/choice';
 import { setRoleStack } from '../company/role-edit';
 import { aliasWorksOn, models } from '../config/models';
 import { withWorkspace } from '../db/tenant';
+import { keyStatuses } from '../diagnostics';
 import { RUNTIMES } from '../runtimes/names';
 import { readHiring, rosterRoom } from '../talent/hiring';
 
@@ -32,6 +33,8 @@ export function configRoutes(deps: { workspaceId: string; pool: Pool; dataDir?: 
 
   r.get('/', async (c) => {
     const tx = c.get('tx').client;
+    // An agent whose folder failed its last check is kept out of the loop (A4); the problems are listed so they can be fixed.
+    const failedProbes = (await tx.query<{ key: string; problems: string[] }>("select a.key, p.problems from agents a join lateral (select ok, problems from agent_probes where agent_id = a.id order by at desc, id desc limit 1) p on true where p.ok = false order by a.key")).rows;
     const hiring = await readHiring(deps.pool, ws);
     const room = await rosterRoom(deps.pool, ws);
     const agents = (await tx.query<{ key: string; name: string; status: string; autonomy: number; self_writing: boolean; runtime: string; model_alias: string; trust: string; department: string | null }>(
@@ -47,6 +50,13 @@ export function configRoutes(deps: { workspaceId: string; pool: Pool; dataDir?: 
       releaseChannel: st?.release_channel ?? 'stable',
       taskWatchdog: st?.task_watchdog ?? false,
       agents: agents.map((a) => ({ key: a.key, name: a.name, department: a.department, status: a.status, autonomy: a.autonomy, selfWriting: a.self_writing, runtime: a.runtime, modelAlias: a.model_alias, trust: a.trust })),
+      diagnostics: {
+        node: process.version,
+        uptimeSeconds: Math.round(process.uptime()),
+        memoryMb: Math.round(process.memoryUsage().rss / 1048576),
+        keys: keyStatuses(process.env),
+        failedProbes: failedProbes,
+      },
       stack: { runtimes: RUNTIMES, models: Object.entries(models).map(([name, m]) => ({ name, on: m.on, remote: Boolean(m.allowRemote) })) },
       delegate: { registered: Boolean(d), active: d?.active ?? false, revoked: Boolean(d?.revokedAt), fingerprint: d?.fingerprint ?? null, mandate: d?.mandate ?? {}, handDecisions: hand, handDecisionsNeeded: HAND_DECISIONS_NEEDED },
       // Which connector is in use is a setting (PUT /connectors, no restart); keys are shown as set or not set, never their value.

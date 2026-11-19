@@ -17,6 +17,7 @@ const cfg = (over: Partial<ConfigView> = {}): ConfigView => ({
     { key: 'kofi', name: 'Kofi', department: 'engineering', status: 'active', autonomy: 0, selfWriting: true, runtime: 'codex', modelAlias: 'any-model', trust: 'standard' },
   ],
   delegate: { registered: false, active: false, revoked: false, fingerprint: null, mandate: {}, handDecisions: {}, handDecisionsNeeded: 20 },
+  diagnostics: { node: 'v22.1.0', uptimeSeconds: 3600, memoryMb: 210, keys: [{ name: 'RESEND_API_KEY', set: true, for: 'Sending approved email', usedByCode: true }, { name: 'LIVEKIT_API_KEY', set: false, for: 'Client meeting video', usedByCode: false }], failedProbes: [{ key: 'kofi', problems: ['AGENT.md is missing'] }] },
   stack: { runtimes: ['claude-cli', 'codex', 'openai-agents'], models: [{ name: 'writer', on: ['claude-cli'], remote: false }, { name: 'any-model', on: ['codex'], remote: false }, { name: 'openai', on: ['openai-agents'], remote: true }] },
   connectors: { git: 'local', meeting: 'local', options: { git: ['local', 'gh'], meeting: ['local', 'livekit'] }, claudeAgentKey: 'not set', httpWorkers: 0 },
   ...over,
@@ -180,6 +181,15 @@ describe('the Settings panel', () => {
     render(<SettingsView client={c} />);
     fireEvent.change(await screen.findByLabelText('Trust of Wren'), { target: { value: 'low' } });
     await waitFor(() => expect(c.putAgent).toHaveBeenCalledWith('wren', { trust: 'low' }));
+  });
+
+  it('shows diagnostics: keys as set or not set with what they are for, and an agent kept out of the loop', async () => {
+    render(<SettingsView client={client()} />);
+    const d = await screen.findByLabelText('Diagnostics');
+    expect(d.textContent).toMatch(/RESEND_API_KEY: set/);
+    expect(d.textContent).toMatch(/LIVEKIT_API_KEY: not set \(Client meeting video; connector not written yet\)/);
+    expect(d.textContent).toMatch(/kofi: AGENT.md is missing/);
+    expect(d.textContent).not.toMatch(/sk-|re_/);
   });
 
 });

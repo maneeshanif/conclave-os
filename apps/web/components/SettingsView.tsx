@@ -348,6 +348,34 @@ export function SettingsView({ client = real }: { client?: SettingsClient }) {
         </ul>
       </section>
 
+      <section aria-label="Diagnostics">
+        <h3 className="font-semibold">Diagnostics</h3>
+        <p className="text-slate-600">
+          Server {cfg.diagnostics.node}, up {Math.floor(cfg.diagnostics.uptimeSeconds / 60)} min, {cfg.diagnostics.memoryMb} MB. Keys are shown as set or not set, never their value. Add one in <code>.env</code> and restart (see docs/KEYS-GUIDE.md).
+        </p>
+        <ul className="grid gap-1 md:grid-cols-2">
+          {cfg.diagnostics.keys.map((k) => (
+            <li key={k.name}>
+              <code>{k.name}</code>: {k.set ? 'set' : 'not set'} <span className="text-slate-500">({k.for}{k.usedByCode ? '' : '; connector not written yet'})</span>
+            </li>
+          ))}
+        </ul>
+        {cfg.diagnostics.failedProbes.length ? (
+          <div>
+            <p className="font-medium">Agents kept out of the loop (their folder failed its check):</p>
+            <ul>
+              {cfg.diagnostics.failedProbes.map((p) => (
+                <li key={p.key}>
+                  {p.key}: {p.problems.join('; ')}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : (
+          <p className="text-slate-600">Every agent folder passed its last check.</p>
+        )}
+      </section>
+
       <section aria-label="Tool calls">
         <h3 className="font-semibold">Recent tool calls</h3>
         {calls.length === 0 ? <p className="text-slate-500">No tool calls yet.</p> : null}

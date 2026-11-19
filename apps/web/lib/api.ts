@@ -253,6 +253,7 @@ export interface ConfigView {
   releaseChannel: 'stable' | 'beta' | 'nightly';
   taskWatchdog: boolean;
   agents: { key: string; name: string; department: string | null; status: string; autonomy: number; selfWriting: boolean; runtime: string; modelAlias: string; trust: string }[];
+  diagnostics: { node: string; uptimeSeconds: number; memoryMb: number; keys: { name: string; set: boolean; for: string; usedByCode: boolean }[]; failedProbes: { key: string; problems: string[] }[] };
   stack: { runtimes: string[]; models: { name: string; on: string[]; remote: boolean }[] };
   delegate: { registered: boolean; active: boolean; revoked: boolean; fingerprint: string | null; mandate: Record<string, unknown>; handDecisions: Record<string, number>; handDecisionsNeeded: number };
   connectors: { git: string; meeting: string; options: { git: string[]; meeting: string[] }; claudeAgentKey: string; httpWorkers: number };
