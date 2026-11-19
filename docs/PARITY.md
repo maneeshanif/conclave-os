@@ -61,7 +61,7 @@ Also in Paperclip and already ours: heartbeats and atomic checkout, run tokens, 
 | Avatar customisation in parts | blocked (needs layered art; six whole looks exist) |
 | Chat sync and sign-in with Discord, Slack, Teams | blocked (accounts and keys); our Slack stand-in writes to a folder |
 | Embedded tools (Trello, Notion, Miro, Google) | not built: panels open our own tools only; this would be an iframe allow-list, a decision for Anees |
-| Calendar links | partial: client meetings have a planned time and a guest link; there is no calendar feed |
+| Calendar links | done as a download (`.ics` of the meetings, no links in it); a subscribe-by-URL feed is not built on purpose (it would need a secret URL) |
 | White labelling | partial: nothing about one company is in `apps/` (rule 8), so the name and look come from `company/`; there is no theme screen |
 | Gamification and badges | not built, on purpose: it does not help run a company |
 | Themed offices (sci-fi, medieval, nature) | blocked (needs art) |

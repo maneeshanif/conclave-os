@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import type { Pool } from 'pg';
 import { z } from 'zod';
 import type { AppEnv } from '../app';
+import { meetingsToIcs } from '../meetings/calendar';
 import { SwitchableMeeting } from '../connectors/choice';
 import { closeMeeting, MeetingStateError, openMeeting, type MeetingConnector } from '../meetings/connector';
 
@@ -19,6 +20,14 @@ export function meetingRoutes(deps: { workspaceId: string; pool: Pool; connector
          from meetings m order by m.starts_at desc, m.id limit 200`,
     );
     return c.json({ meetings: rows.rows.map((m) => ({ id: m.id, title: m.title, startsAt: m.starts_at.toISOString(), status: m.status, room: m.room, dealId: m.deal_id, invites: m.invites })) });
+  });
+
+  // A calendar file of the meetings (title, time, state only), to download and open in any calendar app.
+  r.get('/calendar.ics', async (c) => {
+    const rows = await c.get('tx').client.query<{ id: string; title: string; starts_at: Date; status: string }>('select id, title, starts_at, status from meetings order by starts_at limit 500');
+    return new Response(meetingsToIcs(rows.rows.map((m) => ({ id: m.id, title: m.title, startsAt: m.starts_at, status: m.status }))), {
+      headers: { 'content-type': 'text/calendar; charset=utf-8', 'content-disposition': 'attachment; filename="meetings.ics"', 'cache-control': 'no-store' },
+    });
   });
 
   r.post('/', async (c) => {

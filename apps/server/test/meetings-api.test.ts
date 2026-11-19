@@ -71,4 +71,15 @@ describe('the client meeting room on the map (S10-3)', () => {
     expect(board).toBeTruthy();
     expect(board.x >= reception.x && board.x < reception.x + reception.w && board.y >= reception.y && board.y < reception.y + reception.h).toBe(true);
   });
+
+  it('gives a calendar file of the meetings: titles and times, no links, as a download', async () => {
+    const res = await app.request('/api/meetings/calendar.ics');
+    expect(res.status).toBe(200);
+    expect(res.headers.get('content-type')).toContain('text/calendar');
+    expect(res.headers.get('content-disposition')).toMatch(/attachment/);
+    const text = await res.text();
+    expect(text).toContain('BEGIN:VCALENDAR');
+    expect(text).toContain('SUMMARY:Kickoff with Glow Clinic');
+    expect(text).not.toMatch(/http|LOCATION|guest/i);
+  });
 });

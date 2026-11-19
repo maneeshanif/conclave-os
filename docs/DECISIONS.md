@@ -1140,3 +1140,7 @@ See SPEC 19. Numbers 1 and 3 block slice 0: which CLIs on which account, and whe
 ## 2026-11-20 (Settings: the stack, per agent)
 
 - The Agents table on Settings has a runtime menu and a model menu for each agent. `PUT /api/config/agents/:key {runtime, modelAlias}` accepts only a pair that works together (`aliasWorksOn`, the rule the loader uses), writes the database row, and writes the same two lines into the agent's role file (`setRoleStack`), because a company sync reads the role file back and would otherwise undo the change. Nothing else in the role file is touched. A model that leaves the machine is marked in the menu.
+
+## 2026-11-20 (a calendar file of the meetings)
+
+- `GET /api/meetings/calendar.ics` gives an iCalendar download (title, time, state; an hour long). It carries no guest link, room name or address, escapes the title so it cannot add a field, and folds lines at 75 characters. It is a download on the Meetings panel, not a subscribe-by-URL feed: a calendar app cannot send our sign-in cookie, and a secret URL would be a new thing to leak.

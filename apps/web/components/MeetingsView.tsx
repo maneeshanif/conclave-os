@@ -36,6 +36,12 @@ export function MeetingsView({ client = real }: { client?: MeetingsClient }) {
   if (!rows.length) return <p className="text-sm text-slate-500">No client meetings yet. An invite is asked for by an agent and goes out only after you approve it.</p>;
   return (
     <div className="space-y-3">
+      <p className="text-xs">
+        <a href={`${API}/api/meetings/calendar.ics`} download="meetings.ics" className="underline">
+          Download as a calendar file
+        </a>{' '}
+        <span className="text-slate-500">(titles and times only, no links)</span>
+      </p>
       {rows.map((m) => (
         <article key={m.id} className="rounded-lg border border-slate-200 bg-white p-3 text-sm">
           <div className="flex items-baseline justify-between gap-2">
