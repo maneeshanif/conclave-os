@@ -1,0 +1,9 @@
+# Plugin: signals-kit (SPEC 4, 8, 10). Skills and tools for scouts that record signals.
+# Nothing in it can contact, post to, follow or promote anyone. A signal is data; a person decides what happens to it.
+name: signals-kit
+version: 1
+description: "Reads the items a scout is handed and records the ones worth acting on as signals, then scores them. It has no way to contact anyone or to turn a signal into a lead."
+skills: [find-signals, score-signal]
+connectors: [os]
+# The os tools the skills use. Checked against the server, so this list cannot drift.
+tools: [get_task, add_signal, score_signal, comment, complete_task, block_task, ask_founder]

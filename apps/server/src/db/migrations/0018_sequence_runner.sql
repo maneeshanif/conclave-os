@@ -1,0 +1,3 @@
+ALTER TABLE "sequence_enrollments" ADD COLUMN "requested_step" smallint DEFAULT 0 NOT NULL;--> statement-breakpoint
+ALTER TABLE "sequence_enrollments" ADD COLUMN "step_task_id" uuid;--> statement-breakpoint
+ALTER TABLE "sequence_enrollments" ADD CONSTRAINT "sequence_enrollments_task_fk" FOREIGN KEY ("workspace_id","step_task_id") REFERENCES "public"."tasks"("workspace_id","id") ON DELETE no action ON UPDATE no action;

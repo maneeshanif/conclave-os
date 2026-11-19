@@ -1,4 +1,4 @@
-import { readFile, writeFile } from 'node:fs/promises';
+import { readFile, rm, rmdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { HOST, REPO_ROOT, resolvePort } from '../config';
 import { loadCompany } from '../company/loader';
@@ -8,6 +8,25 @@ import { openSystem } from '../system';
 type Env = Record<string, string | undefined>;
 const AGENT = 'research-researcher';
 const TASK = 'List five facts from the company file, each with the line it came from';
+
+/**
+ * Takes away an agent the e2e hired, and the folders that only held it (stopping at the first one that still holds something else),
+ * so a run leaves nothing new in the company folder (S0-15). Never touches anything outside that folder.
+ */
+export async function removeHiredAgent(companyRoot: string, roleFile: string): Promise<void> {
+  const root = path.resolve(companyRoot);
+  const agentDir = path.dirname(path.resolve(roleFile));
+  if (path.relative(root, agentDir).startsWith('..') || path.isAbsolute(path.relative(root, agentDir))) throw new Error(`Refusing to remove ${agentDir}: it is outside the company folder.`);
+  await rm(agentDir, { recursive: true, force: true });
+  // departments/<dept>/agents/<id>: tidy upwards while the folder is empty, never past departments/ itself.
+  for (let dir = path.dirname(agentDir); path.relative(root, dir) !== '' && !path.relative(root, dir).startsWith('..'); dir = path.dirname(dir)) {
+    try {
+      await rmdir(dir);
+    } catch {
+      break; // not empty (or already gone): leave it
+    }
+  }
+}
 
 interface TaskDetail {
   task: { status: string; blocked_reason: string | null };
@@ -30,8 +49,10 @@ export async function e2e(env: Env = process.env, print: (s: string) => void = c
   const sys = await openSystem(env);
   const company = await loadCompany(sys.companyRoot);
   let agent = company.agents.find((a) => a.role.id === AGENT);
+  let hired = false;
   if (!agent) {
     const r = await agentNew(sys, { template: 'researcher', department: 'research', id: AGENT, name: 'Researcher' });
+    hired = true;
     print(`Hired ${r.id}.`);
     agent = (await loadCompany(sys.companyRoot)).agents.find((a) => a.role.id === AGENT)!;
   }
@@ -81,7 +102,9 @@ export async function e2e(env: Env = process.env, print: (s: string) => void = c
     for (const [name, ok] of results) print(`${ok ? 'PASS' : 'FAIL'}  ${name}`);
     return results.every(([, ok]) => ok) ? 0 : 1;
   } finally {
-    await writeFile(roleFile, original);
+    // An agent this run hired is taken away again, so the company folder is as it was before.
+    if (hired) await removeHiredAgent(sys.companyRoot, roleFile);
+    else await writeFile(roleFile, original);
     await renderAll(sys);
     await sys.close();
   }

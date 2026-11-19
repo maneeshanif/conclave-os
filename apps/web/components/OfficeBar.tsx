@@ -1,0 +1,414 @@
+'use client';
+
+import { useEffect, useState, type ReactNode } from 'react';
+import { ago } from '../office/ago';
+import { EMOTES } from '@conclave/shared';
+import { cleanName, type Profile } from '../office/profile';
+import { nextSpeed, type Speed } from '../office/demo';
+import type { SoundSettings } from '../office/sound';
+
+const LOOK_COUNT = 6;
+
+export type Availability = 'available' | 'busy' | 'away';
+export interface Person {
+  id: string;
+  name: string;
+  where: string;
+  /** From the team card (S6-14b2): working, waiting, blocked, discussion, handoff or idle. */
+  state?: string;
+  since?: string | null;
+  task?: string | null;
+  forYou?: number;
+}
+
+/** One look from the sprite sheet (the figure facing you, standing still), drawn with CSS so there is no second picture to load. */
+function LookFace({ look, size }: { look: number; size: number }) {
+  const scale = size / 32;
+  return <span aria-hidden className="inline-block" style={{ width: size, height: size, backgroundImage: 'url(/office/people.png)', backgroundRepeat: 'no-repeat', backgroundSize: `${576 * scale}px auto`, backgroundPosition: `-${look * 3 * 32 * scale}px 0`, imageRendering: 'pixelated' }} />;
+}
+
+const STATE_LABEL: Record<string, string> = { working: 'Working', waiting: 'Waiting for you', blocked: 'Blocked', discussion: 'In a discussion', handoff: 'Handing over', idle: 'Idle' };
+const STATE_DOT: Record<string, string> = { working: 'bg-green-400', waiting: 'bg-amber-400', blocked: 'bg-red-400', discussion: 'bg-purple-400', handoff: 'bg-cyan-400', idle: 'bg-neutral-400' };
+
+const STATUS: { id: Availability; label: string; dot: string }[] = [
+  { id: 'available', label: 'Available', dot: 'bg-green-500' },
+  { id: 'busy', label: 'Busy', dot: 'bg-red-500' },
+  { id: 'away', label: 'Away', dot: 'bg-amber-400' },
+];
+const pill = 'px-pill px-font';
+const item = 'flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm hover:bg-white/10';
+
+/**
+ * The bar over the world: who is here, a tools menu and your status. Floating groups on a desktop; on a phone the same controls
+ * sit along the bottom edge. It only reports what you chose; the page decides what to do (SPEC 12).
+ */
+export function OfficeBar(props: { people: Person[]; /** What just happened, newest first (S6-14b3). Left out, the panel has no feed. */ activity?: { id: string; at: string; text: string }[] | undefined; availability: Availability; onAvailability: (a: Availability) => void; onOpenAgent: (id: string) => void; onOverview: () => void; /** More controls next to the people button (the company switcher). */ extra?: ReactNode; /** Called from the Tools menu: the page shows the add-a-department dialog. */ onAddDepartment?: () => void; /** Called from the Tools menu: the page shows the add-an-agent dialog. */ onAddAgent?: () => void; /** Opens the list of rooms and agents, for keyboard and screen-reader use and for a phone (S6-15a). */ onOpenList?: () => void; /** Opens Settings (S12). Left out, there is no button. */ onSettings?: () => void; /** Opens the boards (S12). Left out, there is no button. */ onBoards?: () => void; /** Opens the embedded tools (S12). Left out, there is no button. */ onEmbeds?: () => void; /** Demo mode (S12): on or off and how fast, and what to do when it changes. Left out, there is no button. */ demo?: { on: boolean; speed: Speed }; onDemo?: (d: { on: boolean; speed: Speed }) => void; /** Your name and look, and what to do when you change them (S6-15b). Left out, there is no picker. */ profile?: Profile; onProfile?: (p: Profile) => void; /** Shows a quick reaction over your head (S6-18). Left out, there is no button. */ onEmote?: (emote: string) => void; /** Called from the Tools menu: the page shows the add-a-desk dialog (S6B-1). */ onAddDesk?: () => void; /** Opens the megaphone (S6B-7). */ onMegaphone?: () => void; /** Called from the Tools menu: the page starts editing the office (S6B-9). */ onEdit?: () => void; /** The sound switches and what to do when one changes (S6B-5). Left out, there is no menu. */ sound?: SoundSettings; onSound?: (s: SoundSettings) => void }) {
+  const [menu, setMenu] = useState<'tools' | 'status' | 'react' | 'sound' | null>(null);
+  const [panel, setPanel] = useState(false);
+  const [picker, setPicker] = useState(false);
+  const [typed, setTyped] = useState<string | null>(null);
+  const current = STATUS.find((s) => s.id === props.availability)!;
+
+  return (
+    <>
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 flex items-end justify-between gap-2 p-2 sm:inset-x-0 sm:bottom-auto sm:top-0 sm:items-start sm:p-3">
+        <div className="pointer-events-auto flex gap-2">
+          <div className={`flex ${pill}`}>
+            <button type="button" aria-label={`People, ${props.people.length} here`} aria-expanded={panel} onClick={() => setPanel(!panel)} className="flex items-center gap-2 px-3 py-2 text-sm">
+              <span aria-hidden>👥</span>
+              <span>{props.people.length}</span>
+            </button>
+          </div>
+          {props.profile && props.onProfile ? (
+            <div className={`relative flex ${pill}`}>
+              <button type="button" aria-label="Your look" title="Your look" aria-expanded={picker} onClick={() => setPicker(!picker)} className="flex items-center px-2 py-1.5">
+                <LookFace look={props.profile.look} size={28} />
+              </button>
+              {picker ? (
+                <div role="dialog" aria-label="Your look" className="px-pop px-font absolute left-0 top-full z-20 mt-2 w-64 p-3 text-sm">
+                  <label className="block text-xs text-neutral-300">
+                    Name
+                    <input
+                      value={typed ?? props.profile.name}
+                      maxLength={30}
+                      onChange={(e) => setTyped(e.target.value)}
+                      onBlur={() => {
+                        if (typed !== null) props.onProfile?.({ name: cleanName(typed), look: props.profile!.look });
+                        setTyped(null);
+                      }}
+                      className="mt-1 w-full rounded-md border border-white/20 bg-white/10 px-2 py-1.5 text-sm text-white"
+                    />
+                  </label>
+                  <fieldset className="mt-3">
+                    <legend className="text-xs text-neutral-300">Look</legend>
+                    <div className="mt-1 grid grid-cols-6 gap-1">
+                      {Array.from({ length: LOOK_COUNT }, (_, i) => (
+                        <label key={i} className={`flex cursor-pointer items-center justify-center rounded-md p-1 ${props.profile!.look === i ? 'bg-white/25 ring-2 ring-white' : 'hover:bg-white/10'}`}>
+                          <input type="radio" name="look" aria-label={`Look ${i + 1}`} checked={props.profile!.look === i} onChange={() => props.onProfile?.({ name: props.profile!.name, look: i })} className="sr-only" />
+                          <LookFace look={i} size={32} />
+                        </label>
+                      ))}
+                    </div>
+                  </fieldset>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+          {props.extra}
+          {props.sound && props.onSound ? (
+            <div className={`relative flex ${pill}`}>
+              <button type="button" aria-label="Sound" title="Sound" aria-haspopup="menu" aria-expanded={menu === 'sound'} onClick={() => setMenu(menu === 'sound' ? null : 'sound')} className="px-3 py-2 text-sm">
+                <span aria-hidden>{props.sound.effects || props.sound.voice ? '🔊' : '🔇'}</span>
+              </button>
+              {menu === 'sound' ? (
+                <div role="menu" aria-label="Sound" className="px-pop px-font absolute left-0 top-full z-20 mt-2 w-60 p-1 text-sm">
+                  <button type="button" role="menuitemcheckbox" aria-checked={props.sound.effects} onClick={() => props.onSound?.({ ...props.sound!, effects: !props.sound!.effects })} className="flex w-full items-center justify-between rounded px-3 py-2 text-left hover:bg-white/10">
+                    <span>Sound effects</span>
+                    <span aria-hidden>{props.sound.effects ? 'On' : 'Off'}</span>
+                  </button>
+                  <button type="button" role="menuitemcheckbox" aria-checked={props.sound.voice} onClick={() => props.onSound?.({ ...props.sound!, voice: !props.sound!.voice })} className="flex w-full items-center justify-between rounded px-3 py-2 text-left hover:bg-white/10">
+                    <span>Read messages aloud</span>
+                    <span aria-hidden>{props.sound.voice ? 'On' : 'Off'}</span>
+                  </button>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+          {props.onMegaphone ? (
+            <div className={`relative flex ${pill}`}>
+              <button type="button" aria-label="Megaphone" title="Megaphone" onClick={props.onMegaphone} className="px-3 py-2 text-sm">
+                <span aria-hidden>📣</span>
+              </button>
+            </div>
+          ) : null}
+          {props.onEmote ? (
+            <div className={`relative flex ${pill}`}>
+              <button type="button" aria-label="React" title="React" aria-haspopup="menu" aria-expanded={menu === 'react'} onClick={() => setMenu(menu === 'react' ? null : 'react')} className="px-3 py-2 text-sm">
+                <span aria-hidden>😀</span>
+              </button>
+              {menu === 'react' ? (
+                <div role="menu" aria-label="Reactions" className="px-pop px-font absolute left-0 top-full z-20 mt-2 flex w-max max-w-[90vw] flex-wrap gap-1 p-2 text-xl">
+                  {EMOTES.map((e) => (
+                    <button
+                      key={e}
+                      type="button"
+                      role="menuitem"
+                      onClick={() => {
+                        setMenu(null);
+                        props.onEmote?.(e);
+                      }}
+                      className="rounded px-1.5 py-1 hover:bg-white/15"
+                    >
+                      {e}
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+          {props.demo && props.onDemo ? (
+            <div className={`flex ${pill}`}>
+              <button type="button" aria-pressed={props.demo.on} aria-label="Demo" title="Demo: the office acts out a day (only on this screen)" onClick={() => props.onDemo?.({ ...props.demo!, on: !props.demo!.on })} className={`px-3 py-2 text-sm ${props.demo.on ? 'bg-white/20' : ''}`}>
+                <span aria-hidden>▶</span>
+              </button>
+              {props.demo.on ? (
+                <button type="button" aria-label={`Speed ${props.demo.speed}x`} title="Change the speed" onClick={() => props.onDemo?.({ ...props.demo!, speed: nextSpeed(props.demo!.speed) })} className="px-2 py-2 text-xs">
+                  {props.demo.speed}x
+                </button>
+              ) : null}
+            </div>
+          ) : null}
+          {props.onEmbeds ? (
+            <div className={`flex ${pill}`}>
+              <button type="button" aria-label="Embedded tools" title="Embedded tools" onClick={props.onEmbeds} className="px-3 py-2 text-sm">
+                <span aria-hidden>🧩</span>
+              </button>
+            </div>
+          ) : null}
+          {props.onBoards ? (
+            <div className={`flex ${pill}`}>
+              <button type="button" aria-label="Boards" title="Boards" onClick={props.onBoards} className="px-3 py-2 text-sm">
+                <span aria-hidden>▦</span>
+              </button>
+            </div>
+          ) : null}
+          {props.onSettings ? (
+            <div className={`flex ${pill}`}>
+              <button type="button" aria-label="Settings" title="Settings" onClick={props.onSettings} className="px-3 py-2 text-sm">
+                <span aria-hidden>⚙</span>
+              </button>
+            </div>
+          ) : null}
+          {props.onOpenList ? (
+            <div className={`flex ${pill}`}>
+              <button type="button" aria-label="Rooms and agents" title="Rooms and agents" onClick={props.onOpenList} className="px-3 py-2 text-sm">
+                <span aria-hidden>☰</span>
+              </button>
+            </div>
+          ) : null}
+        </div>
+        <div className="pointer-events-auto relative flex gap-2">
+          <div className={`relative ${pill}`}>
+            <button type="button" aria-haspopup="menu" aria-expanded={menu === 'tools'} onClick={() => setMenu(menu === 'tools' ? null : 'tools')} className="px-3 py-2 text-sm">
+              Tools ▾
+            </button>
+            {menu === 'tools' ? (
+              <div role="menu" className={`absolute bottom-full right-0 mb-2 w-52 p-1 sm:bottom-auto sm:top-full sm:mb-0 sm:mt-2 ${pill}`}>
+                <button
+                  type="button"
+                  role="menuitem"
+                  className={item}
+                  onClick={() => {
+                    props.onOverview();
+                    setMenu(null);
+                  }}
+                >
+                  See the whole office
+                </button>
+                {props.onAddDepartment ? (
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className={item}
+                    onClick={() => {
+                      props.onAddDepartment?.();
+                      setMenu(null);
+                    }}
+                  >
+                    Add a department…
+                  </button>
+                ) : null}
+                {props.onAddDesk ? (
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className={item}
+                    onClick={() => {
+                      props.onAddDesk?.();
+                      setMenu(null);
+                    }}
+                  >
+                    Add a desk…
+                  </button>
+                ) : null}
+                {props.onEdit ? (
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className={item}
+                    onClick={() => {
+                      props.onEdit?.();
+                      setMenu(null);
+                    }}
+                  >
+                    Edit the office…
+                  </button>
+                ) : null}
+                {props.onAddAgent ? (
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className={item}
+                    onClick={() => {
+                      props.onAddAgent?.();
+                      setMenu(null);
+                    }}
+                  >
+                    Add an agent…
+                  </button>
+                ) : null}
+              </div>
+            ) : null}
+          </div>
+          <div className={`relative ${pill}`}>
+            <button type="button" aria-label="Your status" aria-haspopup="menu" aria-expanded={menu === 'status'} onClick={() => setMenu(menu === 'status' ? null : 'status')} className="flex items-center gap-2 px-3 py-2 text-sm">
+              <span className={`h-2.5 w-2.5 rounded-full ${current.dot}`} />
+              <span>You</span>
+            </button>
+            {menu === 'status' ? (
+              <div role="menu" aria-label="Change your status" className={`absolute bottom-full right-0 mb-2 w-44 p-1 sm:bottom-auto sm:top-full sm:mb-0 sm:mt-2 ${pill}`}>
+                {STATUS.map((s) => (
+                  <button
+                    key={s.id}
+                    type="button"
+                    role="menuitemradio"
+                    aria-checked={s.id === props.availability}
+                    className={item}
+                    onClick={() => {
+                      props.onAvailability(s.id);
+                      setMenu(null);
+                    }}
+                  >
+                    {s.label}
+                  </button>
+                ))}
+              </div>
+            ) : null}
+          </div>
+        </div>
+      </div>
+
+      {panel ? (
+        <section role="region" aria-label="People" className={`absolute left-2 top-2 z-20 max-h-[85%] w-64 overflow-auto p-2 sm:left-3 sm:top-14 ${pill}`}>
+          <div className="mb-1 flex items-center justify-between px-2 py-1">
+            <h3 className="text-sm font-semibold">{props.people.length} here</h3>
+            <button type="button" aria-label="Close people" className="rounded px-2 text-lg hover:bg-white/10" onClick={() => setPanel(false)}>
+              ×
+            </button>
+          </div>
+          <ul>
+            {props.people.map((p) => (
+              <li key={p.id}>
+                <button type="button" className={`${item} flex-col items-start`} onClick={() => props.onOpenAgent(p.id)}>
+                  <span className="flex w-full items-center gap-2">
+                    <span className="font-medium">{p.name}</span>
+                    {p.state ? (
+                      <span className="flex items-center gap-1 text-xs text-neutral-200">
+                        <span className={`h-2 w-2 rounded-full ${STATE_DOT[p.state] ?? 'bg-neutral-400'}`} />
+                        {STATE_LABEL[p.state] ?? p.state}
+                        {p.since ? ` · ${ago(p.since)}` : ''}
+                      </span>
+                    ) : (
+                      <span className="text-xs text-neutral-300">{p.where}</span>
+                    )}
+                    {p.forYou ? <span className="ml-auto rounded-full bg-amber-500 px-2 py-0.5 text-xs font-medium text-neutral-900">{p.forYou} for you</span> : null}
+                  </span>
+                  {p.task ? <span className="text-xs text-neutral-300">{p.task}</span> : null}
+                </button>
+              </li>
+            ))}
+          </ul>
+          {props.activity ? (
+            <div className="mt-2 border-t border-white/10 px-2 pt-2">
+              <h4 className="mb-1 text-xs font-semibold uppercase tracking-wide text-neutral-300">Activity</h4>
+              {props.activity.length === 0 ? (
+                <p className="text-xs text-neutral-400">Nothing has happened yet.</p>
+              ) : (
+                <ul aria-label="Activity" className="space-y-1">
+                  {props.activity.slice(0, 8).map((e) => (
+                    <li key={e.id} className="text-xs text-neutral-200">
+                      {e.text} <span className="text-neutral-400">{ago(e.at)}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          ) : null}
+        </section>
+      ) : null}
+    </>
+  );
+}
+
+/** A notice over the map about the room you are in. */
+export function ZonePill({ text }: { text: string | null }) {
+  if (!text) return null;
+  return (
+    <p role="status" className="pointer-events-none absolute left-1/2 top-14 z-10 max-w-[90%] -translate-x-1/2 rounded-xl bg-red-800/90 px-4 py-2 text-center text-xs text-white shadow sm:top-16 sm:text-sm">
+      {text}
+    </p>
+  );
+}
+
+const SEEN = 'conclave.office.welcome';
+const seen = () => {
+  try {
+    return localStorage.getItem(SEEN) === '1';
+  } catch {
+    return false;
+  }
+};
+const remember = () => {
+  try {
+    localStorage.setItem(SEEN, '1');
+  } catch {
+    // Not saved: the card shows again next time, which is harmless.
+  }
+};
+
+/** A short, skippable welcome the first time you open the office. */
+export function WelcomeCard() {
+  // Closed on the server and on first paint, then opened if you have not seen it: no mismatch between the two.
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    if (!seen()) setOpen(true);
+  }, []);
+  const [tour, setTour] = useState(false);
+  if (!open) return null;
+  const close = () => {
+    remember();
+    setOpen(false);
+  };
+  return (
+    <div role="dialog" aria-label="Welcome to the office" className="absolute inset-0 z-30 flex items-center justify-center bg-neutral-900/60 p-4">
+      <div className="px-pop px-font max-w-sm space-y-3 p-5 text-center">
+        <h2 className="text-lg font-semibold">Welcome to the office</h2>
+        {tour ? (
+          <>
+            <ul className="space-y-1 text-left text-sm text-neutral-200">
+              <li>Move with the arrow keys, or click where you want to go.</li>
+              <li>Walk up to an agent to open its drawer and give it a task.</li>
+              <li>Click an object (the approvals desk, the whiteboard) to open its page.</li>
+              <li>The buttons at the edge zoom in and out.</li>
+            </ul>
+            <button type="button" onClick={close} className="px-btn px-4 py-2 text-sm">
+              Got it
+            </button>
+          </>
+        ) : (
+          <>
+            <p className="text-sm text-neutral-300">Your agents work here. See who is busy, who is waiting for you, and walk up to talk to one.</p>
+            <div className="flex justify-center gap-3">
+              <button type="button" onClick={() => setTour(true)} className="px-btn px-4 py-2 text-sm">
+                Let&apos;s go!
+              </button>
+              <button type="button" onClick={close} className="px-4 py-2 text-sm text-neutral-300">
+                Skip tutorial
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}

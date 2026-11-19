@@ -1,0 +1,7 @@
+# Neutral permission rules (SPEC 5). The Calls Desk reads the tables through the os tools and needs no shell and no web.
+read: allow
+write: allow
+shell: deny
+web_search: deny
+web_fetch: deny
+subagents: deny

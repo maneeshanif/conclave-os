@@ -1,0 +1,5 @@
+ALTER TABLE "video_briefs" DROP CONSTRAINT "video_briefs_status_ck";--> statement-breakpoint
+ALTER TABLE "posts" ADD COLUMN "video_brief_id" uuid;--> statement-breakpoint
+ALTER TABLE "posts" ADD CONSTRAINT "posts_video_brief_fk" FOREIGN KEY ("workspace_id","video_brief_id") REFERENCES "public"."video_briefs"("workspace_id","id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+CREATE UNIQUE INDEX "posts_live_video_uq" ON "posts" USING btree ("workspace_id","video_brief_id") WHERE "posts"."video_brief_id" is not null and "posts"."status" not in ('rejected','expired','cancelled','failed');--> statement-breakpoint
+ALTER TABLE "video_briefs" ADD CONSTRAINT "video_briefs_status_ck" CHECK ("video_briefs"."status" in ('pending_approval','approved','rejected','expired','generating','generated','ready','review_failed','published','failed','cancelled'));

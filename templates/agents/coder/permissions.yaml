@@ -1,0 +1,9 @@
+# Neutral permission rules (SPEC 5, default permissions). The renderer maps these to each harness.
+# A shell is allowed here and for the code reviewer only. It runs in a git worktree, outside this repository, with no secrets.
+# Nothing here can push, merge or deploy: those leave the machine, so they are approvals (SPEC 6).
+read: allow
+write: allow
+shell: allow
+web_search: deny
+web_fetch: deny
+subagents: deny

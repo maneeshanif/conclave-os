@@ -1,0 +1,1 @@
+ALTER TABLE "workspace_settings" ADD COLUMN "guest_link_hours" integer DEFAULT 48 NOT NULL;

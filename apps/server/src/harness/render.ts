@@ -8,7 +8,9 @@ import { RoleFileSchema, type RoleFile } from '../company/schema';
 import { RUNTIMES, type RuntimeName } from '../runtimes/names';
 import { agentWorkDir } from '../paths';
 import { fill } from './fill';
-import { PermissionsSchema, SHELL_TEMPLATES, claudeToolLists, opencodePermission, type Permissions } from './permissions';
+import { clampForTrust } from './trust';
+import { PermissionsSchema, SHELL_TEMPLATES, assertRunnerCanEnforce, claudeToolLists, opencodePermission, type Permissions } from './permissions';
+import { loadPlugin, type LoadedPlugin } from './plugins';
 
 /**
  * The run token reaches the `os` server through an environment variable that the runner sets
@@ -28,8 +30,16 @@ const TemplateFileSchema = z.object({
     monthly_budget_usd: z.number().nonnegative(),
     max_turns: z.number().int().positive(),
     heartbeat: z.string().optional(),
+    heartbeat_task: z.string().min(1).max(2000).optional(),
+    output_check: z.string().min(1).optional(),
+    fallback_runtime: z.enum(RUNTIMES).optional(),
+    fallback_model: z.string().min(1).optional(),
+    start_paused: z.boolean().optional(),
+    trust: z.enum(['standard', 'low']).optional(),
   }),
   skills: z.array(z.string()).default([]),
+  /** Plugins from plugins/ this kind of agent is granted: their skills and connectors come with it (SPEC 8). */
+  plugins: z.array(z.string()).default([]),
 });
 
 const ConnectorsFileSchema = z.object({ connectors: z.array(z.string()).default(['os']) });
@@ -42,10 +52,15 @@ export interface Template {
   agentBody: string;
   rules: string;
   permissions: Permissions;
+  /** The template's own connectors plus whatever its plugins need. `os` is always first. */
   connectors: string[];
+  plugins: LoadedPlugin[];
 }
 
-export async function loadTemplate(templatesRoot: string, key: string): Promise<Template> {
+/** plugins/ sits beside templates/ in the repo (SPEC 13). */
+export const defaultPluginsRoot = (templatesRoot: string) => path.join(templatesRoot, '..', 'plugins');
+
+export async function loadTemplate(templatesRoot: string, key: string, pluginsRoot = defaultPluginsRoot(templatesRoot)): Promise<Template> {
   const dir = path.join(templatesRoot, 'agents', key);
   const read = (f: string) => readFile(path.join(dir, f), 'utf8');
   let raw: string;
@@ -60,6 +75,16 @@ export async function loadTemplate(templatesRoot: string, key: string): Promise<
     throw new Error(`Template "${key}" allows a shell. Only ${[...SHELL_TEMPLATES].join(' and ')} may (CLAUDE.md rule 10).`);
   }
   const { connectors } = ConnectorsFileSchema.parse(parseYaml(await read('connectors.yaml')) ?? {});
+  const plugins: LoadedPlugin[] = [];
+  for (const name of file.plugins) plugins.push(await loadPlugin(pluginsRoot, name));
+  // A skill name belongs to one source. Two sources with the same name would silently overwrite each other.
+  const seen = new Map<string, string>();
+  for (const [skill, source] of [...file.skills.map((n) => [n, `template "${key}"`] as const), ...plugins.flatMap((p) => p.skills.map((n) => [n, `plugin "${p.name}"`] as const))]) {
+    const first = seen.get(skill);
+    if (first) throw new Error(`Template "${key}": skill "${skill}" comes from both ${first} and ${source}`);
+    seen.set(skill, source);
+  }
+  for (const c of plugins.flatMap((p) => p.connectors)) if (!connectors.includes(c)) connectors.push(c);
   if (!connectors.includes('os')) connectors.unshift('os');
   return {
     key,
@@ -70,6 +95,7 @@ export async function loadTemplate(templatesRoot: string, key: string): Promise<
     rules: await read('RULES.md.hbs'),
     permissions,
     connectors,
+    plugins,
   };
 }
 
@@ -82,11 +108,14 @@ export interface RoleParams {
   reports_to?: string;
   runtime?: RuntimeName;
   model?: string;
+  /** Overrides the template's starting level. New hires start at the template's level (0), and are promoted later. */
+  autonomy?: number;
 }
 
 /** Renders a template into a role file: front matter plus body (SPEC 5). Returns the file text. */
 export function renderRoleFile(t: Template, params: RoleParams): string {
-  const values: Record<string, string | undefined> = { ...params };
+  // Placeholders in the role text take text; the starting level is not one of them.
+  const values: Record<string, string | undefined> = Object.fromEntries(Object.entries(params).filter(([, v]) => v === undefined || typeof v === 'string'));
   for (const p of t.file.params) {
     if (p.required && (values[p.name] === undefined || values[p.name] === '')) {
       throw new Error(`Template "${t.key}" needs parameter "${p.name}"`);
@@ -100,11 +129,18 @@ export function renderRoleFile(t: Template, params: RoleParams): string {
     runtime: params.runtime ?? t.file.defaults.runtime,
     model: params.model ?? t.file.defaults.model,
     ...(t.file.defaults.heartbeat ? { heartbeat: t.file.defaults.heartbeat } : {}),
+    ...(t.file.defaults.heartbeat_task ? { heartbeat_task: t.file.defaults.heartbeat_task } : {}),
+    ...(t.file.defaults.output_check ? { output_check: t.file.defaults.output_check } : {}),
+    ...(t.file.defaults.fallback_runtime ? { fallback_runtime: t.file.defaults.fallback_runtime } : {}),
+    ...(t.file.defaults.fallback_model ? { fallback_model: t.file.defaults.fallback_model } : {}),
+    ...(t.file.defaults.start_paused ? { start_paused: true } : {}),
+    ...(t.file.defaults.trust === 'low' ? { trust: 'low' as const } : {}),
     monthly_budget_usd: t.file.defaults.monthly_budget_usd,
-    autonomy: t.file.defaults.autonomy,
+    autonomy: params.autonomy ?? t.file.defaults.autonomy,
     template: t.key,
     template_version: t.version,
-    skills: t.file.skills,
+    plugins: t.plugins.map((p) => p.name),
+    skills: [...t.file.skills, ...t.plugins.flatMap((p) => p.skills)],
     connectors: t.connectors,
     max_turns: t.file.defaults.max_turns,
   });
@@ -126,7 +162,7 @@ export interface WorkdirContext {
 }
 
 /** Every path a render target may write, relative to the working folder. Cleared before each render. */
-const GENERATED = ['CLAUDE.md', 'AGENTS.md', 'opencode.json', '.claude', '.opencode', '.mcp.json', 'ROLE.md', '.xdg-config'];
+const GENERATED = ['CLAUDE.md', 'AGENTS.md', 'opencode.json', '.claude', '.opencode', '.mcp.json', 'ROLE.md', '.xdg-config', 'INSTRUCTIONS.md', '.skills', '.runner.json', '.codex-mcp.json'];
 
 async function writeFiles(dir: string, files: Record<string, string>): Promise<string[]> {
   for (const [rel, content] of Object.entries(files)) {
@@ -137,18 +173,21 @@ async function writeFiles(dir: string, files: Record<string, string>): Promise<s
   return Object.keys(files).sort();
 }
 
+/** The skills an agent gets: the template's own, then each plugin's. Both targets read the same open skill format. */
 async function skillFiles(t: Template, base: string): Promise<Record<string, string>> {
   const out: Record<string, string> = {};
-  const root = path.join(t.dir, 'skills');
-  const names = await readdir(root).catch(() => [] as string[]);
-  for (const name of names) {
-    const file = path.join(root, name, 'SKILL.md');
-    try {
-      await stat(file);
-    } catch {
-      continue;
+  for (const dir of [t.dir, ...t.plugins.map((p) => p.dir)]) {
+    const root = path.join(dir, 'skills');
+    const names = await readdir(root).catch(() => [] as string[]);
+    for (const name of names) {
+      const file = path.join(root, name, 'SKILL.md');
+      try {
+        await stat(file);
+      } catch {
+        continue;
+      }
+      out[`${base}/${name}/SKILL.md`] = await readFile(file, 'utf8');
     }
-    out[`${base}/${name}/SKILL.md`] = await readFile(file, 'utf8');
   }
   return out;
 }
@@ -166,7 +205,7 @@ export const WORK_SUBDIR = 'work';
 
 /** Files for the Claude Code target. Claude Code loads CLAUDE.md from the parent of `work/` too. */
 async function claudeTarget(agent: LoadedAgent, t: Template, rules: string, ctx: WorkdirContext) {
-  const tools = claudeToolLists(t.permissions);
+  const tools = claudeToolLists(clampForTrust(t.permissions, agent.role.trust));
   return {
     'CLAUDE.md': `${rules.trim()}\n\n# Your role\n\n${agent.body.trim()}\n`,
     '.claude/settings.json': JSON.stringify({ permissions: { allow: tools.allow, deny: tools.deny } }, null, 2) + '\n',
@@ -183,7 +222,7 @@ async function claudeTarget(agent: LoadedAgent, t: Template, rules: string, ctx:
  */
 async function opencodeTarget(agent: LoadedAgent, t: Template, rules: string, ctx: WorkdirContext, dir: string) {
   const modelName = modelNameFor(agent.role.model, 'opencode');
-  const permission = opencodePermission(t.permissions);
+  const permission = opencodePermission(clampForTrust(t.permissions, agent.role.trust));
   const config = {
     $schema: 'https://opencode.ai/config.json',
     default_agent: agent.role.id,
@@ -210,8 +249,54 @@ async function opencodeTarget(agent: LoadedAgent, t: Template, rules: string, ct
   };
 }
 
+/**
+ * Files for the in-process runner (`openai-agents`). It has no config files of its own: the standing rules and the role become
+ * one `INSTRUCTIONS.md`, the granted skills are copied to `.skills`, and `.runner.json` records what the runner is given
+ * (the `os` tools and `load_skill`) and which grants it cannot provide. The runtime reads these at the start of each run.
+ */
+async function openaiAgentsTarget(agent: LoadedAgent, t: Template, rules: string) {
+  const notProvided = assertRunnerCanEnforce(clampForTrust(t.permissions, agent.role.trust));
+  return {
+    'INSTRUCTIONS.md': `${rules.trim()}\n\n# Your role\n\n${agent.body.trim()}\n`,
+    '.runner.json': JSON.stringify({ runtime: 'openai-agents', tools: ['os', 'load_skill'], notProvided }, null, 2) + '\n',
+    ...(await skillFiles(t, '.skills')),
+  };
+}
+
+/**
+ * Files for the Codex target (S7-4). Codex has its own shell that cannot be switched off, so a template with no shell may not run on it:
+ * rendering one is an error, not a quiet grant. The standing rules and the role become one `INSTRUCTIONS.md` that the runtime puts
+ * in front of the task; `.codex-mcp.json` says where the `os` tools are (the run token is named by its variable, never written).
+ * Where the agent works and what it may write are set by the runtime: its worktree, in a sandbox that can only write there.
+ */
+async function codexTarget(agent: LoadedAgent, t: Template, rules: string, ctx: WorkdirContext) {
+  const p = clampForTrust(t.permissions, agent.role.trust);
+  if (p.shell !== 'allow') {
+    throw new Error(`Template "${t.key}" has no shell, but the codex runtime always has one and cannot switch it off. Run this template on claude-cli, opencode or openai-agents. Only ${[...SHELL_TEMPLATES].join(' and ')} may run on codex.`);
+  }
+  return {
+    'INSTRUCTIONS.md': `${rules.trim()}\n\n# Your role\n\n${agent.body.trim()}\n`,
+    '.codex-mcp.json': JSON.stringify({ url: ctx.osUrl, tokenEnv: 'CONCLAVE_RUN_TOKEN' }, null, 2) + '\n',
+    ...(await skillFiles(t, '.skills')),
+  };
+}
+
+/**
+ * Files for the http target (S9-1). The worker is its own program elsewhere, so there is nothing to configure for it: the standing rules and the
+ * role become one INSTRUCTIONS.md, which the runtime sends with each run. What the worker may do through the os tools is decided by the server
+ * (the run token and the granted tool list), not by anything written here.
+ */
+function httpTarget(agent: LoadedAgent, rules: string) {
+  return { 'INSTRUCTIONS.md': `${rules.trim()}
+
+# Your role
+
+${agent.body.trim()}
+` };
+}
+
 /** Harness files that must never exist inside `work/`, where the agent can write. */
-const PLANTABLE = ['CLAUDE.md', 'CLAUDE.local.md', 'AGENTS.md', 'opencode.json', 'opencode.jsonc', '.claude', '.opencode', '.mcp.json'];
+const PLANTABLE = ['CLAUDE.md', 'CLAUDE.local.md', 'AGENTS.md', 'opencode.json', 'opencode.jsonc', '.claude', '.opencode', '.mcp.json', 'INSTRUCTIONS.md', '.skills', '.runner.json', '.codex-mcp.json'];
 
 /** Removes any harness config an agent wrote into its `work/` folder. Run before every run. */
 export async function cleanWorkFolder(agentDir: string): Promise<void> {
@@ -248,6 +333,16 @@ export async function renderWorkdir(agent: LoadedAgent, ctx: WorkdirContext): Pr
       break;
     case 'opencode':
       files = await opencodeTarget(agent, t, rules, ctx, dir);
+      break;
+    case 'openai-agents':
+      files = await openaiAgentsTarget(agent, t, rules);
+      break;
+    case 'codex':
+      files = await codexTarget(agent, t, rules, ctx);
+      break;
+    case 'http':
+    case 'claude-agent':
+      files = httpTarget(agent, rules);
       break;
     default:
       throw new Error(`Runtime "${agent.role.runtime}" is not built in this slice, so it has no render target yet.`);

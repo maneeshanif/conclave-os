@@ -1,0 +1,1 @@
+ALTER TABLE "code_pull_requests" ADD COLUMN "merged_by" text;

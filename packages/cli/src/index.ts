@@ -5,9 +5,14 @@ import { openSystem } from '@conclave/server/system';
 
 const usage = `Usage:
   pnpm db:migrate
-  pnpm agent:new <template> --department <key> [--id <id>] [--name <name>] [--runtime <runtime>] [--model <alias>] [--reports-to <id>]
+  pnpm agent:new <template> --department <key> [--id <id>] [--name <name>] [--runtime <runtime>] [--model <alias>] [--autonomy <0-3>] [--reports-to <id>]
   pnpm agent:render          render every agent's working folder again from its role file
   pnpm run doctor           (plain 'pnpm doctor' runs pnpm's own doctor)
+  pnpm run eval:gate -- --drafts <file.json> | --reference   score drafts against the stored baseline; fails if worse
+  pnpm run eval:baseline -- --drafts <file.json> | --reference   store a new baseline
+  pnpm run backup           make a backup now (the server makes one each night)
+  pnpm run backup:restore <file>   fill an EMPTY database from a backup; never touches one that holds data
+  pnpm run browser:login <account>   log in to a posting account by hand, in a visible browser, once
   pnpm run e2e              slice 0 end to end on both engines, against a running server`;
 
 async function main(argv: string[]): Promise<number> {
@@ -23,6 +28,7 @@ async function main(argv: string[]): Promise<number> {
           name: { type: 'string' },
           runtime: { type: 'string' },
           model: { type: 'string' },
+          autonomy: { type: 'string' },
           'reports-to': { type: 'string' },
         },
       });
@@ -35,6 +41,10 @@ async function main(argv: string[]): Promise<number> {
         console.error(`Unknown runtime "${values.runtime}". Use one of: ${RUNTIMES.join(', ')}`);
         return 2;
       }
+      if (values.autonomy !== undefined && !/^[0-3]$/.test(values.autonomy)) {
+        console.error(`--autonomy must be 0, 1, 2 or 3 (got "${values.autonomy}"). See SPEC 6.`);
+        return 2;
+      }
       const sys = await openSystem();
       try {
         const r = await agentNew(sys, {
@@ -44,9 +54,10 @@ async function main(argv: string[]): Promise<number> {
           ...(values.name ? { name: values.name } : {}),
           ...(values.runtime ? { runtime: values.runtime as RuntimeName } : {}),
           ...(values.model ? { model: values.model } : {}),
+          ...(values.autonomy !== undefined ? { autonomy: Number(values.autonomy) } : {}),
           ...(values['reports-to'] ? { reportsTo: values['reports-to'] } : {}),
         });
-        console.log(`Hired ${r.id} on ${r.runtime} at autonomy 0.\n  role file:      company/${r.rolePath}\n  working folder: ${r.workDir}`);
+        console.log(`Hired ${r.id} on ${r.runtime} at autonomy ${r.autonomy}.\n  role file:      company/${r.rolePath}\n  working folder: ${r.workDir}`);
       } finally {
         await sys.close();
       }
@@ -64,6 +75,23 @@ async function main(argv: string[]): Promise<number> {
     case 'e2e': {
       const { e2e } = await import('@conclave/server/commands/e2e');
       return e2e();
+    }
+    case 'eval:gate':
+    case 'eval:baseline': {
+      const { evalCommand } = await import('@conclave/server/commands/eval');
+      return evalCommand(command === 'eval:gate' ? 'gate' : 'baseline', rest);
+    }
+    case 'backup': {
+      const { backupNow } = await import('@conclave/server/commands/backup');
+      return backupNow();
+    }
+    case 'backup:restore': {
+      const { restoreFromFile } = await import('@conclave/server/commands/backup');
+      return restoreFromFile(rest.find((a) => a !== '--'));
+    }
+    case 'browser:login': {
+      const { browserLogin } = await import('@conclave/server/commands/browser');
+      return browserLogin(rest.find((a) => a !== '--'));
     }
     case 'doctor': {
       const { doctor } = await import('@conclave/server/commands/doctor');

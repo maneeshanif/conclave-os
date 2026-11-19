@@ -53,6 +53,23 @@ async function connectRunning(dataDir: string, port: number): Promise<{ app: pg.
   }
 }
 
+/**
+ * Owner access to the running database, for the backup and restore only (the owner reads every tenant's rows). It reads the
+ * credentials file the database start wrote and opens a short connection for each call. Never a request path.
+ */
+export function ownerAccess(dataDir: string, port: number): <T>(fn: (client: pg.Client) => Promise<T>) => Promise<T> {
+  return async (fn) => {
+    const creds = JSON.parse(await readFile(path.join(dataDir, 'secrets', 'db.json'), 'utf8')) as { ownerPassword: string };
+    const client = new pg.Client({ host: HOST, port, database: 'conclave', user: 'conclave_owner', password: creds.ownerPassword });
+    await client.connect();
+    try {
+      return await fn(client);
+    } finally {
+      await client.end().catch(() => undefined);
+    }
+  };
+}
+
 /** Opens the database for the server or a CLI command: the running one, or S0-2's startDatabase. */
 export async function openSystem(env: Env = process.env): Promise<System> {
   const dataDir = resolveDataDir(env);

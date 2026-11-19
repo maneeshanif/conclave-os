@@ -1,0 +1,1 @@
+ALTER TABLE "workspace_settings" ADD COLUMN "task_watchdog" boolean DEFAULT false NOT NULL;

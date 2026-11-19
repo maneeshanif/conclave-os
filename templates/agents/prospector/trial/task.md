@@ -1,0 +1,1 @@
+Trial task for a new prospector. Find three businesses that fit the target described in the company file, read from public pages. For each, add one lead with add_lead, with the page you found it on as sourceUrl. Then call complete_task with how many you added.

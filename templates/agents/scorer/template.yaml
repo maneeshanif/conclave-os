@@ -1,0 +1,19 @@
+# Agent template: scorer. Neutral sources only; the renderer writes each harness's own format (SPEC 5).
+key: scorer
+version: 1
+description: "Scores the leads on the list from 0 to 100 with a reason, using only what is recorded. It reads nothing outside and cannot contact anyone."
+params:
+  - { name: id, required: true }
+  - { name: name, required: true }
+  - { name: department, required: true }
+  - { name: department_name, required: true }
+  - { name: company_name, required: true }
+  - { name: reports_to, required: false }
+defaults:
+  runtime: claude-cli
+  model: researcher
+  autonomy: 1
+  monthly_budget_usd: 5
+  max_turns: 40
+skills: []
+plugins: [leadgen-kit]

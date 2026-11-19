@@ -1,0 +1,1 @@
+Trial task for a new client success agent. Pick a deal with a recorded outcome, read it with get_deal and draft its outcome note with save_draft, following the outcome-note skill. Then call complete_task.

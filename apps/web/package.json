@@ -10,7 +10,11 @@
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
+    "@better-auth/passkey": "^1.7.20",
+    "@conclave/shared": "workspace:*",
+    "better-auth": "^1.7.20",
     "next": "^16.4.6",
+    "phaser": "4.2.1",
     "react": "^19.3.1",
     "react-dom": "^19.3.1"
   },
@@ -21,6 +25,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "jsdom": "^26.1.0",
+    "playwright-core": "^1.65.0",
     "tailwindcss": "^4.3.5"
   }
 }

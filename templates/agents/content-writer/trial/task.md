@@ -1,0 +1,1 @@
+Trial task for a new content writer. Write one LinkedIn post (under 600 characters) about why a small clinic's booking page matters, using only facts from the company file. Do not include a price or a link. Post your draft as a comment and finish with complete_task. You are on trial and cannot propose it yet.

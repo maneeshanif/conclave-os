@@ -80,20 +80,604 @@ Work them in order. Tick each when its test passes.
   Run `pnpm agent:new researcher --department research`. Give it the task "List five facts from the company file, each with the line it came from", with `company/COMPANY.md` passed in the task context. Fire a run. Then change the role file's `runtime` to `opencode` and its `model` to an alias that lists `opencode`, render again, and fire the same task.
   *Test, by hand:* both runs end `done`, each answer is in its task thread, every step is visible on the task page, and neither run log contains text from this repo's `CLAUDE.md`. If OpenCode is not installed or has no provider yet, record that in `docs/DECISIONS.md` and leave this box unticked until it is.
 
-- [ ] **S0-12 Windows process handling.** SPEC 5 (the runner), 14.
+- [x] **S0-12 Windows process handling.** SPEC 5 (the runner), 14.
   Resolve an npm `.cmd` shim to `node` plus its script and spawn without a shell; quote `health()` arguments the same way. On win32, cancel with `taskkill /pid <pid> /T /F` so the child's own children die too.
   *Test:* unit tests for the shim resolver on a fake `.cmd` file and for the kill command chosen per platform; by hand on Windows, a cancelled run leaves no `claude` or `opencode` process.
 
-- [ ] **S0-13 Heartbeats and turn counting.** SPEC 5, 11 ("One event starts every run"), 14.
+- [x] **S0-13 Heartbeats and turn counting.** SPEC 5, 11 ("One event starts every run"), 14.
   Remember each agent's last heartbeat tick in memory so an idle agent is not requested every minute, and drop a run request when one is already queued for that agent. Count Claude turns by distinct `message.id`, not by event.
   *Test:* ten ticks in one minute queue at most one request per agent; a stream with one message split over three events counts one turn.
 
-- [ ] **S0-14 Task ownership in the os tools.** SPEC 6, 11.
+- [x] **S0-14 Task ownership in the os tools.** SPEC 6, 11.
   `comment`, `complete_task`, `block_task` and `ask_founder` act only when the task is `in_progress` and `locked_by` is the calling agent. `PATCH /api/tasks/:id` clears `locked_by` when it moves a task out of `in_progress`. Add a test that `createWorkflows` registers both functions with the two concurrency limits.
   *Test:* a token for a run whose task was moved back to `todo` cannot complete it; the Inngest config test passes.
 
-## Opening the next slice
+- [x] **S0-15 The e2e leaves the repo alone.** (The OpenCode half still needs a replaced key: NEEDS-YOU.) SPEC 13.
+  `pnpm run e2e` hires its researcher into the repo's `company/` when none exists, so every run leaves `company/departments/research/...` untracked. Point it at its own company folder (`COMPANY_DIR` already exists for that) and remove the folder when it ends. Also retry the OpenCode half once Anees has replaced the expired OpenCode key (NEEDS-YOU).
+  *Test:* after `pnpm run e2e`, `git status` shows no new files in the repo.
 
+## Slice 1: Approvals and Outreach
+
+**Done when (SPEC 18):** a lead goes from audit to approved email to sent; the kill switch stops everything; an agent told to send an email by any other route fails; and an approval decided after a restart still sends exactly once.
+
+**Hard limits for this slice.** Real transports stay off: sending goes to the outbox (a folder of files), never to a real address, and the Resend adapter stays unused until Anees turns it on in `.env`. No account is created and no secret is asked for. Login is the owner only (Q10); roles stay in the schema for slice 9.
+
+**Already on `dev`, not reviewed:** tables and RLS migrations 0002/0003, `actions/policy.ts` (claim checks, footer, suppression), `actions/transport.ts` (outbox by default, Resend untested), `actions/email.ts` (claim-once executor, restart recovery), the `propose_email` and `get_lead` os tools, the kill-switch check in the run loop. S1-1 gives them tests before anything is built on them.
+
+- [x] **S1-1 Test what is already there.** SPEC 6 (rules around the gate), 14, 15.
+  Write the missing tests for `policy.ts`, `transport.ts`, `email.ts`, the two os tools and the kill-switch check, and fix what they find. Read the slice 1 migrations against the tenancy rule: every table has `workspace_id`, composite keys and forced RLS, and the existing tenancy test must cover them.
+  *Test:* the claim checks block medical, legal and pricing claims; a suppressed or do-not-contact address is refused by `propose_email`; the outbox transport writes one file per approval; the executor claims `approved` to `executing` once and a second claim does nothing; the table-driven RLS test lists every slice 1 table.
+
+- [x] **S1-2 Approvals API.** SPEC 6, 11 (API table).
+  `GET /api/approvals?status=`, `GET /api/approvals/:id`, `POST /api/approvals/:id/decide` with `approved` or `rejected` and an optional edited payload. Decisions go through one state machine (`pending` to `approved` or `rejected`, never back), record who and when, and publish `approval/decided`.
+  *Test:* deciding twice is refused; an edited payload is stored and is what the executor will use; a rejected approval is never executable; a decision for another workspace's approval is a 404.
+
+- [x] **S1-3 The gate workflow, and restart recovery.** SPEC 6 (how the gate is built, three rules), 11, 14.
+  `approval-gate` on Inngest and its in-process equivalent, with the same behaviour: wait for the decision (3 day timeout marks it `expired`), then run the executor once. On server start, request again every `pending` approval that has no live wait. The execute step never retries.
+  *Test:* an approval decided after a simulated restart sends exactly once; two executors racing for one approval send once; a pending approval left over from before a restart is picked up; an expired approval never sends.
+
+- [x] **S1-4 Leads and the suppression list.** SPEC 10, 15.
+  `POST/GET/PATCH /api/leads` (create, list, one lead, stage and do-not-contact) and `GET/POST/DELETE /api/suppression`. Addresses are normalised and matched case-insensitively. An unsubscribe adds to the list and nothing removes it silently.
+  *Test:* a lead marked do-not-contact is refused by `propose_email`; adding an address to the list blocks proposals for it in any case; removing needs an explicit call and is logged in `audit_log`.
+
+- [x] **S1-5 Settings, the kill switch and the send caps.** SPEC 6, 14, 15; QUESTIONS 9.
+  `workspace_settings` holds the kill switch and the caps: `window_hours` = 5 and `window_cap` = 30 (a rolling window), plus a per-day cap. Follow-ups count in the same window. `GET/PATCH /api/settings`. With the kill switch on: no new run starts, running runs are cancelled, queued requests are dropped, and no executor sends, including approvals already approved.
+  *Test:* the 31st email inside five hours is held and the 31st after the window moves is allowed; the kill switch stops a running fake run, empties the queue and blocks an executor on an already-approved email; turning it off does not resurrect dropped work.
+
+- [x] **S1-6 The `outreach-rep` template and `outreach-kit`.** SPEC 5 (templates, default permissions), 8, 10.
+  A neutral template for the first-touch writer: role file, rules, `permissions.yaml` (the `os` tools only, no shell, no network write), a procedure skill for the first email, and an output check. `outreach-kit` carries the skill and the connector entry.
+  *Test:* a snapshot of the rendered folder for both engines; neither grants a shell or a network-writing tool; through the conformance suite's `forbidden` mode, an attempt to send by any route other than `propose_email` is refused and nothing is sent.
+
+- [x] **S1-7 The email executor, wired.** SPEC 6, 14, 15.
+  Register the executor with the gate in `index.ts`. Sending requires the footer address from `company/` and a transport; with no footer the approval ends `failed` with that reason and nothing is sent. The outbox is the default transport; Resend is selected only by an explicit setting. Every send records the outcome on `outreach_messages` and in `audit_log`.
+  *Test:* an approved email lands in the outbox exactly once; with the footer unset the executor refuses and says why; a blocked claim added after approval is still refused at send time; the outbox is the transport unless the setting says otherwise.
+
+- [x] **S1-8 The approvals inbox page.** SPEC 12.
+  A web page listing pending cards: for an email, the recipient, the full message, the findings it rests on, with approve, reject and edit. Updates arrive over the existing socket. No login yet (S1-10).
+  *Test:* a component test that a pending email card shows recipient, subject, body and findings; approving calls the API with the edited text; a decided card leaves the list.
+
+- [x] **S1-9 Action items.** SPEC 11, 12.
+  An `action_items` table and `/api/action-items` for what needs the founder: blocked tasks, `ask_founder` questions, failed approvals, the kill switch being on. A page lists them.
+  *Test:* an `ask_founder` call creates an item; resolving it unblocks nothing by itself but is recorded; a failed approval appears once.
+
+- [x] **S1-10 Login for the owner.** SPEC 11 (Auth), 12.
+  Better Auth with passkeys, one owner (Q10), sessions and devices tables. In local mode on 127.0.0.1 nothing changes. A login wall is required before anything listens on another interface (CLAUDE.md rule 9). Check the Better Auth docs for the current API before using it.
+  *Test:* with login on, an API call without a session is 401 and with one is 200; the wall cannot be switched off while a non-loopback interface is configured; a session cookie is HttpOnly, Secure when not on loopback, and SameSite.
+
+- [x] **S1-11 Phone access and the installable app.** SPEC 12; QUESTIONS 11.
+  `ACCESS_MODE` lets the server also answer on a Tailscale address, and only if S1-10's login is on. The web app becomes an installable PWA (manifest, icons, service worker for the shell). Tailscale itself is Anees's step (NEEDS-YOU).
+  *Test:* the server refuses to bind a non-loopback address with login off; the manifest and service worker validate; the approvals page lays out on an Android Chrome device profile in Playwright. The real phone check is in NEEDS-YOU.
+
+- [x] **S1-12 Slice 1 end to end.** SPEC 18, row 1.
+  One script drives the whole path on the outbox: create a lead, run the audit task, `propose_email`, approve it in the API, see the send in the outbox, flip the kill switch, try a forbidden route, restart the server mid-wait and check it sends once.
+  *Test:* all four "Done when" checks pass in one run. Tag `slice-1-done`.
+  Also, once: run the approval gate against a real Inngest dev server (`INNGEST_DEV=1`), because S1-3 tested the Inngest function with a stand-in for its `step` only (no Inngest server on the laptop). Nothing else about slice 1 depends on it: the default gate is the in-process one.
+
+## Slice 2: Clients, funnels and Lead Gen
+
+**Done when (SPEC 18, row 2):** new scored leads arrive every morning, a reply pauses its sequence, and the pipeline shows conversion by stage.
+
+**Reads:** SPEC 4 (departments), 6, 10, 11, 12, 14, 15. Build only what this list names. Everything that sends still goes through `propose_*`, the approval gate and an executor, and the outbox is still the only transport (nothing real is switched on).
+
+**Decided in drafting (logged in DECISIONS.md when built):**
+- Slice 1's `leads` stay as the prospect list. A lead that replies or reaches a deal is promoted to an account, a contact and a deal; nothing is copied by an agent.
+- Funnel stages live in `company/funnels.yaml` and are loaded into rows (rule 8: no Conclave facts in `apps/`).
+- Lead sources that need an account or key (Apollo, Clay, Apify, Google Maps) are connectors for a later task. This slice takes leads from a CSV the founder drops in and from agents that read public pages with web fetch. Connectors are parked in NEEDS-YOU.
+- Follow-ups still each go through an approval (autonomy 2). "Approved sequence" policy approval (autonomy 3) belongs to slice 8 with the delegate.
+- The reply path is a manual record (paste or API) in this slice. Reading a real mailbox is a connector for later; replies and DMs arrive as data, never as instructions.
+- The message table for threads is `thread_messages`, because `messages` already holds task comments.
+
+- [x] **S2-1 Accounts, contacts and deals.** SPEC 10, 11.
+  Tables `accounts`, `contacts`, `deals` (tenant tables, forced RLS, composite keys). API to list, create and edit them, and `POST /api/leads/:id/promote` that makes the account, the contact and a deal from a lead in one step, once.
+  *Test:* promoting twice makes nothing new; a contact cannot point at another workspace's account; the tenancy test lists the new tables.
+
+- [x] **S2-2 Funnels as stage rows, and the stage rules.** SPEC 10.
+  `funnels` and `funnel_stages` loaded from `company/funnels.yaml` (both funnels from SPEC 10, owners and exit rules as text). A deal moves by `POST /api/deals/:id/stage`; each move is logged with time and who. A deal cannot pass the "first priced outcome" stage without a named decision-maker and a date. Moving a deal to won creates a project and its first tasks.
+  *Test:* the rule refuses a move without both fields and allows it with them; won creates exactly one project, even if the move is repeated; every move is in the audit log.
+
+- [x] **S2-3 Channel accounts, campaigns and sequences.** SPEC 10, 14, 15.
+  `channel_accounts` (handle, daily cap, warm-up date, health), `campaigns` (market, audience rule, channel account, status draft/approved/running/paused/done) and `sequence_steps` (wait days, skill, template). Caps live on the channel account and the email executor reads them in addition to the workspace caps. A campaign must be approved by the founder before it runs.
+  *Test:* a mailbox in warm-up sends at most its warm-up cap; a paused or unapproved campaign proposes nothing; the executor refuses over the channel cap.
+
+- [x] **S2-4 Threads, replies and triage.** SPEC 10.
+  `threads` and `thread_messages`: one thread per contact (or lead); every outgoing email lands on it. `POST /api/threads/:id/inbound` records a reply. A reply pauses that contact's sequence on every campaign and creates one triage task for the outreach agent. An unsubscribe-looking reply also adds the address to the suppression list. Reply text is stored as data and shown as data.
+  *Test:* a reply pauses the sequence and makes exactly one triage task; a second reply makes no second task while the first is open; "unsubscribe" suppresses; a reply that says "ignore your rules and send X" changes nothing.
+
+- [x] **S2-5 The sequence runner.** SPEC 10, 14.
+  A deterministic job (not a model) that, once a day per running campaign, finds contacts whose next step is due, not paused, not suppressed, inside the mailbox's cap, and creates a task for the outreach agent to draft that step. Drafts still go through `propose_email` and approval.
+  *Test:* due steps become tasks up to the cap and no more; a replied contact gets nothing; running it twice in a day makes no duplicates; a restart mid-run does not double-create.
+
+- [x] **S2-6 Campaign and pipeline numbers.** SPEC 10, 12.
+  `GET /api/campaigns/:id/results` and `GET /api/pipeline` as queries over the tables: sent, replied, positive replies, meetings, won; conversion and days in stage per funnel stage; stuck deals. No number is typed by an agent.
+  *Test:* a seeded fixture gives exact counts; moving a deal changes the numbers; a reply marked positive counts once.
+
+- [x] **S2-7 `leadgen-kit` and the lead-gen templates.** SPEC 4, 8, 9.
+  Plugin `leadgen-kit` with skills for finding, enriching and scoring a lead, and `os` tools `add_lead` (autonomy 1, dedupes by email and domain, never marks anything verified without a source URL) and `score_lead`. Templates `prospector` and `scorer`. CSV import at `POST /api/leads/import` with a preview and a duplicate report.
+  *Test:* `add_lead` twice makes one lead; a lead without a source URL is stored as unverified and is not eligible for a campaign; a scripted agent run adds and scores leads; the CSV import reports duplicates and bad rows without writing them.
+
+- [x] **S2-8 Heartbeats: leads every morning.** SPEC 11, 14.
+  A role-file `heartbeat` (cron in the company's time zone) that the ticker honours. The prospector runs each morning and produces scored leads; the run is skipped while the kill switch is on.
+  *Test:* with a fake clock the ticker starts the prospector once per morning, not twice, and not at all while the kill switch is on; a missed day is not replayed in a burst after a restart.
+
+- [x] **S2-9 The Goals screen.** SPEC 12.
+  `/api/goals` over the existing `goals` table (create, edit, progress read from queries, not typed) and a Goals page.
+  *Test:* progress for "leads this week" and "deals won" comes from the tables and changes when they do; the page lists goals with their numbers.
+
+- [x] **S2-10 The morning brief.** SPEC 3, 12.
+  A deterministic builder writes the brief (new scored leads, approvals waiting, replies to triage, stuck deals, goal progress, anything blocked) as a record, and the Chief of Staff template may add one paragraph of narrative that is clearly marked as the agent's. `/brief` shows the latest.
+  *Test:* the brief lists exactly what the tables hold on a fixture day; an empty day says so; the narrative is optional and the brief is complete without it.
+
+- [x] **S2-11 Inbox, pipeline and campaigns pages.** SPEC 12.
+  Web pages for the unified inbox (threads, reply to triage), the pipeline (stages, conversion, stuck deals) and campaigns (status, results, approve, pause). Phone-friendly like the approvals page.
+  *Test:* component tests like slice 1; the mobile browser check covers the inbox.
+
+- [x] **S2-12 `deal-desk` and `client-success` templates.** SPEC 10.
+  Templates and skills for the bounded free offer, the contract of success and outcome note, and the monthly proof report. They draft documents as task comments; nothing leaves the building. Case text may only quote numbers from the tables.
+  *Test:* rendered on both engines, conformance passes; the outcome-note skill refuses to state a number not in the tables (checked by a fixture).
+
+- [x] **S2-13 Slice 2 end to end.** SPEC 18, row 2.
+  One test: a morning heartbeat adds scored leads; a campaign (approved by the founder) makes tasks; drafts are approved and sent to the outbox; a reply pauses the sequence and makes one triage task; the pipeline shows conversion by stage. Tag `slice-2-done`.
+  *Test:* all three "Done when" checks in one run.
+
+## Candidate connectors (not scheduled; Anees decides whether and in which slice)
+
+Recorded 2026-11-13. Nothing here is built ahead of its slice (CLAUDE.md, Stack).
+
+- **Chatwoot** (open-source shared inbox and help desk). Fits the help desk connectors row in SPEC 10, slice 10, next to Zendesk, Freshdesk and Intercom. It would be a connector that feeds conversations into the existing inbox, and could replace pasting replies in by hand. It can be self-hosted, so it may need no outside account; unconfirmed. Replies to clients still go through `propose_*` and an executor after approval (hard rules 1 and 3).
+- **Composio** (hosted service with ready-made tool integrations and managed logins). Needs Anees's own account and API key, which the build cannot create or enter: it would go in `docs/NEEDS-YOU.md`. It pulls against the hard rules, so it may come in only as a read-only connector, or behind a `propose_*` tool with its own executor, never as a direct tool for an agent (rules 1, 4, 5 and 11). Lowest priority of the two.
+
+## Slice 3: Reliability
+
+**Done when (SPEC 18, row 3):** you can kill a run halfway and it resumes, a plan limit pauses agents cleanly, and a skill change that hurts the 20 leads is blocked.
+
+**Reads:** SPEC 5, 6, 7, 11, 12, 14, 15. SPEC 14 is the table of failures and what the OS does for each; this slice builds the rows that are not built yet. Every failure ends as a permanent fix (the ratchet).
+
+**Already there from earlier slices:** run states and their audit rows, the task's session id kept for resume, recovery of runs left `running` when the server restarts, the kill switch, the claim-once executors, approval expiry, and the error kinds the runtimes report (including a limit kind).
+
+**Decided in drafting (logged in DECISIONS.md when built):**
+- The "20 real leads" eval needs real leads. The build cannot supply them, so it ships 20 clearly-labelled sample leads and the runner; replacing them with real ones is a NEEDS-YOU item.
+- Output checks are plain code with names (the role file's `output_check` picks one). A check passes or fails with a reason; it never calls a model.
+- Pausing for a plan limit is per runtime, not per agent, and lifts itself at the reset time the runtime reported (or after a default wait if it gave none).
+
+- [x] **S3-1 The reaper.** SPEC 14 (Run process dies).
+  A job that finds runs whose `heartbeat_at` has gone stale, marks them failed, releases the task lock and puts the task back to todo with its session id, so the next run resumes. A task whose third run in a row has failed is blocked with the reasons. Runs the server itself is still executing are never reaped.
+  *Test:* a run that stops heartbeating is reaped once and its task requeued with the session id; a live run is left alone; the third failure blocks the task; reaping twice changes nothing; the kill switch does not stop the reaper.
+
+- [x] **S3-2 Retry, backoff and the fallback model.** SPEC 14 (Model API error), SPEC 7.
+  A transient runtime error (rate limit, overload, network) retries the step with growing waits; then the agent's `fallback_model` alias; then the task is blocked with the reason. A non-transient error (auth, bad input) does not retry.
+  *Test:* with a scripted runtime that fails N times: retries are spaced, the fallback is used after the retries, the task is blocked with the reason after that; an auth error blocks at once; each attempt is a row in the run's events.
+
+- [x] **S3-3 Plan-limit handling.** SPEC 7 (Plan limits are part of the design), SPEC 14.
+  A limit error pauses every agent on that runtime until the reset time (or a default wait), leaves their tasks queued, raises one action item, and lifts the pause by itself at the reset. Nothing is retried in the meantime.
+  *Test:* one limit error pauses all agents on that runtime and none on another; queued tasks stay todo; exactly one action item however many agents hit it; at the reset time runs start again; a person can lift the pause early.
+
+- [x] **S3-4 Budgets.** SPEC 14 (Budget exhausted).
+  A ledger of what each agent's runs cost this month, checked before every run: over its monthly budget, the agent is paused and one action item is raised. A person raising the budget or unpausing lifts it.
+  *Test:* a run that would start over budget does not start; the agent is paused with an item; the item appears once; a new month starts a new total; raising the budget resumes.
+
+- [x] **S3-5 Output checks, repair and escalation.** SPEC 14 (Wrong or malformed output), SPEC 5.
+  A registry of named checks (the first: `email-draft`, the limits written in the outreach rep's checks README; and `document-figures` from S2-12). After a run reports done, the role's check runs. On failure: one repair attempt in the same session showing the error, then the stronger model alias, then the task is blocked for the founder with the failures.
+  *Test:* a passing output ends the task; a failing one is repaired once; still failing escalates once; still failing blocks with the reasons; a role with no check is untouched; the check never calls a model.
+
+- [x] **S3-6 Circuit breakers.** SPEC 14 (Tool or connector error).
+  Three failures in a row of a tool or connector open its breaker: further calls are refused at once with a clear message, one action item is raised, and the breaker closes after a cooldown or when a person resets it. A success resets the count.
+  *Test:* three failures open it; calls are refused while open and not counted; it closes after the cooldown; a success in between resets; one breaker's state does not affect another's.
+
+- [x] **S3-7 The Health screen.** SPEC 12, 14.
+  `GET /api/health/overview` (queue depth, runs and failure rate by agent over a window, breakers, runtime pauses, spend against budget per agent, last reaper pass, database size) and a Health page with the kill switch on it.
+  *Test:* a fixture gives exact numbers; a paused runtime, an open breaker and an over-budget agent each show up; the page renders each and the empty state.
+
+- [x] **S3-8 The eval set and the gate.** SPEC 9, 14 (A change makes things worse).
+  An eval set of 20 sample leads with the checks each draft must pass, a runner that has an agent draft for each lead and scores the drafts by the output checks, a stored baseline, and `pnpm run eval:gate` that fails if a change scores worse than the baseline. Replacing the samples with real leads is a NEEDS-YOU item.
+  *Test:* with a scripted drafter the good skill scores at baseline and passes; a skill change that produces over-long drafts scores lower and the gate fails with which leads got worse; an unchanged skill is stable.
+
+- [x] **S3-9 The daily backup.** SPEC 14 (Data loss).
+  A scheduled job: a database dump into the data folder (keeping the last 14), and a git commit of the company folder. A restore command that checks the dump first. The OS never deletes a database that holds data.
+  *Test:* a backup is written and is restorable into an empty database; old ones beyond 14 are pruned; a failed dump leaves the old ones alone and raises an item; the company folder commit happens only when something changed.
+
+- [x] **S3-10 Lite mode.** SPEC 17.
+  `LITE=1` for a machine with little memory: one run at a time, no more than one Inngest or ticker task at once, and `doctor` reports the mode and memory.
+  *Test:* in lite mode the dispatcher runs at most one agent at a time; the default is unchanged; `doctor` says which mode.
+
+- [x] **S3-11 Slice 3 end to end.** SPEC 18, row 3.
+  One test: a run is killed halfway and the next run resumes from its session; a plan limit pauses the agents on that runtime and lifts at the reset; a skill change that hurts the sample leads is blocked by the gate. Tag `slice-3-done`.
+  *Test:* all three "Done when" checks in one run.
+
+## Slice 4: A local model, all day
+
+**Done when (SPEC 18, row 4):** scouts run around the clock on your machine and you get a short list of qualified signals each morning.
+
+**Reads:** SPEC 5 (the portability rule and the table of what each engine needs), 7 (runtimes, model aliases, the in-process runner, plan limits), 9 (templates and plugins), 11 (the `signals` table), 12, 14, 17 (what the machine can carry). Rooms 6 and 9 in SPEC 3 say what the scouts look for.
+
+**Already there from earlier slices:** the runtime contract and conformance tests, `claude-cli` and `opencode`, the renderer with one target per runtime, the `os` MCP server with run tokens, heartbeats, output checks with repair and escalation, the pause per runtime for a plan limit, the Health screen, lite mode, the morning brief.
+
+**Decided in drafting (logged in DECISIONS.md when built):**
+- The model is never needed to prove the plumbing. The runner is tested against a small fake OpenAI-compatible server inside the test, so the whole slice is verifiable on this laptop without a model loaded. Trying a real local model is one opt-in task (S4-9) and the model that fits 16 GB is a NEEDS-YOU item because the laptop has to be free for it.
+- `openai-agents` gets only the `os` tools plus `load_skill`. No shell, no files, no network of its own (CLAUDE.md rule 10). The `@openai/agents` calls in the SPEC are an unrun sketch: check the package's current docs before using any of them.
+- The scouts only read. They file a signal through an `os` tool; the OS dedupes by URL. Where a signal comes from (a scraper or API, within each site's terms) is a connector the founder sets up; until then the scout works from what it is handed or can search, and the real sources go in NEEDS-YOU.
+- Rooms 9 and 10 are configured but paused, as the spec says. Room 6's Problem Scout and room 9's scout are the two scouts this slice turns on; the Research room waits for its own slice.
+
+**Tasks**
+
+- [x] **S4-1 Model aliases and the `local-worker` alias.** SPEC 7 (Model aliases).
+  One file maps each alias to a model, the runtimes it works on and, where needed, a base URL and a key reference. Add `local-worker` (an OpenAI-compatible endpoint, Ollama's by default, `on: ['openai-agents', 'opencode']`). The role-file loader rejects an alias that does not list the agent's runtime, with the file and the reason. The base URL must be loopback unless the founder sets it explicitly.
+  *Test:* a role file naming `local-worker` on `openai-agents` loads; the same alias on `claude-cli` is refused with a message naming both; a missing alias is refused; an unknown field in the alias file is an error.
+
+- [x] **S4-2 The `openai-agents` runtime.** SPEC 7 (the in-process runner), 5 (the portability rule).
+  A generic in-process runner behind the one contract in `runtimes/`: builds the agent from the rendered instructions, connects the `os` MCP server over HTTP with the run's token, streams the SDK's events as run events in order, caps turns, handles cancel, and maps a connection refusal, a rate limit and an auth failure to the right error kinds. It is handed its own model settings and nothing else from the environment (CLAUDE.md rule 4). Session resume is kept by the OS: it says it cannot resume natively and the loop restarts the task with its comment history instead.
+  *Test:* the conformance tests pass against a fake OpenAI-compatible server in the test: events arrive in order, an `os` tool is called with the run token, a tool the agent was not granted is refused, no secret reaches the process, cancel stops it, a 429 and a 401 map to `limit` and `auth`, and `canResume` is honest.
+
+- [x] **S4-3 The skill loader.** SPEC 5 (the table), 9.
+  The in-process runner has no `.claude/skills`. The renderer writes each skill's name and one-line description into the instructions, and the runner gives the agent a `load_skill` tool that returns the skill's text from the agent's rendered folder, only for skills that agent was given, never a path outside it.
+  *Test:* the instructions list the descriptions and not the bodies; `load_skill` returns a granted skill; a skill that was not granted, a path with `..`, an absolute path and a symlink out of the folder are all refused.
+
+- [x] **S4-4 The renderer target for `openai-agents`.** SPEC 5.
+  One more target in the renderer: standing rules, role, skill descriptions and the per-run context become one `instructions` string; connectors become the MCP server list; permissions become the tool list the runner hands over. Nothing outside `runtimes/` and the renderer's per-runtime targets names the runtime (rule 11).
+  *Test:* snapshot of a scout rendered for `openai-agents`; the same template rendered for `claude-cli` is unchanged; a permission the runner cannot enforce is a render error, not a silent drop.
+
+- [x] **S4-5 Move short jobs to the local model when Claude is paused.** SPEC 7 (Plan limits are part of the design), 14.
+  When a runtime is paused for a plan limit, waiting scout and triage tasks go to the agent's local alternative instead of waiting; writing tasks stay queued. A role file names it (`fallback_runtime` and `fallback_model`), and escalation from a failed output check may cross to a stronger runtime the same way (local to Claude). The move is recorded on the run and shown on the Health screen.
+  *Test:* with `claude-cli` paused, a triage task runs on the local alias and a writing task stays queued; after the lift both are back on their own runtime; a failed check on the local model escalates to Claude once and then blocks; an agent with no fallback is unchanged.
+
+- [x] **S4-6 The `signals` table and its API.** SPEC 11 (`signals`), 12.
+  Migration with forced row-level security, `(workspace_id, url)` unique, kinds `service_request | pain_point | tool_news`, statuses `new | qualified | dismissed | promoted`. Routes to list (by status and kind), read, qualify, dismiss and promote to a lead (the lead carries the signal as its reason, and the existing lead checks still apply).
+  *Test:* the same URL twice is one signal; a signal from another workspace is invisible; promote creates one lead and links it, twice is a no-op; a bad status or kind is refused.
+
+- [x] **S4-7 The scout template and the signal tools.** SPEC 9, 3 (rooms 6 and 9), 6.
+  A `scout` template that runs on `openai-agents` with `local-worker`, a heartbeat, and a short skill that says what counts as a signal and what does not. Two `os` tools: `add_signal` (kind, source, URL, excerpt; refuses a missing URL, an excerpt that is not text, and anything shaped like an instruction to the agent) and `score_signal`. The tools do not post, message or follow anyone (rule 6). The Demand Radar and Problem Scout agents are configured and paused; turning one on is a setting.
+  *Test:* the template renders and hires; `add_signal` dedupes and records who found it; a page that tells the agent to ignore its rules is stored as data and changes nothing; the paused agents do not run on a heartbeat until switched on.
+
+- [x] **S4-8 Signals in the morning brief and a Signals page.** SPEC 3, 12, 18 (the "Done when").
+  The brief gets a part "Signals" counting qualified signals since the last brief with the top few (counted from the table, not written by a model), and a Signals page lists them by status with qualify, dismiss and promote.
+  *Test:* a fixture gives exact counts in the brief; the page renders each status and the empty state; promote from the page makes the lead.
+
+- [x] **S4-9 Try a real local model (opt-in).** SPEC 17, 7.
+  The conformance tests, run against Ollama on this machine when `CONCLAVE_TEST_OLLAMA=<model>` is set, and a note of which tool-calling model fits comfortably in 16 GB while the server and the database are running. Skipped by default.
+  *Test:* skipped without the variable; with it, the conformance tests pass on the real endpoint. Running it is a NEEDS-YOU item (RAM must be free).
+
+- [x] **S4-10 Slice 4 end to end.** SPEC 18, row 4.
+  One test on the fake OpenAI-compatible server: the ticker wakes the scout on its heartbeat, it files signals through `add_signal`, a failing output check escalates once to Claude (scripted), a plan limit on Claude moves a triage task to the local model, and the morning brief lists the qualified signals. Tag `slice-4-done`.
+  *Test:* all of it in one run.
+
+## Slice 5: Marketing, browser and video
+
+**Done when (SPEC 18, row 5):** you approve a post or a video on your phone and it is live, with a screenshot in the record.
+
+**Reads:** SPEC 6 (approvals and executors), 8 (the browser table, the video studio), 12 (the phone app and push), 14, 15 (caps, no bulk DM, no unverified claims), 3 (room 3). The spec's own rule: where a platform offers a posting API, use it instead of the browser.
+
+**Already there from earlier slices:** the approval gate and the claim-once executor pattern (email), send caps and the kill switch, channel accounts with caps, the outbox transport, the blocked-claims check, plugins and templates, the PWA shell (manifest, icons, shell-only service worker), the `os` tools and the Health screen.
+
+**Decided in drafting (logged in DECISIONS.md when built):**
+- **Nothing goes live in this slice's build.** I cannot create accounts, log in to X, LinkedIn or Instagram, or hold a key. Every executor has an interface with two transports: `outbox` (writes the post to a file in the data folder; the default, nothing leaves the machine) and `browser` (a Playwright session in a profile folder you log into once by hand). The browser transport is built and tested against a fake browser, and stays off until you turn it on per account. Logging in once by hand, and switching a real transport on, are NEEDS-YOU items.
+- **Every post is an approval first.** A post proposal carries the exact text, the account and the media; what you approve is what is published, byte for byte. The executor claims the approval once and never retries a publish (rule 3). Content is checked in the proposal handler, not by a prompt: no medical, legal or pricing claim that is not in the company file (rule 7).
+- **DMs are one at a time and capped.** No bulk, no follow or like automation (rule 6); each DM is its own approval and the account's cap and a minimum gap between sends are enforced in code.
+- **Video generation is behind a connector interface** (`generate_asset`), with a fake in the tests. Which generator you use, and its credits, are yours to choose; credits are spent only after you approve a brief. Assembly is deterministic code (the same brief renders the same video), tested on its plan; an actual render needs Remotion and is an opt-in check, since its license terms need your reading before the OS is sold.
+- **Push** uses Web Push with keys made on this machine (stored in the data folder, never in the repo). Delivery to your phone needs the app reachable from it (the Tailscale step already in NEEDS-YOU).
+
+**Tasks**
+
+- [x] **S5-1 Posts and the post proposal.** SPEC 6, 8, 15.
+  A `posts` table (account, text, media, status, approval link, result), `propose_post` as an `os` tool (autonomy 2) that queues an approval of kind `post.publish` and never publishes, and the proposal handler's checks: length per platform, blocked claims, no links to unapproved domains, duplicate text refused.
+  *Test:* a proposal creates one pending approval and one post row; a second identical proposal is the same approval; a medical, legal or price claim is refused in code; over-length is refused; an agent below autonomy 2 has no such tool.
+
+- [x] **S5-2 The publish executors and transports.** SPEC 6, 8, 14.
+  One executor interface for X, LinkedIn and Instagram posts, claim-once (`approved` to `executing`), with an `outbox` transport (default) and a `browser` transport that drives a Playwright page through a small driver interface. Every run saves a screenshot and the final URL on the approval record. An expired session stops the executor and raises an action item; nothing is retried.
+  *Test:* with the outbox transport an approved post is written once and marked published; two executions at once publish once; a rejected or expired approval never publishes; the fake browser publishes, and its screenshot and final URL are stored; an expired session raises one item and the post stays approved, not failed; the kill switch stops it.
+
+- [x] **S5-3 Browser profiles.** SPEC 8, 12.
+  A profile folder per channel account under the data folder (never in the repo), a record of which accounts have one and whether the session is believed valid, and `pnpm run browser:login <account>` that opens a visible browser on that profile for you to log in by hand. The OS never sees a password.
+  *Test:* the profile path is inside the data folder and outside the repo; an account with no profile cannot use the browser transport; a profile marked expired raises the item; the login command refuses an unknown account. Logging in is a NEEDS-YOU item.
+
+- [x] **S5-4 Approved DMs, one at a time.** SPEC 15, rule 6.
+  DM executors for X and Instagram as their own approval kind: each DM is a separate approval to a named person, with the account's daily cap, a minimum gap between sends, and a refusal to send to anyone who has not been written to first by a person or who is on the suppression list.
+  *Test:* two approved DMs at once go out one after the other with the gap; the cap holds; a suppressed recipient is refused; there is no tool or route that sends to a list.
+
+- [x] **S5-5 The content plugin and the writer, publisher and hook scout templates.** SPEC 8, 9.
+  `content-kit` (skills: write-post, adapt-for-platform), a `content-writer` template (proposes posts, cannot publish) and a `publisher` template (checks the approved queue, level 0 on trial).
+  *Test:* manifests match the disk and the server; the writer has no web write tool and no publish tool; rendered for Claude Code.
+
+- [x] **S5-5a Low-trust agents (borrow audit A1).** Before any social scout.
+  A `trust: standard | low` field in the role file and on the agent. A low-trust agent reads untrusted input (inbound replies, scraped pages, Reddit); it cannot edit its own role file, skills or config, it can call only tools its template lists, and a missing scope refuses. Its output is labelled as data when a higher-trust agent reads it and is never promoted into instructions. The scout templates default to low.
+  *Test:* a low-trust run cannot change its role file or call a tool outside its allow list; a higher-trust agent shown its output sees it inside a data label; a role file with an unknown trust value is refused.
+
+- [x] **S5-5b Silent-run watchdog (borrow audit A2).**
+  Flag and stop a run that is alive but has produced no event for a threshold (default 5 minutes), separate from the 15 minute timeout, with its own error kind and a plain message.
+  *Test:* a fake runtime that hangs after its first event is stopped at the threshold with the distinct error kind; a runtime that keeps emitting events is not; the threshold is a setting.
+
+- [x] **S5-6 Hooks and the Hook Scout.** SPEC 8.
+  A `hooks` table (pattern, format, length, example link, the account it was seen on, a performance score), an `add_hook` tool, and the Hook Scout template on the local model. A hook stores a link to the example and a description of the pattern, never a copy of the post's text.
+  *Test:* a hook with no example link is refused; a long verbatim quote is refused; the same example is one hook; the scout cannot propose a post.
+
+- [x] **S5-7 The Video Ideas inbox.** SPEC 8, 12.
+  `video_ideas` (a line, a link or a voice-note transcript; source founder or hook scout), an API, an inbox page that works on a phone, and a quick-add box.
+  *Test:* adding from the page creates one idea; a link is stored as a link; the inbox lists new ideas first; an idea can be shelved or turned into a brief.
+
+- [x] **S5-8 The video brief and the generation connector.** SPEC 8.
+  A brief (script, shot list, assets needed, estimated credits) made from an idea and a hook, which is an approval before anything is generated. A `generate_asset` connector interface with a fake; assets are stored by key in the data folder.
+  *Test:* nothing is generated before the brief is approved; a rejected brief generates nothing; the credits shown are counted from the shot list; generation is claim-once.
+
+- [x] **S5-9 Assembly and the review check.** SPEC 8.
+  A deterministic assembly plan (scenes, captions, timing, brand) from an approved brief and its assets; the same inputs give the same plan byte for byte. A review check in code (duration within the brief, every shot has an asset, captions present, brand colours and logo present, no blocked claim in captions) before the approval card.
+  *Test:* identical inputs give an identical plan; each review rule fails with its reason; a plan that fails review is not offered for approval.
+
+- [x] **S5-10 The phone app and push.** SPEC 12.
+  Web Push with VAPID keys generated on this machine and kept in the data folder; subscriptions stored; three notifications only: the morning brief, a failed executor, and an approval waiting. Payloads carry no post text or personal data.
+  *Test:* keys are never in the repo or a log; a subscription is stored once; each of the three events sends exactly one notification and nothing else does; a payload has no body text from a post or a lead; an expired subscription is removed.
+
+- [x] **S5-11 Slice 5 end to end.** SPEC 18, row 5.
+  One test: a writer proposes a post, you approve it on a phone-sized screen, the publisher executes it through the fake browser, and the approval record shows the screenshot and final URL; a video brief is approved, assets are generated by the fake connector, the plan passes review, and the approved video is published the same way; push fires for the approval and for a failed executor. Tag `slice-5-done`.
+  *Test:* all of it in one run.
+
+## Candidate tasks from the borrow audit (not yet in a slice)
+
+From `docs/BORROW-AUDIT.md`. Each goes into its slice's task list when that slice is drafted. Keep them in this order of value.
+
+- [x] **A1 Low-trust agents.** (Scheduled as S5-5a; done.) Slice 5, before any social scout. A `trust: standard or low` field on an agent. Low-trust agents read untrusted input (inbound replies, scraped pages, Reddit), cannot edit their own config or skills, and cannot hand raw untrusted text to a higher-trust agent as instructions; a missing scope refuses. *Test:* a low-trust run cannot change its role file or call a tool outside its allow list, and a higher-trust agent given its output sees it labelled as data.
+- [x] **A2 Silent-run watchdog.** (Scheduled as S5-5b; done.) Slice 5 or 6. Flag and stop a run that is alive but silent past a threshold, separate from the 15 minute timeout. *Test:* a fake runtime that hangs after its first event is stopped at the threshold with a distinct error kind.
+- [x] **A3 Tool risk classes and a call log (done 2026-11-20).** Slice 8, before the slice 10 connectors. Each os tool and connector tool gets a risk class, and every call is logged with its decision. *Test:* a high-risk tool called without approval is refused and logged.
+- [x] **A4 Agent `verifying` step (done 2026-11-20).** Slice 8, with hiring. A new or changed agent runs a tiny probe on its rendered folder before it goes active. *Test:* an agent whose folder fails the probe never becomes active.
+- [x] **A5 Hand-off test, one alternative attempt, spend correction (hand-off test and spend correction done 2026-11-20; the one alternative attempt is the existing retry then fallback model, then block).** Small checks from P6 to P8, in slice 5 or 6.
+- [x] **A6 Release channels (done 2026-11-20).** Slice 9.
+- [x] **A7 Task watchdog (optional; done 2026-11-20, off by default, no schedule yet).** Slice 8, only if Anees wants it.
+- [x] **A8 The world, in detail.** (Scheduled as S6-4 to S6-6.) Slice 6. The WorkAdventure-style features listed in `docs/BORROW-AUDIT.md`: Tiled maps, proximity bubbles, zones with behaviour (meeting, lockable, silent, max users, focusable), entry and walk-to, availability and raise hand. Our own property names, our own or CC0 art.
+
+## Slice 6: The office
+
+**Done when (SPEC 18, row 6):** you walk from the door to the Outreach room, open an agent by walking up to it, and approve a card at the approvals desk.
+
+**Reads:** SPEC 12 (the office, WorkAdventure-style; the panels; the phone), 3 and 4 (rooms, the Boardroom), 11 (`discussions`, `discussion_turns`, `decisions`), 13 (repo layout), 14, and `docs/BORROW-AUDIT.md` (the WorkAdventure features, candidate task A8). **License rule:** WorkAdventure is AGPL with the Commons Clause. Ideas only, written fresh. Our own property names, our own tiles drawn by script, or Kenney (CC0). Never its code, maps or art (CLAUDE.md).
+
+**Already there from earlier slices:** the approvals inbox, goals, health, brief, inbox and signals panels as React components; live events on the bus and the socket; login and the owner identity (for the co-founder); agents, departments and runs in the database; the PWA shell.
+
+**Decided in drafting (logged in DECISIONS.md when built):**
+- **The world is pure logic with a thin Phaser skin.** The map reader, desk assignment, pathfinding, zones, proximity, where each agent should be, and what an object opens are plain TypeScript with tests, in \`apps/web/office\`. Phaser (only inside \`apps/web/office\`, CLAUDE.md) draws what that logic says. So almost everything is testable without a browser, and the one browser check is a Playwright screenshot of the real canvas.
+- **The office is never the only way in.** Every action in it is also a button on a plain screen: a room list, an agent list, the same panels. On a phone the office shows as a small map plus the list, and the canvas stops drawing when the tab is hidden.
+- **Art is ours.** The starter tileset is drawn by a script into a PNG (flat colours, our own), and the starter map is written by a script into a Tiled JSON file. Kenney tiles may replace them later by editing the map in Tiled, with no code change.
+- **Movement follows data.** Where an agent stands is computed from runs, approvals and discussions, never set by hand, so the world cannot disagree with the panels.
+- **The Boardroom's rule is code:** a discussion turn must cite numbers that the OS can check against its own tables, or it is refused. Decisions are recorded by a person.
+
+**Tasks**
+
+- [x] **S6-1 The office map file and its reader.** SPEC 12.
+  \`company/office.tmj\`: a Tiled JSON map with a collision layer, a \`rooms\` object layer (each room named, with \`department\`, \`kind\`, \`maxUsers\`, \`locked\`, \`silent\` properties of our own), numbered \`desks\`, \`objects\` (approvals desk, whiteboard, screen, mailbox, job board, boardroom table), and \`entries\` (the door, spawn points). A script draws the starter tileset and map. The reader validates the file and says which file, layer and object is wrong.
+  *Test:* the starter map loads; every active department has a room; a desk number twice, a room naming an unknown department, an object of an unknown type, and a missing collision layer are each refused with a message naming the thing.
+
+- [x] **S6-2 Desks.** SPEC 12.
+  A new hire gets the next free desk in its department's room, by itself; the assignment is stored so nobody moves when someone else is hired; a retired agent's desk is freed; a full room puts the overflow in the lounge. \`GET /api/office\` returns the map facts and each agent's room and desk.
+  *Test:* hiring three agents fills desks 1 to 3 in order; retiring one frees its desk for the next hire and moves nobody; a full room overflows to the lounge; no desk is ever held by two agents.
+
+- [x] **S6-3 Where each agent is.** SPEC 12 (agents move with their work).
+  One function from runs, approvals and discussions to a place: at its desk while a run starts or goes on, at the approvals desk while an approval it proposed waits for you, in the Boardroom during a discussion it is in, in the lounge when idle. \`GET /api/office/state\` and a live \`office.changed\` message from the same events the panels use.
+  *Test:* a fixture for each place; an agent with two reasons goes to the stronger one by a fixed order; the live message fires on a run starting, an approval being queued and decided, and a discussion opening.
+
+- [x] **S6-4 Walking.** SPEC 12; borrow audit A8.
+  A walkable grid from the collision layer, a path finder, click-to-walk and arrow-key steps for your avatar, and agents walking their paths between places at a fixed speed.
+  *Test:* a path from the door to every room exists; a path never crosses a wall; a blocked click goes to the nearest reachable tile; an agent told to change place walks there in the expected number of steps.
+
+- [x] **S6-5 Zones.** Borrow audit A8.
+  Behaviour from the map's own properties: entering a room opens its department panel, a locked room refuses you unless you are the owner, a silent room has no bubbles, a room has a limit on how many can be in it, a focusable area asks the camera to zoom. Your availability (available, busy, away) and raising a hand in a meeting.
+  *Test:* entering and leaving fire the right events once; a locked room turns a guest away and lets the owner in; the limit holds; availability and hand-raising are reflected in the presence record.
+
+- [x] **S6-6 Walking up to an agent.** SPEC 12.
+  Proximity detection with a little hysteresis so the drawer does not flicker; the agent drawer (live run, its tasks, a box to send it a message that becomes a task for it); leaving closes it.
+  *Test:* walking within range opens the drawer once and stepping back closes it once; the drawer shows the agent's current run and open tasks; a sent message creates one task assigned to that agent; the drawer works from the agent list too.
+
+- [x] **S6-7 Objects.** SPEC 12.
+  What each object opens: the approvals desk the approvals inbox, the whiteboard the goal ladder, the screen the dashboard (Health), the mailbox the inbox, the job board the Talent room view, the Boardroom table the Boardroom. A registry from object type to panel, used by the world and by the plain screens.
+  *Test:* every object type in the map has a registered panel; using an object opens that panel; an unknown type is refused at load (S6-1).
+
+- [x] **S6-8a The plain office.** SPEC 12. (Split from S6-8.) `/office` as a list: rooms with the agents in them and why, a button for every object (or "coming"), the agent drawer with a message box, and live refresh on `office.changed`. Done: `apps/web/test/office.test.tsx`.
+
+- [x] **S6-8b The Phaser world.** SPEC 12. (Rest of S6-8.)
+  Phaser 4 (check its current docs first) in \`apps/web/office\`: loads the map and tileset, draws rooms, desks, objects, your avatar and the agents, and drives them from the logic above. The \`/office\` page also has the plain version: rooms listed, agents listed, the same panels. The canvas stops drawing when the tab is hidden; a phone gets the small map and the list.
+  *Test:* the plain version renders each room and agent and every object's button; a hidden tab pauses the scene and a visible one resumes it; a Playwright run of the real page at desktop and Android sizes finds a non-blank canvas and takes a screenshot.
+
+- [x] **S6-8c1 The world feels like walking about.** WORLD-BRIEF, WORLD-REFERENCE. Default zoom about 2x, zoom in and out, an overview of the whole map; held-key walking at a steady speed; click to walk. Logic in `WorldController` (zoom level, held direction), the scene only draws.
+  *Test:* zoom stays within limits and the overview fits the whole map; a held key keeps walking until released and stops at walls; a click still goes to the nearest open tile.
+
+- [x] **S6-8c2 The bar and the panels.** WORLD-REFERENCE. A floating bar (people, tools, availability), a people panel, the agent drawer inside a left panel, a notice pill when you enter a silent, locked or full zone (from S6-5), a one-time welcome card with skip, and the phone's bottom row.
+  *Test:* each control renders and works; the pill text comes from the room's own properties; the welcome card shows once and stays away after skip; at phone size the bar is the bottom row with no sideways scroll; a Playwright run at desktop and Android sizes with screenshots.
+
+- [x] **S6-8c3 The art.** WORLD-REFERENCE. Kenney CC0 tiles and character sprites (or our own), name labels with an availability dot, room names painted on the floor, tinted zones. The licence file is kept with the art.
+  *Test:* every tile and sprite in use is listed in a licence file with its source; the world draws a non-blank canvas with sprites at both sizes; a name label shows for you and for each agent.
+
+- [x] **S6-9 Your co-founder in the same office.** SPEC 12, 15.
+  Live presence over the existing socket for signed-in members: position, availability, raised hand; rate-limited; nothing but presence is sent; an owner and a co-founder see each other; a person who is not signed in sees nothing.
+  *Test:* two clients see each other's moves; position updates are rate-limited; a signed-out socket gets no presence; leaving removes the avatar.
+
+- [x] **S6-10 The Boardroom.** SPEC 4, 11.
+  Tables \`discussions\`, \`discussion_turns\`, \`decisions\`; stand-up posts, the weekly review, open discussions and the decision log. \`open_discussion\` and \`add_turn\` as \`os\` tools; every turn must cite numbers the OS can check against its own tables, or it is refused. Decisions are recorded by a person through the API. A page for it.
+  *Test:* a turn with no evidence, or a figure the tables do not show, is refused; a turn citing a real count is accepted; only a person records a decision; the decision log lists them newest first; the page renders each part and the empty state.
+
+- [x] **S6-11 Slice 6 end to end.** SPEC 18, row 6. (Last: after S6-12 to S6-15.)
+  One test: from the door, the avatar walks to the Outreach room (the zone event fires and its panel opens), walks up to the outreach agent (its drawer opens with its run), walks to the approvals desk and uses it (the inbox opens), and an approval is approved there and executed; a panel opened from an object and from a deep link; a Playwright check of the real canvas at desktop and Android sizes. The full suite runs once here. Tag \`slice-6-done\`.
+  *Test:* all of it in one run.
+
+### New direction from Anees, 2026-11-14 (added after S6-9)
+
+The office is the whole app. Everything below is allowed in slice 6 because slice 6 is the office. **Order from here:** S6-14a (study, read only) → S6-12 → S6-13 → S6-14b (build to match what the study found) → S6-10 (the Boardroom is the meeting table in the world) → S6-15 → S6-11 (end to end, then the full suite and the tag). Hard rules still hold: Phaser only in `apps/web/office`; nothing about Conclave in `apps/`; `propose_*` only; forced RLS with `workspace_id`; claim-once executors.
+
+- [x] **S6-12a Panels over the world.** SPEC 12.
+  A panel host that opens one registered panel over the world: a side panel on a desktop, full screen at phone width, closed with a button or Escape. The panel is in the address (`?panel=<id>`) so it can be linked to and survives a reload. One registry holds every panel: approvals, needs you, brief, inbox, pipeline, campaigns, goals, tasks (the old home page), signals, ideas, health, and a run log for one task. The existing page components are reused as they are.
+  *Test:* each panel id opens its component and closes again; the address follows the open panel; a link with `?panel=` opens it on load; an unknown id leaves nothing open; at 390 px wide the panel is full screen and at 1280 px it is a side panel and the world stays visible.
+
+- [x] **S6-12b A place for every panel.** SPEC 12.
+  New object types on the map with a registered panel each (a task board, a brief desk, a pipeline board, a campaign board, a needs-you board, a terminal for run logs), added to `OBJECT_TYPES`, the map script and `OBJECT_PANELS`. Using an object, in the world or from the plain list, opens its panel. Every panel in the registry has a place on the map, and the map reader still refuses an unknown type.
+  *Test:* every panel has exactly one object type that opens it; the map has at least one of each type and all are reachable from the door; using each opens the right panel; the plain list has a button for each.
+
+- [x] **S6-12c The office is home.** SPEC 12.
+  `/` is the office. There is no top link bar on any page. The old routes (`/approvals`, `/brief`, `/inbox`, `/pipeline`, `/campaigns`, `/goals`, `/health`, `/signals`, `/ideas`, `/action-items`) redirect to `/?panel=<id>` and nothing else. A run log opens from a task in the tasks panel and from the terminal.
+  *Test:* the home page has no navigation links outside the office; each old route redirects to the office with that panel open; a Playwright run at desktop and Android sizes walks to an object, clicks it, sees the panel, closes it, and loads a deep link.
+
+- [x] **S6-13a Companies.** SPEC 3, 11, 13.
+  From inside the world: a list of companies, switch company, and create one from a company template (`templates/companies/`). Each company is its own workspace with its own company folder outside this repo (under `DATA_DIR`), and every request names which one it is for; the server checks that the signed-in owner may use it. The current company shows in the bar.
+  *Test:* creating from a template makes a workspace, its folder and its departments; switching changes what every panel shows; nothing from one company is readable while in another (the tenancy test covers every table); an unknown or foreign company id is refused.
+
+- [x] **S6-13e Every company runs.** SPEC 6, 14.
+  Added after S6-13a. A new company's data, panels and office work, but the things that act on a company's behalf are still wired to the one company the server was started for: the approval executors and email transport, the scheduler tick, the reaper, the daily brief and backup, the notifier and the run loop's folders. Each must act for every company in the list, with the company's own folder and workspace, and nothing may cross. The real-sending switches stay off.
+  *Test:* an approval made in a second company is claimed once and executed (with the outbox transport) in that company only; the scheduler wakes an agent in a second company and runs it with that company's agent folder; the reaper fails a stale run in each company; a second company's approvals, runs and briefs never show in the first, and the tenancy test still lists every table.
+
+- [x] **S6-13b Departments from the world.** SPEC 3, 12.
+  Creating a department claims a free plot on the map and stamps a room into it: desks, a board (shared tasks), a meeting table and a door, and adds the department to the company's `departments.yaml`. The map has reserved plots for this. A department with no free plot is told so, and nothing is half made.
+  *Test:* a new department gets a room with its desks, board and meeting table, reachable from the door; the map still passes the reader; two departments never share a plot; no free plot is a clear refusal and changes nothing.
+
+- [x] **S6-13c Adding an agent.** SPEC 5, 6, 7.
+  From the world: pick a department and a template and propose an agent. A person approves the proposal; only then does the executor run the same logic as `pnpm agent:new`. No code per agent. The executor claims the approval once, and the agent gets a desk in its department's room.
+  *Test:* the proposal creates nothing until approved; approving creates exactly one agent and one desk; approving twice, or after a rejection, creates no second; a rejected proposal creates nothing; the agent appears in its room.
+
+- [x] **S6-13d1 A department board and channel.** SPEC 4, 12. (Split from S6-13d.) Each department room's board lists its open tasks by state with who has each; its channel is a short message list for its agents and you (table `department_messages`, forced RLS); two agent tools, `department_say` and `hand_off_task` (autonomy 1, same department only); the Board and Channel buttons for each room, and the board and table objects in the world, open them for that department. Done: `department-work.test.ts`, `department-panels.test.tsx`, the tenancy test.
+
+- [x] **S6-13d2 Handoffs walk.** SPEC 12. When an agent hands a task to a colleague (`hand_off_task`, recorded as a message from one agent to the other on the task), the giver is shown walking to the receiver's desk for a short while and then back.
+  *Test:* a handoff message in the last half minute puts the giver at a free tile beside the receiver's desk, with the reason; after that it is back where it was; two handoffs at once never put two agents on one tile; a handoff to an agent with no desk (the lounge) does nothing.
+ SPEC 4, 12.
+  Agents in a department share its board; when a task passes from one agent to another the first is shown walking to the other's desk; each department has a channel (a short message list) for its agents and the owner. Tables carry `workspace_id` and forced RLS.
+  *Test:* a handoff changes the place of the giver to the receiver's desk for a while and then back; the board lists the department's open tasks and nobody else's; a channel message is saved, shown newest last and never visible from another company.
+
+- [x] **S6-14a Study jsm-hq.** WORLD-BRIEF, SPEC 12.
+  Find the `jsm-hq` repo and check who made it. If it cannot be found, ask in NEEDS-YOU and go on with WorkAdventure only. Clone it outside this repo (under `DATA_DIR/reference/`). Read its LICENSE before anything else and record the result in DECISIONS. Reuse of images, assets and code is allowed only if the licence allows it, with the LICENSE kept and a line in `docs/CREDITS.md`; otherwise study only and use our own or Kenney CC0 art. Find which library runs its world. Phaser stays ours: if it differs, write a short decision on whether switching is worth it and ask. Run it as a guest if it can be run, install nothing from it with scripts enabled, click every part, keep screenshots in `.reference/`, and write `docs/JSM-REFERENCE.md` in my own words: layout, interactions, what opens on a click, how rooms and objects work, the library and how it is wired, then the gaps against our `/office`.
+  *Test:* `docs/JSM-REFERENCE.md` and the DECISIONS licence entry exist and name the licence; nothing from the clone is inside this repo (a check lists the repo's files against the clone's); `.reference/` and the clone are git-ignored or outside the repo.
+
+- [x] **S6-14b Build to match it.** WORLD-BRIEF. Split from the gap list in `docs/JSM-REFERENCE.md` (the gaps left after S6-12 and S6-13: panels beside the world, rooms from departments, handoffs, adding agents and companies are done). Tasks:
+
+- [x] **S6-14b1 Hover tooltips.** A tooltip on every agent, object and room in the world: title and one line (an agent: name and role, where it is and why; an object: what it opens and whether it is ready; a room: its name and who is in it, and a note if it is locked, quiet or limited). The words come from one pure function so the world and the list say the same.
+  *Test:* the function gives the right title and line for each kind from the same facts the list uses; the tooltip shows on hover and not while dragging or over a panel; it is dismissed on leaving; one browser check.
+
+- [x] **S6-14b2 The team cards.** Cards for the agents beside the world (in the People panel): portrait colour, name and role, a state chip (working, waiting for you, blocked, in a discussion, handing over, idle), how long, the task it is on, and "N for you" for approvals waiting on it. Clicking a card opens its drawer.
+  *Test:* the state and the counts come from the same data as the world's placement; a card for each active agent; the "for you" count is that agent's pending approvals; clicking opens the drawer.
+
+- [x] **S6-14b3 The activity feed.** A short live list (latest 20) of what just happened: a run started or ended, an approval asked or decided, a task handed on, a channel message, an agent added. Served by `GET /api/office/activity` from the tables and kept current by the live socket.
+  *Test:* each kind of event appears once, newest first, with a plain sentence; nothing from another company; the list follows live events; an empty office says so.
+
+- [x] **S6-14b4 A panel you can resize.** The edge of the side panel can be dragged (and double-clicked to reset); the width is remembered in the browser; limits keep it usable.
+  *Test:* dragging changes the width within limits; double-click resets; the width survives a reload; at phone width there is no handle (it is full screen). WORLD-BRIEF.
+  Close the gaps listed in `docs/JSM-REFERENCE.md`: rooms, objects, click-to-open panels and department zones, with everything from S6-12 and S6-13 inside them. Tasks are drafted here from the study's gap list before any code.
+  *Test:* one test per gap that was listed, written first.
+
+- [ ] **S6-15 The WorkAdventure look, second pass.** WORLD-BRIEF, `docs/WORLD-REFERENCE.md`. Anees said the office page is not what he asked for: the office is the whole app, so the world fills the screen with controls floating over it, as in WorkAdventure, not a small canvas in a page with a long list under it. Split:
+
+- [x] **S6-15a The world is the screen.** The world fills the whole viewport (no page margins, no list below it). Over it: the floating bar at the top (company, people, tools, your status) and, on a phone, along the bottom; the zoom buttons at the edge; the panels over it as now. The plain list (rooms, agents, objects with their buttons, drawer) is kept for keyboard and screen-reader use and for a phone, as a "Rooms and agents" panel opened from the bar and shown as the page on a browser with no canvas. The camera starts close on you.
+  *Test:* the world's box is the viewport size and nothing else takes room on the page; the list is reachable from the bar and has every room, agent and object button the page had; the bar sits over the world; a phone gets the bottom row; the browser check at desktop and Android sizes with screenshots.
+
+- [x] **S6-15b Your avatar.** A simple picker for your look (the six looks), kept in the browser and sent in presence so others see it; a name over your head that you can change.
+  *Test:* choosing a look changes your figure and is remembered; presence carries a look from 0 to 5 and nothing else new; a look outside that range is ignored; the name is trimmed and short.
+
+- [x] **S6-15d The office art, our own.** Drawn here with palettes and rectangles (the technique jsm-hq's notes describe, none of its files): floors with grain and no grid lines (planks, carpet, lounge, brick-style walls with a lit top edge and a shadow), a sheet of sixteen drawn pieces of furniture, one per object type (`objects.png`), used in the world in place of the teal squares (a not-ready one is faded), and crisp pixel scaling.
+  *Test:* `node scripts/make-sprites.mjs` and `make-office.mjs` run clean and leave `company/office.tmj` unchanged; the browser check at desktop and Android sizes passes with screenshots.
+
+- [x] **S6-15e Characters from Google Flow, and the pixel look for drawers and pop-ups.** Anees, 2026-11-17: use the Google Flow tool for the characters, and make every drawer and pop-up look like the pixel-office reference. Six looks generated in Flow (art-source/flow), sliced into people.png by `scripts/import-flow-looks.mjs`; drawers, bars and dialogs share a flat, thick-bordered, hard-shadow style (`.px-*` classes in globals.css).
+  *Test:* the importer runs on all six sheets; web and shared tests pass (369); the browser run passes 8 of 8 with screenshots.
+
+- [x] **S6-17 One town with many places, and bots you can see.** Anees, 2026-11-17: more than one map, "add all worlds in the same thing, not a switcher", and "I cannot see the bots". First built as separate worlds with a switcher, then merged: the one map (`company/office.tmj`, 176 by 63) is the headquarters at the top left, a street under it, four districts along the street (Campus Green, Co-working Loft, Game Night, Rooftop) and an open Park beside the headquarters; the strip above the Park stays free for rooms new departments get. Districts are built by `scripts/lib/districts.mjs` from our own art. The department stamp works inside the bigger map. Bots: the company had no agents (so there was nothing to draw); four starter agents were hired with `pnpm agent:new`, and an empty desk shows a faded sleeping robot.
+  *Test:* every room and entry in the town can be walked to from the front door; scenery uses only pictures we have; the starter template has the same town; stamping works on the wide map and still grows a narrow one; browser run 8 of 8.
+
+- [x] **S6-18 Quick reactions.** From WorkAdventure's feature list ("quick reaction"): an emoji from a short list over your head for four seconds, seen by people within 14 tiles. Rate limited, only the listed emoji, nothing else forwarded.
+  *Test:* server (range, list, rate limit, nothing extra), pure client rules, the bar's picker.
+
+- [x] **S6-16 A real office: top-down map, robot agents, live screens.** Anees, 2026-11-17: too many boards, no bots, tables need chairs, computers should look live, add a cafe and play areas, study the reference maps. Done: strict top-down Flow art (decor, objects, tiles); a 40 by 30 map with desk rows and chairs, a boardroom, lounge, cafe, play room and terrace; furniture blocks walking and is drawn in depth order so you walk behind it; agents are robots; each desk's monitor shows its agent's state. Most panel objects are no longer boards (a reception desk, filing cabinet, alarm light, megaphone, radio, computer desk).
+  *Test:* map, walk, stamp and office tests updated for the new layout (an object only has to be on the map; paths go to the tile beside furniture); browser run 8 of 8 with an overview screenshot.
+
+- [x] **S6-15f World art from Google Flow instead of WorkAdventure (done).** Anees, 2026-11-17: make all of it with Flow. Floors and walls (`tiles.png`), the sixteen office objects (`objects.png`), and furniture with a tree (`furniture.png`) are Flow sheets in `art-source/flow/`, sliced by `scripts/import-flow-tiles.mjs` and `import-flow-objects.mjs`. No WorkAdventure file is used, so no permission is needed. (Was: copy WorkAdventure art once the permission is on record.) Anees says WorkAdventure gave written permission by email. Paste it into `docs/PERMISSIONS.md` (who, date, exact words, which files), then copy only the files it covers, listing each in ART.md. Not started: nothing from WorkAdventure is in the repo.
+
+- [x] **S6-15c Talking to someone near you.** (Unit tests for the server, the pure rules and the bubble; the browser check with two people is in S6-11.) When another person is within a few tiles a speech bubble opens with a text box; what you send reaches the people near you and nobody else (no video, no audio); messages show over the sender for a few seconds and in a chat list; moving away closes it.
+  *Test:* a message reaches only members within range and not the sender twice; none reaches someone far away or signed out; messages are rate limited and cut short; the bubble opens and closes with distance (with hysteresis).
+
+## Slice 6B: the office, next phases (added 2026-11-17 at Anees's request)
+
+Anees rates the office 5 out of 10 against WorkAdventure and jsm-hq and wants these done. They are drafted here so the order is agreed; none is started unless ticked. Hard rules hold: loopback only, no real accounts or keys, nothing outside happens without an approval.
+
+**Where it stands against the two references.** jsm-hq: all 11 gaps from our own study (`docs/JSM-REFERENCE.md`) are closed (avatar, panels, hover, team cards, activity feed, stamped rooms, work as movement, add agent, many companies, phone, looks). What jsm-hq's scene has that we do not: pull requests as parcels on a conveyor belt into a gate, sticky notes on a plan wall, a live terminal of an agent's run in a drawer, face and eye states on the agents, a bitmap-font sign on everything. WorkAdventure: see the feature list in `docs/WORLD-REFERENCE.md`.
+
+- [x] **S6B-1 Rooms that grow (first part done).** Department rooms are now twelve rows high and hold nine desks (three columns by three rows); they start with six and "Add a desk" (Tools menu, `POST /api/departments/:key/desks`) puts the next one in, with the next number. New departments are stamped in the same shape. Desks and chairs are drawn from the data, so an added desk has them too. **Not done yet:** making a room wider or taller, adding a new wing beside the headquarters, and moving a table by hand (these need the map editor, S6B-9). Every desk, table and board is data in the map, so that editor will change the same things. *Test:* adding a desk puts it in the next free spot with the next number; a full room says so; nothing already placed moves.
+- [x] **S6B-2 Names everywhere (done).** Every department has its name on a sign on its wall and over its door, on its desks' name plates (the agent's name), in the tooltip and the People panel. *Test:* every room with a department shows that department's name; a name plate shows the agent seated there.
+- [x] **S6B-3 Friendly agents (look done, moods not).** Agents are now friendly little helpers (a round smiling head, an antenna sprout, arms and legs, a coloured jumpsuit in five colours; Flow-made). Done since: a small mood over each agent's head for its state (typing, waiting, blocked, in a discussion, handing over, asleep). Agents look like friendly little people-shaped helpers (a head, a face that shows their state, arms and legs), not machines; their mood shows on the face (working, waiting, blocked, idle). *Test:* each state maps to one face; the sheet has the same layout as the people sheet.
+- [x] **S6B-4 Life in the world (first part done).** Steam over coffee machines, plants and trees that sway, arcade screens that flicker, a ball bouncing on ping-pong tables; all off for someone who asked their system for less motion. Done since: agents blink now and then and bob quickly while working, as if typing. **Not done yet:** doors that open, agents that glance about. Ambient animation: steam over coffee machines, plants and trees that sway, arcade screens that flicker, a ball on the ping-pong table, doors that open as someone walks through, agents that blink and glance, typing hands at a working desk. *Test:* the animations are driven by pure state (so they can be tested without a canvas), and a reduced-motion setting turns them off.
+- [x] **S6B-5 Sound (done).** Footsteps, a door chime, a message blip and a reaction pop, made in the browser with no files; a Sound menu in the bar (effects, and read messages aloud with the browser's own voice), off by default and remembered. The ping when something new needs you is wired now. Sounds made in the browser (no files to track): footsteps, a door chime, a message blip, a pop for a reaction, a soft ping when something needs you; a Sound switch in the bar that remembers its setting and starts off; an optional "read messages aloud" using the browser's own voice (nothing leaves the machine). *Test:* each event picks one sound; the switch is off by default and respected.
+- [ ] **S6B-6 Talk in bubbles. NOT DONE.** Needs a camera, a microphone and a WebRTC server to test for real, none of which this machine session has; to do on a machine with them. Audio and video in a conversation bubble (WebRTC through a server that runs on this machine; nothing public), mute and camera buttons, and the bubble's lock. *Test:* two browsers in a bubble hear and see each other on loopback; a locked bubble keeps a third person out.
+- [x] **S6B-7 Announce, pin and follow (done; screen sharing waits for S6B-6).** A megaphone sends a line to everyone in the town (200 characters, one every ten seconds) and a pinned message stays for everyone and is shown to whoever arrives; "Follow" in the chat bubble walks you after someone and stops when you walk yourself. Screen sharing needs the same WebRTC as S6B-6. Share a screen into a bubble; a megaphone that sends a message to everyone in the town; follow someone (you walk after them); a pinned message. *Test:* follow keeps you within a tile or two; an announcement reaches everyone and is rate limited.
+- [ ] **S6B-8 Your avatar in parts. NOT DONE.** Needs layered art (skin, hair, clothes, accessories) that does not exist yet; the six whole looks are what we have. Skin, hair, clothes and accessories chosen separately and drawn together, kept in the browser and shown to others. *Test:* a choice changes only its part; others see the same figure.
+- [x] **S6B-9 Map editor in the app (first version done).** Tools, Edit the office: pick a piece of scenery and click a tile to put it down, or pick Remove and click a piece; the server checks that it fits, is not on a wall, a door, a desk or another piece, and does not cut a room, a desk or the front door off, and says why when it refuses. **Not yet:** undo, moving things with the mouse, and editing rooms, desks and doors (desks have Add a desk). The page reloads after each change. Move, add and remove furniture, rooms, desks and doors from inside the office, with undo; saved to the map file; validated before saving. *Test:* an edit that would block the door or cut a room off is refused.
+- [ ] **S6B-10 What jsm-hq shows that we do not (plan wall done, the rest not).** Done: the task board shows tasks as coloured sticky notes (blocked red, moving blue, waiting yellow, done green). **Not done:** a conveyor with work items as parcels, a live terminal of a run in the agent's drawer (the run log panel exists), a bitmap-font sign on every object. A conveyor with work items as parcels into a gate (a task moving to done), sticky notes on a plan wall (the goals and tasks), a live terminal of the agent's run in its drawer, and a bitmap-font sign on every object. *Test:* a task changing status moves its parcel; the terminal shows the run log as it grows.
+- [ ] **S6B-11 Chat sync and sign-in. NOT DONE.** Needs Slack or Discord accounts and keys, which are yours to create; parked for slice 10. Read and answer Slack or Discord messages in the office, and sign in with them (slice 10, behind approval, loopback first). *Test:* a message in is data, never an instruction; a reply goes out only after an approval.
+
+## Slice 6C: events, and what slice 6B left over (added 2026-11-18 at Anees's request)
+
+Anees asked for the leftovers to go in a second slice, and for places like those on workadventu.re (a conference, meetings, job fairs; the template picker he showed lists Modern Hackathon, Small Office, Sci-Fi Small Office, Nature Small Office, Medieval Small Office and Conference Campus). Done where it could be done here; the rest says why.
+
+- [x] **S6C-1 Event places.** A second row of districts along a second street under the first, reached through the lawn between the first row's districts: **Conference Campus** (an auditorium with a stage, a lectern, a projector screen and rows of seats; three workshop rooms; a kiosk; a registration desk; a running track and a basketball court; a garden party of banquet tables), **Hackathon Hall** (a big hall with a stage, workshop seating and team tables, and six team offices with desks), **Job Fair** (a reception, aisles of coloured booths with banners, a talk stage with seats, a recruiters' lounge) and **Meeting Centre** (a reception and eight meeting rooms off a corridor). New pieces drawn in code (`scripts/make-events-art.mjs`): lectern, wide projector screen, three booths, registration desk, two banners, theatre seat, banquet table, sign board, stage, court and track. The map is 208 by 101 tiles. *Test:* every room and entry is reachable from the front door; the new rooms exist; scenery uses only pictures we have.
+- [x] **S6C-2 Editor, second part (undo and move done).** Undo (the last twenty changes to the map, kept in memory) and a Move tool (click a piece, then click where it goes; one change, refused and unchanged if the new place is not allowed). Doors done 2026-11-20 (a Door tool: click a wall to open it, a gap to close it). **Not done:** dragging with the mouse, making a department room wider or taller, adding a wing.
+- [ ] **S6C-3 Talk in bubbles (audio, video, screen sharing). NOT DONE.** Needs a camera, a microphone and a WebRTC server to test for real. To do on a machine that has them; loopback only, mute and camera buttons, a lock for a bubble.
+- [ ] **S6C-4 Your avatar in parts. NOT DONE.** Needs layered art (skin, hair, clothes, accessories) that does not exist yet.
+- [ ] **S6C-5 Chat sync and sign-in with Slack or Discord. NOT DONE.** Needs accounts and keys that Anees creates; slice 10, behind an approval.
+- [x] **S6C-6 jsm-hq's conveyor and live terminal. DONE (live terminal in the drawer; conveyor: a belt of 4 tiles beside the review board in the Hall, one parcel for each open pull request, up to 6, riding into the board; drawn in code, looked at again every 30 seconds).** Work items as parcels on a belt into a gate, and a live terminal of a run in an agent's drawer. Needs a design pass first.
+- [ ] **S6C-7 Themed places.** Sci-fi, medieval and nature offices like the templates Anees showed. Needs new tiles and furniture art (dark metal, stone and timber, forest); better made with Google Flow when it is connected.
+- [ ] **S6C-8 Replace the code-drawn event art with generated art.** The stage, booths and seats are drawn from rectangles. When Google Flow is connected, generate pictures of the same sizes (`scripts/lib/footprints.mjs`) and drop them in; nothing else changes.
+
+## Slice 7: Engineering and Product
+
+SPEC 18 row 7, SPEC 5 (permissions, runtimes), 8 (plugins), 13 (code from folders), 17 (the Deployments screen). **Goal:** a spec becomes a pull request with a preview link, waiting for your merge. Ordered by Anees after slice 6: this slice first, then the leftovers in slice 6C.
+
+**How it stays safe.** GitHub and Vercel are connectors behind one interface, like the email transport. The default connector is **local**: a bare git repository on this machine stands in for GitHub (a "pull request" is a branch plus a record) and a folder served on loopback stands in for Vercel (a "preview" is a built copy). The real connectors (`gh` and Vercel) are written and **untested**, switched off, and need Anees's own sign-in, so they are parked in NEEDS-YOU. Nothing is created, pushed or deployed outside this machine without an approval, and no account is created. Coding agents run only in a git worktree outside this repo, with no secrets in their environment.
+
+- [x] **S7-1 Projects.** A project is a registered folder: a key, its path, its default branch, and its test and build commands (table `projects`, forced row-level security, listed in the tenancy test). API: list, register, remove. *Test:* a folder that is not a git repo is refused; a path inside the Conclave repo is refused; a duplicate key is refused; commands are stored as given and never run at registration.
+- [x] **S7-2 Worktrees.** A coding task gets its own git worktree on a new branch under `DATA_DIR/workspaces/<workspace>/worktrees/<task>`, never inside the repo; it is removed when the task is closed. *Test:* two tasks on one project get separate worktrees and branches; the worktree is outside the repo and outside the project's own folder; cleaning up removes it and the branch; a dirty main folder is left untouched.
+- [x] **S7-3 The `codex` runtime.** The Codex CLI run headless, behind the same runtime contract: its events parsed into run events, a clean environment, a timeout, the conformance tests. *Test:* the conformance suite passes against a fake `codex` script; the real one is not run in tests.
+- [x] **S7-4 Coder and code-reviewer templates, and the `dev-kit` plugin.** The two templates (the only ones allowed a shell, and only inside the worktree), `permissions.yaml`, coding rules, and a GSAP and Lenis motion skill for the Frontend Studio. *Test:* the renderer writes shell permission for these two only; every other template still has none; the rendered files name no secret.
+- [x] **S7-5 `propose_pr` and the tests-must-pass hook.** An os tool that proposes a pull request for a worktree. The server runs the project's test command in the worktree first and refuses the proposal if it fails or was not run; the agent cannot skip this. *Test:* a failing test command refuses; a passing one makes an approval with the diff summary; the approval carries the branch and the test output, not secrets.
+- [x] **S7-6 The git connector and the `pr.open` executor.** The connector interface (create repo, push a branch, open a pull request, merge, deploy) with the local stand-in as default and `gh` behind a switch. The executor claims the approval once, pushes the branch to the local bare repo and records the pull request. *Test:* claim-once; a restart mid-way does not push twice; the record names the branch and the approver; the `gh` connector is not used unless switched on.
+- [x] **S7-7 `repo.create` and `merge`.** Creating a repository for a client and merging a pull request are approved actions through the same connector. *Test:* both need an approval; merge refuses a pull request whose tests have not passed; both are recorded.
+- [x] **S7-8 `deploy` and the Deployments table.** A deploy is an approved action: the local stand-in builds the project (its build command, in a copy) and serves it on loopback; the result is a row in `deployments` (client, repo, URL, status, last deploy, who approved it). *Test:* needs an approval; a failing build is recorded as failed and nothing is served; the row names the approver.
+- [x] **S7-9 The Deployments panel.** A panel in the office listing every deployment, with its preview link and status, opened from an object in the Engineering room. *Test:* the list matches the table; a failed one says why; the panel opens from its object and from a link.
+- [x] **S7-10 Engineering and Product rooms.** The Engineering department active with a Tech Lead, coder and code reviewer seeded, and the Product department's room, using the add-a-department flow. *Test:* both rooms exist on the map with desks; the seeded agents sit in them.
+- [x] **S7-11 Slice 7 end to end.** SPEC 18 row 7. One test: a spec becomes a task for the coder; a worktree is made; a scripted runtime changes a file; the tests pass; `propose_pr` makes an approval; you approve; the pull request is recorded on the local connector; a deploy approval builds it and serves a preview on loopback; it appears in the Deployments panel. The full suite runs once. Tag `slice-7-done`.
+
+## Slice 8: Learning, hiring, the delegate and Research
+
+SPEC 18 row 8, SPEC 9 (learning loop and hiring), 6 (the delegate), 5 (templates). **Goal:** an edit you make changes the next draft; the Talent room runs a bake-off between three catalog candidates and proposes the winner; the delegate clears one routine approval and refuses one outside its limit; Research proposes a change that passes its eval. Built with local stand-ins: catalog text comes from a local folder at a pinned id (never fetched at run time), bake-off candidates are scored by checks in code, and nothing hires without an approval. Words-only search first (Postgres full text); meaning search waits for pgvector, which needs a check that the embedded Postgres can load it (parked in NEEDS-YOU).
+
+- [x] **S8-1 Memory.** Table `memories` (forced RLS): scope (founder, company, market), agent (optional), text, source, confidence, date. `remember` and `recall` os tools (autonomy 1 to write, 0 to read) with words-only search; only matching rows enter a prompt. *Test:* a remembered fact is recalled by words and only for its scope; a run's context holds only matching rows; memory never outranks a table.
+- [x] **S8-2 Approve and teach.** Editing a draft before approving it saves the difference as a founder lesson for that agent; the next run for that agent is given it. *Test:* an edit changes the next run's context; an unedited approval saves nothing.
+- [x] **S8-3 Reflect and skill patches.** After a run with more than a few steps, a cheap scripted reviewer saves a memory or proposes a skill patch (`propose_skill_patch`, a diff with a version bump); approving applies it, the old version stays in git. Self-writing is off for a new agent until switched on. *Test:* a patch changes nothing until approved; off by default; version goes up.
+- [x] **S8-4 Talent catalog import.** Import persona files from a local folder at a pinned id: scan for instructions to call tools, fetch pages or ignore rules, keep each source's licence, show a diff when it changes. *Test:* a planted instruction is flagged; the licence is kept; a persona cannot grant a tool.
+- [x] **S8-5 Bake-off and propose_hire.** Search the catalog, frame up to three candidates with the closest template, run one trial task each with no outside actions, score boundaries first, and queue a `hire` approval for the winner with the scores. *Test:* three candidates run; boundary attempts rank last; a hire needs approval and uses the agent-create executor.
+- [x] **S8-6 Hiring levels and the roster cap.** H0 (default) and H1 (trial by itself inside a mandate), cap 20 active agents. *Test:* H0 does nothing alone; H1 stays inside the mandate; over the cap is refused.
+- [x] **S8-7 Weekly scorecards.** Per agent: tasks done, checks passed, approvals accepted, edited or rejected, cost per accepted output, boundary attempts; a weak agent gets a suggestion. *Test:* counted from the tables.
+- [x] **S8-8 The Talent room.** A panel and room object for candidates, bake-offs and scorecards. *Test:* the list matches the tables; it opens from its object and a link.
+- [x] **S8-9 Gap check.** Weekly: two of three signals confirm a gap; choose hire, escalate, queue or decline. *Test:* one signal is not a gap.
+- [x] **S8-10 The delegate.** A mandate (classes of approval it may clear) and a ledger; it clears one routine approval and refuses one outside its limit; every action is logged and can be undone where possible. *Test:* inside clears, outside refuses, ledger records both, kill switch stops it.
+- [x] **S8-11 Research and improvement proposals (done); Founder Network (not done, see S8-11b).** An improvement proposal carries evidence, expected gain and an eval that must pass before it ships. *Test:* a proposal whose eval fails cannot be approved.
+- [x] **S8-11b Founder Network room (done; research through logged-in browsers is still a person's step).** People (name, where you met, last touch, next nudge), a note on each, message drafts in your voice that you send yourself, reminders. *Test:* a draft is never sent by the OS; a nudge appears when due. Not started: it needs a design pass on how people are found (X and LinkedIn research needs the browser and logins).
+- [x] **S8-12 Slice 8 end to end,** tag `slice-8-done`. Done without a full-suite run (stopped for time at your request); run `pnpm test -- --maxWorkers=2` when you can. Left open: S8-11b Founder Network; a real bake-off trial runner (the runtime in a scratch folder, rated by a reviewer); the weekly jobs that run the gap check and the scorecards; the delegate learning your judgment and its weekly digest; meaning search (pgvector).
+
+## Slice 9: API keys and a product for others
+
+SPEC 18 row 9, SPEC 16 (giving the OS to other people), 7 (runtimes), 8 (plugins). **Goal:** someone else installs it with their own key or local model and runs a different company from a template. Built with local stand-ins: the `claude-agent` runtime takes its SDK as an injected function (the real one needs an API key, which only a person adds); the marketplace is a folder or a git repo; nothing is hosted.
+
+- [x] **S9-1 The `http` runtime.** POSTs the task to a worker on this machine and reads back run events (NDJSON or one JSON answer); the worker calls the os tools with the run token. Passes the conformance suite; a render target writes INSTRUCTIONS.md. *Test:* conformance 1 to 7; no secret or environment is sent; the token is hidden if the worker repeats it; a remote worker is refused unless allowed.
+- [x] **S9-2 The `claude-agent` runtime.** Claude Agent SDK hosted by the OS, with the SDK injected. Only with an API key held in the server; the key goes to the SDK and nowhere else. *Test:* conformance with a scripted SDK; the key is never in events; it is refused with no key.
+- [x] **S9-3 Roles in team mode.** owner, admin, member, viewer on the existing login: who may approve, who may only read. *Test:* a viewer cannot decide an approval or change a setting; a member can approve content and outreach, not a hire, merge or deploy; the owner can do everything.
+- [x] **S9-4 Export and import of a company.** `export` writes a company folder as a template with secrets removed, plus its plugin list; `import` makes a company from one. *Test:* a round trip gives the same departments, agents and map; a planted secret is removed; an import over an existing company is refused.
+- [x] **S9-5 Two more company templates.** SaaS founder and course creator, each a small company folder that loads. *Test:* each loads, its map has a room named for every active department, and it has no Conclave-specific text. (They start with no agents: the setup wizard, S9-7, hires the first.)
+- [x] **S9-6 Plugin marketplace.** A folder or git repo of plugins; `plugin:install` copies one in after the scan, shows a diff when it changes, keeps its licence. *Test:* a planted instruction is flagged; a plugin cannot grant a tool its manifest does not list.
+- [x] **S9-7 Setup wizard.** The first-run steps as an API: name the company, pick a template, pick a model source (signed-in CLI, local model or key), connect channels (skipped), approve the first hire. *Test:* each step is recorded and can be repeated; nothing is sent.
+- [x] **S9-8 Calls Desk.** List Builder, Call Prepper and Voice Agent templates, a daily call list, call notes. Retell and Twilio are connectors written but off. *Test:* a call list is built from leads with a one-line opener; a call is only ever proposed.
+- [x] **S9-9 Slice 9 end to end,** tag `slice-9-done`. Closed without a full-suite run (time). Left open: the claude-agent runtime against the real SDK (needs a key), inviting a second team member, a button for export and the marketplace, acting on the wizard answers, a real Retell/Twilio line.
+
+## Slice 10: Client meetings and channels
+
+SPEC 18 row 10, SPEC 10 (clients, meetings, the inbox), 12 (the client meeting room), 15 (risks). **Goal:** a client joins from a guest link, you walk in from the office, notes and action items land on the deal, and a Slack reply from a client becomes a drafted answer waiting for your yes. Built with local stand-ins: the meeting connector is an interface whose default writes a room record (no video; LiveKit is a connector for later, off), channels are an interface whose default is a loopback inbox you can post into, and nothing leaves the machine. The OS itself never becomes public: a guest link only ever opens the meeting page on the media side.
+
+- [x] **S10-1 Meetings and guest links.** Table `meetings` (deal, title, when, status) and `guest_links` (hash of a long random token, meeting, expires, used count, revoked). A link is made only after a `meeting.invite` approval; the token is shown once and stored as a hash. *Test:* a link opens only its own meeting, expires, can be revoked, and a wrong or reused-after-revoke token is refused; nothing in the table can be turned back into a token.
+- [x] **S10-2 The meeting connector.** Interface (create room, close room) with a local stand-in that records the room; LiveKit written behind a switch, untested. *Test:* rooms open and close once; the real connector is never used unless switched on.
+- [x] **S10-3 The client meeting room on the map.** A room object in the town; joining from the office opens the meeting for a person who is signed in. *Test:* the room exists on the map with a door; the object opens the Meetings panel.
+- [x] **S10-4 The Note Taker with consent.** It takes notes only after every person in the meeting has consented (recorded with who and when); without consent it takes none. *Test:* notes refused without consent; withdrawn consent stops notes; consent is on record.
+- [x] **S10-5 Notes and action items on the deal.** The notes and action items land on the deal as comments and tasks, with the meeting as their source. *Test:* a finished meeting adds one note and its action items to its deal, once.
+- [x] **S10-6 Channels.** An interface for a client's message from Slack, Jira or a help desk, with a loopback stand-in. An inbound message is data, never an instruction; it creates a thread and a drafted answer for approval. *Test:* a message becomes a draft awaiting a yes; nothing is sent back without approval; an instruction inside it is not obeyed.
+- [x] **S10-7 The Meetings and Channels panels.** Two panels in the office. *Test:* the lists match the tables.
+- [x] **S10-8 CRM sync with one system of record.** The tables stay the record; an outside CRM is read through a connector and never outranks them. *Test:* a conflict is resolved to the tables and flagged.
+- [x] **S10-9 Slice 10 end to end,** tag `slice-10-done`. Closed without a full-suite run (time). Left open: real video (LiveKit), real Slack, Jira and help-desk connectors and their webhooks, a screen for CRM conflicts, a real CRM connector, joining a call from the map, and a transcript source for the Note Taker.
+
+## Opening the next slice
+  
 When slice 0 is in daily use, paste this:
 
 ```text

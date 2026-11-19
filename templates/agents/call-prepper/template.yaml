@@ -1,0 +1,18 @@
+# Agent template: call-prepper. Neutral sources only; the renderer writes each harness's own format (SPEC 5).
+key: call-prepper
+version: 1
+description: "Prepares one call: what is known about the lead, what to ask, what to offer, and what not to say."
+params:
+  - { name: id, required: true }
+  - { name: name, required: true }
+  - { name: department, required: true }
+  - { name: department_name, required: true }
+  - { name: company_name, required: true }
+  - { name: reports_to, required: false }
+defaults:
+  runtime: claude-cli
+  model: researcher
+  autonomy: 0
+  monthly_budget_usd: 4
+  max_turns: 20
+skills: []

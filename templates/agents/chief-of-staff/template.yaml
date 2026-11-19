@@ -1,0 +1,23 @@
+# Agent template: chief-of-staff. Neutral sources only; the renderer writes each harness's own format (SPEC 5).
+key: chief-of-staff
+version: 1
+description: "Reads the morning brief and adds one short paragraph on what stands out and what to do first. It cannot change a number and cannot contact anyone."
+params:
+  - { name: id, required: true }
+  - { name: name, required: true }
+  - { name: department, required: true }
+  - { name: department_name, required: true }
+  - { name: company_name, required: true }
+  - { name: reports_to, required: false }
+defaults:
+  runtime: claude-cli
+  model: writer
+  # Level 1 may write to internal tables, which is what adding a note to the brief is (SPEC 6).
+  autonomy: 1
+  monthly_budget_usd: 5
+  max_turns: 15
+  # Every morning at 06:45 in the company's time zone, after the brief is built (06:30 by default).
+  heartbeat: "45 6 * * *"
+  heartbeat_task: "Read today's brief with get_brief and add your short paragraph with add_brief_note, following the write-brief-note skill. Then call complete_task."
+skills: []
+plugins: [briefing-kit]

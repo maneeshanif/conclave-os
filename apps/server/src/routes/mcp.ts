@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
 import { callOsTool, osTools, ToolError, type OsStore } from '../harness/os-tools';
+import type { Breakers } from '../harness/breakers';
 import type { RunTokens } from '../harness/run-tokens';
 
 /**
@@ -19,16 +20,16 @@ const RpcSchema = z.object({
 type Rpc = z.infer<typeof RpcSchema>;
 
 const toolList = Object.entries(osTools).map(([name, t]) => {
-  const schema = z.toJSONSchema(t.input) as Record<string, unknown>;
+  const schema = z.toJSONSchema(t.input, { io: 'input' }) as Record<string, unknown>;
   delete schema.$schema;
-  return { name, description: t.description, inputSchema: schema };
+  return { name, minAutonomy: t.minAutonomy, description: t.description, inputSchema: schema };
 });
 
 function rpcError(id: Rpc['id'] | null, code: number, message: string) {
   return { jsonrpc: '2.0' as const, id: id ?? null, error: { code, message } };
 }
 
-export function mcpRoutes(deps: { tokens: RunTokens; store: OsStore }) {
+export function mcpRoutes(deps: { tokens: RunTokens; store: OsStore; breakers?: Breakers }) {
   const r = new Hono();
 
   r.get('/', (c) => c.body(null, 405, { Allow: 'POST' }));
@@ -79,17 +80,34 @@ export function mcpRoutes(deps: { tokens: RunTokens; store: OsStore }) {
         }
         case 'ping':
           return { jsonrpc: '2.0', id: msg.id, result: {} };
-        case 'tools/list':
-          return { jsonrpc: '2.0', id: msg.id, result: { tools: toolList } };
+        case 'tools/list': {
+          const level = await deps.store.autonomy(scope!);
+          const list = scope!.trust === 'low' ? (scope!.allowedTools ?? []) : scope!.allowedTools;
+          const tools = toolList.filter((t) => t.minAutonomy <= level && (!list || list.includes(t.name))).map((t) => ({ name: t.name, description: t.description, inputSchema: t.inputSchema }));
+          return { jsonrpc: '2.0', id: msg.id, result: { tools } };
+        }
         case 'tools/call': {
           const name = String(msg.params?.name ?? '');
+          // Only real tools get a breaker (S3-6): a made-up name must not fill the table.
+          const key = deps.breakers && name in osTools ? `os:${name}` : null;
+          if (key && deps.breakers) {
+            const gate = await deps.breakers.before(key);
+            if (!gate.allowed) {
+              const text = `The ${name} tool is temporarily unavailable: it failed several times in a row. It will be tried again after about ${gate.until.toISOString().slice(11, 16)} UTC. Carry on without it, or block your task and say it is unavailable.`;
+              return { jsonrpc: '2.0', id: msg.id, result: { content: [{ type: 'text', text }], isError: true } };
+            }
+          }
           try {
             const text = await callOsTool(deps.store, scope!, name, msg.params?.arguments);
+            if (key) await deps.breakers?.success(key).catch(() => undefined);
             return { jsonrpc: '2.0', id: msg.id, result: { content: [{ type: 'text', text }] } };
           } catch (err) {
             if (err instanceof ToolError) {
+              // The tool worked and said no (a bad input, a refusal): not a failure of the tool.
+              if (key) await deps.breakers?.success(key).catch(() => undefined);
               return { jsonrpc: '2.0', id: msg.id, result: { content: [{ type: 'text', text: err.message }], isError: true } };
             }
+            if (key) await deps.breakers?.failure(key, (err as Error).message).catch(() => undefined);
             return rpcError(msg.id, -32603, 'Internal error');
           }
         }

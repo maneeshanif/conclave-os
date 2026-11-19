@@ -25,11 +25,40 @@ export const GoalsFileSchema = z.object({
   current_rung: key,
   planning_rates: z.record(z.string(), z.number().nullable()).optional(),
   department_goals: z
-    .record(key, z.object({ metric: z.string().min(1), serves: key }))
+    .record(
+      key,
+      z.object({
+        metric: z.string().min(1),
+        serves: key,
+        /** How much per period counts as meeting it. Your own number. */
+        target: z.number().positive().optional(),
+        /** For the stage_exits metrics: which funnel stage, written funnel/stage, such as services/free-concept. */
+        stage: z.string().regex(/^[a-z0-9-]+\/[a-z0-9-]+$/, 'write it as funnel/stage, such as services/free-concept').optional(),
+      }),
+    )
     .optional()
     .default({}),
 });
 export type GoalsFile = z.infer<typeof GoalsFileSchema>;
+
+/** What a deal must have before it may move past a stage. */
+export const STAGE_REQUIREMENTS = ['decision_maker', 'due'] as const;
+export const FunnelStageSchema = z.object({
+  key,
+  name: z.string().min(1),
+  owner: z.string().min(1).optional(),
+  exit: z.string().min(1).optional(),
+  requires: z.array(z.enum(STAGE_REQUIREMENTS, { error: (i) => `unknown requirement "${String(i.input)}". Use one of: ${STAGE_REQUIREMENTS.join(', ')}` })).default([]),
+  won: z.boolean().default(false),
+});
+export const FunnelSchema = z.object({
+  key,
+  name: z.string().min(1),
+  market: z.string().min(1).optional(),
+  stages: z.array(FunnelStageSchema).min(2),
+});
+export const FunnelsFileSchema = z.object({ funnels: z.array(FunnelSchema).min(1) });
+export type Funnel = z.infer<typeof FunnelSchema>;
 
 /** Front matter of a role file (SPEC 5). The role file is the source of truth for these fields. */
 export const RoleFileSchema = z
@@ -43,7 +72,13 @@ export const RoleFileSchema = z
     }),
     model: z.string().min(1),
     fallback_model: z.string().optional(),
+    /** The other engine to use when this one is paused for a plan limit, or to escalate to when a check fails (S4-5). */
+    fallback_runtime: z
+      .enum(RUNTIMES, { error: (issue) => `unknown runtime "${String(issue.input)}". Use one of: ${RUNTIMES.join(', ')}` })
+      .optional(),
     heartbeat: z.string().optional(),
+    /** What each scheduled run should do. A task with this text is made when the heartbeat fires. */
+    heartbeat_task: z.string().min(1).max(2000).optional(),
     monthly_budget_usd: z.number().nonnegative().default(5),
     autonomy: z.number().int().min(0).max(3).default(0),
     template: z.string().optional(),
@@ -53,6 +88,10 @@ export const RoleFileSchema = z
     connectors: z.array(z.string()).default([]),
     max_turns: z.number().int().positive().default(25),
     output_check: z.string().optional(),
+    /** Hired switched off (rooms 6 and 9 are configured now and turned on later). A person switches the agent on. */
+    start_paused: z.boolean().optional(),
+    /** Low: reads input anyone can write, so it is contained in the server (A1). Left out means standard. */
+    trust: z.enum(['standard', 'low']).optional(),
   })
   .strict();
 export type RoleFile = z.infer<typeof RoleFileSchema>;

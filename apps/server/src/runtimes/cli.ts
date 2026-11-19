@@ -1,12 +1,13 @@
-import { spawn, type ChildProcess } from 'node:child_process';
-import { existsSync } from 'node:fs';
+import type { ChildProcess } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { createInterface } from 'node:readline';
 import { modelNameFor, resolveModel } from '../config/models';
 import type { RuntimeName } from './names';
-import { claudeParser, opencodeParser, type Parser } from './parsers';
+import { claudeParser, codexParser, opencodeParser, type Parser } from './parsers';
 import { RUN_TOKEN_ENV, type RunEvent, type RunRequest, type Runtime, type RuntimeHealth } from './types';
+import { killTree, resolveCommand, spawnResolved } from './win-process';
 
 /** How to start a CLI. Tests point this at a fake script; production uses the binary on PATH. */
 export interface CliCommand {
@@ -55,27 +56,6 @@ export function cleanEnv(
   return { ...env, ...extra };
 }
 
-/** On Windows, finds `name.exe` or `name.cmd` on PATH. A `.cmd` needs a shell to start. */
-function resolveCommand(cmd: CliCommand, env: Record<string, string>): { file: string; args: string[]; shell: boolean } {
-  const prefix = cmd.prefixArgs ?? [];
-  if (process.platform !== 'win32' || path.isAbsolute(cmd.command)) {
-    return { file: cmd.command, args: prefix, shell: false };
-  }
-  const exts = (env.PATHEXT ?? '.EXE;.CMD;.BAT').split(';').map((e) => e.toLowerCase());
-  for (const dir of (env.PATH ?? '').split(';')) {
-    for (const ext of ['.exe', ...exts.filter((e) => e !== '.exe')]) {
-      const full = path.join(dir, cmd.command + ext);
-      if (existsSync(full)) return { file: full, args: prefix, shell: ext !== '.exe' && ext !== '.com' };
-    }
-  }
-  return { file: cmd.command, args: prefix, shell: true };
-}
-
-/** Quotes one argument for cmd.exe. Arguments here are fixed flags and file paths, never user text. */
-function quoteForCmd(a: string): string {
-  return /[\s"&|<>^]/.test(a) ? `"${a.replace(/"/g, '""')}"` : a;
-}
-
 interface Built {
   args: string[];
   extraEnv: Record<string, string>;
@@ -94,7 +74,9 @@ async function writeRunFiles(req: RunRequest): Promise<{ system: string; prompt:
   return { system, prompt };
 }
 
-const builders: Record<'claude-cli' | 'opencode', (req: RunRequest, files: { system: string; prompt: string }) => Built> = {
+type CliName = 'claude-cli' | 'opencode' | 'codex';
+
+const builders: Record<CliName, (req: RunRequest, files: { system: string; prompt: string }) => Built> = {
   'claude-cli': (req, files) => {
     const model = modelNameFor(req.modelAlias, 'claude-cli');
     return {
@@ -155,9 +137,36 @@ const builders: Record<'claude-cli' | 'opencode', (req: RunRequest, files: { sys
       parser: opencodeParser(),
     };
   },
+  // Codex (S7-3): headless, JSON events, and a sandbox that can only write in the folder it works in. The prompt goes on stdin (the
+  // trailing "-"), never on the command line. No full-access or auto-approve flag is ever passed. Sessions are not kept or resumed.
+  codex: (req) => {
+    const model = modelNameFor(req.modelAlias, 'codex');
+    const cwd = req.workDir ?? path.join(req.workspaceDir, 'work');
+    // What the renderer wrote (S7-4): the standing rules and role, and where the os tools are. Missing files are simply not used.
+    const read = (f: string): string | null => {
+      try {
+        return readFileSync(path.join(req.workspaceDir, f), 'utf8');
+      } catch {
+        return null;
+      }
+    };
+    let mcp: string[] = [];
+    try {
+      const m = JSON.parse(read('.codex-mcp.json') ?? 'null') as { url?: string; tokenEnv?: string } | null;
+      if (m?.url && /^http:\/\/(127\.0\.0\.1|localhost|\[::1\])[:/]/.test(m.url)) mcp = ['-c', `mcp_servers.os.url=${JSON.stringify(m.url)}`, '-c', `mcp_servers.os.bearer_token_env_var=${JSON.stringify(m.tokenEnv ?? RUN_TOKEN_ENV)}`];
+    } catch {
+      mcp = [];
+    }
+    return {
+      args: ['exec', '--json', '--color', 'never', '--sandbox', 'workspace-write', '--ephemeral', '-C', cwd, ...(model ? ['-m', model] : []), ...mcp, '-'],
+      extraEnv: {},
+      parser: codexParser(),
+      stdin: [read('INSTRUCTIONS.md'), req.instructions, req.taskInput].filter((x): x is string => !!x && x.trim() !== '').join('\n\n---\n\n'),
+    };
+  },
 };
 
-const DEFAULT_BIN: Record<'claude-cli' | 'opencode', string> = { 'claude-cli': 'claude', opencode: 'opencode' };
+const DEFAULT_BIN: Record<CliName, string> = { 'claude-cli': 'claude', opencode: 'opencode', codex: 'codex' };
 
 /** Replaces the run token wherever it might appear in text that gets stored or shown. */
 function redact(e: RunEvent, token: string): RunEvent {
@@ -167,7 +176,7 @@ function redact(e: RunEvent, token: string): RunEvent {
 }
 
 /** One runner for every signed-in CLI (SPEC 5, the runner). */
-export function createCliRuntime(name: 'claude-cli' | 'opencode', opts: CliRuntimeOptions = {}): Runtime {
+export function createCliRuntime(name: CliName, opts: CliRuntimeOptions = {}): Runtime {
   const children = new Map<string, ChildProcess>();
   const cancelled = new Set<string>();
   const command = opts.command ?? { command: DEFAULT_BIN[name] };
@@ -182,17 +191,10 @@ export function createCliRuntime(name: 'claude-cli' | 'opencode', opts: CliRunti
       [RUN_TOKEN_ENV]: req.runToken,
     }, opts.envAllowlist);
     const resolved = resolveCommand(command, env);
-    const args = [...resolved.args, ...built.args];
-    // The agent works one level down, in work/, so it cannot touch its own harness config.
-    const cwd = path.join(req.workspaceDir, 'work');
+    // The agent works one level down, in work/, so it cannot touch its own harness config. A coding task works in its worktree.
+    const cwd = req.workDir ?? path.join(req.workspaceDir, 'work');
     await mkdir(cwd, { recursive: true });
-    const child = spawn(resolved.shell ? quoteForCmd(resolved.file) : resolved.file, resolved.shell ? args.map(quoteForCmd) : args, {
-      cwd,
-      env,
-      shell: resolved.shell,
-      stdio: ['pipe', 'pipe', 'pipe'],
-      windowsHide: true,
-    });
+    const child = spawnResolved(resolved, built.args, { cwd, env, stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true });
     children.set(req.runId, child);
 
     const queue: RunEvent[] = [];
@@ -208,7 +210,7 @@ export function createCliRuntime(name: 'claude-cli' | 'opencode', opts: CliRunti
     const kill = (reason: RunEvent) => {
       if (killedFor) return;
       killedFor = reason;
-      child.kill();
+      killTree(child);
     };
 
     child.stdin?.on('error', () => undefined);
@@ -279,25 +281,25 @@ export function createCliRuntime(name: 'claude-cli' | 'opencode', opts: CliRunti
       clearTimeout(timer);
       children.delete(req.runId);
       cancelled.delete(req.runId);
-      if (!closed) child.kill();
+      if (!closed) killTree(child);
     }
   }
 
   return {
     name: name as RuntimeName,
-    canResume: true,
+    canResume: name !== 'codex',
     start,
     async cancel(runId) {
       const child = children.get(runId);
       if (!child) return;
       cancelled.add(runId);
-      child.kill();
+      killTree(child);
     },
     async health(): Promise<RuntimeHealth> {
       const env = cleanEnv(opts.baseEnv ?? process.env, {});
       const resolved = resolveCommand(command, env);
       return new Promise((resolve) => {
-        const child = spawn(resolved.file, [...resolved.args, '--version'], { env, shell: resolved.shell, windowsHide: true });
+        const child = spawnResolved(resolved, ['--version'], { env, windowsHide: true });
         let out = '';
         child.stdout?.on('data', (d: Buffer) => (out += d.toString()));
         child.on('error', (err) => resolve({ ok: false, detail: `${command.command} not found: ${err.message}` }));

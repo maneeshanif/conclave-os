@@ -1,0 +1,8 @@
+# Plugin: dealdesk-kit (SPEC 10). Skills for the deal desk: the bounded free offer and the contract of success.
+# They write drafts for a person to review. Nothing in them can send, and a draft may state only figures from the tables.
+name: dealdesk-kit
+version: 1
+description: "Drafts the bounded free offer and the contract of success for a deal, using only the numbers recorded on it. It cannot send anything."
+skills: [free-offer, contract-of-success]
+connectors: [os]
+tools: [get_task, get_deal, save_draft, complete_task, block_task]

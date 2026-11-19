@@ -1,0 +1,20 @@
+# Agent template: code reviewer. Neutral sources only; the renderer writes each harness's own format (SPEC 5).
+# The second template allowed a shell (CLAUDE.md rule 10): it may run a project's tests and read its code in a worktree, nothing more.
+key: code-reviewer
+version: 1
+description: "Reads a change and its tests in a worktree, runs the tests, and reports bugs, risks and missing tests. Does not change the code."
+params:
+  - { name: id, required: true }
+  - { name: name, required: true }
+  - { name: department, required: true }
+  - { name: department_name, required: true }
+  - { name: company_name, required: true }
+  - { name: reports_to, required: false }
+defaults:
+  runtime: codex
+  model: any-model
+  autonomy: 0
+  monthly_budget_usd: 5
+  max_turns: 30
+skills: []
+plugins: [dev-kit]

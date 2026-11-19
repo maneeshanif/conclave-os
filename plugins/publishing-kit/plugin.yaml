@@ -1,0 +1,8 @@
+# Plugin: publishing-kit (SPEC 4, 8, 10). A skill for reporting on the post queue.
+# It only reads. Publishing is done by an executor after a person approves, never by an agent.
+name: publishing-kit
+version: 1
+description: "Reads the post queue and reports what is waiting, what went out and what failed. It cannot propose, approve or publish anything."
+skills: [report-queue]
+connectors: [os]
+tools: [get_task, get_posts, comment, complete_task, block_task, ask_founder]

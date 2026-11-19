@@ -1,0 +1,21 @@
+# Agent template: content-writer. Neutral sources only; the renderer writes each harness's own format (SPEC 5).
+key: content-writer
+version: 1
+description: "Writes posts for X, LinkedIn and Instagram in the company's voice and queues them for approval. It cannot publish. Starts on trial; promote it to level 2 to let it propose."
+params:
+  - { name: id, required: true }
+  - { name: name, required: true }
+  - { name: department, required: true }
+  - { name: department_name, required: true }
+  - { name: company_name, required: true }
+  - { name: reports_to, required: false }
+defaults:
+  runtime: claude-cli
+  model: writer
+  # On trial it can only read and comment. Promote it with `--autonomy 2` (or by editing its role file) so propose_post is available (SPEC 6).
+  autonomy: 0
+  monthly_budget_usd: 5
+  max_turns: 20
+  # no heartbeat: runs when given a task
+skills: [company-voice]
+plugins: [content-kit]

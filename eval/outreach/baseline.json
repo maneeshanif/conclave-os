@@ -1,0 +1,29 @@
+{
+  "set": "outreach",
+  "total": 20,
+  "score": 1,
+  "passed": [
+    "sample-01-alder-street-dental",
+    "sample-02-brightwater-physio",
+    "sample-03-cedar-pine-law",
+    "sample-04-dunmore-veterinary",
+    "sample-05-eastgate-opticians",
+    "sample-06-fernhill-yoga",
+    "sample-07-granary-accountants",
+    "sample-08-harbour-bikes",
+    "sample-09-ivy-lane-florist",
+    "sample-10-juniper-dental-care",
+    "sample-11-kestrel-plumbing",
+    "sample-12-lantern-caf",
+    "sample-13-marlow-chiropractic",
+    "sample-14-northfield-tutors",
+    "sample-15-oakhurst-surveyors",
+    "sample-16-pembroke-pet-grooming",
+    "sample-17-quarry-hill-physio",
+    "sample-18-rowan-skin-clinic",
+    "sample-19-sable-dental-studio",
+    "sample-20-thistle-garden-design"
+  ],
+  "recordedAt": "2026-11-12T22:44:47.322Z",
+  "by": "reference drafter"
+}

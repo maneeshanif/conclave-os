@@ -1,0 +1,2 @@
+/** The pictures of scenery the world loads, one file each in public/office/decor (scripts/lib/footprints.mjs has their sizes). */
+export const DECOR_NAMES = ['chair', 'desk', 'armchair', 'sofa', 'coffee', 'fridge', 'arcade', 'bookshelf', 'cafe-table', 'pingpong', 'printer', 'bin', 'rug', 'plant', 'clock', 'tree', 'lectern', 'screen-wide', 'booth', 'booth2', 'booth3', 'regdesk', 'banner', 'banner2', 'seat', 'banquet', 'signboard', 'stage', 'court', 'track'] as const;

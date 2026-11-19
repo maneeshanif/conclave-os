@@ -4,14 +4,14 @@ Anees turned this on on 2026-11-12. It replaces two rules in `CLAUDE.md` while i
 
 ## The loop
 
-1. **Questions first, once.** Before any code, ask Anees every question in `docs/QUESTIONS.md` in one message, plus any new ones you find while reading. Then wait. This is the only wait.
-2. **Record the answers.** Write them into `docs/QUESTIONS.md` under each question (`**Answer:** ...`). A question he skips takes the default written under it. Log every decision in `docs/DECISIONS.md`. Copy company facts (offers, prices, footer address, markets) into `company/`.
-3. **Then, for each slice from the current one to slice 10, in order:**
-   - Branch `slice-<n>-<name>` from the previous slice's branch, so unmerged work stacks.
-   - Draft the slice's task list in `docs/BUILD.md` in the slice 0 format: small tasks, the SPEC sections to read, one acceptance test each. Commit it. Do not wait for an OK.
-   - For each task: write the test first, build until it passes, then run typecheck, lint and `pnpm test`, tick the task, commit with the task id, push.
-   - When the slice's "Done when" check (SPEC 18) passes, open a PR into `master` with what was built, how it was tested and what needs Anees. Do not merge it. Move to the next slice.
-4. **Keep `docs/PROGRESS.md` current** after every task: branch, last task done, next task, open items. A new session, or a session after a context reset or a plan limit, starts by reading it and carries on from there.
+1. **The questions are already answered.** Anees answers `docs/QUESTIONS.md` before the build starts; the answers sit under each question (`**Answer:** ...`). A question with no answer takes its default. Do not ask them again. Ask only a new question that blocks a task and that the spec and the answers do not settle, and keep building other tasks while you wait.
+2. **Record decisions.** Log every answer that is a decision in `docs/DECISIONS.md`, and copy company facts (offers, prices, footer address, markets) into `company/`.
+3. **One branch, `dev`, for everything.** No branch per slice and no PR per slice. Every slice from the current one to slice 10 is built on `dev`, in order. One PR, `dev` into `master`, stays open; Anees merges it when he chooses.
+   - Draft each slice's task list in `docs/BUILD.md` in the slice 0 format (small tasks, the SPEC sections to read, one acceptance test each) and commit it. Do not wait for an OK.
+   - For each task: write the test first, build until it passes, run typecheck, lint and `pnpm test`, tick the task, commit with the task id, push `dev`.
+   - When a slice's "Done when" check (SPEC 18) passes, tag the commit `slice-<n>-done`, push the tag, add a line to `docs/PROGRESS.md`, and start the next slice.
+   - `dev` must stay green: never push a commit with failing tests.
+4. **Keep `docs/PROGRESS.md` current** after every task: last task done, next task, open items. A new session, or a session after a context reset or a plan limit, starts by reading it and carries on from there.
 
 ## When something needs Anees, do not stop: park it and keep going
 
@@ -33,7 +33,28 @@ Fix the spec first, log it in `docs/DECISIONS.md` with the reason, and continue 
 
 ## Never
 
-- Merge into `master`, force push, or rewrite pushed history.
+- Merge into `master`, force push, rewrite pushed history, or create another long-lived branch.
 - Add a runtime, SDK or library before its slice (CLAUDE.md, Stack).
 - Copy WorkAdventure code or maps. Office art is Kenney (CC0) or drawn here.
 - Give a catalog persona a tool.
+
+## Resuming after a limit
+
+A session that hits a usage limit stops. Nothing inside the repo can wake a stopped session, so resuming needs a trigger outside it:
+
+1. **On the laptop (chosen as the main way):** run the session in `/loop` mode with the resume prompt below. The loop re-fires on a timer, reads `docs/PROGRESS.md`, and carries on when the limit has reset. If the limit is still active the turn fails and the loop tries again later.
+2. **From the cloud:** a scheduled task can start a fresh cloud session every few hours with the same resume prompt. It only works on what runs on Linux, and it must claim its task first (see below).
+3. **Either way:** before starting a task, write `Working now: <task id>, <laptop|cloud>, <time>` in `docs/PROGRESS.md` and push. If a claim is under two hours old, pick the next task. Clear the line when the task is committed.
+
+Resume prompt:
+
+> Autopilot. Read CLAUDE.md, docs/AUTOPILOT.md, docs/QUESTIONS.md (the Answers section) and docs/PROGRESS.md. Claim the next unclaimed task and continue on the `dev` branch. Do not ask anything already answered.
+
+## Test cadence (Anees, 2026-11-14)
+
+Time matters more than running everything every task. Starting with slice 6:
+
+- **Per task:** write the test first for the new behaviour. Run only the test files you added or touched, plus typecheck and lint. Commit and push when those pass.
+- **Per slice:** run the full suite (`pnpm test`) once, after the slice's last task and before tagging `slice-<n>-done`. If it fails, fix it before tagging. This is also the end-to-end check for the slice.
+- **Why it is safe:** the hard rules and the migrations are still checked by the tests you touch, and the full run still happens before every tag. A regression elsewhere is caught at the end of the slice, not at the task.
+- **Exception:** a task that changes the database schema, a migration, an executor, authentication or the os tools also runs the full suite, because those can break distant code.

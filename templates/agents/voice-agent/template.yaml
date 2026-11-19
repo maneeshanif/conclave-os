@@ -1,0 +1,18 @@
+# Agent template: voice-agent. Neutral sources only; the renderer writes each harness's own format (SPEC 5).
+key: voice-agent
+version: 1
+description: "Proposes calls to leads, one at a time, with an opener and a short script. It never places a call."
+params:
+  - { name: id, required: true }
+  - { name: name, required: true }
+  - { name: department, required: true }
+  - { name: department_name, required: true }
+  - { name: company_name, required: true }
+  - { name: reports_to, required: false }
+defaults:
+  runtime: claude-cli
+  model: researcher
+  autonomy: 0
+  monthly_budget_usd: 5
+  max_turns: 20
+skills: []

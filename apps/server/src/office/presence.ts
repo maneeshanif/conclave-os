@@ -1,0 +1,216 @@
+import { EMOTES, EMOTE_RANGE } from '@conclave/shared';
+import { z } from 'zod';
+
+/**
+ * Who is in the office with you, live (SPEC 12, 15). Signed-in sessions send where they are, whether they are available, and
+ * whether a hand is up; everyone else's sessions are told. Nothing but those few fields is ever stored or forwarded, nothing is
+ * written to the database, and a person who is not signed in never reaches this (the socket's login wall comes first).
+ */
+export type Availability = 'available' | 'busy' | 'away';
+export interface PresenceMember {
+  id: string;
+  name: string;
+  /** Which of the six looks, 0 to 5. */
+  look: number;
+  x: number;
+  y: number;
+  availability: Availability;
+  handRaised: boolean;
+}
+export const LOOKS = 6;
+export interface ChatMessage {
+  kind: 'chat';
+  id: string;
+  name: string;
+  text: string;
+  at: number;
+}
+export interface EmoteMessage {
+  kind: 'emote';
+  id: string;
+  emote: string;
+}
+export interface AnnounceMessage {
+  kind: 'announce';
+  id: string;
+  name: string;
+  text: string;
+  at: number;
+}
+export interface PinMessage {
+  kind: 'pin';
+  text: string;
+  by: string;
+}
+const MAX_ANNOUNCE = 200;
+export type PresenceMessage = { kind: 'presence'; member: PresenceMember } | { kind: 'presence.all'; members: PresenceMember[] } | { kind: 'presence.leave'; id: string } | ChatMessage | EmoteMessage | AnnounceMessage | PinMessage;
+
+/** Text reaches only the people this many tiles from the sender (S6-15c). No audio, no video. */
+export const CHAT_RANGE = 5;
+const MAX_CHAT = 300;
+
+const MAX_TILE = 500;
+// Zod drops any key it does not list, so nothing else a client adds can be forwarded.
+const Move = z.object({
+  type: z.literal('presence'),
+  x: z.number().int().min(0).max(MAX_TILE),
+  y: z.number().int().min(0).max(MAX_TILE),
+  availability: z.enum(['available', 'busy', 'away']),
+  handRaised: z.boolean(),
+  name: z.string().optional(),
+  // Not checked here: a bad look keeps the last good one instead of dropping the whole move.
+  look: z.unknown().optional(),
+});
+const goodLook = (v: unknown): v is number => typeof v === 'number' && Number.isInteger(v) && v >= 0 && v < LOOKS;
+
+const Announce = z.object({ type: z.literal('announce'), text: z.string() });
+const Pin = z.object({ type: z.literal('pin'), text: z.string() });
+const cleanAnnounce = (raw: string): string =>
+  // eslint-disable-next-line no-control-regex
+  raw.replace(/[\u0000-\u001f<>]/g, '').replace(/\s+/g, ' ').trim().slice(0, MAX_ANNOUNCE);
+const Emote = z.object({ type: z.literal('emote'), emote: z.string() });
+const Chat = z.object({ type: z.literal('chat'), text: z.string() });
+const cleanText = (raw: string): string =>
+  // eslint-disable-next-line no-control-regex
+  raw.replace(/[\u0000-\u001f<>]/g, '').replace(/\s+/g, ' ').trim().slice(0, MAX_CHAT);
+
+const cleanName = (raw: string | undefined, was: string): string => {
+  if (raw === undefined) return was;
+  // eslint-disable-next-line no-control-regex
+  const n = raw.replace(/[\u0000-\u001f<>]/g, '').replace(/\s+/g, ' ').trim().slice(0, 30).trim();
+  return n || 'Guest';
+};
+
+interface Connection {
+  id: string;
+  send: (m: PresenceMessage) => void;
+  member: PresenceMember | null;
+  last: number | null;
+  lastChat: number | null;
+  lastEmote: number | null;
+  lastAnnounce: number | null;
+}
+
+export class PresenceHub {
+  private readonly conns = new Set<Connection>();
+  private readonly minIntervalMs: number;
+  private readonly chatIntervalMs: number;
+  private readonly announceIntervalMs: number;
+  private pinned: PinMessage | null = null;
+  private readonly now: () => number;
+
+  constructor(opts: { minIntervalMs?: number; chatIntervalMs?: number; announceIntervalMs?: number; now?: () => number } = {}) {
+    this.minIntervalMs = opts.minIntervalMs ?? 100;
+    this.chatIntervalMs = opts.chatIntervalMs ?? 500;
+    this.announceIntervalMs = opts.announceIntervalMs ?? 10_000;
+    this.now = opts.now ?? Date.now;
+  }
+
+  /** Everyone who has said where they are. */
+  members(): PresenceMember[] {
+    return [...this.conns].flatMap((c) => (c.member ? [{ ...c.member }] : []));
+  }
+
+  /** A signed-in session's socket. `id` is its session, so one person on two devices is two avatars. */
+  connect(sessionId: string, send: (m: PresenceMessage) => void): { message(raw: unknown): void; close(): void } {
+    const taken = new Set([...this.conns].map((c) => c.id));
+    let id = sessionId;
+    for (let n = 2; taken.has(id); n++) id = `${sessionId}~${n}`;
+    const conn: Connection = { id, send, member: null, last: null, lastChat: null, lastEmote: null, lastAnnounce: null };
+    const here = this.members();
+    this.conns.add(conn);
+    if (here.length) send({ kind: 'presence.all', members: here });
+    if (this.pinned) send(this.pinned); // what is pinned is shown to whoever arrives
+    return {
+      message: (raw) => this.receive(conn, raw),
+      close: () => {
+        this.conns.delete(conn);
+        if (conn.member) this.tell({ kind: 'presence.leave', id: conn.id }, conn);
+      },
+    };
+  }
+
+  private receive(conn: Connection, raw: unknown): void {
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(String(raw));
+    } catch {
+      return;
+    }
+    const announce = Announce.safeParse(parsed);
+    if (announce.success) return this.announce(conn, announce.data.text);
+    const pin = Pin.safeParse(parsed);
+    if (pin.success) return this.pin(conn, pin.data.text);
+    const emote = Emote.safeParse(parsed);
+    if (emote.success) return this.react(conn, emote.data.emote);
+    const chat = Chat.safeParse(parsed);
+    if (chat.success) return this.say(conn, chat.data.text);
+    const m = Move.safeParse(parsed);
+    if (!m.success) return;
+    const t = this.now();
+    if (conn.last !== null && t - conn.last < this.minIntervalMs) return; // too soon: the next one will say where they are
+    conn.last = t;
+    conn.member = { id: conn.id, name: cleanName(m.data.name, conn.member?.name ?? 'Guest'), look: goodLook(m.data.look) ? m.data.look : (conn.member?.look ?? 0), x: m.data.x, y: m.data.y, availability: m.data.availability, handRaised: m.data.handRaised };
+    this.tell({ kind: 'presence', member: { ...conn.member } }, conn);
+  }
+
+  /** The megaphone: a line to everyone in the town, near or far. Rate limited, cleaned, and only from someone who has said where they are. */
+  private announce(conn: Connection, raw: string): void {
+    const from = conn.member;
+    if (!from) return;
+    const text = cleanAnnounce(raw);
+    if (!text) return;
+    const t = this.now();
+    if (conn.lastAnnounce !== null && t - conn.lastAnnounce < this.announceIntervalMs) return;
+    conn.lastAnnounce = t;
+    const msg: AnnounceMessage = { kind: 'announce', id: from.id, name: from.name, text, at: t };
+    for (const c of this.conns) if (c !== conn) c.send(msg);
+  }
+
+  /** A pinned message for everyone, kept for people who arrive later. An empty one clears it. */
+  private pin(conn: Connection, raw: string): void {
+    const from = conn.member;
+    if (!from) return;
+    const t = this.now();
+    if (conn.lastAnnounce !== null && t - conn.lastAnnounce < this.chatIntervalMs) return;
+    conn.lastAnnounce = t;
+    const text = cleanAnnounce(raw);
+    this.pinned = text ? { kind: 'pin', text, by: from.name } : null;
+    const msg: PinMessage = { kind: 'pin', text, by: from.name };
+    for (const c of this.conns) if (c !== conn) c.send(msg);
+  }
+
+  /** A quick reaction from someone who has said where they are: one emoji from the list, to people within range, never the sender. */
+  private react(conn: Connection, raw: string): void {
+    const from = conn.member;
+    if (!from || !(EMOTES as readonly string[]).includes(raw)) return;
+    const t = this.now();
+    if (conn.lastEmote !== null && t - conn.lastEmote < this.chatIntervalMs) return;
+    conn.lastEmote = t;
+    const msg: EmoteMessage = { kind: 'emote', id: from.id, emote: raw };
+    for (const c of this.conns) {
+      if (c === conn || !c.member) continue;
+      if (Math.hypot(c.member.x - from.x, c.member.y - from.y) <= EMOTE_RANGE) c.send(msg);
+    }
+  }
+
+  /** A line of text from someone who has said where they are: only people within range hear it, and never the sender. */
+  private say(conn: Connection, raw: string): void {
+    const from = conn.member;
+    if (!from) return;
+    const text = cleanText(raw);
+    if (!text) return;
+    const t = this.now();
+    if (conn.lastChat !== null && t - conn.lastChat < this.chatIntervalMs) return;
+    conn.lastChat = t;
+    const msg: ChatMessage = { kind: 'chat', id: from.id, name: from.name, text, at: t };
+    for (const c of this.conns) {
+      if (c === conn || !c.member) continue;
+      if (Math.hypot(c.member.x - from.x, c.member.y - from.y) <= CHAT_RANGE) c.send(msg);
+    }
+  }
+
+  private tell(m: PresenceMessage, except: Connection): void {
+    for (const c of this.conns) if (c !== except) c.send(m);
+  }
+}

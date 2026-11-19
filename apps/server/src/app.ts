@@ -3,16 +3,28 @@ import { cors } from 'hono/cors';
 import type { UpgradeWebSocket } from 'hono/ws';
 import type { Pool } from 'pg';
 import { HealthSchema } from '@conclave/shared';
+import type { Auth, SessionInfo } from './auth';
+import type { Companies } from './companies';
+import { PresenceHub } from './office/presence';
+import { companyRoutes } from './routes/companies';
 import type { Bus } from './bus';
+import type { Breakers } from './harness/breakers';
+import type { ReaperStatus } from './health';
 import { withWorkspace, type Tx } from './db/tenant';
 import type { OsStore } from './harness/os-tools';
 import type { RunTokens } from './harness/run-tokens';
 import { apiRoutes } from './routes/api';
+import type { ApprovalDecision } from './routes/approvals';
+import { breakerRoutes } from './routes/breakers';
+import { pushRoutes } from './routes/push';
+import type { Notifier } from './push';
 import { mcpRoutes } from './routes/mcp';
+import { isRole, mayRequest, type Role } from './auth/roles';
+import { ownerRoutes } from './routes/owner';
 import type { Dispatcher } from './workflows/dispatch';
 
 /** `tx` is the request's transaction. `after` holds work that must wait until it commits, such as starting a run. */
-export type AppEnv = { Variables: { tx: Tx; after: (() => Promise<void>)[] } };
+export type AppEnv = { Variables: { tx: Tx; after: (() => Promise<void>)[]; owner?: SessionInfo; role?: Role } };
 
 export interface AppDeps {
   pool: Pool;
@@ -23,6 +35,15 @@ export interface AppDeps {
   bus?: Bus;
   dispatcher?: Dispatcher;
   upgradeWebSocket?: UpgradeWebSocket;
+  /** Who is in the office right now (S6-9). One per server; made here if not given. */
+  presence?: PresenceHub;
+  /**
+   * Many companies (S6-13a). A request that names another company (header `x-company`, or `?company=` for the socket) is handed to a
+   * full app of its own for that company, so nothing a route does can reach across companies.
+   */
+  companies?: Companies;
+  /** Set on the per-company apps made from `companies`, so they do not hand on again. */
+  isCompanyApp?: boolean;
   inngestHandler?: (c: Context) => Promise<Response>;
   /** Browser origins allowed to call the API. Only the local web app. */
   webOrigins?: string[];
@@ -31,6 +52,31 @@ export interface AppDeps {
    * stops DNS rebinding: a page on evil.example resolved to 127.0.0.1 still sends `Host: evil.example`.
    */
   hosts?: string[];
+  /**
+   * The login wall (S1-10). When set, every /api route and the event socket need a signed-in session; only the
+   * sign-in routes under /api/auth, the health check, the agents' own run-token endpoint and Inngest stay open.
+   */
+  auth?: Auth;
+  /** Called after an approval decision has committed. The gate (S1-3) starts the executor from here. */
+  onApprovalDecided?: (d: ApprovalDecision) => Promise<void> | void;
+  /** Called after the kill switch changes. On means stop what is running and drop what is queued. */
+  onKillSwitch?: (on: boolean) => Promise<void> | void;
+  /** Sends the approved emails the kill switch or a cap was holding. Returns how many it tried. */
+  onReleaseHeld?: () => Promise<number> | number;
+  /** What the last reaper pass did, for the Health screen (S3-7). */
+  reaperStatus?: ReaperStatus;
+  /** Where company/ is: the office map lives there (S6-2). */
+  companyRoot?: string;
+  /** Where the agent and company templates are (S6-13). */
+  templatesRoot?: string;
+  /** The data folder, where the delegate key is kept (Settings). */
+  dataDir?: string;
+  /** Push notifications (S5-10): the notifier and the public key the browser subscribes with. */
+  push?: { notifier: Notifier; publicKey: string };
+  /** Circuit breakers for the os tools (S3-6). */
+  breakers?: Breakers;
+  /** Copies the company folder into the database again, on request. */
+  onCompanyReload?: () => Promise<Record<string, number>>;
 }
 
 /**
@@ -46,7 +92,29 @@ export function createApp(deps?: AppDeps) {
   app.get('/health', (c) => c.json(HealthSchema.parse({ ok: true })));
   if (!deps) return app;
 
-  const origins = deps.webOrigins ?? ['http://127.0.0.1:3000', 'http://localhost:3000'];
+  // Which company a request is for. The app made for that company does every check itself (host, origin, sign-in), so this runs first.
+  if (deps.companies && !deps.isCompanyApp) {
+    const companies = deps.companies;
+    const inner = new Map<string, ReturnType<typeof createApp>>();
+    app.use('*', async (c, next) => {
+      const want = c.req.header('x-company') ?? c.req.query('company');
+      if (!want || want === deps.workspaceId) return next();
+      const co = await companies.get(want);
+      if (!co) return c.json({ error: 'Unknown company.' }, 404);
+      let app2 = inner.get(co.id);
+      if (!app2) {
+        // Its own presence list, and no reload of the default company's folder.
+        const forCompany: AppDeps = { ...deps, workspaceId: co.id, companyRoot: co.root, isCompanyApp: true };
+        delete forCompany.presence;
+        delete forCompany.onCompanyReload;
+        app2 = createApp(forCompany);
+        inner.set(co.id, app2);
+      }
+      return app2.fetch(c.req.raw, c.env);
+    });
+  }
+
+  const origins = deps.webOrigins ?? ['http://127.0.0.1:3000', 'http://localhost:3000', ...(deps.auth ? [deps.auth.config.webOrigin] : [])];
 
   // CORS headers alone do not stop a request: a page can still POST text/plain with no preflight.
   // So refuse, in code, a wrong Host, a foreign Origin on anything that changes state, and a write
@@ -68,7 +136,25 @@ export function createApp(deps?: AppDeps) {
     }
     await next();
   });
-  app.use('/api/*', cors({ origin: origins, allowMethods: ['GET', 'POST', 'PATCH'], allowHeaders: ['content-type'] }));
+  app.use('/api/*', cors({ origin: origins, allowMethods: ['GET', 'POST', 'PATCH', 'DELETE'], allowHeaders: ['content-type', 'x-company'], credentials: true }));
+  if (deps.auth) {
+    const auth = deps.auth;
+    // Sign-in comes first: it answers without a session and without a database transaction.
+    app.all('/api/auth/*', (c) => auth.handler(c.req.raw));
+    const wall = async (c: Context<AppEnv>, next: () => Promise<void>) => {
+      const me = await auth.session(c.req.raw.headers).catch(() => null);
+      if (!me) return c.json({ error: 'Sign in first.' }, 401);
+      c.set('owner', me);
+      // Team mode (S9-3): the person's role in this workspace. Nobody on the list is a viewer.
+      const row = await withWorkspace(deps.pool, deps.workspaceId, ({ client }) => client.query<{ role: string }>('select role from members where user_id = $1', [me.userId])).catch(() => null);
+      const role: Role = row?.rows[0] && isRole(row.rows[0].role) ? row.rows[0].role : 'viewer';
+      c.set('role', role);
+      if (!mayRequest(role, c.req.method, c.req.path)) return c.json({ error: `A ${role} cannot do that.` }, 403);
+      await next();
+    };
+    app.use('/api/*', wall);
+    app.use('/events', wall);
+  }
   app.use('/api/*', async (c, next) => {
     const after: (() => Promise<void>)[] = [];
     c.set('after', after);
@@ -82,20 +168,28 @@ export function createApp(deps?: AppDeps) {
     for (const fn of after) await fn();
   });
 
+  if (deps.auth) app.route('/api/owner', ownerRoutes({ auth: deps.auth }));
+  if (deps.push) app.route('/api/push', pushRoutes(deps.push));
+  if (deps.companies) app.route('/api/companies', companyRoutes({ companies: deps.companies }));
+  if (deps.breakers) app.route('/api/breakers', breakerRoutes({ breakers: deps.breakers }));
   if (deps.bus && deps.dispatcher) {
-    app.route('/api', apiRoutes({ workspaceId: deps.workspaceId, dispatcher: deps.dispatcher, bus: deps.bus }));
+    app.route('/api', apiRoutes({ workspaceId: deps.workspaceId, dispatcher: deps.dispatcher, bus: deps.bus, onApprovalDecided: deps.onApprovalDecided, onKillSwitch: deps.onKillSwitch, onReleaseHeld: deps.onReleaseHeld, ...(deps.onCompanyReload ? { onCompanyReload: deps.onCompanyReload } : {}), ...(deps.reaperStatus ? { reaperStatus: deps.reaperStatus } : {}), ...(deps.companyRoot ? { companyRoot: deps.companyRoot } : {}), ...(deps.templatesRoot ? { templatesRoot: deps.templatesRoot } : {}), ...(deps.dataDir ? { dataDir: deps.dataDir } : {}), pool: deps.pool }));
   }
-  if (deps.tokens && deps.store) app.route('/mcp', mcpRoutes({ tokens: deps.tokens, store: deps.store }));
+  if (deps.tokens && deps.store) app.route('/mcp', mcpRoutes({ tokens: deps.tokens, store: deps.store, ...(deps.breakers ? { breakers: deps.breakers } : {}) }));
   if (deps.inngestHandler) app.on(['GET', 'POST', 'PUT'], '/inngest', deps.inngestHandler);
 
   if (deps.upgradeWebSocket && deps.bus) {
     const ws = deps.workspaceId;
     const bus = deps.bus;
+    const hub = deps.presence ?? new PresenceHub();
     app.get(
       '/events',
       deps.upgradeWebSocket((c) => {
         const origin = c.req.header('origin');
         let off: (() => void) | undefined;
+        // Presence only for a signed-in session. With login off there is no session, so no presence.
+        const me = (c as Context<AppEnv>).get('owner');
+        let here: ReturnType<PresenceHub['connect']> | undefined;
         return {
           onOpen(_e, socket) {
             if (origin && !origins.includes(origin)) {
@@ -105,9 +199,14 @@ export function createApp(deps?: AppDeps) {
             off = bus.subscribe((m) => {
               if (m.workspaceId === ws) socket.send(JSON.stringify(m));
             });
+            if (me) here = hub.connect(me.sessionId, (m) => socket.send(JSON.stringify(m)));
+          },
+          onMessage(e) {
+            here?.message(e.data);
           },
           onClose() {
             off?.();
+            here?.close();
           },
         };
       }),

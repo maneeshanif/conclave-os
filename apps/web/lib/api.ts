@@ -1,6 +1,89 @@
 /** The server answers on 127.0.0.1:3100 by default (CLAUDE.md rule 9). */
 export const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://127.0.0.1:3100';
 
+import type { OfficeMap, Placed } from '@conclave/shared';
+import { currentCompany } from './company';
+
+export interface BoardroomDiscussion {
+  id: string;
+  kind: string;
+  question: string;
+  status: string;
+  opened_by: string;
+  participants: string[];
+  opened_at: string;
+  closed_at: string | null;
+  turns: number;
+}
+export interface BoardroomTurn {
+  id: string;
+  speaker: string;
+  round: number;
+  body: string;
+  evidence: unknown[];
+  disagreements: string | null;
+  at: string;
+}
+export interface BoardroomDecision {
+  id: string;
+  discussion_id: string | null;
+  title: string;
+  decision: string;
+  owner: string | null;
+  due: string | null;
+  decided_by: string;
+  decided_at: string;
+}
+export interface DepartmentBoardData {
+  department: { key: string; name: string };
+  agents: { key: string; name: string; status: string }[];
+  tasks: { id: string; title: string; status: string; priority: number; blocked_reason: string | null; created_at: string; assignee_key: string | null; assignee_name: string | null }[];
+}
+export interface DepartmentChannelData {
+  messages: { id: string; author: string; body: string; created_at: string }[];
+}
+
+export interface CompanySummary {
+  id: string;
+  slug: string;
+  name: string;
+  isDefault: boolean;
+}
+export interface CompanyList {
+  companies: CompanySummary[];
+  templates: string[];
+}
+
+/** What GET /api/office returns: the map's facts (walls as rows of # and .) and each agent's room and desk. */
+export interface OfficeFacts {
+  map: Omit<OfficeMap, 'walls'> & { walls: string[] };
+  agents: { id: string; key: string; name: string; department: string | null; status: string; room: string | null; desk: number | null }[];
+}
+export type OfficePlace = Pick<Placed, 'agentId' | 'place' | 'reason' | 'x' | 'y'> & { key: string };
+export interface ActivityEvent {
+  id: string;
+  at: string;
+  kind: string;
+  text: string;
+}
+export interface TeamCard {
+  id: string;
+  key: string;
+  name: string;
+  department: string | null;
+  state: string;
+  since: string | null;
+  task: string | null;
+  forYou: number;
+}
+export interface AgentDrawer {
+  agent: { id: string; key: string; name: string; department: string | null; status: string };
+  run: { id: string; status: string } | null;
+  tasks: { id: string; title: string; status: string }[];
+  /** The last steps of the agent's latest run, one line each (S6C-6). */
+  terminal?: { runId: string; status: string; lines: { kind: 'call' | 'result' | 'error' | 'say' | 'note'; text: string }[] } | null;
+}
+
 export interface Agent {
   id: string;
   key: string;
@@ -60,9 +143,346 @@ export interface TaskDetail {
   runs: Run[];
 }
 
+/** One thing waiting for a decision (SPEC 6). `lead` comes with an email so the card can show what it rests on. */
+export interface Approval {
+  id: string;
+  kind: string;
+  status: string;
+  agent_id: string | null;
+  agent_key: string | null;
+  task_id: string | null;
+  payload: Record<string, unknown>;
+  edited_payload: Record<string, unknown> | null;
+  decided_by: string | null;
+  decided_at: string | null;
+  decision_note: string | null;
+  result: unknown;
+  created_at: string;
+  lead?: { id: string; business_name: string | null; website: string | null; email: string | null; stage: string; notes: string | null } | null;
+}
+
+/** Something that needs the founder. `derived` ones come from live state and clear themselves. */
+export interface ActionItem {
+  id: string;
+  kind: string;
+  title: string;
+  body: string | null;
+  status: string;
+  task_id: string | null;
+  approval_id: string | null;
+  created_at: string | null;
+  derived?: boolean;
+}
+
+/** The goals screen's data (S2-9). Progress is measured from the tables; null means it is not measured. */
+export interface GoalProgress {
+  target: number | null;
+  unit: string | null;
+  window: string | null;
+  measured: boolean;
+  current: number | null;
+  pct: number | null;
+}
+export interface RungGoal extends GoalProgress {
+  key: string;
+  title: string | null;
+  due: string | null;
+  status: string;
+  source: string | null;
+  met: boolean;
+}
+export interface DepartmentGoal extends GoalProgress {
+  key: string;
+  department: string | null;
+  metric: string | null;
+  serves: string | null;
+  stage: string | null;
+}
+export interface GoalsData {
+  current_rung: string | null;
+  rungs: RungGoal[];
+  departments: DepartmentGoal[];
+}
+
+/** The morning brief (S2-10): counted from the tables; the narrative is the chief of staff agent's own paragraph. */
+export interface Deployment {
+  id: string;
+  projectKey: string;
+  client: string | null;
+  ref: string | null;
+  status: 'building' | 'live' | 'failed';
+  url: string | null;
+  error: string | null;
+  approvedBy: string;
+  createdAt: string;
+  finishedAt: string | null;
+}
+
+export interface Board {
+  id: string | null;
+  key: string;
+  title: string;
+  kind: string;
+  status: string;
+  tasks: { id: string; title: string; status: string; priority: number; assignee: string | null }[];
+}
+
+export interface PullRequest {
+  id: string;
+  project: string;
+  number: number;
+  title: string;
+  summary: string;
+  branch: string;
+  base: string;
+  head: string;
+  status: 'open' | 'merged' | 'closed';
+  connector: string;
+  url: string | null;
+  approvedBy: string;
+  mergedBy: string | null;
+  createdAt: string;
+  mergedAt: string | null;
+  testsPassed: boolean;
+  mergeRequest: string | null;
+}
+
+export interface ConfigView {
+  hiring: { level: 'H0' | 'H1'; rosterCap: number; trialBudgetCapUsd: number; active: number };
+  guestLinkHours: number;
+  releaseChannel: 'stable' | 'beta' | 'nightly';
+  taskWatchdog: boolean;
+  agents: { key: string; name: string; department: string | null; status: string; autonomy: number; selfWriting: boolean; runtime: string; modelAlias: string; trust: string }[];
+  diagnostics: { node: string; uptimeSeconds: number; memoryMb: number; keys: { name: string; set: boolean; for: string; usedByCode: boolean }[]; failedProbes: { key: string; problems: string[] }[] };
+  embeddedTools: { name: string; url: string }[];
+  stack: { runtimes: string[]; models: { name: string; on: string[]; remote: boolean }[] };
+  delegate: { registered: boolean; active: boolean; revoked: boolean; fingerprint: string | null; mandate: Record<string, unknown>; handDecisions: Record<string, number>; handDecisionsNeeded: number };
+  connectors: { git: string; meeting: string; options: { git: string[]; meeting: string[] }; claudeAgentKey: string; httpWorkers: number };
+}
+
+export interface SendSettings {
+  killSwitch: boolean;
+  windowHours: number;
+  windowCap: number;
+  emailDailyCap: number;
+  sentInWindow: number;
+  sentToday: number;
+}
+
+export interface ToolCall {
+  tool: string;
+  risk: string;
+  decision: 'allowed' | 'refused';
+  reason: string | null;
+  at: string;
+  agent: string | null;
+}
+
+export interface NetworkPerson {
+  id: string;
+  name: string;
+  whereFound: string;
+  note: string;
+  status: 'new' | 'in_touch' | 'dropped';
+  lastTouch: string | null;
+  nextNudge: string | null;
+  drafts: { id: string; text: string; status: 'draft' | 'sent_by_you' | 'discarded' }[];
+}
+
+export interface ChannelMessage {
+  id: string;
+  channel: 'slack' | 'jira' | 'helpdesk';
+  from: string;
+  body: string;
+  status: 'new' | 'replied';
+  receivedAt: string;
+  reply: string | null;
+}
+
+export interface Meeting {
+  id: string;
+  title: string;
+  startsAt: string;
+  status: 'planned' | 'open' | 'closed' | 'cancelled';
+  room: string | null;
+  dealId: string | null;
+  invites: number;
+}
+
+export interface Scorecard {
+  agentKey: string;
+  name: string;
+  department: string | null;
+  tasksDone: number;
+  runs: number;
+  checksPassed: number;
+  accepted: number;
+  acceptedAsIs: number;
+  edited: number;
+  rejected: number;
+  costUsd: number;
+  costPerAccepted: number | null;
+  boundaryAttempts: number;
+  suggestion: { move: 'skill_patch' | 'different_persona' | 'bench'; why: string } | null;
+}
+
+export interface TalentRoom {
+  policy: { level: 'H0' | 'H1'; rosterCap: number; trialBudgetCapUsd: number; active: number };
+  bakeoffs: { id: string; department: string; query: string; status: string; createdAt: string; candidates: { source: string; key: string; name: string; boundaryAttempts: number; rating: number; costUsd: number }[] }[];
+  catalog: { source: string; roles: number; flagged: number }[];
+  hires: { approvalId: string; status: string; name: string | null; department: string | null }[];
+}
+
+export interface Signal {
+  id: string;
+  kind: string;
+  source: string;
+  url: string;
+  author: string | null;
+  excerpt: string | null;
+  status: 'new' | 'qualified' | 'dismissed' | 'promoted';
+  score: number | null;
+  reason: string | null;
+  leadId: string | null;
+  foundBy: string;
+  foundAt: string;
+}
+
+export interface VideoIdea {
+  id: string;
+  idea: string;
+  kind: 'line' | 'link' | 'voice';
+  url: string | null;
+  source: 'founder' | 'hook_scout';
+  stage: 'idea' | 'shelved' | 'brief' | 'assets' | 'render' | 'review' | 'published';
+  hookId: string | null;
+  createdAt: string;
+}
+
+export interface HealthOverview {
+  generatedAt: string;
+  windowHours: number;
+  killSwitch: { on: boolean; at: string | null };
+  queue: { todo: number; in_progress: number; blocked: number };
+  agents: { id: string; key: string; name: string; runs: number; failed: number; failureRate: number | null; spentThisMonth: number; budget: number; overBudget: boolean }[];
+  breakers: { key: string; failures: number; lastError: string | null; openedAt: string | null; openUntil: string | null }[];
+  pauses: { runtime: string; label: string; until: string; reason: string }[];
+  reaper: { at: string; reaped: number; requeued: number; blocked: number } | null;
+  database: { sizeBytes: number };
+  reroutes: { agent: string; from: string; to: string; reason: string; at: string }[];
+}
+
+export interface Brief {
+  day: string;
+  quiet: boolean;
+  summary: string[];
+  narrative: string | null;
+  narrative_by: string | null;
+  created_at: string;
+  updated_at: string;
+  content: {
+    leads: { new: number; scored: number; qualified: number; top: { id: string; name: string | null; score: number; reason: string | null }[] };
+    approvals: { waiting: number; oldest_hours: number | null; items: { id: string; kind: string; label: string; created_at: string }[] };
+    replies: { to_triage: number; items: { task_id: string; title: string }[] };
+    deals: { stuck: number; items: { deal_id: string; account: string; stage: string; days: number }[] };
+    attention: { blocked: { task_id: string; title: string; reason: string | null }[]; action_items: { id: string; kind: string; title: string }[]; kill_switch: boolean };
+    sent: { emails_24h: number };
+    /** Missing in briefs made before slice 4. */
+    signals?: { waiting: number; new: number; items: { id: string; kind: string; source: string; url: string; author: string | null; excerpt: string | null; score: number | null }[] };
+    goals: { current_rung: string | null; rungs: { key: string; title: string | null; target: number | null; current: number | null; pct: number | null; met: boolean }[]; departments: unknown[] };
+  };
+}
+
+/** Inbox (S2-11): one thread per lead. Reply text is data from outside and is only ever shown as text. */
+export interface ThreadSummary {
+  id: string;
+  status: string;
+  last_message_at: string | null;
+  lead_id: string | null;
+  lead_name: string | null;
+  lead_email: string | null;
+  lead_stage: string | null;
+  messages: number;
+  last_body: string | null;
+  last_direction: 'in' | 'out' | null;
+}
+export interface ThreadMessage {
+  id: string;
+  direction: 'in' | 'out';
+  channel: string;
+  subject: string | null;
+  body: string;
+  campaign_id: string | null;
+  classification: 'positive' | 'neutral' | 'negative' | null;
+  at: string;
+}
+export interface ThreadDetail extends Omit<ThreadSummary, 'messages' | 'last_body' | 'last_direction'> {
+  messages: ThreadMessage[];
+}
+
+/** Pipeline (S2-11): conversion and days by stage for one funnel. */
+export interface PipelineStage {
+  key: string;
+  name: string;
+  position: number;
+  owner: string | null;
+  current: number;
+  reached: number;
+  conversion: number | null;
+  avg_days: number | null;
+  median_days: number | null;
+}
+export interface PipelineData {
+  funnel: string;
+  name: string;
+  stages: PipelineStage[];
+  totals: { open: number; won: number; lost: number };
+  stuck: { deal_id: string; account: string; stage: string; days_in_stage: number; missing: string[] }[];
+  stuck_after_days: number;
+}
+
+/** Campaigns (S2-11). */
+export interface CampaignRow {
+  id: string;
+  name: string;
+  market: string | null;
+  channel: string;
+  status: 'draft' | 'approved' | 'running' | 'paused' | 'done';
+  channel_account_id: string | null;
+  channel_handle: string | null;
+  approved_at: string | null;
+  steps: number;
+}
+export interface CampaignResults {
+  campaign: string;
+  name: string;
+  status: string;
+  enrolled: number;
+  enrollment: { active: number; paused: number; unsubscribed: number; done: number };
+  sent: number;
+  delivered: number | null;
+  opened: number | null;
+  replied: number;
+  positive_replies: number;
+  reply_rate: number | null;
+  meetings: number | null;
+  won: number;
+  cost_usd: number;
+}
+export type CampaignAction = 'approve' | 'start' | 'pause' | 'finish';
+
+/** What the person decided. An edit carries only the text that may change on an email: the subject and the message. */
+export interface DecisionBody {
+  approved: boolean;
+  note?: string;
+  editedPayload?: { subject: string; body: string };
+}
+
 async function call<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${API}${path}`, { ...init, headers: { 'content-type': 'application/json', ...(init?.headers ?? {}) } });
+  const company = currentCompany();
+  const res = await fetch(`${API}${path}`, { credentials: 'include', ...init, headers: { 'content-type': 'application/json', ...(company ? { 'x-company': company } : {}), ...(init?.headers ?? {}) } });
   const body = (await res.json().catch(() => ({}))) as T & { error?: string };
+  if (res.status === 401 && typeof window !== 'undefined' && window.location.pathname !== '/login') window.location.assign('/login');
   if (!res.ok) throw new Error(body.error ?? `HTTP ${res.status}`);
   return body;
 }
@@ -75,4 +495,118 @@ export const api = {
   createTask: (t: { title: string; body?: string; assigneeId?: string }) => call<{ id: string }>('/api/tasks', { method: 'POST', body: JSON.stringify(t) }),
   retry: (id: string) => call<{ ok: true }>(`/api/tasks/${id}`, { method: 'PATCH', body: JSON.stringify({ status: 'todo' }) }),
   runAgent: (id: string) => call<{ requested: true }>(`/api/agents/${id}/run`, { method: 'POST' }),
+  approvals: (status?: string) => call<Approval[]>(`/api/approvals${status ? `?status=${encodeURIComponent(status)}` : ''}`),
+  goals: () => call<GoalsData>('/api/goals'),
+  threads: () => call<ThreadSummary[]>('/api/threads'),
+  thread: (id: string) => call<ThreadDetail>(`/api/threads/${id}`),
+  recordReply: (threadId: string, body: string) => call<{ messageId: string }>(`/api/threads/${threadId}/inbound`, { method: 'POST', body: JSON.stringify({ body }) }),
+  classify: (messageId: string, classification: 'positive' | 'neutral' | 'negative') =>
+    call<{ id: string }>(`/api/thread-messages/${messageId}/classify`, { method: 'POST', body: JSON.stringify({ classification }) }),
+  pipeline: () => call<PipelineData[]>('/api/pipeline'),
+  campaigns: () => call<CampaignRow[]>('/api/campaigns'),
+  campaignResults: (id: string) => call<CampaignResults>(`/api/campaigns/${id}/results`),
+  campaignAction: (id: string, action: CampaignAction) => call<{ id: string; status: string }>(`/api/campaigns/${id}/${action}`, { method: 'POST', body: '{}' }),
+  brief: async (): Promise<Brief | null> => {
+    try {
+      return await call<Brief>('/api/brief');
+    } catch (err) {
+      if ((err as Error).message.startsWith('There is no brief')) return null;
+      throw err;
+    }
+  },
+  rebuildBrief: () => call<Brief>('/api/brief/rebuild', { method: 'POST', body: '{}' }),
+  embeddedTools: async () => (await call<ConfigView>('/api/config')).embeddedTools,
+  putEmbeddedTools: (tools: { name: string; url: string }[]) => call('/api/config/embedded-tools', { method: 'PUT', body: JSON.stringify({ tools }) }),
+  boards: async () => (await call<{ boards: Board[] }>('/api/boards')).boards,
+  pulls: async () => (await call<{ pulls: PullRequest[] }>('/api/pull-requests')).pulls,
+  config: () => call<ConfigView>('/api/config'),
+  sendSettings: () => call<SendSettings>('/api/settings'),
+  toolCalls: async () => (await call<{ calls: ToolCall[] }>('/api/config/tool-calls?limit=30')).calls,
+  putPolicy: (p: { level?: 'H0' | 'H1'; rosterCap?: number; trialBudgetCapUsd?: number }) => call('/api/talent/policy', { method: 'PUT', body: JSON.stringify(p) }),
+  putConnectors: (p: { git?: string; meeting?: string }) => call('/api/config/connectors', { method: 'PUT', body: JSON.stringify(p) }),
+  postSpend: (key: string, p: { usd: number; reason: string }) => call(`/api/config/agents/${encodeURIComponent(key)}/spend`, { method: 'POST', body: JSON.stringify(p) }),
+  putConfigAgent: (key: string, p: { selfWriting?: boolean; autonomy?: number; runtime?: string; modelAlias?: string; trust?: string }) => call(`/api/config/agents/${encodeURIComponent(key)}`, { method: 'PUT', body: JSON.stringify(p) }),
+  putTaskWatchdog: (on: boolean) => call('/api/config/task-watchdog', { method: 'PUT', body: JSON.stringify({ on }) }),
+  putReleaseChannel: (channel: 'stable' | 'beta' | 'nightly') => call('/api/config/release-channel', { method: 'PUT', body: JSON.stringify({ channel }) }),
+  putGuestHours: (hours: number) => call('/api/config/guest-link-hours', { method: 'PUT', body: JSON.stringify({ hours }) }),
+  patchSends: (p: Partial<Pick<SendSettings, 'windowHours' | 'windowCap' | 'emailDailyCap'>>) => call('/api/settings', { method: 'PATCH', body: JSON.stringify(p) }),
+  delegateOp: (op: 'register' | 'on' | 'off' | 'revoke') =>
+    op === 'register' ? call('/api/config/delegate/register', { method: 'POST', body: '{}' }) : op === 'revoke' ? call('/api/config/delegate/revoke', { method: 'POST', body: '{}' }) : call('/api/config/delegate/active', { method: 'PUT', body: JSON.stringify({ active: op === 'on' }) }),
+  putMandate: (rule: { kind: 'email.send'; minStep: number; maxStep: number }) => call('/api/config/delegate/mandate', { method: 'PUT', body: JSON.stringify(rule) }),
+  dropMandate: (kind: string) => call(`/api/config/delegate/mandate/${encodeURIComponent(kind)}`, { method: 'DELETE' }),
+  networkPeople: async () => (await call<{ people: NetworkPerson[] }>('/api/network')).people,
+  networkSentByYou: (draftId: string, nudgeInDays?: number) => call<{ ok: boolean }>(`/api/network/drafts/${draftId}/sent`, { method: 'POST', body: JSON.stringify(nudgeInDays ? { nudgeInDays } : {}) }),
+  channelMessages: async () => (await call<{ messages: ChannelMessage[] }>('/api/channels')).messages,
+  meetings: async () => (await call<{ meetings: Meeting[] }>('/api/meetings')).meetings,
+  talent: () => call<TalentRoom>('/api/talent'),
+  scorecards: async () => (await call<{ scorecards: Scorecard[] }>('/api/scorecards')).scorecards,
+  deployments: async () => (await call<{ deployments: Deployment[] }>('/api/deployments')).deployments,
+  signals: (status?: string) => call<Signal[]>(`/api/signals${status ? `?status=${encodeURIComponent(status)}` : ''}`),
+  qualifySignal: (id: string) => call<Signal>(`/api/signals/${id}/qualify`, { method: 'POST', body: '{}' }),
+  dismissSignal: (id: string) => call<Signal>(`/api/signals/${id}/dismiss`, { method: 'POST', body: '{}' }),
+  promoteSignal: (id: string) => call<Signal>(`/api/signals/${id}/promote`, { method: 'POST', body: '{}' }),
+  videoIdeas: (stage?: string) => call<VideoIdea[]>(`/api/video-ideas${stage ? `?stage=${encodeURIComponent(stage)}` : ''}`),
+  addVideoIdea: (idea: string, kind: 'line' | 'voice') => call<VideoIdea>('/api/video-ideas', { method: 'POST', body: JSON.stringify({ idea, kind }) }),
+  moveVideoIdea: (id: string, action: 'shelve' | 'unshelve' | 'brief') => call<VideoIdea>(`/api/video-ideas/${id}/${action}`, { method: 'POST', body: '{}' }),
+  pushKey: () => call<{ publicKey: string }>('/api/push/key'),
+  pushSubscribe: (sub: unknown) => call<{ subscribed: true }>('/api/push/subscribe', { method: 'POST', body: JSON.stringify(sub) }),
+  pushUnsubscribe: (endpoint: string) => call<{ subscribed: false }>('/api/push/subscribe', { method: 'DELETE', body: JSON.stringify({ endpoint }) }),
+  boardroomDiscussions: () => call<{ discussions: BoardroomDiscussion[] }>('/api/discussions'),
+  boardroomDiscussion: (id: string) => call<{ discussion: BoardroomDiscussion; turns: BoardroomTurn[] }>(`/api/discussions/${id}`),
+  boardroomOpen: (b: { kind: string; question: string; participants?: string[] }) => call<{ id: string }>('/api/discussions', { method: 'POST', body: JSON.stringify(b) }),
+  boardroomClose: (id: string) => call<{ ok: true }>(`/api/discussions/${id}/close`, { method: 'POST', body: '{}' }),
+  boardroomDecisions: () => call<{ decisions: BoardroomDecision[] }>('/api/decisions'),
+  boardroomDecide: (b: { title: string; decision: string; owner?: string; due?: string; discussionId?: string }) => call<{ id: string }>('/api/decisions', { method: 'POST', body: JSON.stringify(b) }),
+  departmentBoard: (dept: string) => call<DepartmentBoardData>(`/api/departments/${encodeURIComponent(dept)}/board`),
+  departmentChannel: (dept: string) => call<DepartmentChannelData>(`/api/departments/${encodeURIComponent(dept)}/channel`),
+  departmentSay: (dept: string, body: string) => call<{ id: string }>(`/api/departments/${encodeURIComponent(dept)}/channel`, { method: 'POST', body: JSON.stringify({ body }) }),
+  agentTemplates: async () => (await call<{ templates: string[] }>('/api/office/agent-templates')).templates,
+  proposeAgent: (p: { department: string; template: string; name?: string }) => call<{ approvalId: string; id: string }>('/api/office/agent-proposals', { method: 'POST', body: JSON.stringify(p) }),
+  addDepartment: (name: string) => call<{ key: string; name: string; room: number }>('/api/departments', { method: 'POST', body: JSON.stringify({ name }) }),
+  placeDecor: (p: { name: string; x: number; y: number; turn?: number }) => call<{ id: number }>('/api/office/decor', { method: 'POST', body: JSON.stringify(p) }),
+  moveDecor: (id: number, to: { x: number; y: number }) => call<{ ok: true }>(`/api/office/decor/${id}/move`, { method: 'POST', body: JSON.stringify(to) }),
+  growRoom: (p: { x: number; y: number; side: string; shrink?: boolean }) => call<{ ok: true }>('/api/office/room/grow', { method: 'POST', body: JSON.stringify(p) }),
+  toggleDoor: (t: { x: number; y: number }) => call<{ ok: true; opened: boolean }>('/api/office/door', { method: 'POST', body: JSON.stringify(t) }),
+  undoEdit: () => call<{ ok: true }>('/api/office/undo', { method: 'POST', body: '{}' }),
+  removeDecor: (id: number) => call<{ ok: true }>(`/api/office/decor/${id}`, { method: 'DELETE' }),
+  addDesk: (key: string) => call<{ key: string; room: string; desks: number }>(`/api/departments/${key}/desks`, { method: 'POST', body: '{}' }),
+  companies: () => call<CompanyList>('/api/companies'),
+  createCompany: (c: { name: string; template: string }) => call<CompanySummary>('/api/companies', { method: 'POST', body: JSON.stringify(c) }),
+  office: async () => {
+    const f = await call<OfficeFacts>('/api/office');
+    if (!f || typeof f !== 'object' || !f.map || !Array.isArray(f.map.rooms) || !Array.isArray(f.agents)) throw new Error('The office answered with something unexpected.');
+    return f;
+  },
+  officeState: async () => {
+    const r = await call<{ places: OfficePlace[] }>('/api/office/state');
+    if (!r || !Array.isArray(r.places)) throw new Error('The office answered with something unexpected.');
+    return r.places;
+  },
+  officeActivity: async () => {
+    const r = await call<{ events: ActivityEvent[] }>('/api/office/activity');
+    if (!r || !Array.isArray(r.events)) throw new Error('The office answered with something unexpected.');
+    return r.events;
+  },
+  officeTeam: async () => {
+    const r = await call<{ team: TeamCard[] }>('/api/office/team');
+    if (!r || !Array.isArray(r.team)) throw new Error('The office answered with something unexpected.');
+    return r.team;
+  },
+  officeDrawer: (id: string) => call<AgentDrawer>(`/api/office/agents/${id}`),
+  officeMessage: async (id: string, text: string) => {
+    await call(`/api/office/agents/${id}/message`, { method: 'POST', body: JSON.stringify({ text }) });
+  },
+  health: () => call<HealthOverview>('/api/health/overview'),
+  setKillSwitch: async (on: boolean) => {
+    await call('/api/settings', { method: 'PATCH', body: JSON.stringify({ killSwitch: on }) });
+  },
+  resetBreaker: async (key: string) => {
+    await call(`/api/breakers/${encodeURIComponent(key)}/reset`, { method: 'POST', body: '{}' });
+  },
+  liftPause: async (runtime: string) => {
+    await call(`/api/runtime-pauses/${encodeURIComponent(runtime)}/lift`, { method: 'POST', body: '{}' });
+  },
+  actionItems: () => call<ActionItem[]>('/api/action-items'),
+  resolve: (id: string, note?: string) => call<{ id: string; status: string }>(`/api/action-items/${id}/resolve`, { method: 'POST', body: JSON.stringify(note ? { note } : {}) }),
+  decide: (id: string, body: DecisionBody) => call<{ id: string; status: string }>(`/api/approvals/${id}/decide`, { method: 'POST', body: JSON.stringify(body) }),
 };

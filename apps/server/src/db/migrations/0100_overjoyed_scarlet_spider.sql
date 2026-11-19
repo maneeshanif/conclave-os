@@ -1,0 +1,1 @@
+ALTER TABLE "workspace_settings" ADD COLUMN "connectors" jsonb DEFAULT '{}'::jsonb NOT NULL;

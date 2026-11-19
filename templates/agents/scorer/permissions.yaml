@@ -1,0 +1,9 @@
+# Neutral permission rules (SPEC 5, default permissions). The renderer maps these to each harness.
+# shell and network writes are denied for every template except coder and code reviewer.
+# The scorer uses only what is recorded, so it has no web access at all.
+read: allow
+write: allow
+shell: deny
+web_search: deny
+web_fetch: deny
+subagents: deny

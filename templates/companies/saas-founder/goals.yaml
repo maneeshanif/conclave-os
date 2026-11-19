@@ -1,0 +1,14 @@
+# The goal ladder for a software product. Example numbers: set your own.
+north_star: monthly recurring revenue from teams that keep using the product
+
+ladder:
+  - id: rung-1
+    target_usd: 1000
+    by: null
+    source: subscriptions
+
+current_rung: rung-1
+
+department_goals:
+  lead-gen: { metric: trial_signups_per_week,       target: 15, serves: rung-1 }
+  outreach: { metric: activated_trials_per_week,    target: 5,  serves: rung-1 }

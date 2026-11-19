@@ -1,23 +1,116 @@
+import { readdir } from 'node:fs/promises';
+import path from 'node:path';
 import { Hono, type Context } from 'hono';
-import type { QueryResultRow } from 'pg';
+import type { Pool, QueryResultRow } from 'pg';
 import { z } from 'zod';
 import type { AppEnv } from '../app';
 import type { Bus } from '../bus';
 import type { Dispatcher } from '../workflows/dispatch';
+import { approvalRoutes, type ApprovalDecision } from './approvals';
+import { goalRoutes } from './goals';
+import { leadRoutes } from './leads';
+import { actionItemRoutes } from './action-items';
+import { briefRoutes } from './brief';
+import { browserRoutes } from './browser';
+import { campaignRoutes } from './campaigns';
+import { crmRoutes } from './crm';
+import { reportRoutes } from './reports';
+import type { ReaperStatus } from '../health';
+import { healthRoutes } from './health';
+import { pauseRoutes } from './pauses';
+import { settingsRoutes } from './settings';
+import { agentsInDiscussion, decisionRoutes, discussionRoutes } from './boardroom';
+import { deploymentRoutes } from './deployments';
+import { scorecardRoutes } from './scorecards';
+import { boardRoutes } from './boards';
+import { channelRoutes } from './channels';
+import { configRoutes } from './config';
+import { meetingRoutes } from './meetings';
+import { networkRoutes } from './network';
+import { pullRoutes } from './pulls';
+import { setupRoutes } from './setup';
+import { talentRoutes } from './talent';
+import { codeProjectRoutes } from './projects';
+import { departmentRoutes } from './departments';
+import { officeRoutes } from './office';
+import { signalRoutes } from './signals';
+import { videoIdeaRoutes } from './video-ideas';
+import { threadRoutes } from './threads';
+import { suppressionRoutes } from './suppression';
 
 /**
  * The slice 0 API (SPEC 11, API table): agents, tasks, runs. One local workspace, no login yet.
  * Every handler runs in the request transaction from app.ts. Starting a run waits until it commits.
  */
-export function apiRoutes(deps: { workspaceId: string; dispatcher: Dispatcher; bus: Bus }) {
+export function apiRoutes(deps: { workspaceId: string; dispatcher: Dispatcher; bus: Bus; onApprovalDecided?: (d: ApprovalDecision) => Promise<void> | void;
+  onKillSwitch?: (on: boolean) => Promise<void> | void;
+  onReleaseHeld?: () => Promise<number> | number;
+  /** Copies the company folder into the database again (S3-4): a raised budget, a new goal or funnel, without a restart. */
+  onCompanyReload?: () => Promise<Record<string, number>>;
+  /** Where company/ is, for the office map (S6-2). Without it there is no office. */
+  companyRoot?: string;
+  /** What the last reaper pass did, for the Health screen (S3-7). */
+  reaperStatus?: ReaperStatus;
+  /** For adding a department, which copies the company folder into the database (S6-13b). */
+  pool?: Pool;
+  /** Where the agent templates are (S6-13c). */
+  templatesRoot?: string;
+  /** The data folder, where the delegate's key is kept (S9, Settings). */
+  dataDir?: string;
+}) {
   const r = new Hono<AppEnv>();
   const ws = deps.workspaceId;
   const q = async <T extends QueryResultRow>(c: Context<AppEnv>, sql: string, params: unknown[] = []) =>
     (await c.get('tx').client.query<T>(sql, params)).rows;
   const afterCommit = (c: Context<AppEnv>, fn: () => Promise<void>) => c.get('after').push(fn);
   // A malformed id is a 404, not a database error.
-  r.use('/:kind/:id/*', async (c, next) => (z.uuid().safeParse(c.req.param('id')).success ? next() : c.json({ error: 'Not found' }, 404)));
-  r.use('/:kind/:id', async (c, next) => (z.uuid().safeParse(c.req.param('id')).success ? next() : c.json({ error: 'Not found' }, 404)));
+  // Settings is a single record with actions (/settings/release-held), not a collection of ids.
+  const idGuard = async (c: Context<AppEnv>, next: () => Promise<void>) =>
+    c.req.param('kind') === 'settings' || c.req.param('kind') === 'brief' || c.req.param('kind') === 'company' || c.req.param('kind') === 'runtime-pauses' || c.req.param('kind') === 'health' || c.req.param('kind') === 'office' || c.req.param('kind') === 'departments' || c.req.param('kind') === 'code-projects' || c.req.param('kind') === 'deployments' || c.req.param('kind') === 'scorecards' || c.req.param('kind') === 'talent' || c.req.param('kind') === 'setup' || c.req.param('kind') === 'meetings' || c.req.param('kind') === 'channels' || c.req.param('kind') === 'config' || c.req.param('kind') === 'pull-requests' || c.req.param('kind') === 'boards' || c.req.param('kind') === 'network' || c.req.param('kind') === 'browser' || (c.req.param('kind') === 'leads' && c.req.param('id') === 'import') || z.uuid().safeParse(c.req.param('id')).success ? next() : c.json({ error: 'Not found' }, 404);
+  r.use('/:kind/:id/*', idGuard);
+  r.use('/:kind/:id', idGuard);
+
+  r.route('/approvals', approvalRoutes({ workspaceId: ws, bus: deps.bus, onDecided: deps.onApprovalDecided }));
+  r.route('/leads', leadRoutes({ workspaceId: ws, bus: deps.bus }));
+  r.route('/code-projects', codeProjectRoutes({ workspaceId: ws }));
+  r.route('/deployments', deploymentRoutes());
+  r.route('/channels', channelRoutes());
+  r.route('/pull-requests', pullRoutes());
+  r.route('/boards', boardRoutes());
+  if (deps.pool) r.route('/config', configRoutes({ workspaceId: ws, pool: deps.pool, ...(deps.dataDir ? { dataDir: deps.dataDir } : {}), ...(deps.companyRoot ? { companyRoot: deps.companyRoot } : {}) }));
+  if (deps.pool) r.route('/network', networkRoutes({ workspaceId: ws, pool: deps.pool }));
+  if (deps.pool) r.route('/meetings', meetingRoutes({ workspaceId: ws, pool: deps.pool }));
+  r.route('/setup', setupRoutes({ templates: async () => (deps.templatesRoot ? (await readdir(path.join(deps.templatesRoot, 'companies'), { withFileTypes: true }).catch(() => [])).filter((e) => e.isDirectory() && /^[a-z0-9][a-z0-9-]*$/.test(e.name)).map((e) => e.name).sort() : []) }));
+  if (deps.pool) r.route('/talent', talentRoutes({ workspaceId: ws, pool: deps.pool }));
+  if (deps.pool) r.route('/scorecards', scorecardRoutes({ workspaceId: ws, pool: deps.pool }));
+  r.route('/', crmRoutes({ workspaceId: ws, bus: deps.bus }));
+  r.route('/', campaignRoutes({ workspaceId: ws, bus: deps.bus }));
+  r.route('/', reportRoutes());
+  r.route('/', goalRoutes());
+
+  // Reads the company folder again. A mistake in a file is reported with the file and the reason, and nothing is changed.
+  r.post('/company/reload', async (c) => {
+    if (!deps.onCompanyReload) return c.json({ error: 'Reloading is not available here.' }, 404);
+    try {
+      return c.json(await deps.onCompanyReload());
+    } catch (err) {
+      return c.json({ error: (err as Error).message }, 400);
+    }
+  });
+  r.route('/', healthRoutes({ ...(deps.reaperStatus ? { reaper: deps.reaperStatus } : {}) }));
+  r.route('/browser', browserRoutes());
+  r.route('/', pauseRoutes({ workspaceId: ws, bus: deps.bus }));
+  r.route('/', briefRoutes({ workspaceId: ws, bus: deps.bus }));
+  r.route('/', threadRoutes({ workspaceId: ws, bus: deps.bus }));
+  r.route('/action-items', actionItemRoutes({ workspaceId: ws, bus: deps.bus }));
+  r.route('/suppression', suppressionRoutes({ workspaceId: ws }));
+  r.route('/signals', signalRoutes({ workspaceId: ws, bus: deps.bus }));
+  if (deps.companyRoot) r.route('/office', officeRoutes({ workspaceId: ws, companyRoot: deps.companyRoot, bus: deps.bus, dispatcher: deps.dispatcher, discussing: agentsInDiscussion, ...(deps.templatesRoot ? { templatesRoot: deps.templatesRoot } : {}) }));
+  r.route('/discussions', discussionRoutes({ workspaceId: ws, bus: deps.bus }));
+  r.route('/decisions', decisionRoutes({ workspaceId: ws, bus: deps.bus }));
+  if (deps.companyRoot) r.route('/departments', departmentRoutes({ workspaceId: ws, companyRoot: deps.companyRoot, bus: deps.bus, ...(deps.pool ? { pool: deps.pool } : {}) }));
+  r.route('/video-ideas', videoIdeaRoutes({ workspaceId: ws, bus: deps.bus }));
+  r.route('/settings', settingsRoutes({ workspaceId: ws, bus: deps.bus, onKillSwitch: deps.onKillSwitch, onReleaseHeld: deps.onReleaseHeld }));
 
   r.get('/agents', async (c) =>
     c.json(
@@ -86,7 +179,13 @@ export function apiRoutes(deps: { workspaceId: string; dispatcher: Dispatcher; b
     const id = c.req.param('id');
     const rows = await q(
       c,
-      "update tasks set status = coalesce($2, status), title = coalesce($3, title), blocked_reason = case when $2 = 'todo' then null else blocked_reason end where id = $1 returning id",
+      // Changing the status takes the task away from whichever agent held it, so a run still going for it can no
+      // longer comment on it or finish it (S0-14). Renaming alone leaves the holder in place.
+      `update tasks set status = coalesce($2, status), title = coalesce($3, title),
+         blocked_reason = case when $2 = 'todo' then null else blocked_reason end,
+         locked_by = case when $2::text is not null then null else locked_by end,
+         locked_at = case when $2::text is not null then null else locked_at end
+       where id = $1 returning id`,
       [id, parsed.data.status ?? null, parsed.data.title ?? null],
     );
     if (!rows.length) return c.json({ error: 'Not found' }, 404);

@@ -8,9 +8,9 @@ import type { RunEvent, RunRequest } from '../src/runtimes/types';
 const fake = path.join(__dirname, 'fixtures', 'fake-cli.mjs');
 const SECRET_ENV = { RESEND_API_KEY: 'sk_live_secret', DATABASE_URL: 'postgres://x', ANTHROPIC_API_KEY: 'sk-ant-x', SECRETS_KEY: 'k' };
 
-function runtime(flavor: 'claude-cli' | 'opencode', mode: string) {
+function runtime(flavor: 'claude-cli' | 'opencode' | 'codex', mode: string) {
   return createCliRuntime(flavor, {
-    command: { command: process.execPath, prefixArgs: [fake, flavor === 'claude-cli' ? 'claude' : 'opencode', mode] },
+    command: { command: process.execPath, prefixArgs: [fake, flavor === 'claude-cli' ? 'claude' : flavor === 'codex' ? 'codex' : 'opencode', mode] },
     baseEnv: { ...process.env, ...SECRET_ENV },
   });
 }
@@ -39,7 +39,7 @@ async function collect(it: AsyncIterable<RunEvent>): Promise<RunEvent[]> {
 
 const last = (events: RunEvent[]) => events[events.length - 1];
 
-for (const flavor of ['claude-cli', 'opencode'] as const) {
+for (const flavor of ['claude-cli', 'opencode', 'codex'] as const) {
   const alias = flavor === 'claude-cli' ? 'researcher' : 'any-model';
   describe(`CLI runtime: ${flavor} (S0-6)`, () => {
     it('turns canned JSON lines into events in order and ends done', async () => {
@@ -104,3 +104,51 @@ for (const flavor of ['claude-cli', 'opencode'] as const) {
     });
   });
 }
+
+describe('the codex runtime (S7-3)', () => {
+  it('reads the events: the thread as the session, the command as a tool call and its result, the reasoning, the cost, then done with the last message', async () => {
+    const events = await collect(runtime('codex', 'ok').start(await request({ modelAlias: 'any-model' })));
+    expect(events[0]).toMatchObject({ type: 'session', sessionId: '0199a213-81c0-7800-8aa1-bbab2a035a53' });
+    expect(events).toContainEqual({ type: 'tool_call', tool: 'shell', input: 'bash -lc ls' });
+    expect(events).toContainEqual(expect.objectContaining({ type: 'tool_result', tool: 'shell', ok: true }));
+    expect(events).toContainEqual({ type: 'thinking', text: 'Thinking about the task.' });
+    expect(events).toContainEqual({ type: 'cost', usd: 0, tokensIn: 100, tokensOut: 25 });
+    expect(last(events)).toMatchObject({ type: 'done', output: 'All done.', sessionId: '0199a213-81c0-7800-8aa1-bbab2a035a53' });
+  });
+
+  it('runs in the folder it is given, in a sandbox that can only write there, with the prompt on stdin and never on the command line', async () => {
+    const work = await mkdtemp(path.join(tmpdir(), 'conclave-codex-work-'));
+    const events = await collect(runtime('codex', 'where').start(await request({ modelAlias: 'any-model', workDir: work })));
+    const report = JSON.parse((last(events) as { output: string }).output) as { cwd: string; args: string[]; stdin: string };
+    expect(await realpathOf(report.cwd)).toBe(await realpathOf(work));
+    const args = report.args.join(' ');
+    expect(args).toMatch(/exec/);
+    expect(args).toMatch(/--json/);
+    expect(args).toMatch(/--sandbox workspace-write/);
+    expect(args).toMatch(/--color never/);
+    expect(args).not.toMatch(/danger-full-access|--full-auto|--dangerously/);
+    expect(args).not.toContain('List five facts');
+    expect(report.stdin).toContain('List five facts');
+  });
+
+  it('is built, and a role file may name it with a model alias that lists it', async () => {
+    const { BUILT_RUNTIMES } = await import('../src/runtimes/names');
+    expect(BUILT_RUNTIMES).toContain('codex');
+    const { models } = await import('../src/config/models');
+    expect(models['any-model']!.on).toContain('codex');
+  });
+});
+
+async function realpathOf(p: string): Promise<string> {
+  const { realpath } = await import('node:fs/promises');
+  return (await realpath(p)).toLowerCase();
+}
+
+describe('turn counting through the runtime (S0-13)', () => {
+  it('does not stop a run whose one message was streamed as seven events', async () => {
+    // One message.id over seven assistant events is one turn, so a limit of two turns is not reached.
+    const events = await collect(runtime('claude-cli', 'split').start(await request({ modelAlias: 'researcher', maxTurns: 2 })));
+    expect(last(events)).toMatchObject({ type: 'done' });
+    expect(events.filter((e) => e.type === 'error')).toEqual([]);
+  });
+});

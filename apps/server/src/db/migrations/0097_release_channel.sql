@@ -1,0 +1,2 @@
+ALTER TABLE "workspace_settings" ADD COLUMN "release_channel" text DEFAULT 'stable' NOT NULL;--> statement-breakpoint
+ALTER TABLE "workspace_settings" ADD CONSTRAINT "workspace_settings_channel_ck" CHECK ("workspace_settings"."release_channel" in ('stable','beta','nightly'));

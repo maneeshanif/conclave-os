@@ -17,6 +17,8 @@ export interface ModelAlias {
   perRuntime?: Partial<Record<RuntimeName, string>>;
   /** OpenAI-compatible base URL, for local or self-hosted models. */
   baseUrl?: string;
+  /** A base URL that is not on this machine is refused unless this is set: a model endpoint off the machine sees every prompt. */
+  allowRemote?: boolean;
   /** Extra environment variables the runtime may pass to the agent process. Never secrets. */
   env?: Readonly<Record<string, string>>;
 }
@@ -25,7 +27,10 @@ export const models: Readonly<Record<string, ModelAlias>> = {
   writer: { name: '', on: ['claude-cli', 'claude-agent'] },
   'strong-writer': { name: 'opus', on: ['claude-cli', 'claude-agent'] },
   researcher: { name: 'sonnet', on: ['claude-cli', 'claude-agent'] },
-  'any-model': { name: '', on: ['opencode'] },
+  'any-model': { name: '', on: ['opencode', 'codex', 'http'] },
+  // A hosted OpenAI model on the in-process runner. It needs OPENAI_API_KEY (handed to this runtime only, and only for this alias) and is
+  // off the machine, so every prompt leaves it: that is why allowRemote is set on purpose. The model name can be changed with OPENAI_MODEL.
+  openai: { name: process.env.OPENAI_MODEL?.trim() || 'gpt-4.1-mini', on: ['openai-agents'], baseUrl: 'https://api.openai.com/v1', allowRemote: true },
   'local-worker': {
     name: 'qwen3:8b',
     on: ['openai-agents', 'opencode'],
@@ -33,6 +38,27 @@ export const models: Readonly<Record<string, ModelAlias>> = {
     baseUrl: 'http://127.0.0.1:11434/v1',
   },
 };
+
+/** What is wrong with a set of aliases, one sentence each; empty when all is well. Checked by the tests so a bad edit here cannot ship. */
+export function validateAliases(all: Readonly<Record<string, ModelAlias>>): string[] {
+  const problems: string[] = [];
+  for (const [alias, m] of Object.entries(all)) {
+    if (m.on.length === 0) problems.push(`Alias "${alias}" lists no runtime.`);
+    for (const r of m.on) if (!(RUNTIMES as readonly string[]).includes(r)) problems.push(`Alias "${alias}" lists an unknown runtime "${r}".`);
+    if (m.baseUrl === undefined) continue;
+    let url: URL;
+    try {
+      url = new URL(m.baseUrl);
+    } catch {
+      problems.push(`Alias "${alias}" has a base URL that is not a valid URL: ${m.baseUrl}`);
+      continue;
+    }
+    if (url.username || url.password) problems.push(`Alias "${alias}" has credentials in its base URL; keys go in the secrets store, never in a URL.`);
+    const local = ['127.0.0.1', 'localhost', '[::1]'].includes(url.hostname);
+    if (!local && !m.allowRemote) problems.push(`Alias "${alias}" points at ${url.hostname}, which is not on this machine. Set allowRemote on the alias if that is meant.`);
+  }
+  return problems;
+}
 
 export function resolveModel(alias: string): ModelAlias {
   const model = models[alias];

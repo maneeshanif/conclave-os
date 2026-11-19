@@ -6,6 +6,9 @@ export interface RunScope {
   agentId: string;
   runId: string;
   taskId?: string;
+  /** A low-trust run is held to `allowedTools`; with none given it can call nothing (A1). */
+  trust?: 'standard' | 'low';
+  allowedTools?: string[];
 }
 
 interface Entry {

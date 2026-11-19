@@ -1,0 +1,1 @@
+Output checks arrive in slice 3. Until then the run loop accepts any completed task. A coding task is checked by the server instead: propose_pr runs the project's tests in the worktree and refuses the proposal if they fail (S7-5).

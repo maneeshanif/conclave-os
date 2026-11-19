@@ -1,0 +1,1 @@
+ALTER TABLE "workspace_settings" ADD CONSTRAINT "workspace_settings_limits_ck" CHECK ("workspace_settings"."window_hours" between 1 and 168 and "workspace_settings"."window_cap" between 1 and 100000 and "workspace_settings"."email_daily_cap" between 1 and 100000);

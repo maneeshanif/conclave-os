@@ -3,6 +3,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { loadCompany } from '../company/loader';
 import { syncCompany } from '../company/sync';
+import { probeAgentFolder, recordProbe } from '../harness/probe';
 import { loadTemplate, renderRoleFile, renderWorkdir } from '../harness/render';
 import type { RuntimeName } from '../runtimes/names';
 import { companyName, type System } from '../system';
@@ -14,6 +15,8 @@ export interface AgentNewOptions {
   name?: string;
   runtime?: RuntimeName;
   model?: string;
+  /** Starting level, 0 to 3. Without it the template's level (0: on trial) applies. */
+  autonomy?: number;
   reportsTo?: string;
 }
 
@@ -22,6 +25,7 @@ export interface AgentNewResult {
   rolePath: string;
   workDir: string;
   runtime: RuntimeName;
+  autonomy: number;
 }
 
 const title = (s: string) => s.replace(/(^|-)([a-z])/g, (_, sep: string, ch: string) => (sep ? ' ' : '') + ch.toUpperCase());
@@ -47,6 +51,7 @@ export async function agentNew(sys: System, opts: AgentNewOptions): Promise<Agen
     ...(opts.reportsTo ? { reports_to: opts.reportsTo } : {}),
     ...(opts.runtime ? { runtime: opts.runtime } : {}),
     ...(opts.model ? { model: opts.model } : {}),
+    ...(opts.autonomy !== undefined ? { autonomy: opts.autonomy } : {}),
   });
   const rel = ['departments', dept.key, 'agents', id, 'AGENT.md'].join('/');
   const file = path.join(sys.companyRoot, rel);
@@ -66,7 +71,8 @@ export async function agentNew(sys: System, opts: AgentNewOptions): Promise<Agen
     osUrl: sys.osUrl,
     templatesRoot: sys.templatesRoot,
   });
-  return { id, rolePath: rel, workDir: out.dir, runtime: out.runtime };
+  await recordProbe(sys.app, sys.workspace.id, id, await probeAgentFolder(out.dir, out.runtime));
+  return { id, rolePath: rel, workDir: out.dir, runtime: out.runtime, autonomy: agent.role.autonomy };
 }
 
 /** Renders every agent's working folder again, for the runtime its role file names now. */
@@ -87,7 +93,8 @@ export async function renderAll(sys: System): Promise<AgentNewResult[]> {
       osUrl: sys.osUrl,
       templatesRoot: sys.templatesRoot,
     });
-    out.push({ id: a.role.id, rolePath: a.rolePath, workDir: r.dir, runtime: r.runtime });
+    await recordProbe(sys.app, sys.workspace.id, a.role.id, await probeAgentFolder(r.dir, r.runtime));
+    out.push({ id: a.role.id, rolePath: a.rolePath, workDir: r.dir, runtime: r.runtime, autonomy: a.role.autonomy });
   }
   return out;
 }
@@ -96,12 +103,13 @@ export async function renderAll(sys: System): Promise<AgentNewResult[]> {
  * Renders one agent's folder again from the role file on disk, before a run. A run never starts on a
  * folder the agent itself may have edited during an earlier run (SPEC 5).
  */
-export async function renderOne(sys: System, agentKey: string): Promise<void> {
+export async function renderOne(sys: System, agentKey: string, over?: { runtime: RuntimeName; model: string }): Promise<void> {
   const company = await loadCompany(sys.companyRoot);
   const a = company.agents.find((x) => x.role.id === agentKey);
   if (!a?.role.template) return;
   const dept = company.departments.find((d) => d.key === a.role.department)!;
-  await renderWorkdir(a, {
+  // A run on the role's other engine (S4-5) gets the folder for that engine, rendered the same way as if the role file named it.
+  await renderWorkdir(over ? { ...a, role: { ...a.role, runtime: over.runtime, model: over.model } } : a, {
     dataDir: sys.dataDir,
     workspaceSlug: sys.workspace.slug,
     companyName: await companyName(sys.companyRoot),

@@ -1,7 +1,7 @@
 import type { RuntimeName } from './names';
 
 /** Why a run failed. `limit` and `auth` are their own kinds so the loop can pause instead of retrying (SPEC 7, 14). */
-export type ErrorKind = 'runtime' | 'limit' | 'auth' | 'timeout' | 'max_turns' | 'cancelled' | 'config';
+export type ErrorKind = 'runtime' | 'limit' | 'auth' | 'timeout' | 'max_turns' | 'cancelled' | 'config' | 'output_check' | 'silent';
 
 /** Everything a runtime needs for one run (SPEC 7). No secrets except the run's own token. */
 export interface RunRequest {
@@ -16,6 +16,8 @@ export interface RunRequest {
   taskInput: string;
   /** The agent's rendered working folder (outside the repo). */
   workspaceDir: string;
+  /** Where the agent works, if not `<workspaceDir>/work`: a coding task's git worktree (S7). Never inside this repo. */
+  workDir?: string;
   modelAlias: string;
   maxTurns: number;
   /** Short-lived token for the `os` MCP server, valid for this run only. */

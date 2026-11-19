@@ -1,0 +1,9 @@
+# Plugin: briefing-kit (SPEC 3, 10). The skill the chief of staff uses to add its paragraph to the morning brief.
+# The numbers in the brief are counted by plain code. This only adds one short note beside them, shown as the agent's.
+name: briefing-kit
+version: 1
+description: "Reads the morning brief and adds one short, honest paragraph to it. It cannot change a number and cannot contact anyone."
+skills: [write-brief-note]
+connectors: [os]
+# The os tools the skill uses. Checked against the server, so this list cannot drift.
+tools: [get_task, get_brief, add_brief_note, complete_task, block_task]

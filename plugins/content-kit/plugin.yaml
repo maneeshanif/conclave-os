@@ -1,0 +1,9 @@
+# Plugin: content-kit (SPEC 4, 8, 10). Skills and tools for writing posts for X, LinkedIn and Instagram.
+# Nothing in it can publish. A post is proposed; a person approves exactly that text; an executor publishes it.
+name: content-kit
+version: 1
+description: "Writes posts in the company's voice and proposes them for approval. It has no way to publish, message or follow anyone."
+skills: [write-post, adapt-for-platform]
+connectors: [os]
+# The os tools the skills use. Checked against the server, so this list cannot drift.
+tools: [get_task, propose_post, comment, complete_task, block_task, ask_founder]

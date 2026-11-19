@@ -27,9 +27,13 @@ planning_rates:
   reply_to_concept: null            # TODO
   reply_rate: null                  # TODO
 
-# Keys must match company/departments.yaml.
+# Keys must match company/departments.yaml. The Goals screen reads each metric from the tables; the targets are example
+# numbers, set your own. Metrics it can measure: qualified_leads_per_week (verified, scored 70 or more, added in the last
+# 7 days), positive_replies_per_week (people whose reply was marked positive), stage_exits_per_week and
+# stage_exits_per_month (deals that left the funnel stage named in `stage`, written funnel/stage), and monthly_revenue_usd
+# (the value of deals won this month, used by the ladder). Any other name is shown as not measured.
 department_goals:
-  lead-gen:  { metric: qualified_leads_per_week,     serves: rung-1 }
-  outreach:  { metric: positive_replies_per_week,    serves: rung-1 }
-  engineering: { metric: concepts_delivered_per_week, serves: rung-1 }
-  product:   { metric: slice_sessions_per_month,     serves: rung-2 }
+  lead-gen:  { metric: qualified_leads_per_week,  target: 20, serves: rung-1 }
+  outreach:  { metric: positive_replies_per_week, target: 3,  serves: rung-1 }
+  engineering: { metric: stage_exits_per_week, stage: services/free-concept, target: 2, serves: rung-1 }  # concepts delivered
+  product:   { metric: stage_exits_per_month, stage: product/slice-session, target: 3, serves: rung-2 }  # slice sessions held
