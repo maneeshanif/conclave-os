@@ -203,4 +203,19 @@ describe('diagnostics', () => {
   });
 });
 
+describe('PUT /api/config/embedded-tools', () => {
+  it('keeps a clean allow-list, shows it in the config, and refuses an address that is not a public https page', async () => {
+    const ok = await call('PUT', '/api/config/embedded-tools', { tools: [{ name: 'Notion', url: 'https://www.notion.so/team' }] });
+    expect(ok.status).toBe(200);
+    expect(((await config()) as unknown as { embeddedTools: unknown[] }).embeddedTools).toEqual([{ name: 'Notion', url: 'https://www.notion.so/team' }]);
+    for (const url of ['http://notion.so', 'https://localhost', 'https://127.0.0.1', 'javascript:alert(1)']) {
+      const bad = await call('PUT', '/api/config/embedded-tools', { tools: [{ name: 'X', url }] });
+      expect(bad.status, url).toBe(400);
+    }
+    expect((await call('PUT', '/api/config/embedded-tools', {})).status).toBe(400);
+    expect(((await config()) as unknown as { embeddedTools: unknown[] }).embeddedTools).toHaveLength(1); // a refusal changed nothing
+    expect((await call('PUT', '/api/config/embedded-tools', { tools: [] })).status).toBe(200);
+  });
+});
+
 });

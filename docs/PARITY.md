@@ -19,8 +19,8 @@ Written 2026-11-20 from the feature lists in `docs/JSM-REFERENCE.md`, `docs/BORR
 | Demo mode with 1x, 2x, 4x | done, but partial: it acts out states (working, discussion, handoff, waiting, blocked, idle) on this screen only; people do not walk around while it runs |
 | Layout generated from the team | done (S6-13b: a department gets a room; the map editor adds the rest) |
 | Hover tooltips, click opens the drawer | done |
-| Action items with a count, Settings, Debug | done (action items, Settings); a Debug panel is not built (the tool-call log and the Health screen cover what it would show) |
-| Settings tabs Team / Workflow / Stack / MCP / Sandbox / Boards / Project | partial: our Settings has Hiring, Agents, Spend correction, Delegate, Sending, Meetings, Watchdog, Updates, Connectors, Tool calls. A "Stack" tab (which model for which role) is not on the screen: models are set in the agent's own file |
+| Action items with a count, Settings, Debug | done (action items, Settings; Debug is the Diagnostics section of Settings: keys set or not set, agents kept out of the loop, server facts) |
+| Settings tabs Team / Workflow / Stack / MCP / Sandbox / Boards / Project | done in our own shape: one Settings screen with Hiring, Agents (level, runtime, model, trust, self-writing), Spend correction, Delegate, Sending, Meetings, Watchdog, Updates, Connectors, Embedded tools, Diagnostics, Tool calls. Not a copy of their tabs |
 | Sandbox status pill | not built: the OS runs agents with a clean environment and no shell by default (rule 10), which is the same promise; there is no separate sandbox to show |
 
 ## Paperclip (MIT, ideas only)
@@ -60,7 +60,7 @@ Also in Paperclip and already ours: heartbeats and atomic checkout, run tokens, 
 | Status synced to other tools | not built: no Slack or Teams sign-in (blocked) |
 | Avatar customisation in parts | blocked (needs layered art; six whole looks exist) |
 | Chat sync and sign-in with Discord, Slack, Teams | blocked (accounts and keys); our Slack stand-in writes to a folder |
-| Embedded tools (Trello, Notion, Miro, Google) | not built: panels open our own tools only; this would be an iframe allow-list, a decision for Anees |
+| Embedded tools (Trello, Notion, Miro, Google) | done: an allow-list on Settings (https, public names only, at most 12), shown in a sandboxed frame from the 🧩 button; a site that refuses to be framed gets a link to its own tab |
 | Calendar links | done as a download (`.ics` of the meetings, no links in it); a subscribe-by-URL feed is not built on purpose (it would need a secret URL) |
 | White labelling | partial: nothing about one company is in `apps/` (rule 8), so the name and look come from `company/`; there is no theme screen |
 | Gamification and badges | not built, on purpose: it does not help run a company |
@@ -73,5 +73,5 @@ Every slice from 0 to 10 is built to local stand-ins and has its "done when" tes
 ## What is still open after this check
 
 1. Blocked on you: audio and video, screen sharing, avatar parts art, Slack and Discord sync, themed art, real sign-ins and keys.
-2. Small, doable on request: a low-trust preset (P4), a Stack tab on Settings, shrinking a room, a Debug panel, an embedded-tools allow-list, a calendar feed.
+2. Small and left: adding a whole new wing to the map, a subscribe-by-URL calendar feed (on purpose), a separate project-and-run policy layer for low trust.
 3. Not a gap but a choice: telemetry and gamification are left out on purpose.

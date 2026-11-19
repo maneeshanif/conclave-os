@@ -9,6 +9,7 @@ import { setRoleStack } from '../company/role-edit';
 import { aliasWorksOn, models } from '../config/models';
 import { withWorkspace } from '../db/tenant';
 import { keyStatuses } from '../diagnostics';
+import { cleanEmbeds } from '../embeds';
 import { RUNTIMES } from '../runtimes/names';
 import { readHiring, rosterRoom } from '../talent/hiring';
 
@@ -42,13 +43,14 @@ export function configRoutes(deps: { workspaceId: string; pool: Pool; dataDir?: 
     )).rows;
     const d = await getDelegate(deps.pool, ws);
     const hand = Object.fromEntries((await tx.query<{ kind: string; n: number }>("select kind, count(*)::int as n from approvals where decided_by = 'founder' and status in ('approved','executing','executed','failed','rejected') group by kind")).rows.map((x) => [x.kind, x.n]));
-    const st = (await tx.query<{ guest_link_hours: number; release_channel: string; task_watchdog: boolean }>('select guest_link_hours, release_channel, task_watchdog from workspace_settings')).rows[0];
+    const st = (await tx.query<{ guest_link_hours: number; release_channel: string; task_watchdog: boolean; embedded_tools: { name: string; url: string }[] }>('select guest_link_hours, release_channel, task_watchdog, embedded_tools from workspace_settings')).rows[0];
     const guest = st?.guest_link_hours ?? 48;
     return c.json({
       hiring: { ...hiring, active: room.active },
       guestLinkHours: guest,
       releaseChannel: st?.release_channel ?? 'stable',
       taskWatchdog: st?.task_watchdog ?? false,
+      embeddedTools: st?.embedded_tools ?? [],
       agents: agents.map((a) => ({ key: a.key, name: a.name, department: a.department, status: a.status, autonomy: a.autonomy, selfWriting: a.self_writing, runtime: a.runtime, modelAlias: a.model_alias, trust: a.trust })),
       diagnostics: {
         node: process.version,
@@ -130,6 +132,22 @@ export function configRoutes(deps: { workspaceId: string; pool: Pool; dataDir?: 
     await tx.query("update workspace_settings set connectors = connectors || $1::jsonb, updated_at = now()", [JSON.stringify(parsed.data)]);
     await tx.query("insert into audit_log (workspace_id, actor, action, subject, data) values (current_setting('app.workspace_id')::uuid, 'founder', 'config.connectors', 'connectors', $1)", [JSON.stringify(parsed.data)]);
     return c.json({ ok: true });
+  });
+
+  // The embedded tools allow-list: the whole list is replaced, and every address is checked (https, a public name, no sign-in in it).
+  r.put('/embedded-tools', async (c) => {
+    const body = (await c.req.json().catch(() => null)) as { tools?: unknown } | null;
+    let tools;
+    try {
+      tools = cleanEmbeds(body?.tools);
+    } catch (err) {
+      return c.json({ error: (err as Error).message }, 400);
+    }
+    const tx = c.get('tx').client;
+    await tx.query('insert into workspace_settings (workspace_id) values ($1) on conflict (workspace_id) do nothing', [ws]);
+    await tx.query('update workspace_settings set embedded_tools = $1::jsonb, updated_at = now()', [JSON.stringify(tools)]);
+    await tx.query("insert into audit_log (workspace_id, actor, action, subject, data) values (current_setting('app.workspace_id')::uuid, 'founder', 'config.embedded_tools', 'embedded-tools', $1)", [JSON.stringify(tools)]);
+    return c.json({ tools });
   });
 
   r.put('/task-watchdog', async (c) => {

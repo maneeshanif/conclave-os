@@ -254,6 +254,7 @@ export interface ConfigView {
   taskWatchdog: boolean;
   agents: { key: string; name: string; department: string | null; status: string; autonomy: number; selfWriting: boolean; runtime: string; modelAlias: string; trust: string }[];
   diagnostics: { node: string; uptimeSeconds: number; memoryMb: number; keys: { name: string; set: boolean; for: string; usedByCode: boolean }[]; failedProbes: { key: string; problems: string[] }[] };
+  embeddedTools: { name: string; url: string }[];
   stack: { runtimes: string[]; models: { name: string; on: string[]; remote: boolean }[] };
   delegate: { registered: boolean; active: boolean; revoked: boolean; fingerprint: string | null; mandate: Record<string, unknown>; handDecisions: Record<string, number>; handDecisionsNeeded: number };
   connectors: { git: string; meeting: string; options: { git: string[]; meeting: string[] }; claudeAgentKey: string; httpWorkers: number };
@@ -514,6 +515,8 @@ export const api = {
     }
   },
   rebuildBrief: () => call<Brief>('/api/brief/rebuild', { method: 'POST', body: '{}' }),
+  embeddedTools: async () => (await call<ConfigView>('/api/config')).embeddedTools,
+  putEmbeddedTools: (tools: { name: string; url: string }[]) => call('/api/config/embedded-tools', { method: 'PUT', body: JSON.stringify({ tools }) }),
   boards: async () => (await call<{ boards: Board[] }>('/api/boards')).boards,
   pulls: async () => (await call<{ pulls: PullRequest[] }>('/api/pull-requests')).pulls,
   config: () => call<ConfigView>('/api/config'),

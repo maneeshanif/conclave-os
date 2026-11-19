@@ -1159,6 +1159,8 @@ export const workspaceSettings = pgTable('workspace_settings', {
   // Whether the task watchdog may put a wrongly stopped task back in line (A7). Off until a person switches it on.
   taskWatchdog: boolean('task_watchdog').notNull().default(false),
   // Which connector is used for each kind (git, meeting), chosen on the Settings screen. Names only, never keys. Empty means the environment's default.
+  // Outside web pages that open in a panel in the office: a short allow-list of name and https address (Settings, see embeds.ts).
+  embeddedTools: jsonb('embedded_tools').$type<{ name: string; url: string }[]>().notNull().default([]),
   connectors: jsonb('connectors').$type<Record<string, string>>().notNull().default({}),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 },

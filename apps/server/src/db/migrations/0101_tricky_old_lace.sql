@@ -1,0 +1,1 @@
+ALTER TABLE "workspace_settings" ADD COLUMN "embedded_tools" jsonb DEFAULT '[]'::jsonb NOT NULL;

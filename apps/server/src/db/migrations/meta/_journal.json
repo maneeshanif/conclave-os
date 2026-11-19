@@ -708,6 +708,13 @@
       "when": 1795043748245,
       "tag": "0100_overjoyed_scarlet_spider",
       "breakpoints": true
+    },
+    {
+      "idx": 101,
+      "version": "7",
+      "when": 1795078075925,
+      "tag": "0101_tricky_old_lace",
+      "breakpoints": true
     }
   ]
 }

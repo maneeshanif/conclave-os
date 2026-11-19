@@ -1148,3 +1148,8 @@ See SPEC 19. Numbers 1 and 3 block slice 0: which CLIs on which account, and whe
 ## 2026-11-20 (S6C-2: shrinking a room)
 
 - `shrinkRoom` is the reverse of `growRoom`: the wall on that side moves in one tile with its doorways; the old wall tiles take the value of what lies beyond; end-of-wall corner stubs go back to open ground, so grow then shrink gives back exactly the same floor and collision layers (tested). Refused if the room would get under two tiles across, scenery, a desk or an entry is on the new wall tile, another room shares the wall, or it would cut something off. Same route as growing (`shrink: true`), same Undo.
+
+## 2026-11-20 (Settings: diagnostics, embedded tools)
+
+- Diagnostics (jsm-hq's Debug) is a section of Settings, not a new panel: server version, uptime, memory; each key as set or not set with what it is for and whether a real connector exists yet; and agents kept out of the loop with their problems. A value is never returned.
+- Embedded tools: an allow-list on Settings (`workspace_settings.embedded_tools`, at most 12). An address must be https on the standard port, a public name (no IP, no `localhost`, `.local`, `.internal`, no sign-in in the URL), and is stored in its clean form. It opens from the 🧩 button in a frame with `sandbox="allow-scripts allow-forms allow-popups allow-same-origin"` (no top navigation, no modals, no downloads), no referrer and no camera or microphone. Owner only, audit-logged.

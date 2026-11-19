@@ -13,6 +13,8 @@ export interface SettingsClient {
   /** A correction to what an agent has spent this month (A5): adds or takes off an amount, with a reason. Runs are never edited. */
   /** Switches which connector is used (no restart). Names only. */
   putConnectors(p: { git?: string; meeting?: string }): Promise<unknown>;
+  /** Replaces the list of outside web pages that may open in a panel. */
+  putEmbeddedTools(tools: { name: string; url: string }[]): Promise<unknown>;
   postSpend(key: string, p: { usd: number; reason: string }): Promise<unknown>;
   putGuestHours(hours: number): Promise<unknown>;
   putReleaseChannel(channel: 'stable' | 'beta' | 'nightly'): Promise<unknown>;
@@ -31,6 +33,7 @@ const real: SettingsClient = {
   putAgent: api.putConfigAgent,
   postSpend: api.postSpend,
   putConnectors: api.putConnectors,
+  putEmbeddedTools: api.putEmbeddedTools,
   putGuestHours: api.putGuestHours,
   putReleaseChannel: api.putReleaseChannel,
   putTaskWatchdog: api.putTaskWatchdog,
@@ -75,6 +78,7 @@ export function SettingsView({ client = real }: { client?: SettingsClient }) {
   }, [load]);
 
   /** Runs one change, then looks again. A refusal shows the reason the server gave. */
+  const [embed, setEmbed] = useState({ name: '', url: '' });
   const [fix, setFix] = useState({ key: '', usd: '', reason: '' });
   async function change(what: string, fn: () => Promise<unknown>) {
     try {
@@ -346,6 +350,34 @@ export function SettingsView({ client = real }: { client?: SettingsClient }) {
           <li>Claude Agent key: {cfg.connectors.claudeAgentKey}</li>
           <li>http workers: {cfg.connectors.httpWorkers}</li>
         </ul>
+      </section>
+
+      <section aria-label="Embedded tools">
+        <h3 className="font-semibold">Embedded tools</h3>
+        <p className="text-slate-600">Outside web pages (a board, a doc, a whiteboard) that open in a panel in the office. Only https addresses of public sites; each is shown in a sandbox.</p>
+        <ul>
+          {cfg.embeddedTools.map((t) => (
+            <li key={t.name}>
+              {t.name}: <code>{t.url}</code>{' '}
+              <button type="button" aria-label={`Remove ${t.name}`} className="underline" onClick={() => void change(`Remove ${t.name}`, () => client.putEmbeddedTools(cfg.embeddedTools.filter((x) => x.name !== t.name)))}>
+                Remove
+              </button>
+            </li>
+          ))}
+        </ul>
+        <form
+          className="flex flex-wrap items-end gap-2"
+          onSubmit={(e) => {
+            e.preventDefault();
+            void change('Embedded tools', () => client.putEmbeddedTools([...cfg.embeddedTools, { name: embed.name, url: embed.url }])).then(() => setEmbed({ name: '', url: '' }));
+          }}
+        >
+          <input aria-label="Tool name" className={field} placeholder="Name" value={embed.name} onChange={(e) => setEmbed({ ...embed, name: e.target.value })} />
+          <input aria-label="Tool address" className={field} placeholder="https://…" value={embed.url} onChange={(e) => setEmbed({ ...embed, url: e.target.value })} />
+          <button type="submit" className="rounded border border-slate-400 px-2 py-1">
+            Add
+          </button>
+        </form>
       </section>
 
       <section aria-label="Diagnostics">

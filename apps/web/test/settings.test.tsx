@@ -17,6 +17,7 @@ const cfg = (over: Partial<ConfigView> = {}): ConfigView => ({
     { key: 'kofi', name: 'Kofi', department: 'engineering', status: 'active', autonomy: 0, selfWriting: true, runtime: 'codex', modelAlias: 'any-model', trust: 'standard' },
   ],
   delegate: { registered: false, active: false, revoked: false, fingerprint: null, mandate: {}, handDecisions: {}, handDecisionsNeeded: 20 },
+  embeddedTools: [{ name: 'Notion', url: 'https://www.notion.so/team' }],
   diagnostics: { node: 'v22.1.0', uptimeSeconds: 3600, memoryMb: 210, keys: [{ name: 'RESEND_API_KEY', set: true, for: 'Sending approved email', usedByCode: true }, { name: 'LIVEKIT_API_KEY', set: false, for: 'Client meeting video', usedByCode: false }], failedProbes: [{ key: 'kofi', problems: ['AGENT.md is missing'] }] },
   stack: { runtimes: ['claude-cli', 'codex', 'openai-agents'], models: [{ name: 'writer', on: ['claude-cli'], remote: false }, { name: 'any-model', on: ['codex'], remote: false }, { name: 'openai', on: ['openai-agents'], remote: true }] },
   connectors: { git: 'local', meeting: 'local', options: { git: ['local', 'gh'], meeting: ['local', 'livekit'] }, claudeAgentKey: 'not set', httpWorkers: 0 },
@@ -33,6 +34,7 @@ const client = (c: ConfigView | Error = cfg(), over: Partial<SettingsClient> = {
     putAgent: vi.fn(async () => ({})),
     postSpend: vi.fn(async () => ({})),
     putConnectors: vi.fn(async () => ({})),
+    putEmbeddedTools: vi.fn(async () => ({})),
     putGuestHours: vi.fn(async () => ({})),
     putReleaseChannel: vi.fn(async () => ({})),
     putTaskWatchdog: vi.fn(async () => ({})),
@@ -190,6 +192,19 @@ describe('the Settings panel', () => {
     expect(d.textContent).toMatch(/LIVEKIT_API_KEY: not set \(Client meeting video; connector not written yet\)/);
     expect(d.textContent).toMatch(/kofi: AGENT.md is missing/);
     expect(d.textContent).not.toMatch(/sk-|re_/);
+  });
+
+  it('adds and removes an embedded tool, sending the whole list each time', async () => {
+    const c = client();
+    render(<SettingsView client={c} />);
+    const s = await screen.findByLabelText('Embedded tools');
+    expect(s.textContent).toMatch(/Notion: https:\/\/www\.notion\.so\/team/);
+    fireEvent.change(within(s).getByLabelText('Tool name'), { target: { value: 'Miro' } });
+    fireEvent.change(within(s).getByLabelText('Tool address'), { target: { value: 'https://miro.com/app/board/1' } });
+    fireEvent.click(within(s).getByRole('button', { name: 'Add' }));
+    await waitFor(() => expect(c.putEmbeddedTools).toHaveBeenCalledWith([{ name: 'Notion', url: 'https://www.notion.so/team' }, { name: 'Miro', url: 'https://miro.com/app/board/1' }]));
+    fireEvent.click(within(s).getByRole('button', { name: 'Remove Notion' }));
+    await waitFor(() => expect(c.putEmbeddedTools).toHaveBeenLastCalledWith([]));
   });
 
 });

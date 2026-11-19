@@ -389,6 +389,7 @@ export function OfficeWorld({ client, onOpen, onPanel, onOpenList, onFail }: { c
           onOpenList={onOpenList}
           onSettings={() => onPanel('settings')}
           onBoards={() => onPanel('boards')}
+          onEmbeds={() => onPanel('embeds')}
           demo={demo}
           onDemo={setDemo}
           onEmote={(e) => {
