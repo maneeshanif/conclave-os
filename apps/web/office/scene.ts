@@ -11,6 +11,7 @@ import { FRAME, availabilityColour, directionOf, frameIndex, lookFor, placeColou
 import type { WorldController } from './controller';
 import { thingAt, type Thing } from './tooltips';
 import { PanDrag, panned } from './pan';
+import { parcelPositions } from './conveyor';
 
 /**
  * The drawing (SPEC 12). A thin Phaser skin over `WorldController`: it loads the Tiled map and our own art, draws the floor, rooms,
@@ -62,6 +63,8 @@ export function startWorld(opts: {
   myStatus: () => Availability;
   /** Your look (0 to 5) and name, read each frame so the picker takes effect at once. */
   myLook?: () => number;
+  /** How many pull requests are open, drawn as parcels on the belt beside the review board (jsm-hq's conveyor). Left out, no belt. */
+  openPulls?: () => number;
   myName?: () => string;
   /** Called with the panel an object opens. */
   onUseObject: (panel: string, ctx?: { dept?: string }) => void;
@@ -146,6 +149,7 @@ export function startWorld(opts: {
     private screens: { rect: Phaser.GameObjects.Rectangle; agentId: string | null }[] = [];
     private board: { x: number; y: number; w: number; h: number } | null = null;
     private noteRects: Phaser.GameObjects.Rectangle[] = [];
+    private belt: { x: number; y: number; len: number; parcels: Phaser.GameObjects.Rectangle[] } | null = null;
     private noteSig = '';
     private decorBoxes: { id: number; x: number; y: number; w: number; h: number }[] = [];
 
@@ -240,6 +244,7 @@ export function startWorld(opts: {
           const w = Math.ceil(tex.width / TILE) * TILE;
           const h = Math.ceil(tex.height / TILE) * TILE;
           box = put(key, o.x * TILE + w / 2, o.y * TILE + h / 2, o.y * TILE + h).setAlpha(panel.ready ? 1 : 0.55);
+          if (o.type === 'pr-board' && opts.openPulls) this.makeBelt(o.x, o.y + 1, 4);
           if (o.type === 'task-board') this.board = { x: o.x * TILE, y: o.y * TILE, w: tex.width, h: tex.height };
         } else if (opts.objectsUrl && frame >= 0) {
           box = this.add.sprite(o.x * TILE + TILE / 2, o.y * TILE + TILE / 2, 'objects', frame).setDepth(o.y * TILE + TILE).setAlpha(panel.ready ? 1 : 0.5);
@@ -344,6 +349,26 @@ export function startWorld(opts: {
       this.noteRects = noteSpots(notes.length, b.w, b.h).map((s, i) => this.add.rectangle(b.x + s.x, b.y + s.y, s.w, s.h, Phaser.Display.Color.HexStringToColor(notes[i]!.colour).color).setOrigin(0, 0).setStrokeStyle(1, 0x1b2340).setDepth(b.y + b.h + 1));
     }
 
+    /** The belt: a dark strip of `len` tiles ending at the review board, with a stripe pattern, drawn under the walkers. */
+    private makeBelt(boardX: number, y: number, len: number): void {
+      const x = boardX - len;
+      this.add.rectangle(x * TILE + (len * TILE) / 2, y * TILE + TILE / 2, len * TILE, TILE - 8, 0x334155).setDepth(y * TILE + 2);
+      for (let i = 0; i < len * 2; i++) this.add.rectangle(x * TILE + i * (TILE / 2) + 4, y * TILE + TILE / 2, 2, TILE - 12, 0x475569).setDepth(y * TILE + 3);
+      this.belt = { x, y, len, parcels: [] };
+    }
+
+    private drawBelt(time: number): void {
+      const b = this.belt;
+      if (!b) return;
+      const at = parcelPositions(opts.openPulls?.() ?? 0, time, b.len);
+      while (b.parcels.length < at.length) b.parcels.push(this.add.rectangle(0, 0, 14, 12, 0xf59e0b).setStrokeStyle(1, 0x78350f).setDepth(b.y * TILE + 4));
+      b.parcels.forEach((p, i) => {
+        const pos = at[i];
+        p.setVisible(pos !== undefined);
+        if (pos !== undefined) p.setPosition((b.x + pos) * TILE + 8, b.y * TILE + TILE / 2);
+      });
+    }
+
     private drawScreens(time: number): void {
       for (const sc of this.screens) {
         const state = sc.agentId ? opts.stateOf?.(sc.agentId) : undefined;
@@ -379,6 +404,7 @@ export function startWorld(opts: {
         f.setMood(moodFor(state));
       }
       this.drawScreens(_time);
+      this.drawBelt(_time);
       this.drawNotes();
       this.me?.setLook(opts.myLook?.() ?? 0);
       this.me?.label(`${opts.emoteOf?.('me') ? `${opts.emoteOf('me')} ` : ''}${opts.myName?.() ?? 'You'}`, availabilityColour(status));

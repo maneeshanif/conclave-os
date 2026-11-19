@@ -121,6 +121,14 @@ export function OfficeWorld({ client, onOpen, onPanel, onOpenList, onFail }: { c
   const [demo, setDemo] = useState<{ on: boolean; speed: Speed }>({ on: false, speed: 1 });
   const demoOn = useRef(false);
   const reloadTeam = useRef<() => void>(() => undefined);
+  // The conveyor beside the review board: one parcel for each open pull request, looked at again now and then.
+  const openPulls = useRef(0);
+  useEffect(() => {
+    const look = () => void api.pulls().then((list) => (openPulls.current = list.filter((p) => p.status === 'open').length)).catch(() => undefined);
+    look();
+    const timer = setInterval(look, 30_000);
+    return () => clearInterval(timer);
+  }, []);
   useEffect(() => {
     demoOn.current = demo.on;
     if (!demo.on) {
@@ -266,7 +274,7 @@ export function OfficeWorld({ client, onOpen, onPanel, onOpenList, onFail }: { c
         ctl.onDrawer((e) => onOpen(e.kind === 'open' ? e.id : null));
         const { startWorld } = await import('../office/scene');
         if (cancelled || !box.current) return;
-        const world = startWorld({ parent: box.current, mapUrl: `${API}/api/office/map`, tilesUrl: '/office/tiles.png', peopleUrl: '/office/people.png', furnitureUrl: '/office/furniture.png', objectsUrl: '/office/objects.png', decorBase: '/office/decor', agentsUrl: '/office/agents.png', stateOf: (id) => states.current.get(id), notesOf: () => notes.current, emoteOf: (id) => currentEmote(emotes.current, id, Date.now()), facts, ctl, who: () => who.current, myStatus: () => mine.current, myLook: () => profileRef.current.look, myName: () => profileRef.current.name, onUseObject: onPanel, onTile: (t, d) => useTile(t, d), grabs: (t, d) => editRef.current.editing && grabs(editRef.current.tool, t, d), onDrag: (a, b, d) => dropPiece(a, b, d), onHover: setHover });
+        const world = startWorld({ parent: box.current, mapUrl: `${API}/api/office/map`, tilesUrl: '/office/tiles.png', peopleUrl: '/office/people.png', furnitureUrl: '/office/furniture.png', objectsUrl: '/office/objects.png', decorBase: '/office/decor', agentsUrl: '/office/agents.png', stateOf: (id) => states.current.get(id), notesOf: () => notes.current, emoteOf: (id) => currentEmote(emotes.current, id, Date.now()), facts, ctl, who: () => who.current, myStatus: () => mine.current, myLook: () => profileRef.current.look, myName: () => profileRef.current.name, onUseObject: onPanel, onTile: (t, d) => useTile(t, d), openPulls: () => openPulls.current, grabs: (t, d) => editRef.current.editing && grabs(editRef.current.tool, t, d), onDrag: (a, b, d) => dropPiece(a, b, d), onHover: setHover });
         setView(ctl);
         const watch = new ResizeObserver(() => world.resize());
         watch.observe(box.current);

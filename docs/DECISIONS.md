@@ -1127,3 +1127,7 @@ See SPEC 19. Numbers 1 and 3 block slice 0: which CLIs on which account, and whe
 
 - `growRoom` (shared, pure) makes a room one tile bigger on a side: its wall on that side moves out one tile with its doorways, and the old wall tiles become floor like the room. Refused if the tile beyond is a wall, another room (terraces are outdoors and do not count), scenery, a desk or an entry, off the map, or if it would cut anything off. `POST /api/office/room/grow {x, y, side}` picks the smallest room holding the tile; it goes through `writeMap`, so Undo works. Shrinking a room is not offered.
 - Dragging: with the Move tool a press on a piece grabs it (the press does not pan the view), and letting go on another tile moves it there, keeping the spot it was held by; the server's rules are the same as for the click-click move.
+
+## 2026-11-20 (S6C-6: the conveyor)
+
+- Decided without waiting: the belt is a picture of the Pull requests panel, not a new place. A 4 tile belt ends at the review board in the Hall; each open pull request is a parcel (up to 6, evenly spaced, 0.6 tiles a second) riding into it. The count is read every 30 seconds. Drawn in code like the rest of the event art; it adds no map object, so the four maps are unchanged. "A layout generated from the team" was already done as S6-13b (a department gets a room), so it is closed.
