@@ -9,7 +9,7 @@ export interface SettingsClient {
   sends(): Promise<SendSettings>;
   toolCalls(): Promise<ToolCall[]>;
   putPolicy(p: { level?: 'H0' | 'H1'; rosterCap?: number; trialBudgetCapUsd?: number }): Promise<unknown>;
-  putAgent(key: string, p: { selfWriting?: boolean; autonomy?: number }): Promise<unknown>;
+  putAgent(key: string, p: { selfWriting?: boolean; autonomy?: number; runtime?: string; modelAlias?: string }): Promise<unknown>;
   /** A correction to what an agent has spent this month (A5): adds or takes off an amount, with a reason. Runs are never edited. */
   /** Switches which connector is used (no restart). Names only. */
   putConnectors(p: { git?: string; meeting?: string }): Promise<unknown>;
@@ -126,6 +126,8 @@ export function SettingsView({ client = real }: { client?: SettingsClient }) {
             <tr className="text-xs text-slate-500">
               <th>Agent</th>
               <th>Level</th>
+              <th>Runtime</th>
+              <th>Model</th>
               <th>May edit its own skills</th>
             </tr>
           </thead>
@@ -140,6 +142,25 @@ export function SettingsView({ client = real }: { client?: SettingsClient }) {
                     {[0, 1, 2, 3].map((n) => (
                       <option key={n} value={n}>
                         {n}
+                      </option>
+                    ))}
+                  </select>
+                </td>
+                <td>
+                  <select aria-label={`Runtime of ${a.name}`} className={field} value={a.runtime} onChange={(e) => void change(`Runtime of ${a.name}`, () => client.putAgent(a.key, { runtime: e.target.value }))}>
+                    {cfg.stack.runtimes.map((r) => (
+                      <option key={r} value={r}>
+                        {r}
+                      </option>
+                    ))}
+                  </select>
+                </td>
+                <td>
+                  <select aria-label={`Model of ${a.name}`} className={field} value={a.modelAlias} onChange={(e) => void change(`Model of ${a.name}`, () => client.putAgent(a.key, { modelAlias: e.target.value }))}>
+                    {cfg.stack.models.filter((m) => m.on.includes(a.runtime) || m.name === a.modelAlias).map((m) => (
+                      <option key={m.name} value={m.name}>
+                        {m.name}
+                        {m.remote ? ' (leaves this machine)' : ''}
                       </option>
                     ))}
                   </select>

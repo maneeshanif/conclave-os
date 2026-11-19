@@ -156,4 +156,23 @@ describe('PUT /api/config/connectors (switch with no restart)', () => {
     const logged = (await sql("select data from audit_log where action = 'config.connectors'")).rows;
     expect(logged.length).toBe(2);
   });
+describe('PUT /api/config/agents/:key (the stack)', () => {
+  it('changes the runtime and model of an agent when they work together, and refuses a pair that does not, an unknown name, and a missing agent', async () => {
+    const before = (await config()) as unknown as { stack: { runtimes: string[]; models: { name: string; on: string[]; remote: boolean }[] } };
+    expect(before.stack.runtimes).toContain('openai-agents');
+    expect(before.stack.models.find((m) => m.name === 'openai')).toMatchObject({ on: ['openai-agents'], remote: true });
+    const ok = await call('PUT', '/api/config/agents/cfg-r', { runtime: 'openai-agents', modelAlias: 'local-worker' });
+    expect(ok.status).toBe(200);
+    expect(((await config()) as unknown as { agents: { key: string; runtime: string; modelAlias: string }[] }).agents.find((a) => a.key === 'cfg-r')).toMatchObject({ runtime: 'openai-agents', modelAlias: 'local-worker' });
+    const mismatch = await call('PUT', '/api/config/agents/cfg-r', { modelAlias: 'writer' }); // writer runs on claude-cli and claude-agent, not openai-agents
+    expect(mismatch.status).toBe(400);
+    expect(((await mismatch.json()) as { error: string }).error).toMatch(/does not run on openai-agents/);
+    expect((await call('PUT', '/api/config/agents/cfg-r', { runtime: 'nope' })).status).toBe(400);
+    expect((await call('PUT', '/api/config/agents/cfg-r', { modelAlias: 'nope' })).status).toBe(400);
+    expect((await call('PUT', '/api/config/agents/missing', { runtime: 'claude-cli' })).status).toBe(404);
+    const still = ((await config()) as unknown as { agents: { key: string; runtime: string; modelAlias: string }[] }).agents.find((a) => a.key === 'cfg-r')!;
+    expect(still).toMatchObject({ runtime: 'openai-agents', modelAlias: 'local-worker' }); // a refusal changed nothing
+  });
+});
+
 });

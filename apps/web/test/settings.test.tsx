@@ -13,10 +13,11 @@ const cfg = (over: Partial<ConfigView> = {}): ConfigView => ({
   releaseChannel: 'stable',
   taskWatchdog: false,
   agents: [
-    { key: 'wren', name: 'Wren', department: 'outreach', status: 'active', autonomy: 1, selfWriting: false, runtime: 'claude-cli' },
-    { key: 'kofi', name: 'Kofi', department: 'engineering', status: 'active', autonomy: 0, selfWriting: true, runtime: 'codex' },
+    { key: 'wren', name: 'Wren', department: 'outreach', status: 'active', autonomy: 1, selfWriting: false, runtime: 'claude-cli', modelAlias: 'writer' },
+    { key: 'kofi', name: 'Kofi', department: 'engineering', status: 'active', autonomy: 0, selfWriting: true, runtime: 'codex', modelAlias: 'any-model' },
   ],
   delegate: { registered: false, active: false, revoked: false, fingerprint: null, mandate: {}, handDecisions: {}, handDecisionsNeeded: 20 },
+  stack: { runtimes: ['claude-cli', 'codex', 'openai-agents'], models: [{ name: 'writer', on: ['claude-cli'], remote: false }, { name: 'any-model', on: ['codex'], remote: false }, { name: 'openai', on: ['openai-agents'], remote: true }] },
   connectors: { git: 'local', meeting: 'local', options: { git: ['local', 'gh'], meeting: ['local', 'livekit'] }, claudeAgentKey: 'not set', httpWorkers: 0 },
   ...over,
 });
@@ -165,4 +166,13 @@ describe('the Settings panel', () => {
     fireEvent.change(screen.getByLabelText('Meeting connector'), { target: { value: 'livekit' } });
     await waitFor(() => expect(c.putConnectors).toHaveBeenCalledWith({ meeting: 'livekit' }));
   });
+  it('changes the runtime and the model of an agent from menus, and only offers a model that runs on the runtime', async () => {
+    const c = client(cfg({ agents: [{ key: 'wren', name: 'Wren', department: 'outreach', status: 'active', autonomy: 1, selfWriting: false, runtime: 'openai-agents', modelAlias: 'openai' }] }));
+    render(<SettingsView client={c} />);
+    const model = (await screen.findByLabelText('Model of Wren')) as HTMLSelectElement;
+    expect([...model.options].map((o) => o.textContent)).toEqual(['openai (leaves this machine)']);
+    fireEvent.change(screen.getByLabelText('Runtime of Wren'), { target: { value: 'codex' } });
+    await waitFor(() => expect(c.putAgent).toHaveBeenCalledWith('wren', { runtime: 'codex' }));
+  });
+
 });

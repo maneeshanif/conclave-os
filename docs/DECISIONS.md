@@ -1136,3 +1136,7 @@ See SPEC 19. Numbers 1 and 3 block slice 0: which CLIs on which account, and whe
 
 - New alias `openai` (on `openai-agents` only, `https://api.openai.com/v1`, `allowRemote` on purpose because every prompt leaves the machine; name from `OPENAI_MODEL`, default `gpt-4.1-mini`). The key `OPENAI_API_KEY` is looked up by alias (`apiKeyFor`), so only a run on the `openai` alias is handed it, never the local worker. Nothing was run against OpenAI: the test uses the fake server.
 - `docs/KEYS-GUIDE.md` says, for each service, how to get the key, the `.env` name, and whether a real connector exists yet (Resend, Anthropic, OpenAI and `gh` do; LiveKit, Vercel, Slack, Jira, Retell and Twilio need the key first so the connector can be tested).
+
+## 2026-11-20 (Settings: the stack, per agent)
+
+- The Agents table on Settings has a runtime menu and a model menu for each agent. `PUT /api/config/agents/:key {runtime, modelAlias}` accepts only a pair that works together (`aliasWorksOn`, the rule the loader uses), writes the database row, and writes the same two lines into the agent's role file (`setRoleStack`), because a company sync reads the role file back and would otherwise undo the change. Nothing else in the role file is touched. A model that leaves the machine is marked in the menu.

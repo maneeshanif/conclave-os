@@ -77,7 +77,7 @@ export function apiRoutes(deps: { workspaceId: string; dispatcher: Dispatcher; b
   r.route('/channels', channelRoutes());
   r.route('/pull-requests', pullRoutes());
   r.route('/boards', boardRoutes());
-  if (deps.pool) r.route('/config', configRoutes({ workspaceId: ws, pool: deps.pool, ...(deps.dataDir ? { dataDir: deps.dataDir } : {}) }));
+  if (deps.pool) r.route('/config', configRoutes({ workspaceId: ws, pool: deps.pool, ...(deps.dataDir ? { dataDir: deps.dataDir } : {}), ...(deps.companyRoot ? { companyRoot: deps.companyRoot } : {}) }));
   if (deps.pool) r.route('/network', networkRoutes({ workspaceId: ws, pool: deps.pool }));
   if (deps.pool) r.route('/meetings', meetingRoutes({ workspaceId: ws, pool: deps.pool }));
   r.route('/setup', setupRoutes({ templates: async () => (deps.templatesRoot ? (await readdir(path.join(deps.templatesRoot, 'companies'), { withFileTypes: true }).catch(() => [])).filter((e) => e.isDirectory() && /^[a-z0-9][a-z0-9-]*$/.test(e.name)).map((e) => e.name).sort() : []) }));
