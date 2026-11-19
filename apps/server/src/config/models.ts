@@ -28,6 +28,9 @@ export const models: Readonly<Record<string, ModelAlias>> = {
   'strong-writer': { name: 'opus', on: ['claude-cli', 'claude-agent'] },
   researcher: { name: 'sonnet', on: ['claude-cli', 'claude-agent'] },
   'any-model': { name: '', on: ['opencode', 'codex', 'http'] },
+  // A hosted OpenAI model on the in-process runner. It needs OPENAI_API_KEY (handed to this runtime only, and only for this alias) and is
+  // off the machine, so every prompt leaves it: that is why allowRemote is set on purpose. The model name can be changed with OPENAI_MODEL.
+  openai: { name: process.env.OPENAI_MODEL?.trim() || 'gpt-4.1-mini', on: ['openai-agents'], baseUrl: 'https://api.openai.com/v1', allowRemote: true },
   'local-worker': {
     name: 'qwen3:8b',
     on: ['openai-agents', 'opencode'],

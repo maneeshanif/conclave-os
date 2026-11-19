@@ -170,3 +170,24 @@ describe('the openai-agents runtime in detail (S4-2)', () => {
     expect(down.detail).toMatch(/cannot be reached/);
   });
 });
+
+describe('a hosted model alias (openai)', () => {
+  it('is on the openai-agents runtime only, is remote on purpose, and passes validation', async () => {
+    const { models, validateAliases, aliasWorksOn } = await import('../src/config/models');
+    expect(models.openai).toMatchObject({ on: ['openai-agents'], baseUrl: 'https://api.openai.com/v1', allowRemote: true });
+    expect(aliasWorksOn('openai', 'openai-agents')).toBe(true);
+    expect(aliasWorksOn('openai', 'claude-cli')).toBe(false);
+    expect(validateAliases(models)).toEqual([]);
+  });
+
+  it('hands a key only to the alias it was set for: the local worker is given none', async () => {
+    const make = () => createOpenAIAgentsRuntime({ osUrl, baseUrl: fake.url('ok'), apiKeyFor: (a) => (a === 'openai' ? 'k-openai' : undefined) });
+    const auth = async (modelAlias: string) => {
+      const before = fake.seen.length;
+      await collect(make().start(await request({ modelAlias })));
+      return new Set(fake.seen.slice(before).map((s) => s.headers.authorization));
+    };
+    expect([...(await auth('openai'))]).toEqual(['Bearer k-openai']);
+    expect([...(await auth('local-worker'))]).toEqual(['Bearer local']);
+  });
+});

@@ -100,7 +100,7 @@ const loopBase: Omit<LoopDeps, 'workspaceSlug' | 'prepare'> = {
   pool: sys.app,
   tokens,
   bus,
-  runtimes: { 'claude-cli': createCliRuntime('claude-cli'), opencode: createCliRuntime('opencode'), codex: createCliRuntime('codex'), 'openai-agents': createOpenAIAgentsRuntime({ osUrl: sys.osUrl }), 'claude-agent': createClaudeAgentRuntime({ osUrl: sys.osUrl, ...(process.env.CLAUDE_AGENT_API_KEY ? { apiKey: process.env.CLAUDE_AGENT_API_KEY } : {}), instructionsFor: readStanding }), http: createHttpRuntime({ osUrl: sys.osUrl, url: workerUrl, instructionsFor: readStanding, allowRemote: process.env.HTTP_ALLOW_REMOTE === '1' }) },
+  runtimes: { 'claude-cli': createCliRuntime('claude-cli'), opencode: createCliRuntime('opencode'), codex: createCliRuntime('codex'), 'openai-agents': createOpenAIAgentsRuntime({ osUrl: sys.osUrl, apiKeyFor: (alias) => (alias === 'openai' ? process.env.OPENAI_API_KEY : undefined) }), 'claude-agent': createClaudeAgentRuntime({ osUrl: sys.osUrl, ...(process.env.CLAUDE_AGENT_API_KEY ? { apiKey: process.env.CLAUDE_AGENT_API_KEY } : {}), instructionsFor: readStanding }), http: createHttpRuntime({ osUrl: sys.osUrl, url: workerUrl, instructionsFor: readStanding, allowRemote: process.env.HTTP_ALLOW_REMOTE === '1' }) },
   dataDir: sys.dataDir,
   templatesRoot: sys.templatesRoot,
   // A run that says nothing for this long is stopped (A2). RUN_SILENCE_MINUTES changes it; 0 turns it off.

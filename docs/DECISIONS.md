@@ -1131,3 +1131,8 @@ See SPEC 19. Numbers 1 and 3 block slice 0: which CLIs on which account, and whe
 ## 2026-11-20 (S6C-6: the conveyor)
 
 - Decided without waiting: the belt is a picture of the Pull requests panel, not a new place. A 4 tile belt ends at the review board in the Hall; each open pull request is a parcel (up to 6, evenly spaced, 0.6 tiles a second) riding into it. The count is read every 30 seconds. Drawn in code like the rest of the event art; it adds no map object, so the four maps are unchanged. "A layout generated from the team" was already done as S6-13b (a department gets a room), so it is closed.
+
+## 2026-11-20 (hosted OpenAI model on the in-process runner; keys guide)
+
+- New alias `openai` (on `openai-agents` only, `https://api.openai.com/v1`, `allowRemote` on purpose because every prompt leaves the machine; name from `OPENAI_MODEL`, default `gpt-4.1-mini`). The key `OPENAI_API_KEY` is looked up by alias (`apiKeyFor`), so only a run on the `openai` alias is handed it, never the local worker. Nothing was run against OpenAI: the test uses the fake server.
+- `docs/KEYS-GUIDE.md` says, for each service, how to get the key, the `.env` name, and whether a real connector exists yet (Resend, Anthropic, OpenAI and `gh` do; LiveKit, Vercel, Slack, Jira, Retell and Twilio need the key first so the connector can be tested).

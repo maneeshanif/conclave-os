@@ -39,6 +39,8 @@ export interface OpenAIAgentsOptions {
   model?: string;
   /** The model's key, for a hosted endpoint. A local endpoint needs none. This is the only secret the runner is handed. */
   apiKey?: string;
+  /** The key for one alias only, so a hosted model's key is never handed to a local model. Used when `apiKey` is not set. */
+  apiKeyFor?: (alias: string) => string | undefined;
 }
 
 setTracingDisabled(true);
@@ -109,7 +111,7 @@ export function createOpenAIAgentsRuntime(options: OpenAIAgentsOptions): Runtime
         const standing = await readFile(path.join(req.workspaceDir, 'INSTRUCTIONS.md'), 'utf8').catch(() => '');
         const skills = await listSkills(skillsDir);
         const instructions = [standing.trim(), req.instructions.trim(), skillInstructions(skills)].filter(Boolean).join('\n\n');
-        const client = new OpenAI({ baseURL: baseUrl, apiKey: options.apiKey ?? 'local', maxRetries: 0 });
+        const client = new OpenAI({ baseURL: baseUrl, apiKey: options.apiKey ?? options.apiKeyFor?.(req.modelAlias) ?? 'local', maxRetries: 0 });
         const agent = new Agent({
           name: req.agentKey,
           instructions,
