@@ -16,7 +16,7 @@ import { readHiring, rosterRoom } from '../talent/hiring';
  * can be changed, and a write for each thing. Secrets are never in it: a connector is shown by name, a key only as set or not set. Writes are
  * the owner's (the roles table in `auth/roles.ts`).
  */
-const Agent = z.object({ selfWriting: z.boolean().optional(), autonomy: z.number().int().min(0).max(3).optional(), runtime: z.string().max(40).optional(), modelAlias: z.string().max(60).optional() }).strict().refine((v) => Object.keys(v).length > 0, { message: 'Nothing to change.' });
+const Agent = z.object({ selfWriting: z.boolean().optional(), autonomy: z.number().int().min(0).max(3).optional(), runtime: z.string().max(40).optional(), modelAlias: z.string().max(60).optional(), trust: z.enum(['standard', 'low']).optional() }).strict().refine((v) => Object.keys(v).length > 0, { message: 'Nothing to change.' });
 const Spend = z.object({ usd: z.number().min(-1000).max(1000).refine((n) => n !== 0, { message: 'A correction of zero changes nothing.' }), reason: z.string().trim().min(3).max(300) }).strict();
 const Connectors = z.object({ git: z.string().max(20).optional(), meeting: z.string().max(20).optional() }).strict().refine((o) => o.git !== undefined || o.meeting !== undefined, { message: 'Nothing to change.' });
 const Watchdog = z.object({ on: z.boolean() }).strict();
@@ -34,8 +34,8 @@ export function configRoutes(deps: { workspaceId: string; pool: Pool; dataDir?: 
     const tx = c.get('tx').client;
     const hiring = await readHiring(deps.pool, ws);
     const room = await rosterRoom(deps.pool, ws);
-    const agents = (await tx.query<{ key: string; name: string; status: string; autonomy: number; self_writing: boolean; runtime: string; model_alias: string; department: string | null }>(
-      'select a.key, a.name, a.status, a.autonomy, a.self_writing, a.runtime, a.model_alias, d.key as department from agents a left join departments d on d.id = a.department_id order by d.key, a.key',
+    const agents = (await tx.query<{ key: string; name: string; status: string; autonomy: number; self_writing: boolean; runtime: string; model_alias: string; trust: string; department: string | null }>(
+      'select a.key, a.name, a.status, a.autonomy, a.self_writing, a.runtime, a.model_alias, a.trust, d.key as department from agents a left join departments d on d.id = a.department_id order by d.key, a.key',
     )).rows;
     const d = await getDelegate(deps.pool, ws);
     const hand = Object.fromEntries((await tx.query<{ kind: string; n: number }>("select kind, count(*)::int as n from approvals where decided_by = 'founder' and status in ('approved','executing','executed','failed','rejected') group by kind")).rows.map((x) => [x.kind, x.n]));
@@ -46,7 +46,7 @@ export function configRoutes(deps: { workspaceId: string; pool: Pool; dataDir?: 
       guestLinkHours: guest,
       releaseChannel: st?.release_channel ?? 'stable',
       taskWatchdog: st?.task_watchdog ?? false,
-      agents: agents.map((a) => ({ key: a.key, name: a.name, department: a.department, status: a.status, autonomy: a.autonomy, selfWriting: a.self_writing, runtime: a.runtime, modelAlias: a.model_alias })),
+      agents: agents.map((a) => ({ key: a.key, name: a.name, department: a.department, status: a.status, autonomy: a.autonomy, selfWriting: a.self_writing, runtime: a.runtime, modelAlias: a.model_alias, trust: a.trust })),
       stack: { runtimes: RUNTIMES, models: Object.entries(models).map(([name, m]) => ({ name, on: m.on, remote: Boolean(m.allowRemote) })) },
       delegate: { registered: Boolean(d), active: d?.active ?? false, revoked: Boolean(d?.revokedAt), fingerprint: d?.fingerprint ?? null, mandate: d?.mandate ?? {}, handDecisions: hand, handDecisionsNeeded: HAND_DECISIONS_NEEDED },
       // Which connector is in use is a setting (PUT /connectors, no restart); keys are shown as set or not set, never their value.
@@ -84,6 +84,13 @@ export function configRoutes(deps: { workspaceId: string; pool: Pool; dataDir?: 
       await tx.query('update agents set runtime = $2, model_alias = $3 where id = $1', [a.id, runtime, alias]);
       // The role file says the same, or the next sync would put the old one back.
       if (deps.companyRoot) await setRoleStack(deps.companyRoot, key, { runtime, model: alias });
+    }
+    // The low-trust preset (A1, P4): the agent reads hostile input, so what it writes reaches others labelled as data, its tools are cut to the
+    // base set, and it cannot edit skills. It goes in the role file too, or a sync would put the old value back.
+    if (parsed.data.trust !== undefined) {
+      await tx.query('update agents set trust = $2 where id = $1', [a.id, parsed.data.trust]);
+      if (parsed.data.trust === 'low') await tx.query('update agents set self_writing = false where id = $1', [a.id]);
+      if (deps.companyRoot) await setRoleStack(deps.companyRoot, key, { trust: parsed.data.trust });
     }
     if (parsed.data.selfWriting !== undefined) await tx.query('update agents set self_writing = $2 where id = $1', [a.id, parsed.data.selfWriting]);
     if (parsed.data.autonomy !== undefined) await tx.query('update agents set autonomy = $2 where id = $1', [a.id, parsed.data.autonomy]);

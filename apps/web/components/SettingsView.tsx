@@ -9,7 +9,7 @@ export interface SettingsClient {
   sends(): Promise<SendSettings>;
   toolCalls(): Promise<ToolCall[]>;
   putPolicy(p: { level?: 'H0' | 'H1'; rosterCap?: number; trialBudgetCapUsd?: number }): Promise<unknown>;
-  putAgent(key: string, p: { selfWriting?: boolean; autonomy?: number; runtime?: string; modelAlias?: string }): Promise<unknown>;
+  putAgent(key: string, p: { selfWriting?: boolean; autonomy?: number; runtime?: string; modelAlias?: string; trust?: string }): Promise<unknown>;
   /** A correction to what an agent has spent this month (A5): adds or takes off an amount, with a reason. Runs are never edited. */
   /** Switches which connector is used (no restart). Names only. */
   putConnectors(p: { git?: string; meeting?: string }): Promise<unknown>;
@@ -128,6 +128,7 @@ export function SettingsView({ client = real }: { client?: SettingsClient }) {
               <th>Level</th>
               <th>Runtime</th>
               <th>Model</th>
+              <th>Trust</th>
               <th>May edit its own skills</th>
             </tr>
           </thead>
@@ -163,6 +164,12 @@ export function SettingsView({ client = real }: { client?: SettingsClient }) {
                         {m.remote ? ' (leaves this machine)' : ''}
                       </option>
                     ))}
+                  </select>
+                </td>
+                <td>
+                  <select aria-label={`Trust of ${a.name}`} title="Low: for an agent that reads hostile input (inbound mail, untrusted pages). Its output reaches others as labelled data, its tools are the base set, and it cannot edit skills." className={field} value={a.trust} onChange={(e) => void change(`Trust of ${a.name}`, () => client.putAgent(a.key, { trust: e.target.value }))}>
+                    <option value="standard">standard</option>
+                    <option value="low">low (reads hostile input)</option>
                   </select>
                 </td>
                 <td>

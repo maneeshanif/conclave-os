@@ -32,7 +32,7 @@ BORROW-AUDIT items P1 to P11:
 | P1 agent verified before ready | done (A4, the folder probe; a failed probe keeps the agent out of the loop) |
 | P2 silent-run watchdog | done (`silenceMs` in the loop) |
 | P3 task watchdog | done, opt-in (A7, a switch on Settings) |
-| P4 low-trust containment | partial: inbound text is data (rule 5), persona text from the catalog never gets a tool, untrusted agents cannot edit skills (self-writing is off by default and set per agent). A named low-trust preset that narrows project and run policy together is not built |
+| P4 low-trust containment | done: an agent set to low trust (a Trust menu on Settings, or `trust: low` in its role file) has its tools cut to the base set, what it writes reaches others as labelled data, and it cannot edit skills. Narrowing project and run policy together is not built, because there is only one policy layer today |
 | P5 tool risk classes and a call log | done (A3, `TOOL_RISK`, the Tool calls list on Settings) |
 | P6 one alternative attempt on a failed run | done (retry, then the other model, then block) |
 | P7 hand-off cannot change the task | done (tested) |

@@ -175,4 +175,15 @@ describe('PUT /api/config/agents/:key (the stack)', () => {
   });
 });
 
+describe('low trust (P4)', () => {
+  it('switches an agent to low trust, which also switches its self-writing off, and refuses an unknown level', async () => {
+    await call('PUT', '/api/config/agents/cfg-r', { selfWriting: true });
+    expect((await call('PUT', '/api/config/agents/cfg-r', { trust: 'low' })).status).toBe(200);
+    const a = ((await config()) as unknown as { agents: { key: string; trust: string; selfWriting: boolean }[] }).agents.find((x) => x.key === 'cfg-r')!;
+    expect(a).toMatchObject({ trust: 'low', selfWriting: false });
+    expect((await call('PUT', '/api/config/agents/cfg-r', { trust: 'paranoid' })).status).toBe(400);
+    expect((await call('PUT', '/api/config/agents/cfg-r', { trust: 'standard' })).status).toBe(200);
+  });
+});
+
 });

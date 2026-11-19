@@ -252,7 +252,7 @@ export interface ConfigView {
   guestLinkHours: number;
   releaseChannel: 'stable' | 'beta' | 'nightly';
   taskWatchdog: boolean;
-  agents: { key: string; name: string; department: string | null; status: string; autonomy: number; selfWriting: boolean; runtime: string; modelAlias: string }[];
+  agents: { key: string; name: string; department: string | null; status: string; autonomy: number; selfWriting: boolean; runtime: string; modelAlias: string; trust: string }[];
   stack: { runtimes: string[]; models: { name: string; on: string[]; remote: boolean }[] };
   delegate: { registered: boolean; active: boolean; revoked: boolean; fingerprint: string | null; mandate: Record<string, unknown>; handDecisions: Record<string, number>; handDecisionsNeeded: number };
   connectors: { git: string; meeting: string; options: { git: string[]; meeting: string[] }; claudeAgentKey: string; httpWorkers: number };
@@ -521,7 +521,7 @@ export const api = {
   putPolicy: (p: { level?: 'H0' | 'H1'; rosterCap?: number; trialBudgetCapUsd?: number }) => call('/api/talent/policy', { method: 'PUT', body: JSON.stringify(p) }),
   putConnectors: (p: { git?: string; meeting?: string }) => call('/api/config/connectors', { method: 'PUT', body: JSON.stringify(p) }),
   postSpend: (key: string, p: { usd: number; reason: string }) => call(`/api/config/agents/${encodeURIComponent(key)}/spend`, { method: 'POST', body: JSON.stringify(p) }),
-  putConfigAgent: (key: string, p: { selfWriting?: boolean; autonomy?: number; runtime?: string; modelAlias?: string }) => call(`/api/config/agents/${encodeURIComponent(key)}`, { method: 'PUT', body: JSON.stringify(p) }),
+  putConfigAgent: (key: string, p: { selfWriting?: boolean; autonomy?: number; runtime?: string; modelAlias?: string; trust?: string }) => call(`/api/config/agents/${encodeURIComponent(key)}`, { method: 'PUT', body: JSON.stringify(p) }),
   putTaskWatchdog: (on: boolean) => call('/api/config/task-watchdog', { method: 'PUT', body: JSON.stringify({ on }) }),
   putReleaseChannel: (channel: 'stable' | 'beta' | 'nightly') => call('/api/config/release-channel', { method: 'PUT', body: JSON.stringify({ channel }) }),
   putGuestHours: (hours: number) => call('/api/config/guest-link-hours', { method: 'PUT', body: JSON.stringify({ hours }) }),

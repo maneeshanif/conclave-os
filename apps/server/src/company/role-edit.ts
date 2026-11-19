@@ -4,11 +4,11 @@ import path from 'node:path';
 const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 /**
- * Changes `runtime:` and `model:` in an agent's role file. The company is text, and the next sync reads these lines back into the database,
+ * Changes `runtime:`, `model:` and `trust:` in an agent's role file. The company is text, and the next sync reads these lines back into the database,
  * so a change made on the Settings screen has to be written here too, or it would be undone. Only those two lines of the front matter are
  * touched; the rest of the file, including the role text, is kept exactly. Returns false if no role file has that id.
  */
-export async function setRoleStack(companyRoot: string, agentId: string, change: { runtime?: string; model?: string }): Promise<boolean> {
+export async function setRoleStack(companyRoot: string, agentId: string, change: { runtime?: string; model?: string; trust?: string }): Promise<boolean> {
   const base = path.join(companyRoot, 'departments');
   let departments: string[];
   try {
@@ -31,7 +31,7 @@ export async function setRoleStack(companyRoot: string, agentId: string, change:
     let head = t.slice(0, end);
     const rest = t.slice(end);
     if (!new RegExp(`^id: ${escapeRe(agentId)}\\s*$`, 'm').test(head)) continue;
-    for (const [field, value] of [['runtime', change.runtime], ['model', change.model]] as const) {
+    for (const [field, value] of [['runtime', change.runtime], ['model', change.model], ['trust', change.trust]] as const) {
       if (value === undefined) continue;
       const line = new RegExp(`^${field}:.*$`, 'm');
       head = line.test(head) ? head.replace(line, () => `${field}: ${value}`) : `${head}\n${field}: ${value}`;
